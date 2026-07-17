@@ -1,0 +1,156 @@
+"""
+DocAgent —— 个性化讲解文档生成。
+亮点：
+  1. 流式输出 Markdown，前端实时渲染
+  2. **自动在适当位置插入 [n] 引用编号，n 对应检索命中的 chunk index**
+  3. mock 模式有完整模板，未配 LLM Key 也能演示
+"""
+from __future__ import annotations
+import asyncio
+import json
+
+from app.agents.base import AgentBase, AgentMeta, EventEmitter
+from app.llm import get_llm_client, has_llm_key
+
+
+class DocAgent(AgentBase):
+    meta = AgentMeta(
+        id="doc",
+        name="文档 Agent",
+        icon="📄",
+        color="indigo",
+        description="生成带引用的个性化讲解文档",
+    )
+
+    async def run(self, context: dict, emit: EventEmitter) -> dict:
+        topic = context.get("topic", "机器学习")
+        profile = context.get("profile", {})
+        chunks = context.get("chunks", [])
+        course_cfg = context.get("course_cfg")
+        course_name = context.get("course_name", "机器学习")
+        persona = course_cfg.persona if course_cfg else f"{course_name}课程助教"
+
+        # 构造引用块的简短表示传给 LLM（每条 ≤ 80 字）
+        ref_block = "\n".join(
+            f"[{i+1}] {c['source']} p.{c.get('page','-')}: {c['content'][:90]}"
+            for i, c in enumerate(chunks)
+        )
+        citations = [
+            {
+                "index": i + 1,
+                "chunk_id": c["chunk_id"],
+                "source": c["source"],
+                "page": c.get("page"),
+                "url": c.get("url"),
+                "snippet": c["content"][:200],
+            }
+            for i, c in enumerate(chunks)
+        ]
+
+        if not has_llm_key():
+            # mock 模式：输出固定但好看的 markdown，演示视频里看起来跟真的一样
+            content = await self._stream_mock(topic, course_name, citations, emit)
+        else:
+            try:
+                content = await self._stream_real(topic, profile, ref_block, persona, course_name, emit)
+                if not content.strip():
+                    raise RuntimeError("empty LLM output")
+            except Exception as e:
+                await self.emit_delta(emit, f"\n\n> ⚠️ LLM 调用失败（{type(e).__name__}），降级到本地模板\n\n", kind="markdown")
+                content = await self._stream_mock(topic, course_name, citations, emit)
+
+        return {
+            "type": "doc",
+            "title": f"《{topic}》个性化讲解",
+            "content": content,
+            "citations": citations,
+        }
+
+    async def _stream_mock(self, topic: str, course_name: str, citations: list, emit) -> str:
+        # 用首两条引用，模拟"基于 RAG 生成"的效果
+        c1 = "[1]" if citations else ""
+        c2 = "[2]" if len(citations) >= 2 else c1
+        tmpl = f"""# {topic} · 个性化讲解
+
+## 1. 一句话定义
+
+{topic} 是{course_name}中的核心概念之一{c1}。理解它能帮你后续掌握更高级的内容。
+
+## 2. 直觉理解
+
+想象你在浓雾中下山：每一步都看脚下的坡度，朝最陡的下坡方向走一小步。这正是 {topic} 的核心思想{c2}。
+
+## 3. 形式化
+
+设损失函数 $L(\\theta)$，参数更新规则：
+
+$$\\theta_{{t+1}} = \\theta_t - \\eta \\nabla L(\\theta_t)$$
+
+其中 $\\eta$ 是学习率。
+
+## 4. 一份最小可运行代码
+
+```python
+import numpy as np
+
+def gradient_descent(x, y, lr=0.01, n_iter=1000):
+    w, b = 0.0, 0.0
+    for _ in range(n_iter):
+        y_hat = w * x + b
+        dw = -2 * np.mean(x * (y - y_hat))
+        db = -2 * np.mean(y - y_hat)
+        w -= lr * dw
+        b -= lr * db
+    return w, b
+```
+
+## 5. 常见误区
+
+- **学习率过大** → 发散；**学习率过小** → 收敛慢
+- 在非凸函数上可能陷入局部最优
+- 大数据集用 mini-batch 随机梯度下降而非全批量{c1}
+
+## 6. 下一步
+
+完成右侧练习题，回到学习路径上继续推进。
+"""
+        # 模拟流式：按字符 yield，但每 20 字符一次以加快演示
+        chunk_size = 5
+        for i in range(0, len(tmpl), chunk_size):
+            await self.emit_delta(emit, tmpl[i:i + chunk_size], kind="markdown")
+            await asyncio.sleep(0.02)
+        return tmpl
+
+    async def _stream_real(self, topic: str, profile: dict, ref_block: str, persona: str, course_name: str, emit) -> str:
+        llm = get_llm_client()
+        sys_prompt = f"""你是一位{persona}，正在为学生生成《{course_name}》课程下「{topic}」的个性化讲解文档。
+
+【学生画像】
+{json.dumps(profile, ensure_ascii=False)}
+
+【可用的知识库引用】（必须用 [n] 形式引用）
+{ref_block}
+
+【输出要求】
+1. Markdown 格式，包含：定义 / 直觉 / 形式化 / 代码 / 误区 / 下一步 等小节
+2. 关键论断后必须用 [n] 引用对应知识源，n 从 1 开始
+3. 数学公式用 $$...$$ 或 $...$（KaTeX 兼容）
+4. 代码块用 ```python ... ```
+5. 篇幅 600-900 字
+6. 根据画像调整难度和示例
+
+【语言要求（必须严格遵守）】
+- 全文必须使用**简体中文**，包括小节标题、正文、解释、误区说明
+- 专有术语 / 算法名 / API 名（如 K-Means、Gradient Descent、numpy）可以保留英文
+- 即使主题输入是英文（如 "K-Means"），讲解正文也必须用简体中文，禁止整段英文输出
+- 代码注释用简体中文，代码本身的标识符保留英文
+"""
+        messages = [
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": f"请为我讲解：{topic}"},
+        ]
+        buf = ""
+        async for tok in llm.chat_stream(messages=messages, temperature=0.6):
+            buf += tok
+            await self.emit_delta(emit, tok, kind="markdown")
+        return buf

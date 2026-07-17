@@ -1,0 +1,84 @@
+# ============ 密钥 / 敏感信息 —— 绝不提交 ============
+apikey.txt
+.env
+**/.env
+!**/.env.example
+*.key
+*.pem
+*.p12
+
+# ============ Python ============
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# ============ Node / 前端 ============
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+*.log
+npm-debug.log*
+
+# ============ 测试 / 工具缓存 ============
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+*.tsbuildinfo
+test-results/
+playwright-report/
+
+# ============ 数据库 / 运行期数据 ============
+*.db
+*.sqlite
+*.db.bak*
+*.sqlite3
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
+studymate/data/raw/*
+studymate/data/processed/*
+studymate/data/chroma/
+!studymate/data/raw/.gitkeep
+!studymate/data/processed/.gitkeep
+
+# ============ 生成产物 / 临时备份 ============
+/outputs/
+/studymate/backups/
+*.inspect.ndjson
+*.bak
+*.bak-*
+*.backup
+*.orig
+*.tmp
+*~
+
+# ============ 环境配置变体 ============
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+**/.deploy.env
+**/.deploy.env.*
+!**/.deploy.env.example
+
+# ============ IDE / 编辑器 / 系统 ============
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ============ Claude Code 本地配置 ============
+.claude/settings.local.json
+
+# ============ 课程作业 / 参考资料（与 StudyMate 主仓隔离，不提交）============
+2_课程资料/
+coursework/
