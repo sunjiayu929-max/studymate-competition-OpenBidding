@@ -956,10 +956,10 @@ function AchievementBreakdownCard({ scores, evidence }: { scores: EvalScores; ev
     },
   ]
   return (
-    <section aria-label="学习达成拆解" className="rounded-[22px] border border-[#D7D1C4] bg-[#F8F6F0] p-4 sm:p-5">
+    <section aria-label="学习达成率拆解" className="rounded-[22px] border border-[#D7D1C4] bg-[#F8F6F0] p-4 sm:p-5">
       <div className="mb-4">
-        <div className="flex items-center gap-1.5 text-sm font-semibold text-[#18232D]"><Target className="size-4 text-[#315E83]" />学习达成拆解</div>
-        <p className="mt-1 text-[11px] leading-5 text-[#66717B]">分别展示作答、资源覆盖和学习投入，不把不同证据混成一个含糊的综合分。</p>
+        <div className="flex items-center gap-1.5 text-sm font-semibold text-[#18232D]"><Target className="size-4 text-[#315E83]" />学习达成率拆解</div>
+        <p className="mt-1 text-[11px] leading-5 text-[#66717B]">分别展示作答、资源覆盖和学习投入</p>
       </div>
       <div className="grid gap-3 md:grid-cols-3">
         {metrics.map((metric) => {

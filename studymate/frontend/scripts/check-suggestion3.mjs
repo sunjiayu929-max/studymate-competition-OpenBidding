@@ -191,7 +191,7 @@ assert.equal(await page.locator('a[href="https://example.invalid/404"]').count()
 
 await page.goto(`${baseUrl}/report`, { waitUntil: "networkidle" })
 await page.getByText("主题 × 难度掌握热力图", { exact: true }).waitFor()
-await page.getByText("学习达成拆解", { exact: true }).waitFor()
+await page.getByText("学习达成率拆解", { exact: true }).waitFor()
 await page.getByText("1 / 2 题已作答", { exact: true }).waitFor()
 await page.getByText("2 / 4 类可用资源已查看", { exact: true }).waitFor()
 await page.getByText("学习时长 40/60 + 资源多样性 16/40", { exact: true }).waitFor()

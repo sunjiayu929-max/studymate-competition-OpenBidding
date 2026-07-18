@@ -83,6 +83,8 @@ function verifiedResolvedUrl(item: ReadingLinkInput): string | null {
         : item.type === "blog"
           ? (host === "blog.csdn.net" && /^\/[^/]+\/article\/details\/\d+\/?$/.test(path))
             || (host === "juejin.cn" && /^\/post\/\d+\/?$/.test(path))
+          : item.type === "video"
+            ? host === "www.bilibili.com" && /^\/video\/BV[0-9A-Za-z]+\/?$/.test(path)
           : false
     return allowed ? parsed.toString() : null
   } catch {

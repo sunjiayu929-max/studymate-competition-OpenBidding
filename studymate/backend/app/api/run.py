@@ -64,6 +64,21 @@ LANGS = {
 MAX_SOURCE_LEN = 50_000     # 50 KB
 MAX_STDIN_LEN = 10_000      # 10 KB
 
+_PYTHON_NUMERIC_ENV = (
+    "import os as _studymate_os\n"
+    "_studymate_os.environ.setdefault('OPENBLAS_NUM_THREADS', '1')\n"
+    "_studymate_os.environ.setdefault('OMP_NUM_THREADS', '1')\n"
+    "_studymate_os.environ.setdefault('MKL_NUM_THREADS', '1')\n"
+    "_studymate_os.environ.setdefault('NUMEXPR_NUM_THREADS', '1')\n"
+)
+
+
+def _prepare_source(language: str, source: str) -> str:
+    """Keep numerical Python libraries within Piston's process/thread limit."""
+    if language.lower() != "python":
+        return source
+    return _PYTHON_NUMERIC_ENV + source
+
 
 class RunRequest(BaseModel):
     language: str = Field(..., description="python / c / cpp")
@@ -116,7 +131,7 @@ async def run(req: RunRequest) -> RunResponse:
     payload = {
         "language": lang_cfg["language"],
         "version": lang_cfg["version"],
-        "files": [{"name": lang_cfg["filename"], "content": req.source}],
+        "files": [{"name": lang_cfg["filename"], "content": _prepare_source(req.language, req.source)}],
         "stdin": req.stdin,
         "args": req.args,
         # 编译参数（c/cpp 用，python 忽略）

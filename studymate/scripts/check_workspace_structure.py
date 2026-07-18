@@ -15,6 +15,7 @@ APP = ROOT / "studymate"
 
 ALLOWED_ROOT_ENTRIES = {
     ".git",
+    ".gitattributes",
     ".gitignore",
     "AGENTS.md",
     "CLAUDE.md",

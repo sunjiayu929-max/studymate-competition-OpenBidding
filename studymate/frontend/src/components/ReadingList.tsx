@@ -57,6 +57,19 @@ interface ReadingResolveResponse {
   items: ReadingResolvedItem[]
 }
 
+interface BiliVideo {
+  bvid: string
+  title: string
+  author: string
+  play: number
+  url: string
+}
+
+interface BiliVideosResponse {
+  ok: boolean
+  videos?: BiliVideo[]
+}
+
 function readingItemKey(item: ReadingItem): string {
   return [item.type, item.title, item.source].map((value) => value.trim().toLowerCase()).join(":")
 }
@@ -134,6 +147,8 @@ export function ReadingList({ items, topic = "" }: { items: ReadingItem[]; topic
   const course = useCurrentCourse()
   const [externalItems, setExternalItems] = useState<ReadingItem[]>([])
   const [externalLoading, setExternalLoading] = useState(false)
+  const [verifiedVideoItems, setVerifiedVideoItems] = useState<ReadingItem[]>([])
+  const [videoLoading, setVideoLoading] = useState(false)
   const [resolvedLinks, setResolvedLinks] = useState<Record<string, ReadingResolvedItem>>({})
   const [resolvingLinks, setResolvingLinks] = useState(false)
 
@@ -151,22 +166,18 @@ export function ReadingList({ items, topic = "" }: { items: ReadingItem[]; topic
       const load = async () => {
         const exactQuery = new URLSearchParams({ keyword, limit: "3" })
         if (course?.id) exactQuery.set("course_id", String(course.id))
-        let result = await apiGet<RencaiyaCoursesResponse>(`/rencaiya/courses?${exactQuery}`)
-
-        // 细知识点没有直接课程时，最多补两条当前课程级官方来源，不影响其它页面的精确匹配规则。
-        if (result.items.length === 0 && course?.id) {
-          const courseQuery = new URLSearchParams({ course_id: String(course.id), limit: "2" })
-          result = await apiGet<RencaiyaCoursesResponse>(`/rencaiya/courses?${courseQuery}`)
-        }
+        const result = await apiGet<RencaiyaCoursesResponse>(`/rencaiya/courses?${exactQuery}`)
 
         if (!alive) return
-        const matchNote = result.match_level === "exact" || result.match_level === "related" ? "知识点匹配" : "当前课程延伸"
-        setExternalItems(result.items.slice(0, 3).map((item) => ({
+        const matched = result.match_level === "exact" || result.match_level === "related"
+          ? result.items
+          : []
+        setExternalItems(matched.slice(0, 3).map((item) => ({
           title: item.title,
           type: "course",
           lang: "zh",
           url: item.url,
-          source: `${result.provider} · ${matchNote}`,
+          source: `${result.provider} · 知识点匹配`,
           difficulty: courseDifficulty(item.difficulty),
           summary: item.summary || "前往人才呀查看课程介绍与学习内容。",
         })))
@@ -181,6 +192,45 @@ export function ReadingList({ items, topic = "" }: { items: ReadingItem[]; topic
       window.cancelAnimationFrame(frame)
     }
   }, [course?.id, topic])
+
+  useEffect(() => {
+    const keyword = topic.trim()
+    if (!keyword) {
+      setVerifiedVideoItems([])
+      setVideoLoading(false)
+      return
+    }
+
+    let alive = true
+    const frame = window.requestAnimationFrame(() => {
+      setVideoLoading(true)
+      setVerifiedVideoItems([])
+      void apiPost<BiliVideosResponse>("/bili/videos", {
+        keyword,
+        limit: 2,
+        concept_title: keyword,
+        course_name: course?.name || undefined,
+      })
+        .then((result) => {
+          if (!alive || !result.ok) return
+          setVerifiedVideoItems((result.videos || []).slice(0, 2).map((video) => ({
+            title: video.title,
+            type: "video",
+            lang: "zh",
+            url: video.url,
+            source: `B站${video.author ? ` · ${video.author}` : ""}`,
+            difficulty: "入门",
+            summary: "B站公开讲解视频，已按当前知识点完成相关性筛选。",
+          })))
+        })
+        .catch(() => { if (alive) setVerifiedVideoItems([]) })
+        .finally(() => { if (alive) setVideoLoading(false) })
+    })
+    return () => {
+      alive = false
+      window.cancelAnimationFrame(frame)
+    }
+  }, [course?.name, topic])
 
   useEffect(() => {
     let alive = true
@@ -221,9 +271,28 @@ export function ReadingList({ items, topic = "" }: { items: ReadingItem[]; topic
     return () => { alive = false }
   }, [items])
 
-  const combinedItems = useMemo(() => mergeReadingItems(externalItems, items || []), [externalItems, items])
+  const verifiedVideoLinks = useMemo(() => {
+    const links: Record<string, ReadingResolvedItem> = {}
+    for (const item of verifiedVideoItems) {
+      links[readingItemKey(item)] = {
+        index: -1,
+        url: item.url,
+        provider: "哔哩哔哩",
+        label: "打开 B站视频",
+        score: 1,
+      }
+    }
+    return links
+  }, [verifiedVideoItems])
 
-  if (!combinedItems.length && !externalLoading) {
+  const combinedItems = useMemo(() => {
+    const generated = verifiedVideoItems.length > 0
+      ? (items || []).filter((item) => item.type !== "video")
+      : (items || [])
+    return mergeReadingItems([...externalItems, ...verifiedVideoItems], generated)
+  }, [externalItems, items, verifiedVideoItems])
+
+  if (!combinedItems.length && !externalLoading && !videoLoading) {
     return <div className="rounded-2xl border border-dashed border-[#CFC8B9] bg-[#F8F6F0] py-8 text-center text-xs text-[var(--muted-foreground)]">暂无推荐资源</div>
   }
   // 按类型分组，只展示有内容的分类，顺序固定
@@ -236,9 +305,10 @@ export function ReadingList({ items, topic = "" }: { items: ReadingItem[]; topic
     <div className="space-y-5">
       <div className="flex items-start gap-2 rounded-2xl border border-[#C9D1CB] bg-[#E9EEE6] px-3.5 py-3 text-[11px] leading-5 text-[#557052]">
         <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-        <span>已优先展示可验证的官方原文和讯飞人才呀课程，并尝试匹配论文、书籍和博客的真实详情页；未可靠匹配的资源仍会明确标记为搜索入口。</span>
+        <span>已优先展示可验证的官方原文、知识点匹配的人才呀课程和真实 B站视频，并尝试匹配论文、书籍和博客的详情页；未可靠匹配的资源仍会明确标记为搜索入口。</span>
       </div>
       {externalLoading && <div role="status" className="inline-flex items-center gap-1.5 text-[11px] text-[#66717B]"><Loader2 className="size-3.5 animate-spin" />正在匹配人才呀课程…</div>}
+      {videoLoading && <div role="status" className="inline-flex items-center gap-1.5 text-[11px] text-[#66717B]"><Loader2 className="size-3.5 animate-spin" />正在匹配 B站真实视频…</div>}
       {resolvingLinks && <div role="status" className="inline-flex items-center gap-1.5 text-[11px] text-[#66717B]"><Loader2 className="size-3.5 animate-spin" />正在解析论文、书籍和博客直达地址…</div>}
       {groups.map((g, gi) => {
         const meta = TYPE_META[g.type]
@@ -260,7 +330,7 @@ export function ReadingList({ items, topic = "" }: { items: ReadingItem[]; topic
             </h3>
             <div className="space-y-2 pl-1">
               {g.list.map((it, i) => (
-                <ItemRow key={`${it.title}-${i}`} it={it} topic={topic} resolved={resolvedLinks[readingItemKey(it)]} />
+                <ItemRow key={`${it.title}-${i}`} it={it} topic={topic} resolved={resolvedLinks[readingItemKey(it)] || verifiedVideoLinks[readingItemKey(it)]} />
               ))}
             </div>
           </motion.section>

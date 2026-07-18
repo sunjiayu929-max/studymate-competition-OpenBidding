@@ -200,7 +200,7 @@ cd ~/studymate
 bash scripts/deploy.sh
 ```
 
-脚本会构建镜像、启动服务并初始化 Piston 的 Python/C/C++ runtime。
+脚本会构建镜像、启动服务并初始化 Piston 的 Python/C/C++ runtime；Python runtime 还会补齐固定兼容版本的 `scikit-learn`，用于机器学习代码案例。
 
 如果服务器也无法访问 Docker Hub/GHCR，可先配置可信的 Docker registry mirror，
 或者把已经 `docker load` 的镜像名称写入 `.deploy.env` 中的 `CADDY_IMAGE`、
