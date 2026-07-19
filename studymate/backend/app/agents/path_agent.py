@@ -1,7 +1,7 @@
 """
 PathAgent —— 学习路径规划。
 - LLM 生成 5-8 个节点 + 依赖关系
-- 服务端按 deps 拓扑排序算 depth → 算 React Flow 友好的 position（同层水平等分）
+- 服务端按 deps 拓扑排序算 depth → 算 React Flow 友好的蛇形回折 position
 - mock 模式有兜底
 - 输出可直接交给 @xyflow/react 渲染
 """
@@ -14,10 +14,10 @@ from app.llm import get_llm_client, has_llm_key
 
 
 # React Flow 画布尺寸约定（前端 PathView 一致）
-NODE_W = 220
+NODE_W = 230
 NODE_H = 80
-H_GAP = 80
-V_GAP = 110
+H_GAP = 70
+V_GAP = 90
 
 
 class PathAgent(AgentBase):
@@ -111,13 +111,13 @@ class PathAgent(AgentBase):
             {"id": "n3", "title": "核心原理", "desc": "公式推导 + 直觉理解", "deps": ["n2"]},
             {"id": "n4", "title": "动手实现", "desc": "从零写一次最小可运行版", "deps": ["n3"]},
             {"id": "n5", "title": "进阶与优化", "desc": "性能 / 边界 / 调优", "deps": ["n4"]},
-            {"id": "n6", "title": "综合实战", "desc": "真实场景端到端", "deps": ["n4", "n5"]},
+            {"id": "n6", "title": "综合实战", "desc": "真实场景端到端", "deps": ["n5"]},
         ]
 
     def _layout(self, nodes: list[dict]) -> dict:
         """Kahn 拓扑排序得到唯一线性序号，每个节点 depth=序号，前端"阶段 N"全局唯一。
 
-        x 坐标随序号水平排开；超过 PER_ROW 折行，避免画布过宽。
+        每行最多四个节点，相邻行反向排列，形成连续蛇形回折路径。
         """
         from collections import deque
 
@@ -146,13 +146,14 @@ class PathAgent(AgentBase):
             if nid not in order:
                 order.append(nid)
 
-        # 每个节点拿到唯一序号 = depth；横向排开，6 个一行折行
-        PER_ROW = 6
+        # 每个节点拿到唯一序号 = depth；每行 4 个，奇数行反向排列。
+        PER_ROW = 4
         rf_nodes: list[dict] = []
         for i, nid in enumerate(order):
             n = id2node[nid]
             row = i // PER_ROW
-            col = i % PER_ROW
+            offset = i % PER_ROW
+            col = offset if row % 2 == 0 else PER_ROW - 1 - offset
             x = col * (NODE_W + H_GAP)
             y = row * (NODE_H + V_GAP)
             rf_nodes.append({

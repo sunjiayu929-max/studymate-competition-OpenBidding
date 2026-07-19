@@ -1,0 +1,16 @@
+# StudyMate Piston Python 第三方依赖白名单（固定版本）
+# 由 scripts/init-piston.sh 一次性装入 piston_data 持久化 volume。
+# 运行时代码不得临时 pip install；新增库需同步更新：
+#   - 本文件
+#   - backend/app/core/run_sandbox.py
+#   - 课程 registry.py 的 code_libs
+#   - 部署/验收文档
+#
+# 官方 Python 3.10.0 runtime 通常已预装 numpy / scipy。
+# 下列包为项目额外固定安装的第三方库。
+scikit-learn==1.3.2
+matplotlib==3.7.5
+pillow==10.2.0
+pandas==2.0.3
+networkx==3.1
+seaborn==0.13.2

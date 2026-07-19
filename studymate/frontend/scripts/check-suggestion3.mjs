@@ -20,6 +20,14 @@ const workspaceState = {
   courseName: course.name,
   status: "done",
   outputs: {
+    code: {
+      type: "code",
+      language: "python",
+      filename: "main.py",
+      code: "value = input()\nprint(value)",
+      explanation: "读取标准输入并原样输出。",
+      expected_output: "3333",
+    },
     reading: {
       type: "reading",
       title: "拓展阅读",
@@ -94,6 +102,25 @@ let ragRequestUrl = ""
 let readingResolveBody = null
 
 const json = (route, value, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(value) })
+
+function parseRgb(value) {
+  const channels = value.match(/[\d.]+/gu)?.slice(0, 3).map(Number)
+  assert.equal(channels?.length, 3, `无法解析颜色：${value}`)
+  return channels
+}
+
+function contrastRatio(foreground, background) {
+  const luminance = (value) => {
+    const channels = parseRgb(value).map((channel) => {
+      const normalized = channel / 255
+      return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4
+    })
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+  }
+  const light = Math.max(luminance(foreground), luminance(background))
+  const dark = Math.min(luminance(foreground), luminance(background))
+  return (light + 0.05) / (dark + 0.05)
+}
 
 await page.route("**/api/**", async (route) => {
   const request = route.request()
@@ -189,6 +216,25 @@ const talentCard = page.getByText("机器学习基础", { exact: true }).locator
 assert.equal(await talentCard.getByRole("link", { name: "打开人才呀课程" }).getAttribute("href"), "http://rencaiya.vip/college/courseinfo/1")
 assert.equal(await page.locator('a[href="https://example.invalid/404"]').count(), 0, "非可信文档域名不应直达")
 
+await page.goto(`${baseUrl}/workspace/r/code`, { waitUntil: "networkidle" })
+const codeRunner = page.getByTestId("code-runner")
+await codeRunner.getByRole("button", { name: /stdin/u }).click()
+const stdinInput = codeRunner.getByRole("textbox", { name: "标准输入" })
+await stdinInput.fill("3333")
+assert.equal(await stdinInput.inputValue(), "3333")
+const stdinStyles = await stdinInput.evaluate((element) => {
+  const style = getComputedStyle(element)
+  return { color: style.color, backgroundColor: style.backgroundColor, caretColor: style.caretColor }
+})
+assert.ok(contrastRatio(stdinStyles.color, stdinStyles.backgroundColor) >= 4.5, "标准输入文字与背景应保持可读对比度")
+assert.ok(contrastRatio(stdinStyles.caretColor, stdinStyles.backgroundColor) >= 3, "标准输入光标与背景应清晰可见")
+const stdinButtonColor = await codeRunner.getByRole("button", { name: /stdin/u }).evaluate((element) => getComputedStyle(element).color)
+const runnerColor = await codeRunner.evaluate((element) => getComputedStyle(element).color)
+assert.equal(stdinButtonColor, runnerColor, "stdin 按钮文字应继承运行器的可见前景色")
+if (process.env.STUDYMATE_CODE_RUNNER_SCREENSHOT) {
+  await codeRunner.screenshot({ path: process.env.STUDYMATE_CODE_RUNNER_SCREENSHOT })
+}
+
 await page.goto(`${baseUrl}/report`, { waitUntil: "networkidle" })
 await page.getByText("主题 × 难度掌握热力图", { exact: true }).waitFor()
 await page.getByText("学习达成率拆解", { exact: true }).waitFor()
@@ -209,5 +255,5 @@ assert.equal(new URL(ragRequestUrl).searchParams.get("k"), "8")
 assert.equal(await page.locator("main article").count(), 8)
 await page.getByText(/不代表答案正确概率/).waitFor()
 
-console.log("建议3前端回归通过：未作答标签、报告热力图、底部翻页、RAG 分数，以及论文/书籍/博客/官方文档/人才呀直达均正常。")
+console.log("建议3前端回归通过：代码标准输入可见，未作答标签、报告热力图、底部翻页、RAG 分数和外部资源直达均正常。")
 await browser.close()

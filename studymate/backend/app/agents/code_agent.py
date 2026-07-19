@@ -13,6 +13,7 @@ import asyncio
 import json
 
 from app.agents.base import AgentBase, AgentMeta, EventEmitter
+from app.core.run_sandbox import format_supported_libs_for_prompt
 from app.llm import get_llm_client, has_llm_key
 
 
@@ -79,13 +80,15 @@ class CodeAgent(AgentBase):
             if prog <= 2:
                 level_hint = "**最小可运行版本**：纯 numpy，控制在 25 行内，每行加注释"
             elif prog >= 4:
-                level_hint = "**完整工程版本**：sklearn + matplotlib 可视化，40-60 行，体现最佳实践"
+                level_hint = "**完整工程版本**：pandas/sklearn + matplotlib 可视化，40-60 行，体现最佳实践"
             else:
                 level_hint = "**中等版本**：numpy 实现核心 + sklearn 对比验证，30-40 行"
+            sandbox_libs = format_supported_libs_for_prompt()
             style_rules = f"""1. {level_hint}
 2. 代码**无外部数据依赖**：自己造数据（np.random）或用 sklearn.datasets.make_*
-3. 可直接 `python file.py` 运行
-4. 优先使用：{', '.join(libs)}"""
+3. 可直接 `python file.py` 运行；只允许使用在线沙箱已支持库：{sandbox_libs}
+4. matplotlib 无 GUI：不要依赖 plt.show() 弹窗；关键结果用 print 输出；可写 plt.savefig 但不保证前端展示图片
+5. 优先使用：{', '.join(libs)}（且必须落在沙箱白名单内）"""
             lang = "python"
             fname = "example.py"
 
@@ -99,11 +102,13 @@ class CodeAgent(AgentBase):
             fname = "algorithm.cpp"
 
         elif style == "pseudo":
+            sandbox_libs = format_supported_libs_for_prompt()
             style_rules = f"""1. **C 风格伪代码** + 中文注释（不要求真能编译，重在表达逻辑）
 2. 关键步骤用 // 注释标出"为什么这样做"
 3. 必要时附时序图或状态转移说明（Markdown 注释）
 4. 复杂度 / 边界情况要点写在文件顶部块注释
-5. 优先使用：{', '.join(libs)}"""
+5. 若附带可运行 Python 片段：仅允许标准库（如 socket/json/struct）或沙箱白名单第三方库（{sandbox_libs}）；禁止未安装第三方库
+6. 优先使用：{', '.join(libs)}"""
             lang = "c"
             fname = f"{topic.replace(' ', '_')}.pseudo.c"
 
@@ -117,7 +122,8 @@ class CodeAgent(AgentBase):
             fname = f"{topic.replace(' ', '_')}.s"
         else:
             # 兜底走 ml
-            style_rules = "1. numpy / sklearn 真代码 30 行内"
+            sandbox_libs = format_supported_libs_for_prompt()
+            style_rules = f"1. 仅使用沙箱白名单库生成真代码 30 行内：{sandbox_libs}"
             lang = "python"
             fname = "example.py"
 

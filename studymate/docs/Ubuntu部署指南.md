@@ -200,7 +200,7 @@ cd ~/studymate
 bash scripts/deploy.sh
 ```
 
-脚本会构建镜像、启动服务并初始化 Piston 的 Python/C/C++ runtime；Python runtime 还会补齐固定兼容版本的 `scikit-learn`，用于机器学习代码案例。
+脚本会构建镜像、启动服务并初始化 Piston 的 Python/C/C++ runtime；Python runtime 还会按 `scripts/piston_python_libs.txt` 补齐固定版本的 `scikit-learn`、`matplotlib`、`seaborn`、`pillow`、`pandas`、`networkx`，与后端 `/api/run/capabilities` 白名单一致。
 
 如果服务器也无法访问 Docker Hub/GHCR，可先配置可信的 Docker registry mirror，
 或者把已经 `docker load` 的镜像名称写入 `.deploy.env` 中的 `CADDY_IMAGE`、
@@ -304,5 +304,6 @@ curl -fsS https://你的备案域名/api/ping
 - Caddy 证书失败：确认域名已解析、80/443 可达、服务器时间正确，且没有其他服务占用端口。
 - 登录后立即失效：核对 `AUTH_SECRET_KEY`、服务器时间、HTTPS 和 `SESSION_COOKIE_SECURE`。
 - 空卷未初始化：检查后端日志、压缩种子是否存在，以及 `/app/data` 是否可写。
-- 代码无法运行：检查 `piston-api` 状态、runtime 是否初始化、`PISTON_URL=http://piston-api:2000`。
+- 代码无法运行：检查 `piston-api` 状态、runtime 是否初始化、`PISTON_URL=http://piston-api:2000`，并确认已执行 `bash scripts/init-piston.sh` 安装白名单依赖。
+- 提示不支持某第三方库：该库不在沙箱白名单内；不要在用户代码中 `pip install`，应更新 `scripts/piston_python_libs.txt` 后重新初始化。
 - 外部 AI 调用失败：只检查变量是否已设置、模型和额度状态，不在日志或工单中粘贴真实 Key。

@@ -1278,13 +1278,17 @@ function RadarCompareCard({
   hasProjection: boolean
 }) {
   return (
-    <div className="rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] p-4">
+    <div data-testid="radar-compare-card" className="rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] p-4">
       <div className="text-sm font-semibold mb-2 flex items-center justify-between">
         <span>{title}</span>
         {!hasProjection && <span className="text-[10px] font-normal text-[var(--muted-foreground)]">旧版报告暂无建议预览</span>}
       </div>
       <ResponsiveContainer width="100%" height={220} minWidth={0} initialDimension={{ width: 800, height: 220 }}>
-        <RadarChart data={data}>
+        <RadarChart
+          data={data}
+          margin={{ top: 14, right: 36, bottom: 28, left: 36 }}
+          outerRadius="72%"
+        >
           <PolarGrid stroke="var(--border)" />
           <PolarAngleAxis dataKey="dim" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
           <PolarRadiusAxis angle={90} domain={[0, 5]} tick={false} axisLine={false} />
@@ -1305,9 +1309,23 @@ function RadarCompareCard({
             fillOpacity={0.35}
             animationDuration={500}
           />}
-          <Legend wrapperStyle={{ fontSize: 11 }} />
         </RadarChart>
       </ResponsiveContainer>
+      <div
+        data-testid="radar-compare-legend"
+        className="mt-1 flex min-h-5 flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-[var(--muted-foreground)]"
+      >
+        {hasProjection && (
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <span className="size-2.5 shrink-0" style={{ backgroundColor: color }} aria-hidden="true" />
+            建议应用后
+          </span>
+        )}
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+          <span className="size-2.5 shrink-0 bg-[#94a3b8]" aria-hidden="true" />
+          评估前
+        </span>
+      </div>
     </div>
   )
 }

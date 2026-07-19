@@ -133,7 +133,11 @@ export function ProfileMiniCard({ profile, variant = "full" }: ProfileMiniCardPr
                 <span className="mr-1">{emoji}</span>{title}
               </div>
               <ResponsiveContainer width="100%" height={compact ? 130 : 180} minWidth={0}>
-                <RadarChart data={chartData} margin={{ top: 4, right: 12, bottom: 4, left: 12 }}>
+                <RadarChart
+                  data={chartData}
+                  margin={{ top: 10, right: 18, bottom: 18, left: 18 }}
+                  outerRadius="74%"
+                >
                   <PolarGrid stroke="var(--border)" />
                   <PolarAngleAxis dataKey="dim" tick={{ fontSize: compact ? 9 : 11, fill: "var(--muted-foreground)" }} />
                   <PolarRadiusAxis angle={90} domain={[0, 5]} tick={false} axisLine={false} />

@@ -38,6 +38,29 @@ const json = (route, value, status = 200) => route.fulfill({
   body: JSON.stringify(value),
 })
 
+async function assertSvgTextInsideChart(root, label) {
+  const svg = root.locator("svg").first()
+  const svgBox = await svg.boundingBox()
+  assert.ok(svgBox, `${label} 应存在可见的 SVG 图表`)
+
+  const texts = svg.locator("text")
+  const textCount = await texts.count()
+  assert.ok(textCount > 0, `${label} 应显示维度文字`)
+  for (let index = 0; index < textCount; index += 1) {
+    const text = texts.nth(index)
+    const textBox = await text.boundingBox()
+    if (!textBox) continue
+    const content = (await text.textContent())?.trim() || `第 ${index + 1} 个标签`
+    const tolerance = 1
+    assert.ok(textBox.x >= svgBox.x - tolerance, `${label} 的“${content}”左侧不应被裁切`)
+    assert.ok(textBox.y >= svgBox.y - tolerance, `${label} 的“${content}”顶部不应被裁切`)
+    assert.ok(textBox.x + textBox.width <= svgBox.x + svgBox.width + tolerance, `${label} 的“${content}”右侧不应被裁切`)
+    assert.ok(textBox.y + textBox.height <= svgBox.y + svgBox.height + tolerance, `${label} 的“${content}”底部不应被裁切`)
+  }
+
+  return svgBox
+}
+
 await page.route("**/api/**", async (route) => {
   const request = route.request()
   const url = new URL(request.url())
@@ -198,6 +221,19 @@ await page.evaluate((value) => localStorage.setItem("sm:eval-report:999", JSON.s
 await page.goto(`${baseUrl}/report`, { waitUntil: "networkidle" })
 await page.getByText("评估前", { exact: true }).first().waitFor()
 await page.getByText("建议应用后", { exact: true }).first().waitFor()
+const compareCards = page.getByTestId("radar-compare-card")
+const compareCardCount = await compareCards.count()
+assert.ok(compareCardCount > 0, "学习报告应显示画像对比雷达图")
+for (let index = 0; index < compareCardCount; index += 1) {
+  const card = compareCards.nth(index)
+  const svgBox = await assertSvgTextInsideChart(card, `学习报告第 ${index + 1} 张雷达图`)
+  const legendBox = await card.getByTestId("radar-compare-legend").boundingBox()
+  assert.ok(legendBox, `学习报告第 ${index + 1} 张雷达图应显示图例`)
+  assert.ok(legendBox.y >= svgBox.y + svgBox.height - 1, `学习报告第 ${index + 1} 张雷达图的图例不应遮挡坐标文字`)
+}
+if (process.env.STUDYMATE_REPORT_SCREENSHOT) {
+  await page.screenshot({ path: process.env.STUDYMATE_REPORT_SCREENSHOT, fullPage: true })
+}
 await page.getByRole("button", { name: "应用到画像" }).click()
 await page.waitForTimeout(150)
 assert.equal(applyDeltaBody?.source_version, 1, "报告应用必须携带来源画像版本")
@@ -210,5 +246,5 @@ await page.getByText("画像已更新，本轮调整 2 个字段").waitFor()
 assert.equal(profileChatBody?.message, profileMessage)
 assert.equal(profileChatBody?.history?.some((item) => item.role === "user" && item.content === profileMessage), false, "当前用户消息不应在 history 中重复")
 
-console.log("建议2前端回归通过：示例填入、预取复用、专注模式、报告预览、画像消息与外部空状态均正常。")
+console.log("建议2前端回归通过：示例填入、预取复用、专注模式、报告图表文字、画像消息与外部空状态均正常。")
 await browser.close()

@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { AlertCircle, ArrowLeft, Send, Loader2, Bot, User, Headphones, Paperclip, Trash2, X, FileText, Code2, Sparkles, History, MessageSquarePlus, RotateCcw, Square } from "lucide-react"
+import { AlertCircle, ArrowLeft, Send, Loader2, Bot, User, Headphones, Paperclip, Trash2, X, FileText, Code2, Sparkles, History, MessageSquarePlus, RotateCcw, Square, ScanLine } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Markdown } from "@/components/Markdown"
 import { MicButton } from "@/components/MicButton"
@@ -46,12 +46,16 @@ interface TutorChatPanelProps {
   variant?: Variant
   onMockChange?: (mock: boolean) => void
   showStarters?: boolean
+  captureMode?: boolean
+  onCaptureModeChange?: (enabled: boolean) => void
 }
 
 export function TutorChatPanel({
   variant = "fullscreen",
   onMockChange,
   showStarters = true,
+  captureMode = false,
+  onCaptureModeChange,
 }: TutorChatPanelProps) {
   const navigate = useNavigate()
   const user = useCurrentUser()
@@ -301,7 +305,7 @@ export function TutorChatPanel({
 
   if (!isDrawer) {
     return (
-      <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
+      <div className={`relative flex min-h-0 flex-col ${captureMode ? "overflow-visible" : "h-full overflow-hidden"}`}>
         <header className="flex flex-col items-stretch gap-2.5 border-b border-[#D7D1C4] bg-[#F8F6F0] px-3 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
             <Link to="/" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]">
@@ -319,6 +323,17 @@ export function TutorChatPanel({
               {status === "open" ? <Loader2 className="size-3.5 animate-spin text-[#B85C3E]" /> : <span className="size-2 rounded-full bg-[#6F8A69]" />}
               {status === "open" ? "正在组织答案" : "可以继续提问"}
             </span>
+            {onCaptureModeChange && (
+              <button
+                type="button"
+                onClick={() => onCaptureModeChange(!captureMode)}
+                aria-pressed={captureMode}
+                aria-label={captureMode ? "退出长截图" : "长截图模式"}
+                className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-[11px] font-bold transition-colors ${captureMode ? "border-[#9FB1BC] bg-[#E7EDF3] text-[#244C66]" : "border-[#D7D1C4] bg-[#FFFEFA] text-[#59636B] hover:bg-[#F1EDE4] hover:text-[#244C66]"}`}
+              >
+                <ScanLine className="size-3.5" /><span className="hidden lg:inline">{captureMode ? "退出长截图" : "长截图模式"}</span>
+              </button>
+            )}
             <LearningMethodSelector value={learningMethod} onChange={handleLearningMethodChange} variant="compact" />
             <button
               type="button"
@@ -348,6 +363,12 @@ export function TutorChatPanel({
             </button>
           </div>
         </header>
+
+        {captureMode && (
+          <div className="border-b border-[#D7D1C4] bg-[#EDF2F5] px-4 py-2 text-center text-[10px] font-semibold text-[#315E83] sm:px-6" role="status">
+            长截图模式已展开完整对话；浏览器整页截图会包含全部消息，完成后可点击“退出长截图”。
+          </div>
+        )}
 
         <AnimatePresence>
           {clearConfirmOpen && (
@@ -397,7 +418,12 @@ export function TutorChatPanel({
           )}
         </AnimatePresence>
 
-        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto bg-[#FDFBF6] px-4 sm:px-6">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          data-testid="tutor-message-scroll"
+          className={`${captureMode ? "overflow-visible" : "flex-1 overflow-y-auto"} bg-[#FDFBF6] px-4 sm:px-6`}
+        >
           <div className={`flex w-full flex-col ${isFreshConversation ? "min-h-full justify-center py-8" : "gap-7 py-8"}`}>
             {isFreshConversation ? (
               <div className="mx-auto w-full max-w-[740px] text-center">
@@ -660,11 +686,11 @@ function Bubble({
   if (!compact) {
     if (!isUser) {
       return (
-        <div className="min-w-0 pr-10 sm:pr-16">
+        <div data-tutor-message="assistant" className="min-w-0 pr-10 sm:pr-16">
           <div className="min-w-0 max-w-[780px]">
             {streaming && <span className="mb-2 inline-flex items-center gap-1 text-[10px] font-semibold text-[#6F8A69]"><span className="size-1.5 animate-pulse rounded-full bg-[#6F8A69]" />正在回复</span>}
             <div className="text-[#27343D]">
-              {displayContent && <Markdown content={displayContent} className="text-sm leading-7" />}
+              {displayContent && <Markdown content={displayContent} className="text-sm leading-7" wrapLongContent />}
               {streaming && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-[#9B7429]" />}
             </div>
             {(delivery === "error" || delivery === "stopped") && <ResponseIssue delivery={delivery} detail={errorDetail} onRetry={onRetry} />}
@@ -675,8 +701,8 @@ function Bubble({
     }
 
     return (
-      <div className="flex min-w-0 justify-end pl-10 sm:pl-16">
-        <div className="min-w-0 max-w-[78%] overflow-x-auto rounded-[20px] rounded-tr-md bg-[#244C66] px-4 py-3 text-[#FFFEFA] shadow-[0_7px_16px_rgba(36,76,102,.13)]">
+      <div data-tutor-message="user" className="flex min-w-0 justify-end pl-10 sm:pl-16">
+        <div className="min-w-0 max-w-[78%] overflow-hidden rounded-[20px] rounded-tr-md bg-[#244C66] px-4 py-3 text-[#FFFEFA] shadow-[0_7px_16px_rgba(36,76,102,.13)]">
           <div className="space-y-2">
             {images && images.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
@@ -696,7 +722,7 @@ function Bubble({
   const avatarSize = compact ? "size-7" : "size-8"
   const iconSize = compact ? "size-3.5" : "size-4"
   return (
-    <div className={`flex min-w-0 gap-2.5 ${isUser ? "flex-row-reverse" : ""}`}>
+    <div data-tutor-message={role} className={`flex min-w-0 gap-2.5 ${isUser ? "flex-row-reverse" : ""}`}>
       <div
         className={`${avatarSize} flex shrink-0 items-center justify-center rounded-full border ${
           isUser
@@ -707,7 +733,7 @@ function Bubble({
         {isUser ? <User className={iconSize} /> : <Bot className={iconSize} />}
       </div>
       <div
-        className={`group/bubble relative min-w-0 overflow-x-auto ${
+        className={`group/bubble relative min-w-0 overflow-hidden ${
           isUser
             ? "max-w-[82%] rounded-[18px] rounded-tr-md border border-[#D8C9B7] bg-[#EEE6D8] px-3.5 py-2.5 text-[#27343D] shadow-[0_5px_14px_rgba(24,35,45,.055)]"
             : "max-w-[calc(100%-38px)] px-1 py-1 text-[#27343D]"
@@ -737,7 +763,7 @@ function Bubble({
           </div>
         ) : (
           <>
-            {displayContent && <Markdown content={displayContent} className="text-[13px] leading-6" />}
+            {displayContent && <Markdown content={displayContent} className="text-[13px] leading-6" wrapLongContent />}
             {streaming && (
               <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-[#9B7429]" />
             )}

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """生成 StudyMate 的 DOCX 与 PDF 部署交付文档。
 
-长版沿用示例的 44 页结构：封面、目录和 42 页编号正文。
-短版沿用示例的 9 页结构：封面、目录和 7 页编号正文。
+封面和视觉样式沿用参考文档，正文按逻辑块自然分页；目录页码由
+最终正文分页动态生成，不再通过固定 44/9 页制造留白或整页缩字。
 """
 
 from __future__ import annotations
@@ -33,25 +33,28 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import (
+    BaseDocTemplate,
+    Frame,
     Image as RLImage,
-    KeepInFrame,
+    KeepTogether,
+    NextPageTemplate,
+    PageBreak,
+    PageTemplate,
     Paragraph,
     Preformatted,
     Spacer,
     Table,
     TableStyle,
 )
+from reportlab.platypus.tableofcontents import TableOfContents
 
 from doc_content import (
     AUTHORS,
     DOMAIN,
     ICP,
     LONG_PAGES,
-    LONG_TOC,
     PROJECT_TITLE,
     SHORT_PAGES,
-    SHORT_TITLE,
-    SHORT_TOC,
 )
 
 
@@ -79,6 +82,56 @@ LIGHT_BLUE = "DCE6F1"
 VERY_LIGHT_BLUE = "F4F8FC"
 GRAY = "666666"
 LIGHT_GRAY = "F2F2F2"
+
+CONTINUATION_SUFFIX = "（续）"
+
+
+def is_continuation_heading(block) -> bool:
+    return (
+        block.get("kind") == "heading"
+        and str(block.get("text", "")).endswith(CONTINUATION_SUFFIX)
+    )
+
+
+def compatible_adjacent_tables(left, right) -> bool:
+    """Merge tables that were split only to satisfy the former fixed pages."""
+    if left.get("kind") != "table" or right.get("kind") != "table":
+        return False
+    if left.get("merge_columns") or right.get("merge_columns"):
+        return False
+    keys = ("headers", "widths", "font_size", "center_columns", "width_ratio")
+    return all(left.get(key) == right.get(key) for key in keys)
+
+
+def logical_blocks(pages) -> list[dict]:
+    """Flatten legacy page groups into a continuous logical document stream."""
+    blocks: list[dict] = []
+    for page in pages:
+        for source in page:
+            if is_continuation_heading(source):
+                continue
+            block = dict(source)
+            if blocks and compatible_adjacent_tables(blocks[-1], block):
+                blocks[-1]["rows"] = [*blocks[-1]["rows"], *block["rows"]]
+                continue
+            blocks.append(block)
+    return blocks
+
+
+def toc_entries(blocks) -> list[tuple[int, str]]:
+    """Return level-1/2 headings in logical order for DOCX and PDF TOCs."""
+    return [
+        (block["level"], block["text"])
+        for block in blocks
+        if block.get("kind") == "heading" and block.get("level") in (1, 2)
+    ]
+
+
+def bookmark_map(entries) -> dict[str, tuple[str, int]]:
+    return {
+        title: (f"toc_{index:04d}", index + 1)
+        for index, (_level, title) in enumerate(entries)
+    }
 
 
 def load_pil_font(path: Path, size: int) -> ImageFont.FreeTypeFont:
@@ -153,7 +206,7 @@ def generate_architecture_long(path: Path) -> None:
     rounded_box(draw, (620, 480, 1180, 590), "Frontend Nginx\nReact 静态站点 · /api 代理", main, "#E2F0D9", "#70AD47")
     rounded_box(draw, (620, 660, 1180, 780), "FastAPI Backend\n认证 · 智能体 · RAG · SSE", main, "#FFF2CC", "#BF9000")
 
-    rounded_box(draw, (80, 690, 480, 850), "SQLite 数据库\nbackend_data\n19 账号 · 5 课程 · 938 知识块", small, "#FCE4D6", "#C55A11")
+    rounded_box(draw, (80, 690, 480, 850), "SQLite 数据库\nbackend_data\n种子 34 账号 · 5 课程\n938 知识块 / 向量", small, "#FCE4D6", "#C55A11")
     rounded_box(draw, (1320, 690, 1720, 850), "Piston 沙箱\nPython / C / C++\n2 CPU · 2 GB · 2 并发", small, "#E4DFEC", "#8064A2")
     rounded_box(draw, (1320, 300, 1720, 450), "外部服务\n大模型 · 讯飞语音\n公开学习资源", small, "#F2F2F2", "#7F7F7F")
 
@@ -180,7 +233,7 @@ def generate_architecture_short(path: Path) -> None:
     rounded_box(draw, (150, 145, 1050, 275), "访问层：浏览器 / PC / 移动端", main, "#EAF2F8")
     rounded_box(draw, (150, 365, 1050, 510), "公网网关：Caddy\nDNS · HTTPS · HTTP/2 · 压缩", main, "#D9EAF7")
     rounded_box(draw, (150, 600, 1050, 745), "展示层：React + Nginx\n静态资源 · SPA · /api 反向代理", main, "#E2F0D9", "#70AD47")
-    rounded_box(draw, (150, 835, 1050, 995), "应用层：FastAPI + LangGraph\n认证 · 课程 · RAG · SSE · 多智能体", main, "#FFF2CC", "#BF9000")
+    rounded_box(draw, (150, 835, 1050, 995), "应用层：FastAPI + Agent Orchestrator\n认证 · 课程 · RAG · SSE · 多智能体", main, "#FFF2CC", "#BF9000")
     rounded_box(draw, (80, 1110, 535, 1300), "数据层\nSQLite · BM25\nbackend_data", small, "#FCE4D6", "#C55A11")
     rounded_box(draw, (665, 1110, 1120, 1300), "能力层\nPiston · LLM API\nPython / C / C++", small, "#E4DFEC", "#8064A2")
 
@@ -220,11 +273,43 @@ def generate_deployment_flow(path: Path) -> None:
     image.save(path, quality=95)
 
 
+def generate_mobile_web(path: Path) -> None:
+    image = PILImage.new("RGB", (900, 1180), "white")
+    draw = ImageDraw.Draw(image)
+    title = load_pil_font(HEADING_FONT_FILE, 40)
+    main = load_pil_font(HEADING_FONT_FILE, 29)
+    small = load_pil_font(BODY_FONT_FILE, 24)
+
+    draw.text((55, 35), "StudyMate 响应式移动 Web", font=title, fill="#333333")
+    draw.rounded_rectangle((185, 120, 715, 1080), radius=54, fill="#202020", outline="#202020", width=4)
+    draw.rounded_rectangle((215, 170, 685, 1015), radius=30, fill="#FAFAFA", outline="#BFBFBF", width=3)
+    draw.rounded_rectangle((330, 137, 570, 165), radius=14, fill="#555555")
+    draw.rounded_rectangle((245, 205, 655, 265), radius=20, fill="#F2F2F2", outline="#BFBFBF", width=2)
+    draw.text((275, 220), "https://matropic.cn", font=small, fill="#333333")
+    draw.text((255, 310), "StudyMate", font=main, fill="#17365D")
+    draw.text((255, 355), "随时继续你的学习闭环", font=small, fill="#595959")
+    cards = [
+        ("五门课程", "课程隔离 · RAG 来源追溯"),
+        ("AI 助教", "SSE 流式回答 · 附件 · 语音"),
+        ("学习工作台", "笔记 · 测验 · 报告 · 路径"),
+        ("账号同步", "与 PC 共用 HTTPS 与后端数据"),
+    ]
+    y = 425
+    for heading, detail in cards:
+        draw.rounded_rectangle((250, y, 650, y + 120), radius=18, fill="#FFFFFF", outline="#A6A6A6", width=2)
+        draw.text((275, y + 18), heading, font=main, fill="#333333")
+        draw.text((275, y + 68), detail, font=small, fill="#666666")
+        y += 140
+    draw.text((235, 1040), "无需安装 · 无独立小程序 · PC 端功能更完整", font=small, fill="#666666")
+    image.save(path, quality=95)
+
+
 def generate_assets() -> None:
     ASSETS.mkdir(parents=True, exist_ok=True)
     generate_architecture_long(ASSETS / "architecture_long.png")
     generate_architecture_short(ASSETS / "architecture_short.png")
     generate_deployment_flow(ASSETS / "deployment_flow.png")
+    generate_mobile_web(ASSETS / "mobile_web.png")
     qr = qrcode.QRCode(version=5, box_size=16, border=3)
     qr.add_data(DOMAIN)
     qr.make(fit=True)
@@ -324,6 +409,42 @@ def add_page_field(paragraph) -> None:
     end.set(qn("w:fldCharType"), "end")
     run._r.extend([begin, instr, separate, text_node, end])
     set_run_font(run, DOC_BODY_FONT, 9)
+
+
+def request_field_update(doc: Document) -> None:
+    settings = doc.settings._element
+    update = settings.find(qn("w:updateFields"))
+    if update is None:
+        update = OxmlElement("w:updateFields")
+        settings.append(update)
+    update.set(qn("w:val"), "true")
+
+
+def add_bookmark(paragraph, name: str, bookmark_id: int) -> None:
+    start = OxmlElement("w:bookmarkStart")
+    start.set(qn("w:id"), str(bookmark_id))
+    start.set(qn("w:name"), name)
+    end = OxmlElement("w:bookmarkEnd")
+    end.set(qn("w:id"), str(bookmark_id))
+    paragraph._p.insert(0, start)
+    paragraph._p.append(end)
+
+
+def add_pageref_field(paragraph, bookmark: str, fallback_page: int, size: float) -> None:
+    run = paragraph.add_run()
+    begin = OxmlElement("w:fldChar")
+    begin.set(qn("w:fldCharType"), "begin")
+    instr = OxmlElement("w:instrText")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = f" PAGEREF {bookmark} \\h "
+    separate = OxmlElement("w:fldChar")
+    separate.set(qn("w:fldCharType"), "separate")
+    text_node = OxmlElement("w:t")
+    text_node.text = str(fallback_page)
+    end = OxmlElement("w:fldChar")
+    end.set(qn("w:fldCharType"), "end")
+    run._r.extend([begin, instr, separate, text_node, end])
+    set_run_font(run, DOC_BODY_FONT, size)
 
 
 def restart_page_number(section, start=1) -> None:
@@ -445,18 +566,18 @@ def add_cover(doc: Document, long_doc: bool) -> None:
         borders.append(bottom)
         p_pr.append(borders)
 
-        for _ in range(5):
+        for _ in range(4):
             doc.add_paragraph()
-        p = doc.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = p.add_run("系统部署说明书")
-        set_run_font(run, DOC_HEADING_FONT, 31, True)
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = p.add_run(f"＜{PROJECT_TITLE}＞")
         set_run_font(run, DOC_BODY_FONT, 12.5, False, GRAY)
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = p.add_run("系统部署说明")
+        set_run_font(run, DOC_HEADING_FONT, 31, True)
 
-        for _ in range(8):
+        for _ in range(4):
             doc.add_paragraph()
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -464,7 +585,14 @@ def add_cover(doc: Document, long_doc: bool) -> None:
         set_run_font(run, DOC_BODY_FONT, 13)
 
 
-def add_toc_line(doc: Document, level: int, title: str, page: int, compact: bool) -> None:
+def add_toc_line(
+    doc: Document,
+    level: int,
+    title: str,
+    page: int,
+    bookmark: str,
+    compact: bool,
+) -> None:
     paragraph = doc.add_paragraph()
     fmt = paragraph.paragraph_format
     fmt.left_indent = Cm(0.65 if level == 2 else 0)
@@ -479,12 +607,14 @@ def add_toc_line(doc: Document, level: int, title: str, page: int, compact: bool
     tabs.append(tab)
     paragraph._p.get_or_add_pPr().append(tabs)
     run = paragraph.add_run(title)
-    set_run_font(run, DOC_HEADING_FONT if level == 1 else DOC_BODY_FONT, 8.1 if compact else 10, level == 1)
-    run = paragraph.add_run(f"\t{page}")
-    set_run_font(run, DOC_BODY_FONT, 8.1 if compact else 10)
+    font_size = 8.1 if compact else 10
+    set_run_font(run, DOC_HEADING_FONT if level == 1 else DOC_BODY_FONT, font_size, level == 1)
+    tab_run = paragraph.add_run("\t")
+    set_run_font(tab_run, DOC_BODY_FONT, font_size)
+    add_pageref_field(paragraph, bookmark, page, font_size)
 
 
-def add_toc(doc: Document, toc, long_doc: bool) -> None:
+def add_toc(doc: Document, toc, pages, bookmarks, long_doc: bool) -> None:
     if not long_doc:
         header = doc.add_paragraph()
         header.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -504,11 +634,19 @@ def add_toc(doc: Document, toc, long_doc: bool) -> None:
     run = title.add_run("目  录")
     set_run_font(run, DOC_HEADING_FONT, 20 if long_doc else 22, True)
     title.paragraph_format.space_after = Pt(8 if long_doc else 16)
-    for level, text_value, page in toc:
-        add_toc_line(doc, level, text_value, page, compact=long_doc)
+    for level, text_value in toc:
+        bookmark, _bookmark_id = bookmarks[text_value]
+        add_toc_line(
+            doc,
+            level,
+            text_value,
+            pages.get(text_value, 1),
+            bookmark,
+            compact=long_doc,
+        )
 
 
-def add_doc_heading(doc: Document, block, long_doc: bool) -> None:
+def add_doc_heading(doc: Document, block, long_doc: bool, bookmarks=None) -> None:
     level = min(3, block["level"])
     paragraph = doc.add_paragraph(style=f"Heading {level}")
     run = paragraph.add_run(block["text"])
@@ -518,6 +656,9 @@ def add_doc_heading(doc: Document, block, long_doc: bool) -> None:
         {1: 16 if long_doc else 17, 2: 13 if long_doc else 13.5, 3: 11 if long_doc else 11.5}[level],
         True,
     )
+    if bookmarks and block["text"] in bookmarks:
+        name, bookmark_id = bookmarks[block["text"]]
+        add_bookmark(paragraph, name, bookmark_id)
 
 
 def add_doc_paragraph(doc: Document, block, long_doc: bool) -> None:
@@ -568,6 +709,23 @@ def add_doc_code(doc: Document, block, long_doc: bool) -> None:
     spacer_p.paragraph_format.line_spacing = Pt(2)
 
 
+def table_merge_ranges(block):
+    """Return contiguous same-value ranges for requested data columns."""
+    ranges = []
+    data_rows = block["rows"]
+    for column in block.get("merge_columns", []):
+        start = 0
+        while start < len(data_rows):
+            value = str(data_rows[start][column])
+            end = start
+            while end + 1 < len(data_rows) and str(data_rows[end + 1][column]) == value:
+                end += 1
+            if value and end > start:
+                ranges.append((column, start, end, value))
+            start = end + 1
+    return ranges
+
+
 def add_doc_table(doc: Document, block, long_doc: bool) -> None:
     rows = [block["headers"]] + block["rows"]
     tbl = doc.add_table(rows=len(rows), cols=len(rows[0]))
@@ -578,6 +736,7 @@ def add_doc_table(doc: Document, block, long_doc: bool) -> None:
         for row in tbl.rows:
             for cell, width in zip(row.cells, block["widths"]):
                 cell.width = Cm(width)
+    center_columns = set(block.get("center_columns", []))
     for ridx, row_values in enumerate(rows):
         row = tbl.rows[ridx]
         if ridx == 0:
@@ -587,12 +746,27 @@ def add_doc_table(doc: Document, block, long_doc: bool) -> None:
             cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
             set_cell_margins(cell, top=45, start=55, bottom=45, end=55)
             if ridx == 0:
-                set_cell_shading(cell, LIGHT_BLUE if not long_doc else "E7E6E6")
+                set_cell_shading(cell, "E7E6E6")
             p = cell.paragraphs[0]
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER if ridx == 0 else WD_ALIGN_PARAGRAPH.LEFT
+            p.alignment = (
+                WD_ALIGN_PARAGRAPH.CENTER
+                if ridx == 0 or cidx in center_columns
+                else WD_ALIGN_PARAGRAPH.LEFT
+            )
             set_paragraph_compact(p, after=0, line=1.0)
             r = p.add_run(str(value))
             set_run_font(r, DOC_HEADING_FONT if ridx == 0 else DOC_BODY_FONT, block.get("font_size", 8.5), ridx == 0)
+    for column, start, end, value in table_merge_ranges(block):
+        merged = tbl.cell(start + 1, column).merge(tbl.cell(end + 1, column))
+        merged.text = ""
+        merged.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+        set_cell_shading(merged, "F2F2F2")
+        set_cell_margins(merged, top=45, start=55, bottom=45, end=55)
+        paragraph = merged.paragraphs[0]
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        set_paragraph_compact(paragraph, after=0, line=1.0)
+        run = paragraph.add_run(value)
+        set_run_font(run, DOC_BODY_FONT, block.get("font_size", 8.5))
     spacer_p = doc.add_paragraph()
     set_paragraph_compact(spacer_p, after=0)
     spacer_p.paragraph_format.line_spacing = Pt(2)
@@ -616,14 +790,14 @@ def add_doc_image(doc: Document, block) -> None:
 
 def add_doc_note(doc: Document, block, long_doc: bool) -> None:
     tbl = doc.add_table(rows=1, cols=1)
-    set_table_borders(tbl, color="95B3D7", size="6")
+    set_table_borders(tbl, color="BFBFBF", size="5")
     cell = tbl.cell(0, 0)
-    set_cell_shading(cell, VERY_LIGHT_BLUE)
+    set_cell_shading(cell, LIGHT_GRAY)
     set_cell_margins(cell, top=65, start=90, bottom=65, end=90)
     p = cell.paragraphs[0]
     set_paragraph_compact(p, after=0, line=1.05)
     r = p.add_run(f"{block['title']}：")
-    set_run_font(r, DOC_HEADING_FONT, 9 if long_doc else 9.5, True, BLUE)
+    set_run_font(r, DOC_HEADING_FONT, 9 if long_doc else 9.5, True)
     r = p.add_run(block["text"])
     set_run_font(r, DOC_BODY_FONT, 9 if long_doc else 9.5)
     spacer_p = doc.add_paragraph()
@@ -631,10 +805,10 @@ def add_doc_note(doc: Document, block, long_doc: bool) -> None:
     spacer_p.paragraph_format.line_spacing = Pt(2)
 
 
-def render_doc_block(doc: Document, block, long_doc: bool) -> None:
+def render_doc_block(doc: Document, block, long_doc: bool, bookmarks=None) -> None:
     kind = block["kind"]
     if kind == "heading":
-        add_doc_heading(doc, block, long_doc)
+        add_doc_heading(doc, block, long_doc, bookmarks)
     elif kind == "paragraph":
         add_doc_paragraph(doc, block, long_doc)
     elif kind == "bullets":
@@ -675,9 +849,12 @@ def configure_body_header_footer(section, long_doc: bool) -> None:
     add_page_field(footer.paragraphs[0])
 
 
-def make_docx(path: Path, long_doc: bool) -> None:
+def make_docx(path: Path, long_doc: bool, heading_pages=None) -> None:
     pages = LONG_PAGES if long_doc else SHORT_PAGES
-    toc = LONG_TOC if long_doc else SHORT_TOC
+    blocks = logical_blocks(pages)
+    toc = toc_entries(blocks)
+    bookmarks = bookmark_map(toc)
+    heading_pages = heading_pages or {}
     doc = Document()
     doc.core_properties.title = "项目部署文档" if long_doc else "系统部署说明书"
     doc.core_properties.subject = PROJECT_TITLE
@@ -685,21 +862,19 @@ def make_docx(path: Path, long_doc: bool) -> None:
     doc.core_properties.comments = "按竞赛示例版式生成；作者信息请由项目组补充。"
     set_section_size(doc.sections[0], long_doc)
     configure_doc_styles(doc, long_doc)
+    request_field_update(doc)
 
     add_cover(doc, long_doc)
     doc.add_page_break()
-    add_toc(doc, toc, long_doc)
+    add_toc(doc, toc, heading_pages, bookmarks, long_doc)
 
     body_section = doc.add_section(WD_SECTION.NEW_PAGE)
     set_section_size(body_section, long_doc)
     configure_body_header_footer(body_section, long_doc)
     restart_page_number(body_section, 1)
 
-    for page_index, blocks in enumerate(pages):
-        for block in blocks:
-            render_doc_block(doc, block, long_doc)
-        if page_index < len(pages) - 1:
-            doc.add_page_break()
+    for block in blocks:
+        render_doc_block(doc, block, long_doc, bookmarks)
 
     doc.save(path)
 
@@ -716,19 +891,22 @@ def register_pdf_fonts() -> None:
 
 
 def pdf_styles(long_doc: bool) -> dict[str, ParagraphStyle]:
-    body_size = 10.2 if long_doc else 9.6
+    body_size = 10.2 if long_doc else 10.0
     return {
         "h1": ParagraphStyle(
             "h1", fontName="SimHei", fontSize=16.5 if long_doc else 16.5,
-            leading=20, spaceAfter=7, textColor=colors.black, wordWrap="CJK"
+            leading=20, spaceAfter=7, textColor=colors.black, wordWrap="CJK",
+            keepWithNext=True,
         ),
         "h2": ParagraphStyle(
             "h2", fontName="SimHei", fontSize=13 if long_doc else 13,
-            leading=16, spaceBefore=4, spaceAfter=4, wordWrap="CJK"
+            leading=16, spaceBefore=4, spaceAfter=4, wordWrap="CJK",
+            keepWithNext=True,
         ),
         "h3": ParagraphStyle(
             "h3", fontName="SimHei", fontSize=11 if long_doc else 11,
-            leading=14, spaceBefore=3, spaceAfter=3, wordWrap="CJK"
+            leading=14, spaceBefore=3, spaceAfter=3, wordWrap="CJK",
+            keepWithNext=True,
         ),
         "body": ParagraphStyle(
             "body", fontName="FangSong", fontSize=body_size,
@@ -747,14 +925,6 @@ def pdf_styles(long_doc: bool) -> dict[str, ParagraphStyle]:
         "note": ParagraphStyle(
             "note", fontName="FangSong", fontSize=9.4 if long_doc else 9.1,
             leading=12, wordWrap="CJK"
-        ),
-        "toc1": ParagraphStyle(
-            "toc1", fontName="SimHei", fontSize=7.8 if long_doc else 10,
-            leading=9.4 if long_doc else 13, leftIndent=0, wordWrap="CJK"
-        ),
-        "toc2": ParagraphStyle(
-            "toc2", fontName="FangSong", fontSize=7.7 if long_doc else 9.7,
-            leading=9.2 if long_doc else 12.5, leftIndent=15, wordWrap="CJK"
         ),
     }
 
@@ -782,10 +952,19 @@ def wrap_code(text_value: str, width: int = 95) -> str:
     return "\n".join(result)
 
 
-def pdf_block(block, styles, long_doc: bool, avail_width: float):
+def pdf_block(block, styles, long_doc: bool, avail_width: float, bookmarks=None):
     kind = block["kind"]
     if kind == "heading":
-        return [Paragraph(escaped(block["text"]), styles[f"h{min(3, block['level'])}"])]
+        paragraph = Paragraph(
+            escaped(block["text"]),
+            styles[f"h{min(3, block['level'])}"],
+        )
+        if bookmarks and block["text"] in bookmarks:
+            bookmark, _bookmark_id = bookmarks[block["text"]]
+            paragraph._toc_level = block["level"] - 1
+            paragraph._toc_text = block["text"]
+            paragraph._bookmark = bookmark
+        return [paragraph]
     if kind == "paragraph":
         text_value = escaped(block["text"])
         prefix = block.get("bold_prefix")
@@ -819,24 +998,41 @@ def pdf_block(block, styles, long_doc: bool, avail_width: float):
     if kind == "table":
         fs = block.get("font_size", 8.5) * (1.12 if long_doc else 1.0)
         cell_style = ParagraphStyle("cell", fontName="FangSong", fontSize=fs, leading=fs * 1.15, wordWrap="CJK")
+        center_cell_style = ParagraphStyle(
+            "cellCenter", parent=cell_style, alignment=TA_CENTER
+        )
         head_style = ParagraphStyle("head", fontName="SimHei", fontSize=fs, leading=fs * 1.15, alignment=TA_CENTER, wordWrap="CJK")
         data = [[Paragraph(escaped(v), head_style) for v in block["headers"]]]
-        data.extend([[Paragraph(escaped(v), cell_style) for v in row] for row in block["rows"]])
+        center_columns = set(block.get("center_columns", []))
+        data.extend([
+            [
+                Paragraph(escaped(v), center_cell_style if cidx in center_columns else cell_style)
+                for cidx, v in enumerate(row)
+            ]
+            for row in block["rows"]
+        ])
         col_widths = None
         if block.get("widths"):
             total = sum(block["widths"])
-            col_widths = [avail_width * w / total for w in block["widths"]]
+            table_width = avail_width * block.get("width_ratio", 1.0)
+            col_widths = [table_width * w / total for w in block["widths"]]
         tbl = Table(data, colWidths=col_widths, repeatRows=1, hAlign="CENTER")
-        tbl.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E7E6E6" if long_doc else "#DCE6F1")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#17365D")),
+        table_style = [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E7E6E6")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+            ("BOX", (0, 0), (-1, -1), 0.65, colors.HexColor("#737373")),
             ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#A6A6A6")),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("LEFTPADDING", (0, 0), (-1, -1), 4),
             ("RIGHTPADDING", (0, 0), (-1, -1), 4),
             ("TOPPADDING", (0, 0), (-1, -1), 4 if long_doc else 3),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 4 if long_doc else 3),
-        ]))
+        ]
+        for column, start, end, _value in table_merge_ranges(block):
+            table_style.append(("SPAN", (column, start + 1), (column, end + 1)))
+            table_style.append(("ALIGN", (column, start + 1), (column, end + 1), "CENTER"))
+            table_style.append(("BACKGROUND", (column, start + 1), (column, end + 1), colors.HexColor("#F2F2F2")))
+        tbl.setStyle(TableStyle(table_style))
         return [tbl, Spacer(1, 3)]
     if kind == "image":
         path = ASSETS / block["asset"]
@@ -848,16 +1044,17 @@ def pdf_block(block, styles, long_doc: bool, avail_width: float):
                 height = width * image.height / image.width
         image_flow = RLImage(str(path), width=width, height=height)
         image_flow.hAlign = "CENTER"
-        return [image_flow, Paragraph(escaped(block["caption"]), styles["caption"])]
+        caption = Paragraph(escaped(block["caption"]), styles["caption"])
+        return [KeepTogether([image_flow, caption])]
     if kind == "note":
         content = Paragraph(
-            f"<font name='SimHei' color='#365F91'>{escaped(block['title'])}：</font>{escaped(block['text'])}",
+            f"<font name='SimHei'>{escaped(block['title'])}：</font>{escaped(block['text'])}",
             styles["note"],
         )
         tbl = Table([[content]], colWidths=[avail_width - 4])
         tbl.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F4F8FC")),
-            ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#95B3D7")),
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F2F2F2")),
+            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#BFBFBF")),
             ("LEFTPADDING", (0, 0), (-1, -1), 6),
             ("RIGHTPADDING", (0, 0), (-1, -1), 6),
             ("TOPPADDING", (0, 0), (-1, -1), 5),
@@ -867,12 +1064,6 @@ def pdf_block(block, styles, long_doc: bool, avail_width: float):
     if kind == "spacer":
         return [Spacer(1, block["points"])]
     raise ValueError(f"Unsupported block kind: {kind}")
-
-
-def draw_flowables_on_page(c, flowables, x, y, width, height) -> None:
-    content = KeepInFrame(width, height, flowables, mode="shrink", mergeSpace=True)
-    _, actual_h = content.wrapOn(c, width, height)
-    content.drawOn(c, x, y + height - actual_h)
 
 
 def draw_pdf_cover(c, page_size, long_doc: bool) -> None:
@@ -915,9 +1106,6 @@ def draw_pdf_cover(c, page_size, long_doc: bool) -> None:
         c.setFillColor(colors.HexColor("#666666"))
         c.setFont("SimHei", 14)
         c.drawCentredString(w / 2, h - 57, PROJECT_TITLE)
-        c.setFillColor(colors.black)
-        c.setFont("SimHei", 31)
-        c.drawCentredString(w / 2, h - 270, "系统部署说明书")
         c.setFillColor(colors.HexColor("#666666"))
         cover_subtitle = Paragraph(
             escaped(f"＜{PROJECT_TITLE}＞"),
@@ -931,55 +1119,13 @@ def draw_pdf_cover(c, page_size, long_doc: bool) -> None:
             ),
         )
         cover_subtitle.wrapOn(c, w - 150, 45)
-        cover_subtitle.drawOn(c, 75, h - 332)
+        cover_subtitle.drawOn(c, 75, h - 225)
+        c.setFillColor(colors.black)
+        c.setFont("SimHei", 31)
+        c.drawCentredString(w / 2, h - 270, "系统部署说明")
         c.setFillColor(colors.black)
         c.setFont("FangSong", 12)
-        c.drawCentredString(w / 2, 245, f"作者：{AUTHORS}")
-
-
-def draw_pdf_toc(c, page_size, toc, long_doc: bool, styles) -> None:
-    w, h = page_size
-    if not long_doc:
-        c.setFillColor(colors.HexColor("#666666"))
-        c.setFont("SimHei", 8.3)
-        c.drawCentredString(w / 2, h - 28, PROJECT_TITLE)
-        c.setStrokeColor(colors.HexColor("#7F7F7F"))
-        c.setLineWidth(0.7)
-        c.line(58, h - 37, w - 58, h - 37)
-        c.setFillColor(colors.black)
-    c.setFont("SimHei", 20 if long_doc else 22)
-    c.drawCentredString(w / 2, h - (65 if long_doc else 80), "目  录")
-    # Draw the leader lines directly. A flowable table would wrap a long run
-    # of dots and force the whole contents page to shrink to an unreadable size.
-    top = h - (92 if long_doc else 120)
-    bottom = 54 if long_doc else 200
-    step = (top - bottom) / max(1, len(toc) - 1)
-    left = 66
-    right = w - 66
-    y = top
-    for level, title, page in toc:
-        font_name = "SimHei" if level == 1 else "FangSong"
-        font_size = (7.8 if level == 1 else 7.4) if long_doc else (10.2 if level == 1 else 9.8)
-        title_x = left + (13 if level == 2 else 0)
-        c.setFillColor(colors.black)
-        c.setFont(font_name, font_size)
-        c.drawString(title_x, y, title)
-        page_text = str(page)
-        page_width = pdfmetrics.stringWidth(page_text, "FangSong", font_size)
-        page_x = right - page_width
-        title_width = pdfmetrics.stringWidth(title, font_name, font_size)
-        line_start = title_x + title_width + 6
-        line_end = page_x - 6
-        if line_end > line_start:
-            c.saveState()
-            c.setStrokeColor(colors.HexColor("#808080"))
-            c.setLineWidth(0.35)
-            c.setDash(0.6, 1.8)
-            c.line(line_start, y + 2, line_end, y + 2)
-            c.restoreState()
-        c.setFont("FangSong", font_size)
-        c.drawString(page_x, y, page_text)
-        y -= step
+        c.drawCentredString(w / 2, h - 335, f"作者：{AUTHORS}")
 
 
 def draw_body_header_footer(c, page_size, number: int, long_doc: bool) -> None:
@@ -996,57 +1142,136 @@ def draw_body_header_footer(c, page_size, number: int, long_doc: bool) -> None:
         c.line(58, h - 37, w - 58, h - 37)
 
 
-def make_pdf(path: Path, long_doc: bool) -> None:
-    pages = LONG_PAGES if long_doc else SHORT_PAGES
-    toc = LONG_TOC if long_doc else SHORT_TOC
-    page_size = LETTER if long_doc else A4
-    styles = pdf_styles(long_doc)
-    c = canvas.Canvas(str(path), pagesize=page_size, pageCompression=1)
-    c.setTitle("项目部署文档" if long_doc else "系统部署说明书")
-    c.setAuthor("StudyMate 项目组")
-    c.setSubject(PROJECT_TITLE)
-
-    draw_pdf_cover(c, page_size, long_doc)
-    c.showPage()
-    draw_pdf_toc(c, page_size, toc, long_doc, styles)
-    c.showPage()
-
-    w, h = page_size
+def draw_pdf_toc_page_header(c, page_size, long_doc: bool) -> None:
     if long_doc:
-        x, y, body_w, body_h = 58, 38, w - 116, h - 82
-    else:
-        x, y, body_w, body_h = 60, 38, w - 120, h - 91
-    for index, blocks in enumerate(pages, 1):
-        draw_body_header_footer(c, page_size, index, long_doc)
-        groups = []
-        for block in blocks:
-            groups.append(pdf_block(block, styles, long_doc, body_w))
-        flowables = [item for group in groups for item in group]
-        # The reference documents spread headings, code boxes and tables down
-        # the page rather than leaving one large blank area at the bottom.
-        # Add modest inter-block spacing on under-filled pages; dense pages are
-        # left untouched and KeepInFrame still protects against overflow.
-        if len(groups) > 1:
-            probe = KeepInFrame(body_w, body_h, flowables, mode="shrink", mergeSpace=True)
-            _, natural_h = probe.wrapOn(c, body_w, body_h)
-            target_h = body_h * (0.72 if long_doc else 0.66)
-            if natural_h < target_h:
-                extra_gap = min(26 if long_doc else 18, (target_h - natural_h) / (len(groups) - 1))
-                spaced = []
-                for group_index, group in enumerate(groups):
-                    spaced.extend(group)
-                    if group_index < len(groups) - 1:
-                        spaced.append(Spacer(1, extra_gap))
-                flowables = spaced
-        draw_flowables_on_page(c, flowables, x, y, body_w, body_h)
-        if index < len(pages):
-            c.showPage()
-    c.save()
+        return
+    w, h = page_size
+    c.setFillColor(colors.HexColor("#666666"))
+    c.setFont("SimHei", 8.3)
+    c.drawCentredString(w / 2, h - 28, PROJECT_TITLE)
+    c.setStrokeColor(colors.HexColor("#7F7F7F"))
+    c.setLineWidth(0.7)
+    c.line(58, h - 37, w - 58, h - 37)
+
+
+class StudyMatePDFDocument(BaseDocTemplate):
+    def __init__(self, path: Path, long_doc: bool, styles) -> None:
+        self.long_doc = long_doc
+        self.styles_map = styles
+        self.page_size = LETTER if long_doc else A4
+        self.body_page = 0
+        self.heading_pages: dict[str, int] = {}
+        super().__init__(
+            str(path),
+            pagesize=self.page_size,
+            pageCompression=1,
+            title="项目部署文档" if long_doc else "系统部署说明书",
+            author="StudyMate 项目组",
+            subject=PROJECT_TITLE,
+            leftMargin=0,
+            rightMargin=0,
+            topMargin=0,
+            bottomMargin=0,
+        )
+
+        w, h = self.page_size
+        cover_frame = Frame(0, 0, w, h, id="cover-frame", leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
+        if long_doc:
+            toc_frame = Frame(66, 48, w - 132, h - 92, id="toc-frame", leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
+            body_frame = Frame(58, 38, w - 116, h - 82, id="body-frame", leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
+        else:
+            toc_frame = Frame(66, 82, w - 132, h - 138, id="toc-frame", leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
+            body_frame = Frame(60, 38, w - 120, h - 91, id="body-frame", leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
+
+        def cover_page(canv, _doc):
+            draw_pdf_cover(canv, self.page_size, self.long_doc)
+
+        def toc_page(canv, _doc):
+            draw_pdf_toc_page_header(canv, self.page_size, self.long_doc)
+
+        def body_page(canv, _doc):
+            self.body_page += 1
+            draw_body_header_footer(canv, self.page_size, self.body_page, self.long_doc)
+
+        self.addPageTemplates([
+            PageTemplate(id="cover", frames=[cover_frame], onPage=cover_page),
+            PageTemplate(id="toc", frames=[toc_frame], onPage=toc_page),
+            PageTemplate(id="body", frames=[body_frame], onPage=body_page),
+        ])
+
+    def beforeDocument(self) -> None:
+        self.body_page = 0
+        self.heading_pages = {}
+
+    def afterFlowable(self, flowable) -> None:
+        if not hasattr(flowable, "_toc_level"):
+            return
+        level = flowable._toc_level
+        text_value = flowable._toc_text
+        bookmark = flowable._bookmark
+        self.canv.bookmarkPage(bookmark)
+        self.canv.addOutlineEntry(text_value, bookmark, level=level, closed=False)
+        self.notify("TOCEntry", (level, text_value, self.body_page, bookmark))
+        self.heading_pages[text_value] = self.body_page
+
+
+def build_pdf_story(pages, long_doc: bool, styles):
+    blocks = logical_blocks(pages)
+    entries = toc_entries(blocks)
+    bookmarks = bookmark_map(entries)
+
+    toc = TableOfContents()
+    toc.dotsMinLevel = 0
+    toc.levelStyles = [
+        ParagraphStyle(
+            "toc-level-1",
+            fontName="SimHei",
+            fontSize=7.8 if long_doc else 10.2,
+            leading=9.4 if long_doc else 13,
+            leftIndent=0,
+            firstLineIndent=0,
+            spaceAfter=0,
+        ),
+        ParagraphStyle(
+            "toc-level-2",
+            fontName="FangSong",
+            fontSize=7.4 if long_doc else 9.8,
+            leading=9.2 if long_doc else 12.5,
+            leftIndent=15,
+            firstLineIndent=0,
+            spaceAfter=0,
+        ),
+    ]
+    toc_title = ParagraphStyle(
+        "toc-title",
+        fontName="SimHei",
+        fontSize=20 if long_doc else 22,
+        leading=25,
+        alignment=TA_CENTER,
+        spaceAfter=9 if long_doc else 16,
+    )
+
+    story = [NextPageTemplate("toc"), PageBreak()]
+    story.extend([
+        Paragraph("目&nbsp;&nbsp;录", toc_title),
+        toc,
+        NextPageTemplate("body"),
+        PageBreak(),
+    ])
+    for block in blocks:
+        story.extend(pdf_block(block, styles, long_doc, (LETTER if long_doc else A4)[0] - (116 if long_doc else 120), bookmarks))
+    return story
+
+
+def make_pdf(path: Path, long_doc: bool):
+    pages = LONG_PAGES if long_doc else SHORT_PAGES
+    styles = pdf_styles(long_doc)
+    doc = StudyMatePDFDocument(path, long_doc, styles)
+    doc.multiBuild(build_pdf_story(pages, long_doc, styles))
+    return dict(doc.heading_pages), doc.body_page
 
 
 def main() -> None:
-    assert len(LONG_PAGES) == 42, "Long body must contain exactly 42 pages"
-    assert len(SHORT_PAGES) == 7, "Short body must contain exactly 7 pages"
     for font_path in (BODY_FONT_FILE, HEADING_FONT_FILE, CODE_FONT_FILE):
         if not font_path.exists():
             raise FileNotFoundError(font_path)
@@ -1059,17 +1284,17 @@ def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     outputs = [
-        (OUTPUT_DIR / "项目部署文档.docx", True, "docx"),
-        (OUTPUT_DIR / "项目部署文档.pdf", True, "pdf"),
-        (OUTPUT_DIR / "系统部署说明书.docx", False, "docx"),
-        (OUTPUT_DIR / "系统部署说明书.pdf", False, "pdf"),
+        ("项目部署文档", True),
+        ("系统部署说明书", False),
     ]
-    for output, long_doc, kind in outputs:
-        print(f"Generating {output.name} ...", flush=True)
-        if kind == "docx":
-            make_docx(output, long_doc)
-        else:
-            make_pdf(output, long_doc)
+    for stem, long_doc in outputs:
+        pdf_path = OUTPUT_DIR / f"{stem}.pdf"
+        docx_path = OUTPUT_DIR / f"{stem}.docx"
+        print(f"Generating {pdf_path.name} ...", flush=True)
+        heading_pages, body_pages = make_pdf(pdf_path, long_doc)
+        print(f"  natural body pages: {body_pages}", flush=True)
+        print(f"Generating {docx_path.name} ...", flush=True)
+        make_docx(docx_path, long_doc, heading_pages)
     print("Done.")
 
 

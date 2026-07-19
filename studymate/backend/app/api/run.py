@@ -35,6 +35,12 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.core.run_sandbox import (
+    prepare_python_source,
+    run_capabilities,
+    unsupported_import_message,
+    unsupported_third_party_imports,
+)
 
 router = APIRouter(prefix="/run", tags=["run"])
 
@@ -64,20 +70,11 @@ LANGS = {
 MAX_SOURCE_LEN = 50_000     # 50 KB
 MAX_STDIN_LEN = 10_000      # 10 KB
 
-_PYTHON_NUMERIC_ENV = (
-    "import os as _studymate_os\n"
-    "_studymate_os.environ.setdefault('OPENBLAS_NUM_THREADS', '1')\n"
-    "_studymate_os.environ.setdefault('OMP_NUM_THREADS', '1')\n"
-    "_studymate_os.environ.setdefault('MKL_NUM_THREADS', '1')\n"
-    "_studymate_os.environ.setdefault('NUMEXPR_NUM_THREADS', '1')\n"
-)
-
-
 def _prepare_source(language: str, source: str) -> str:
-    """Keep numerical Python libraries within Piston's process/thread limit."""
+    """注入 Python 运行前置约束；C/C++ 原样转发。"""
     if language.lower() != "python":
         return source
-    return _PYTHON_NUMERIC_ENV + source
+    return prepare_python_source(source)
 
 
 class RunRequest(BaseModel):
@@ -109,13 +106,13 @@ class RunResponse(BaseModel):
 @router.get("/languages")
 async def list_languages() -> dict:
     """前端 CodeRunner 拉支持的语言列表（带显示名）"""
-    return {
-        "languages": [
-            {"id": "python", "label": "Python 3.10", "compile_args": []},
-            {"id": "c", "label": "C (gcc -std=c11)", "compile_args": ["-std=c11", "-O2"]},
-            {"id": "cpp", "label": "C++ (g++ -std=c++17)", "compile_args": ["-std=c++17", "-O2"]},
-        ]
-    }
+    return {"languages": run_capabilities()["languages"]}
+
+
+@router.get("/capabilities")
+async def list_capabilities() -> dict:
+    """返回当前在线沙箱真实支持的语言与第三方库白名单。"""
+    return run_capabilities()
 
 
 @router.post("", response_model=RunResponse)
@@ -126,6 +123,22 @@ async def run(req: RunRequest) -> RunResponse:
             status_code=400,
             detail=f"不支持的语言：{req.language}。支持：{list(LANGS.keys())}",
         )
+
+    started = time.time()
+    if req.language.lower() == "python":
+        unsupported = unsupported_third_party_imports(req.source)
+        if unsupported:
+            return RunResponse(
+                stdout="",
+                stderr=unsupported_import_message(unsupported),
+                exit_code=-1,
+                signal=None,
+                language=req.language,
+                version=lang_cfg["version"],
+                compile=None,
+                duration_ms=int((time.time() - started) * 1000),
+                mock=False,
+            )
 
     piston_url = settings.PISTON_URL.rstrip("/")
     payload = {
@@ -143,7 +156,6 @@ async def run(req: RunRequest) -> RunResponse:
     if lang_cfg["compile_args"]:
         payload["compile_args"] = lang_cfg["compile_args"]
 
-    started = time.time()
     try:
         # trust_env=False:不读 HTTPS_PROXY 等环境变量。
         # piston 在 docker 内网或 127.0.0.1,本就不该走任何代理;

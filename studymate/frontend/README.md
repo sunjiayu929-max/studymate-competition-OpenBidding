@@ -72,17 +72,27 @@ STUDYMATE_BASE_URL=http://localhost:5173 npm run screenshot -- / /tmp/studymate-
 
 如需登录态，可按脚本帮助信息提供账号参数。截图默认属于本地测试产物，不应直接提交；确定要写入正式文档后再移动到对应文档资源目录。
 
+助教长对话可先在页面点击“长截图模式”，或直接访问 `/tutor?capture=1`，再使用浏览器整页截图：
+
+```bash
+STUDYMATE_BASE_URL=http://localhost:5173 npm run screenshot -- '/tutor?capture=1' /tmp/studymate-tutor-full.png
+```
+
 针对工作台示例、可视讲解预取、专注模式、报告预览、画像消息和外部资源空状态的隔离回归：
 
 ```bash
 STUDYMATE_BASE_URL=http://127.0.0.1:5173 node scripts/check-suggestion2.mjs
 STUDYMATE_BASE_URL=http://127.0.0.1:5173 node scripts/check-suggestion3.mjs
 STUDYMATE_BASE_URL=http://127.0.0.1:5173 node scripts/check-suggestion4.mjs
+STUDYMATE_BASE_URL=http://127.0.0.1:5173 node scripts/check-suggestion5.mjs
+STUDYMATE_BASE_URL=http://127.0.0.1:5173 node scripts/check-suggestion6.mjs
 ```
 
 - `check-suggestion2.mjs` 覆盖示例只填入、概念预取复用、专注测验、报告预览与版本、画像消息去重和外部资源空状态。
 - `check-suggestion3.mjs` 覆盖未作答标签统一、报告主题×难度热力图、资源页底部翻页、RAG 相对匹配度与拓展阅读稳定入口。
 - `check-suggestion4.mjs` 覆盖画像维度计数、历史项目证据写入就业技能和雷达图更新。
+- `check-suggestion5.mjs` 覆盖人才呀知识点匹配、B站真实视频直达、稳定搜索入口和报告文案。
+- `check-suggestion6.mjs` 覆盖助教正文换行、长截图模式、右栏雷达填充和蛇形学习路径。
 
 ## 开发约定
 

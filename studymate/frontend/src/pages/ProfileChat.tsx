@@ -418,10 +418,10 @@ export function ProfileChat() {
             </section>
             {profile ? (
               <>
-                <ProfileRadar title="知识基础" data={profile.dims.knowledge_base} color="#315E83" height={112} />
-                <ProfileRadar title="认知风格" data={profile.dims.cognitive_style} color="#B85C3E" height={112} />
-                <ProfileRadar title="资源偏好" data={profile.dims.preference} color="#6F8A69" height={112} />
-                <ProfileRadar title="就业技能" data={profile.dims.employment_skills} color="#7E6B83" height={112} />
+                <ProfileRadar title="知识基础" data={profile.dims.knowledge_base} color="#315E83" height={124} />
+                <ProfileRadar title="认知风格" data={profile.dims.cognitive_style} color="#B85C3E" height={124} />
+                <ProfileRadar title="资源偏好" data={profile.dims.preference} color="#6F8A69" height={124} />
+                <ProfileRadar title="就业技能" data={profile.dims.employment_skills} color="#7E6B83" height={124} />
               </>
             ) : (
               <div className="rounded-[24px] border border-dashed border-[#C9C2B4] bg-[#F8F6F0] p-6 text-center text-xs text-[#66717B]">画像加载后，这里会实时显示目标、基础、偏好和节奏。</div>

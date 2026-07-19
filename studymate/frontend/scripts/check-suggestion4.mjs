@@ -34,6 +34,27 @@ const json = (route, value, status = 200) => route.fulfill({
   body: JSON.stringify(value),
 })
 
+async function assertSvgTextInsideChart(root, label) {
+  const svg = root.locator("svg").first()
+  const svgBox = await svg.boundingBox()
+  assert.ok(svgBox, `${label} 应存在可见的 SVG 图表`)
+
+  const texts = svg.locator("text")
+  const textCount = await texts.count()
+  assert.ok(textCount > 0, `${label} 应显示维度文字`)
+  for (let index = 0; index < textCount; index += 1) {
+    const text = texts.nth(index)
+    const textBox = await text.boundingBox()
+    if (!textBox) continue
+    const content = (await text.textContent())?.trim() || `第 ${index + 1} 个标签`
+    const tolerance = 1
+    assert.ok(textBox.x >= svgBox.x - tolerance, `${label} 的“${content}”左侧不应被裁切`)
+    assert.ok(textBox.y >= svgBox.y - tolerance, `${label} 的“${content}”顶部不应被裁切`)
+    assert.ok(textBox.x + textBox.width <= svgBox.x + svgBox.width + tolerance, `${label} 的“${content}”右侧不应被裁切`)
+    assert.ok(textBox.y + textBox.height <= svgBox.y + svgBox.height + tolerance, `${label} 的“${content}”底部不应被裁切`)
+  }
+}
+
 await page.route("**/api/**", async (route) => {
   const request = route.request()
   const path = new URL(request.url()).pathname
@@ -87,6 +108,11 @@ assert.equal(await page.getByText("0–5 画像维度", { exact: true }).count()
 
 const radarPaths = page.locator('path[class="recharts-polygon"]')
 assert.equal(await radarPaths.count(), 4)
+const radarCards = page.getByTestId("profile-radar")
+assert.equal(await radarCards.count(), 4)
+for (let index = 0; index < 4; index += 1) {
+  await assertSvgTextInsideChart(radarCards.nth(index), `学习画像第 ${index + 1} 张雷达图`)
+}
 const employmentBefore = await radarPaths.nth(3).getAttribute("d")
 
 const projectMessage = "我在项目中使用过 Python 和 FastAPI，完成了接口测试并部署上线。"
@@ -106,5 +132,9 @@ assert.notEqual(employmentAfter, employmentBefore, "就业技能数据变化后�
 assert.equal(profileBodies[1]?.history?.some((item) => item.role === "user" && item.content === projectMessage), true)
 assert.equal(profileBodies[1]?.history?.some((item) => item.role === "user" && item.content === completionMessage), false)
 
-console.log("建议4前端回归通过：画像维度数量准确，历史项目证据可在完成轮驱动就业雷达实时更新。")
+if (process.env.STUDYMATE_PROFILE_SCREENSHOT) {
+  await page.screenshot({ path: process.env.STUDYMATE_PROFILE_SCREENSHOT, fullPage: true })
+}
+
+console.log("建议4前端回归通过：画像维度数量准确、雷达文字完整可见，历史项目证据可在完成轮驱动就业雷达实时更新。")
 await browser.close()

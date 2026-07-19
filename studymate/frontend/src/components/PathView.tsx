@@ -32,6 +32,34 @@ interface PathViewProps {
   edges: PathEdge[]
 }
 
+const PATH_COLUMNS = 4
+const PATH_NODE_WIDTH = 230
+const PATH_NODE_HEIGHT = 80
+const PATH_HORIZONTAL_GAP = 70
+const PATH_VERTICAL_GAP = 90
+
+function snakePosition(index: number) {
+  const row = Math.floor(index / PATH_COLUMNS)
+  const offset = index % PATH_COLUMNS
+  const column = row % 2 === 0 ? offset : PATH_COLUMNS - 1 - offset
+  return {
+    x: column * (PATH_NODE_WIDTH + PATH_HORIZONTAL_GAP),
+    y: row * (PATH_NODE_HEIGHT + PATH_VERTICAL_GAP),
+  }
+}
+
+function sourcePosition(current: { x: number; y: number }, next?: { x: number; y: number }) {
+  if (!next) return Position.Right
+  if (next.y > current.y) return Position.Bottom
+  return next.x < current.x ? Position.Left : Position.Right
+}
+
+function targetPosition(current: { x: number; y: number }, previous?: { x: number; y: number }) {
+  if (!previous) return Position.Left
+  if (previous.y < current.y) return Position.Top
+  return previous.x > current.x ? Position.Right : Position.Left
+}
+
 /** 自定义节点：带 depth 序号 + 完成状态切换 */
 function StageNode({ id, data }: NodeProps) {
   const d = data as unknown as {
@@ -40,6 +68,8 @@ function StageNode({ id, data }: NodeProps) {
     depth: number
     done?: boolean
     onToggle?: (id: string) => void
+    targetPosition?: Position
+    sourcePosition?: Position
   }
   const done = d.done
   return (
@@ -56,6 +86,7 @@ function StageNode({ id, data }: NodeProps) {
       }}
       role="button"
       tabIndex={0}
+      data-path-depth={d.depth}
       aria-pressed={done}
       aria-label={`${d.title}，阶段 ${d.depth + 1}，${done ? "已完成" : "待完成"}`}
       className={`paper-lift relative w-[230px] cursor-pointer rounded-[18px] border px-3.5 py-3 outline-none focus-visible:ring-2 focus-visible:ring-[#315E83]/35 ${
@@ -64,7 +95,7 @@ function StageNode({ id, data }: NodeProps) {
           : "border-[#D8C9A8] bg-[#FFFEFA]"
       }`}
     >
-      <Handle type="target" position={Position.Left} className="!size-2.5 !border-2 !border-[#FFFEFA] !bg-[#B1842C]" />
+      <Handle type="target" position={d.targetPosition ?? Position.Left} className="!size-2.5 !border-2 !border-[#FFFEFA] !bg-[#B1842C]" />
       <div className="flex items-start gap-2">
         {done ? (
           <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#557052]" />
@@ -81,7 +112,7 @@ function StageNode({ id, data }: NodeProps) {
           <div className="text-[11px] text-[var(--muted-foreground)] mt-1 line-clamp-2">{d.desc}</div>
         </div>
       </div>
-      <Handle type="source" position={Position.Right} className="!size-2.5 !border-2 !border-[#FFFEFA] !bg-[#B1842C]" />
+      <Handle type="source" position={d.sourcePosition ?? Position.Right} className="!size-2.5 !border-2 !border-[#FFFEFA] !bg-[#B1842C]" />
     </motion.div>
   )
 }
@@ -100,27 +131,47 @@ export function PathView({ nodes, edges }: PathViewProps) {
     })
   }, [])
 
+  const orderedNodes = useMemo(
+    () => [...nodes].sort((a, b) => a.data.depth - b.data.depth || a.id.localeCompare(b.id)),
+    [nodes],
+  )
+
   const rfNodes: Node[] = useMemo(
-    () =>
-      nodes.map((n) => ({
-        id: n.id,
-        position: n.position,
+    () => {
+      const positions = orderedNodes.map((_, index) => snakePosition(index))
+      return orderedNodes.map((node, index) => ({
+        id: node.id,
+        position: positions[index],
         type: "stage",
-        data: { ...n.data, done: doneSet.has(n.id), onToggle: toggle },
-      })),
-    [nodes, doneSet, toggle]
+        data: {
+          ...node.data,
+          depth: index,
+          done: doneSet.has(node.id),
+          onToggle: toggle,
+          targetPosition: targetPosition(positions[index], positions[index - 1]),
+          sourcePosition: sourcePosition(positions[index], positions[index + 1]),
+        },
+      }))
+    },
+    [orderedNodes, doneSet, toggle]
   )
 
   const rfEdges: Edge[] = useMemo(
-    () =>
-      edges.map((e) => ({
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        animated: e.animated ?? true,
-        style: { stroke: "#B1842C", strokeWidth: 2 },
-      })),
-    [edges]
+    () => {
+      const existing = new Map(edges.map((edge) => [`${edge.source}->${edge.target}`, edge]))
+      return orderedNodes.slice(1).map((node, index) => {
+        const previous = orderedNodes[index]
+        const edge = existing.get(`${previous.id}->${node.id}`)
+        return {
+          id: edge?.id ?? `e-${previous.id}-${node.id}`,
+          source: previous.id,
+          target: node.id,
+          animated: edge?.animated ?? true,
+          style: { stroke: "#B1842C", strokeWidth: 2 },
+        }
+      })
+    },
+    [edges, orderedNodes]
   )
 
   const total = nodes.length

@@ -6,6 +6,8 @@ DOMAIN = "https://matropic.cn"
 SERVER_IP = "121.40.64.199"
 ICP = "豫ICP备2026028221号"
 AUTHORS = "________、________、________、________、________"
+SEED_ACCOUNT_COUNT = 34
+LIVE_ACCOUNT_COUNT = 38
 
 
 def h(text, level=1):
@@ -24,13 +26,24 @@ def code(text):
     return {"kind": "code", "text": text.strip("\n")}
 
 
-def table(headers, rows, widths=None, font_size=8.5):
+def table(
+    headers,
+    rows,
+    widths=None,
+    font_size=8.5,
+    merge_columns=None,
+    center_columns=None,
+    width_ratio=1.0,
+):
     return {
         "kind": "table",
         "headers": headers,
         "rows": rows,
         "widths": widths,
         "font_size": font_size,
+        "merge_columns": list(merge_columns or []),
+        "center_columns": list(center_columns or []),
+        "width_ratio": width_ratio,
     }
 
 
@@ -73,30 +86,37 @@ LONG_TOC = [
     (1, "5. 详细部署步骤", 8),
     (2, "5.1 环境准备", 8),
     (2, "5.2 项目配置", 12),
-    (2, "5.3 Piston 镜像与运行时", 16),
-    (2, "5.4 Docker Compose 服务配置", 18),
-    (2, "5.5 一键启动与更新", 24),
-    (2, "5.6 权限与安全加固", 28),
+    (2, "5.3 Uvicorn 与 Piston 运行环境", 16),
+    (2, "5.4 Caddy/Nginx 与 Compose", 18),
+    (2, "5.5 自动恢复与一键更新", 24),
+    (2, "5.6 防火墙、权限与安全", 28),
     (1, "6. SSL 证书配置", 29),
-    (2, "6.1 Caddy 自动 HTTPS", 29),
-    (2, "6.2 证书验证与续期", 30),
-    (1, "7. 验证部署", 31),
-    (2, "7.1 检查服务状态", 31),
-    (2, "7.2 检查端口与公网访问", 32),
-    (2, "7.3 核心功能验收", 33),
-    (2, "7.4 数据与代码运行验收", 34),
-    (2, "7.5 运行监控与验收结论", 35),
-    (1, "8. 常见问题排查", 36),
-    (2, "8.1 容器、反向代理与镜像问题", 36),
-    (2, "8.2 HTTPS、Piston 与前端缓存问题", 37),
-    (1, "9. 日常运维", 38),
-    (2, "9.1 查看日志与服务管理", 38),
-    (2, "9.2 数据备份与恢复", 39),
-    (2, "9.3 性能与资源管理", 39),
-    (1, "10. 附录", 40),
-    (2, "10.1 文件说明与部署状态", 40),
-    (2, "10.2 测试网址与账号", 41),
-    (2, "10.3 项目代码与交付清单", 42),
+    (2, "6.1 本地与测试环境访问", 29),
+    (2, "6.2 Let's Encrypt 生产证书", 29),
+    (2, "6.3 证书切换与域名变更", 30),
+    (1, "7. 验证部署", 30),
+    (2, "7.1 检查服务状态", 30),
+    (2, "7.2 检查端口监听", 31),
+    (2, "7.3 测试应用访问", 31),
+    (2, "7.4 浏览器访问测试", 32),
+    (2, "7.5 运行监控与验收记录", 32),
+    (1, "8. 常见问题排查", 32),
+    (2, "8.1 应用或容器无法启动", 32),
+    (2, "8.2 502 Bad Gateway", 33),
+    (2, "8.3 SQLite 数据库异常", 34),
+    (2, "8.4 SSE 或语音流异常", 34),
+    (2, "8.5 静态文件 404 或缓存旧版", 35),
+    (2, "8.6 上传文件失败", 35),
+    (2, "8.7 SSL 证书或 Piston 异常", 36),
+    (1, "9. 日常运维", 36),
+    (2, "9.1 查看日志", 36),
+    (2, "9.2 服务管理、更新与备份", 37),
+    (2, "9.3 性能与资源优化", 38),
+    (1, "10. 附录", 39),
+    (2, "10.1 文件说明", 39),
+    (2, "10.2 移动端与小程序部署情况", 40),
+    (2, "10.3 测试网址与账号", 41),
+    (2, "10.4 项目代码与交付清单", 42),
 ]
 
 
@@ -104,24 +124,30 @@ LONG_PAGES = [
     [
         h("1. 项目概述"),
         h("1.1 项目简介", 2),
-        p("StudyMate 是一套面向高校计算机类课程的个性化资源生成与学习多智能体系统。系统围绕“学习画像—知识检索—资源生成—练习评估—画像更新”构建闭环，将课程知识、学习目标、智能问答、笔记、测验、学习报告和就业能力建议连接起来。"),
-        p("当前平台覆盖机器学习、数据结构与算法、操作系统、计算机网络、计算机组成原理五门课程，支持课程级知识库隔离、RAG 原文追溯、多轮 AI 助教、语音辅导、可视化动画以及在线代码运行。"),
-        p("个性化学习方面，系统维护知识基础、认知风格、学习目标、薄弱点、学习节奏、内容偏好和就业技能 7 组动态画像，并在生成讲解、练习、代码案例和复习路径时自动带入课程上下文，使相同知识点能够按照不同学习者的掌握程度进行表达。"),
-        p("资源生成方面，多个智能体分别承担知识检索、讲解文档、思维导图、智能测验、代码示例、拓展阅读和学习路径规划任务；生成结果统一保存到工作台，便于继续编辑、复习、导出和追溯来源。"),
-        p("交互与评估方面，AI 助教支持 SSE 流式回复、图片和文档附件，在线编程模块支持 Python、C11 与 C++17；笔记、错题、测验和学习报告共同记录学习过程。系统还接入哔哩哔哩与人才呀公开学习目录，并将论文、图书和博客标题解析为经过白名单与标题校验的真实详情页；岗位建议仍在本地根据画像、课程和测验历史生成。"),
+        p("StudyMate 是面向高校计算机类课程的个性化资源生成与学习多智能体系统，围绕“学习画像—知识检索—资源生成—练习评估—画像更新”构建学习闭环。"),
+        p("系统覆盖机器学习、数据结构与算法、操作系统、计算机网络、计算机组成原理五门课程。七个智能体分别负责检索、讲解、导图、测验、阅读、代码和学习路径，并通过课程上下文与七维画像提供个性化内容。"),
+        p("平台同时提供可追溯 RAG、SSE 流式助教、图片与文档附件、语音交互、笔记测验、学习报告和 Python/C/C++ 在线运行，生成结果统一保存到工作台。"),
         h("1.2 技术栈", 2),
         table(
-            ["类别", "技术"],
+            ["层次", "技术/组件", "部署职责"],
             [
-                ["前端", "React 19、TypeScript、Vite 8、Tailwind CSS 4、Nginx"],
-                ["后端", "Python 3.11、FastAPI 0.115、Uvicorn、SQLAlchemy 2.0"],
-                ["智能体", "LangGraph、OpenAI 兼容 SDK、SSE 流式输出"],
-                ["数据与检索", "SQLite、BM25、Qwen Embedding、RRF 混合检索"],
-                ["公网入口", "Caddy 2、自动 HTTPS、zstd/gzip"],
-                ["代码沙箱", "Piston、Python 3.10、GCC 10.2（C11/C++17）"],
-                ["部署", "Docker Engine、Docker Compose、Named Volume"],
+                ["基础设施", "Ubuntu 22.04.5、Docker 29.6.1、Compose 5.3.1", "提供容器宿主、网络、卷和自动恢复。"],
+                ["基础设施", "Caddy 2 + Frontend Nginx", "负责 HTTPS、静态站点和 /api/SSE 代理。"],
+                ["前端", "React 19.2.6、TypeScript 6.0.2、Vite 8.0.12", "构建响应式单页应用和生产资源。"],
+                ["前端", "Tailwind、Framer、Monaco、KaTeX、Shiki、Recharts", "实现交互、编辑器、公式和图表。"],
+                ["后端", "Python 3.11、FastAPI 0.115、Uvicorn 0.32", "提供认证、课程、助教和资源 API。"],
+                ["后端", "Pydantic、SSE-Starlette、HTTPX、OpenAI SDK", "负责校验、流式事件和外部调用。"],
+                ["数据", "SQLite、SQLAlchemy 2.0.36、aiosqlite、Named Volume", "保存业务与向量数据，空卷首次播种。"],
+                ["检索", "BM25、Qwen text-embedding-v3、RRF", "融合关键词与 1024 维语义召回。"],
+                ["智能体", "多模型适配器、7 个资源 Agent、并发编排", "并发生成六类资源与学习路径。"],
+                ["多模态", "Qwen-VL、讯飞 ASR/TTS、CosyVoice、pypdf", "支持图片、语音和文档附件。"],
+                ["代码沙箱", "Piston、Python 3.10、GCC 10.2、scikit-learn 1.3.2", "隔离运行 Python、C11 和 C++17。"],
+                ["用户终端", "PC/手机浏览器、同源 HTTPS", "学生、评委和管理员统一访问。"],
             ],
-            widths=[3.2, 12.4],
+            widths=[2.4, 6.0, 7.2],
+            font_size=6.7,
+            merge_columns=[0],
+            center_columns=[0, 1],
         ),
     ],
     [
@@ -134,31 +160,63 @@ LONG_PAGES = [
             [
                 ["CPU", "2 核", "4 核及以上", "4 vCPU"],
                 ["内存", "4 GB", "8 GB 及以上", "7.1 GiB"],
-                ["磁盘", "30 GB", "60 GB 及以上", "59 GB（约 46 GB 可用）"],
+                ["磁盘", "30 GB", "60 GB 及以上", "59 GB（约 43 GB 可用）"],
                 ["带宽", "5 Mbps", "10 Mbps 及以上", "满足竞赛演示"],
             ],
             widths=[3.0, 3.6, 4.2, 5.0],
         ),
         h("2.2 软件要求", 2),
-        p("Ubuntu 22.04 LTS 64 位；Docker Engine 24+；Docker Compose V2+；SSH、Rsync、Curl。当前生产环境为 Ubuntu 22.04.5、Docker 29.6.1、Compose v5.3.1。"),
+        table(
+            ["对象", "要求/当前版本", "部署说明"],
+            [
+                ["宿主系统", "Ubuntu 22.04 LTS 64 位；当前 22.04.5", "仅宿主机安装 Docker、SSH、UFW 与维护工具。"],
+                ["容器平台", "Docker 24+ / Compose V2+；当前 29.6.1 / v5.3.1", "构建、编排、健康检查、自动重启和命名卷持久化。"],
+                ["维护工具", "Git、Rsync、Curl、Skopeo、Gzip", "版本记录、增量上传、接口验证、GHCR 镜像导入和种子校验。"],
+                ["应用运行时", "Python 3.11、Node 20、Caddy/Nginx alpine", "全部由镜像提供；Node 只在前端构建阶段存在。"],
+                ["客户端", "现代 Chrome/Edge/Firefox/Safari", "需支持 HTTPS、Cookie、SSE、麦克风和响应式页面。"],
+            ],
+            widths=[3.1, 6.0, 6.5],
+            font_size=6.9,
+            center_columns=[0],
+        ),
         h("2.3 网络要求", 2),
-        p("服务器需要公网 IPv4、已备案域名及可用 DNS。公网只开放 22、80、443；2000、5173、8000 等应用端口仅绑定 127.0.0.1。"),
+        table(
+            ["范围", "端口/网络", "要求"],
+            [
+                ["公网入口", "80/443", "Caddy 对公网监听；HTTP 用于 ACME 和跳转，HTTPS 提供正式访问。"],
+                ["SSH 维护", "22", "仅对维护人员 IP 或可信网络开放。"],
+                ["宿主回环", "5173/8000/2000", "前端、后端、Piston 排障端口只绑定 127.0.0.1。"],
+                ["Docker 内网", "192.168.242.0/24", "容器通过服务名互访，不使用公网 IP。"],
+                ["DNS/域名", "matropic.cn", "A 记录指向 121.40.64.199，备案与证书域名一致。"],
+                ["必要出站", "DNS、HTTP、HTTPS", "允许拉镜像、签证书以及调用模型、语音和公开资源。"],
+            ],
+            widths=[3.2, 4.2, 8.2],
+            font_size=6.9,
+            center_columns=[0, 1],
+        ),
     ],
     [
         h("3. 部署前准备"),
         h("3.1 服务器信息收集", 2),
         table(
-            ["信息项", "本项目配置"],
+            ["信息项", "当前配置", "验证方式/说明"],
             [
-                ["公网 IP", SERVER_IP],
-                ["操作系统", "Ubuntu 22.04.5 LTS 64 位"],
-                ["SSH 用户", "deploy（普通部署用户）"],
-                ["SSH 别名", "studymate-server"],
-                ["域名", "matropic.cn"],
-                ["备案号", ICP],
-                ["部署目录", "/home/deploy/studymate"],
+                ["公网 IP", SERVER_IP, "云控制台与外网结果一致"],
+                ["域名/DNS", "matropic.cn → 121.40.64.199", "公网 DNS 查询确认"],
+                ["ICP备案", ICP, "页面底部展示"],
+                ["操作系统", "Ubuntu 22.04.5 LTS x86_64", "cat /etc/os-release"],
+                ["CPU/内存", "4 vCPU / 7.1 GiB", "nproc、free -h"],
+                ["系统盘", "59 GB，约 43 GB 可用", "df -h /"],
+                ["SSH", "22/TCP；deploy；studymate-server", "密钥登录"],
+                ["Docker", "Engine 29.6.1 / Compose v5.3.1", "版本命令确认"],
+                ["端口", "公网 22/80/443；回环 5173/8000/2000", "安全组、UFW 与 ss 核对"],
+                ["部署目录", "/home/deploy/studymate", "代码和部署配置目录"],
+                ["敏感配置", "backend/.env、.deploy.env（600）", "单独维护，不随代码覆盖"],
+                ["持久化", "backend/piston/caddy 命名卷", "更新保留数据、runtime 和证书"],
             ],
-            widths=[4.2, 11.4],
+            widths=[3.2, 5.3, 7.1],
+            font_size=7.0,
+            center_columns=[0],
         ),
         h("3.2 本地准备", 2),
         bullets([
@@ -181,14 +239,20 @@ ss -lntp"""),
         p("生产环境采用 Docker Compose 单机容器化架构。Caddy 是唯一公网入口，负责 80/443、TLS 证书和压缩；前端 Nginx 托管 React 静态资源并代理 /api；FastAPI 提供认证、课程、RAG、SSE、上传与代码运行接口。"),
         image("architecture_long.png", "图 4-1 项目整体部署架构图", 16.0),
         table(
-            ["网络层次", "访问范围"],
+            ["网络层次", "地址/端口", "调用关系", "安全边界"],
             [
-                ["公网", "Caddy：80/443"],
-                ["宿主机回环", "frontend 5173、backend 8000、Piston 2000"],
-                ["Docker 内网", "192.168.242.0/24，服务名互访"],
-                ["外部服务", "大模型、语音、邮件、哔哩哔哩、人才呀及公开阅读目录"],
+                ["用户访问", "https://matropic.cn:443", "PC/手机浏览器 → Caddy", "可信 HTTPS；HTTP 自动跳转"],
+                ["公网网关", "0.0.0.0:80/443", "Caddy → frontend:80", "唯一公网 Web 入口"],
+                ["静态/API 代理", "frontend:80 / 127.0.0.1:5173", "Nginx 静态文件；/api → backend:8000", "5173 仅本机排障"],
+                ["业务服务", "backend:8000 / 127.0.0.1:8000", "FastAPI → SQLite、模型、语音、Piston", "8000 不开放安全组"],
+                ["代码沙箱", "piston-api:2000 / 127.0.0.1:2000", "backend Docker 内网调用", "2000 不对公网；资源受限"],
+                ["容器网络", "192.168.242.0/24；网关 .1", "Compose DNS 通过服务名互访", "固定 bridge，不依赖容器 IP"],
+                ["持久化", "backend/piston/caddy volumes", "数据库、runtime、证书跨容器重建保留", "禁止 down -v"],
+                ["外部服务", "DNS/HTTPS 出站", "模型、语音、邮件、B站、人才呀、可信阅读", "只发送必要内容，不发送 Cookie/密钥"],
             ],
-            widths=[4.0, 11.6],
+            widths=[2.7, 4.0, 5.0, 3.9],
+            font_size=6.8,
+            center_columns=[0, 1],
         ),
     ],
     [
@@ -205,22 +269,51 @@ ss -lntp"""),
         h("4.2.5 Piston—在线代码沙箱", 3),
         p("支持 Python、C、C++；容器整体限制为 2 CPU、2GB、256 PID、2 并发，避免共享测试账号耗尽宿主机资源。"),
         p("上述组件均设置 restart: unless-stopped。宿主机重启后 Docker 服务会自动拉起容器；数据库、语言运行时和证书保存在命名卷中，镜像更新不会改变已有业务数据。"),
+        h("4.2.6 与传统部署组件的对应关系", 3),
+        table(
+            ["参考文档组件", "StudyMate 等价实现", "说明"],
+            [
+                ["阿里云/本地服务器", "阿里云 ECS + Ubuntu 22.04.5", "提供计算、存储、公网和备案域名。"],
+                ["Nginx", "Caddy + Frontend Nginx", "分别负责 TLS、静态站点和 /api/SSE 代理。"],
+                ["Gunicorn", "Uvicorn 0.32", "运行 FastAPI ASGI 应用与 SSE。"],
+                ["Supervisor", "restart: unless-stopped + Compose", "负责自动启动、恢复、日志和更新。"],
+                ["Docker", "Docker Engine + Compose + Buildx", "构建并编排核心服务、网络和卷。"],
+                ["达梦/MySQL", "SQLite + backend_data", "适配单机演示并支持在线备份。"],
+                ["Redis", "主链路未启用；extras 预留 Redis 7", "业务状态当前保存在 SQLite。"],
+                ["FAISS", "BM25 + SQLite JSON 向量 + RRF", "融合关键词与 Qwen 语义召回。"],
+                ["本地/对象存储", "backend_data 命名卷", "保存 SQLite 与上传内容。"],
+                ["讯飞星火大模型", "DeepSeek/星火/MiMo + Qwen/Qwen-VL", "支持主模型切换、助教、视觉和向量。"],
+                ["LangChain", "并发 Agent 编排 + AI 工程依赖", "检索后并发调度资源智能体。"],
+                ["ASR/TTS API", "讯飞 IAT/TTS + 可选 CosyVoice", "支持语音输入与多音色朗读。"],
+                ["Python/Flask", "Python 3.11 + FastAPI + Pydantic", "构建异步 REST API 和参数模型。"],
+                ["SQLAlchemy", "SQLAlchemy 2.0.36 + aiosqlite", "提供 ORM、异步会话和事务。"],
+                ["WebSocket", "POST SSE + 语音 WebSocket/HTTP", "分别承载 AI 事件流与语音通信。"],
+                ["HTML/CSS/JS/Three/face", "React/TypeScript/Tailwind + 可视组件", "实现导图、路径和图表，不采集人脸。"],
+                ["Web 浏览器/客户端", "PC 与手机响应式 Web", "同一 HTTPS 站点与同源 API。"],
+            ],
+            widths=[3.2, 4.5, 7.9],
+            font_size=6.0,
+            center_columns=[0, 1],
+        ),
     ],
     [
         h("4.3 部署流程概述", 2),
         image("deployment_flow.png", "图 4-2 StudyMate 部署流程", 15.5),
         table(
-            ["阶段", "主要工作", "参考耗时"],
+            ["阶段", "主要工作", "阶段输出", "验证成功标志"],
             [
-                ["阶段 1：基础环境", "检查服务器、安装 Docker、配置镜像源与防火墙", "10～20 分钟"],
-                ["阶段 2：项目与配置", "Rsync 上传、单独上传环境变量、校验数据", "5～10 分钟"],
-                ["阶段 3：镜像与运行时", "构建前后端、导入 Piston、初始化 Python/GCC", "10～30 分钟"],
-                ["阶段 4：公网入口", "启动 Caddy、签发 HTTPS 证书", "1～5 分钟"],
-                ["阶段 5：验收", "登录、AI、上传、代码运行、数据库完整性", "10 分钟"],
+                ["阶段 1：基础环境", "核对系统、资源与端口，安装 Docker、Compose 和 UFW。", "可用容器宿主", "Docker active，端口规则正确。"],
+                ["阶段 2：数据与项目", "生成脱敏种子，上传代码，单独维护生产变量。", "代码、种子与 env", "gzip、SQLite 与 Compose 校验通过。"],
+                ["阶段 3：镜像与运行时", "构建镜像，导入 Piston 并初始化语言运行时。", "服务镜像与 runtime", "服务 healthy，运行时可用。"],
+                ["阶段 4：公网入口", "启动 Caddy，核对 DNS、防火墙和证书。", "可信 HTTPS", "HTTP 跳转，HTTPS 200。"],
+                ["阶段 5：业务验收", "复测角色、课程、AI、附件、语音、代码和移动端。", "上线验收记录", "功能与数据正常，端口最小开放。"],
             ],
-            widths=[3.8, 8.8, 3.2],
+            widths=[2.7, 5.5, 3.5, 4.8],
+            font_size=6.5,
+            center_columns=[0],
         ),
-        p("首次部署受镜像和 Piston runtime 下载速度影响；后续更新可复用构建缓存和持久化卷，通常只需数十秒至数分钟。"),
+        p("首次部署受镜像和 Piston runtime 下载速度影响；后续更新会复用构建缓存和持久化卷，通常明显更快。"),
+        p("每个阶段都应达到表格中的成功标志后再继续；若某项失败，应留在当前阶段修复，避免把网络、镜像和业务问题叠加到一起。"),
     ],
     [
         h("4.4 部署注意事项", 2),
@@ -237,10 +330,12 @@ ss -lntp"""),
         note("严禁执行 docker compose down -v。该命令会删除数据库、Piston runtime 和 Caddy 证书等命名卷。", "数据保护红线"),
         p("建议所有变更遵循“备份—同步—构建—健康检查—业务验收”的顺序。"),
         p("比赛展示前应至少完成一次从公网网络发起的全流程验收，并保留最近一份可恢复数据库备份。变更域名、Cookie、安全组或 Caddyfile 后，必须重新检查 HTTPS、登录状态和 SSE 流式响应。"),
+        p("部署记录至少包含当前代码版本、Compose 配置摘要、数据库备份文件和验收结果，使更新失败时能够快速确认回滚范围。"),
     ],
     [
         h("5. 详细部署步骤"),
         h("5.1 环境准备", 2),
+        p("目的：准备稳定、可重复的容器宿主环境。宿主机只需安装 Docker、Compose、SSH/Rsync、Curl、Skopeo 和防火墙工具；Python、Node.js、Uvicorn、Nginx、SQLite 客户端及业务依赖均由镜像提供，不在宿主机逐项安装。"),
         h("5.1.1 检查服务器", 3),
         code("""ssh studymate-server
 cat /etc/os-release
@@ -249,7 +344,8 @@ nproc
 free -h
 df -h /
 ss -lntp"""),
-        p("预期结果：Ubuntu 22.04、x86_64、磁盘剩余空间不少于 15GB，80/443 没有被其他 Web 服务占用。"),
+        p("验证成功标志：Ubuntu 22.04、x86_64、磁盘剩余空间不少于 15GB，80/443 没有被其他 Web 服务占用。常见问题包括旧版 Nginx/Apache 占用端口、系统时间未同步和出站 HTTPS 被安全策略阻断。"),
+        p("建议保存首次检查结果，后续出现资源不足、端口冲突或网络异常时，可直接与部署基线进行比较。"),
         h("5.1.2 上传初始化脚本", 3),
         code("""scp studymate/scripts/bootstrap-ubuntu.sh \\
   studymate-server:/home/deploy/studymate-bootstrap.sh
@@ -264,6 +360,7 @@ DEPLOY_USER=deploy \\
   bash /home/deploy/studymate-bootstrap.sh \\
   2>&1 | tee /home/deploy/studymate-bootstrap.log"""),
         p("看到 Bootstrap complete 后，退出并重新建立 SSH 会话，使 deploy 用户获得 docker 组权限。"),
+        p("重新登录后应先确认 docker 组和服务状态，再开始上传项目；不要通过放宽 docker.sock 权限绕过用户组配置。"),
         code("""ssh studymate-server
 id -Gn
 docker --version
@@ -297,6 +394,7 @@ docker info --format 'server={{.ServerVersion}}'"""),
 sudo systemctl restart docker
 docker info --format '{{json .RegistryConfig.Mirrors}}'"""),
         p("后端镜像构建还会使用阿里云 Debian 源和阿里云 PyPI，前端 npm 使用 npmmirror，避免仅配置 Docker 镜像源后依赖安装仍然卡住。"),
+        p("镜像站可用性会随网络变化，若构建再次超时，应根据报错域名切换对应来源，并保留官方源作为最终回退。"),
     ],
     [
         h("5.1.5 配置安全组与 UFW", 3),
@@ -320,6 +418,7 @@ sudo ufw status numbered"""),
         ),
         note("安全组是云平台层，UFW 是操作系统层；只配置其中一层并不能保证公网可访问。"),
         p("阿里云安全组入方向建议把 22 端口来源限制为维护人员固定 IP，80、443 允许公网访问；出方向至少允许 DNS、HTTP 和 HTTPS，以便 Docker 拉取镜像、Caddy 申请证书以及后端调用 AI 服务。"),
+        p("配置完成后应同时核对安全组、UFW 和 ss 监听结果；只有三者一致，才算完成公网入口与内部排障端口的边界设置。"),
         code("""sudo ufw status verbose
 curl -I --max-time 10 https://registry-1.docker.io
 curl -I --max-time 10 https://acme-v02.api.letsencrypt.org/directory"""),
@@ -341,6 +440,7 @@ rsync -az --delete --progress \\
   --exclude '*.log' \\
   ./studymate/ studymate-server:~/studymate/"""),
         p("backend/resources/seed/studymate.db.gz 是首次启动所需的脱敏演示种子库，应随项目上传。backend/studymate.db 是开发机本地运行库，必须排除。生产 backend/.env 和 .deploy.env 必须单独维护。"),
+        p("首次上传完成后应在服务器核对关键文件；后续增量同步仍沿用同一排除清单，避免 --delete 误删生产配置或备份。"),
         code("""scp studymate/backend/.env \\
   studymate-server:~/studymate/backend/.env
 ssh studymate-server \\
@@ -353,17 +453,26 @@ ssh studymate-server \\
 python3 scripts/build_seed_db.py
 gzip -t backend/resources/seed/studymate.db.gz"""),
         table(
-            ["数据项", "验收结果"],
+            ["数据项", "验收基线", "保留/清理规则"],
             [
-                ["用户", "19（1 管理员、10 评委、8 学生）"],
-                ["课程", "5"],
-                ["知识块", "938"],
-                ["SQLite integrity_check", "ok"],
-                ["外键错误", "0"],
+                ["获准账号总数", "34", "只保留白名单账号，删除其他账号及无用关联数据。"],
+                ["管理员", "1：admin@studymate.com", "保留竞赛管理入口，清空认证会话。"],
+                ["评委", "10：judge01～judge10", "保留评委测试与只读/验收权限。"],
+                ["编号测试账号", "15：test1～test15", "用于录制和重复验收；密码由维护变量统一设置。"],
+                ["命名学生", "8 个指定学生账号", "保留必要画像、测验、反馈和工作台演示数据。"],
+                ["课程", "5", "五门课程必须全部保留并通过课程隔离检查。"],
+                ["知识块", "938", "正文、来源、页码、链接和元数据必须完整。"],
+                ["检索向量", "938 × 1024 维", "每个知识块均有向量；Embedding JSON 不得为空。"],
+                ["认证会话", "user_sessions=0", "清空 Cookie 对应服务端会话，避免发布登录状态。"],
+                ["一次性验证码", "email_verification_codes=0", "清空验证码、尝试次数和认证临时状态。"],
+                ["SQLite 完整性", "integrity_check=ok", "失败时禁止替换现有压缩种子。"],
+                ["外键检查", "foreign_key_check=0", "任何孤儿记录都视为构建失败。"],
             ],
-            widths=[6.0, 9.6],
+            widths=[3.7, 4.6, 7.3],
+            font_size=6.65,
+            center_columns=[0, 1],
         ),
-        p("构建脚本使用 SQLite backup API 获取一致快照，只修改快照，不修改 backend/studymate.db；随后删除未批准账户的关联记录、清空会话和一次性验证码、校验外键与完整性，最后写出可复现的 gzip 文件。"),
+        p("构建脚本使用 SQLite backup API 获取一致快照，只修改快照，不修改 backend/studymate.db；随后删除未批准账户及其无用关联记录、清空认证会话和一次性验证码，同时保留五门课程、知识库、必要画像、测验、反馈等有效演示数据，校验外键与完整性后写出可复现的 gzip 文件。"),
         code("""ls -lh backend/resources/seed/studymate.db.gz
 python3 - <<'PY'
 import gzip, shutil, sqlite3, tempfile
@@ -417,9 +526,11 @@ docker compose --env-file .deploy.env config --services"""),
             font_size=8.0,
         ),
         p("默认 Docker bridge 使用 192.168.242.0/24，服务之间通过 Compose 服务名通信。"),
+        p("config --quiet 通过只表示语法和变量展开正确，正式启动前仍需确认端口映射、命名卷和生产 Profile 与预期一致。"),
     ],
     [
-        h("5.3 Piston 镜像与运行时", 2),
+        h("5.3 Uvicorn 与 Piston 运行环境", 2),
+        p("参考文档使用 Gunicorn 承载 Flask；StudyMate 是 FastAPI ASGI 应用，由 backend 容器内的 Uvicorn 提供 HTTP/SSE 服务，并通过 /api/ping 健康检查。在线编程则由独立 Piston 容器提供隔离运行环境。"),
         h("5.3.1 导入 Piston 镜像", 3),
         p("Piston 镜像位于 GHCR，Docker Hub 镜像加速不能覆盖该仓库。先尝试项目导入脚本："),
         code("""cd ~/studymate
@@ -457,7 +568,7 @@ curl http://127.0.0.1:2000/api/v2/runtimes"""),
         note("境外下载过慢时，可从本机已验证的 piston_data 中迁移 runtime；不要反复删除卷重新下载。"),
     ],
     [
-        h("5.4 Docker Compose 服务配置", 2),
+        h("5.4 Caddy/Nginx 与 Compose", 2),
         h("5.4.1 一键部署脚本", 3),
         code("""#!/usr/bin/env bash
 set -euo pipefail
@@ -473,6 +584,7 @@ bash scripts/deploy.sh status
 bash scripts/deploy.sh logs
 bash scripts/deploy.sh down"""),
         p("down 特意不带 -v，因此只停止并删除容器和网络，不删除业务卷。"),
+        p("deploy.sh 可重复执行，已经存在的命名卷和健康服务会被复用；构建失败时应先查看失败步骤，原有健康容器无需立即删除。"),
     ],
     [
         h("5.4.2 前端镜像构建", 3),
@@ -481,7 +593,7 @@ bash scripts/deploy.sh down"""),
 ARG NGINX_IMAGE=nginx:alpine
 FROM ${NODE_IMAGE} AS build
 WORKDIR /app
-RUN npm config set registry \
+RUN npm config set registry \\
   https://registry.npmmirror.com
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -489,9 +601,10 @@ COPY . .
 RUN npm run build
 
 FROM ${NGINX_IMAGE} AS runtime
-COPY --from=build /app/dist \
+COPY --from=build /app/dist \\
   /usr/share/nginx/html"""),
         p("生产构建已验证 TypeScript、Vite、备案页脚和哈希静态资源。Nginx 健康检查访问 127.0.0.1，避免 Alpine 对 localhost 的 IPv6 解析差异。"),
+        p("更新上线后应从公网检查 index.html 引用的新哈希资源，并复测刷新子路由和 /api 代理，避免只看容器状态形成假阳性。"),
     ],
     [
         h("5.4.3 后端镜像构建", 3),
@@ -500,12 +613,13 @@ COPY --from=build /app/dist \
 ARG DEBIAN_MIRROR=http://mirrors.aliyun.com/debian
 ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple
 
-RUN apt-get update \
+RUN apt-get update \\
  && apt-get install -y --no-install-recommends curl
-RUN pip install -r requirements.txt \
+RUN pip install -r requirements.txt \\
  --index-url "$PIP_INDEX_URL"
 """),
         p("容器入口 scripts/docker_entrypoint.py 在 backend_data 为空时解压只读种子库，之后启动 Uvicorn。若卷已有数据库，重新构建镜像不会覆盖线上数据。"),
+        p("这一初始化规则把“首次播种”和“日常更新”明确分开：种子随镜像交付，真实运行数据始终以命名卷中的数据库为准。"),
         code("""DATABASE_URL=sqlite:///./data/studymate.db
 PISTON_URL=http://piston-api:2000"""),
         note("真实 backend/.env 不 COPY 到镜像，只通过 env_file 在运行时注入。"),
@@ -591,7 +705,8 @@ docker volume inspect studymate_caddy_data"""),
         p("这些是 Piston 容器整体硬上限。普通算法题、Python 和 C++17 编译运行已通过实测；如比赛需要较重任务，可按服务器余量谨慎提高，不建议取消。"),
     ],
     [
-        h("5.5 一键启动与更新", 2),
+        h("5.5 自动恢复与一键更新", 2),
+        p("参考文档使用 Supervisor 守护应用；StudyMate 由 Docker 的 restart: unless-stopped 与 Compose 统一承担自动启动、故障恢复、状态查询、日志和版本更新。"),
         h("5.5.1 首次启动", 3),
         code("""ssh studymate-server
 cd ~/studymate
@@ -653,6 +768,7 @@ docker logs --tail=100 studymate-piston"""),
   docker compose --env-file .deploy.env \\
   up -d --build frontend'"""),
         p("更新过程不会修改 backend_data。Caddy 保持运行，通常只有数秒静态资源切换时间。浏览器若缓存旧资源，可使用 Ctrl+F5。"),
+        p("更新完成后先确认 frontend 为 healthy，再从外部浏览器检查首页、登录和一个依赖 /api 的页面，确保静态资源与接口版本匹配。"),
         note("如同时修改 docker-compose.yml、Caddyfile 或后端接口，应走完整更新流程。"),
     ],
     [
@@ -672,12 +788,13 @@ docker logs --tail=100 studymate-piston"""),
 ssh studymate-server \\
  'cd ~/studymate && bash scripts/deploy.sh'"""),
         p("更新前建议记录 Git 提交号和备份数据库。回滚时恢复旧代码或旧镜像后重新执行 deploy.sh，命名卷仍保留。"),
+        p("代码回滚通常不回退数据；只有确认数据库内容或结构受损时，才应在停止写入、二次备份并校验备份后执行数据恢复。"),
         code("""git rev-parse --short HEAD
 docker image ls 'studymate-*' --digests"""),
         note("不要把服务器 backend/.env、.deploy.env 或备份目录通过 --delete 同步掉；必须保留对应 exclude。"),
     ],
     [
-        h("5.6 权限与安全加固", 2),
+        h("5.6 防火墙、权限与安全", 2),
         bullets([
             "deploy 用户使用 SSH 密钥登录，不在文档中保存密码或私钥。",
             "backend/.env 与 .deploy.env 权限为 600。",
@@ -692,6 +809,7 @@ docker image ls 'studymate-*' --digests"""),
 chmod 600 ~/studymate/backend/.env
 ss -lnt | grep -E ':(80|443|2000|5173|8000)'"""),
         p("预期只有 80/443 监听公网地址，其他端口显示 127.0.0.1。"),
+        p("安全检查还应覆盖环境文件权限、Docker 组成员和测试账号状态，比赛结束后及时轮换测试密码与外部服务凭据。"),
         table(
             ["安全对象", "控制措施"],
             [
@@ -842,7 +960,7 @@ curl -sS https://matropic.cn/api/ping | python3 -m json.tool"""),
                 ["文件上传", "上传 2MB 文本文件", "HTTP 200，内容截断策略正常"],
                 ["Python", "print(6 * 7)", "stdout=42，mock=false"],
                 ["C++17", "编译输出 42", "编译/运行退出码 0"],
-                ["用户数据", "指定账号集合", "19 个且完全一致"],
+                ["用户数据", "获准部署种子", "34 个且完全一致"],
                 ["课程数据", "课程与知识块", "5 门、938 块"],
                 ["SQLite", "integrity_check/foreign_key_check", "ok / 0"],
             ],
@@ -865,11 +983,11 @@ PY"""),
             [
                 ["可访问性", "HTTP 自动跳 HTTPS，HTTPS 200"],
                 ["容器健康", "前后端 healthy，Caddy/Piston running"],
-                ["数据完整", "19 用户、5 课程、938 知识块，完整性正常"],
+                ["数据完整", "种子 34 用户、5 课程、938 知识块，完整性正常"],
                 ["AI 能力", "真实模型流式回复完成"],
                 ["在线编程", "Python 与 C++ 真实执行成功"],
                 ["安全边界", "仅 22/80/443 公网开放，Cookie Secure"],
-                ["资源余量", "59GB 系统盘，验收时约 46GB 可用"],
+                ["资源余量", "59GB 系统盘，验收时约 43GB 可用"],
             ],
             widths=[4.4, 11.2],
         ),
@@ -981,7 +1099,7 @@ docker exec studymate-backend rm -f /app/data/studymate-backup.db"""),
                 ["ICP备案", ICP],
                 ["核心容器", "4 个，运行正常"],
                 ["HTTPS", "Let's Encrypt，自动续期"],
-                ["数据库", "19 用户、5 课程、938 知识块"],
+                ["数据库", "种子 34 用户；线上当前 38 用户；5 课程、938 知识块"],
                 ["代码运行", "Python/C/C++ runtime 已安装"],
             ],
             widths=[4.4, 11.2],
@@ -1016,7 +1134,7 @@ docker exec studymate-backend rm -f /app/data/studymate-backup.db"""),
             font_size=8.0,
         ),
         h("最终验收清单", 3),
-        bullets(["域名与 HTTPS 正常", "四个核心容器运行", "19 个指定账号准确", "5 门课程与 938 知识块完整", "AI SSE 为真实模型", "Python/C++ 运行通过", "备案号可见", "备份与更新命令可执行"]),
+        bullets(["域名与 HTTPS 正常", "四个核心容器运行", "34 个种子账号准确", "5 门课程与 938 知识块完整", "AI SSE 为真实模型", "Python/C++ 运行通过", "备案号可见", "备份与更新命令可执行"]),
         code("""# 交付压缩包和公开仓库必须排除
 .git/
 frontend/node_modules/
@@ -1292,8 +1410,474 @@ find ~/studymate-backups -type f -name '*.db' -printf '%TY-%Tm-%Td %p\n' | sort"
     ],
 }
 
-for _page_number, _blocks in LONG_PAGE_SUPPLEMENTS.items():
-    LONG_PAGES[_page_number - 1].extend(_blocks)
+# The compact delivery edition keeps the verified commands in the main chapters
+# and omits the optional density supplements, so its body remains only slightly
+# richer than the reference rather than becoming a second operations manual.
+
+
+# The reference allocates pages 29—42 to SSL, verification, seven classes of
+# troubleshooting, operations, and four appendix sections. Rebuild that slice
+# explicitly so every reference topic has a StudyMate equivalent while keeping
+# the original 42 numbered body pages.
+LONG_PAGES[28:] = [
+    [
+        h("6. SSL 证书配置"),
+        h("6.1 本地与测试环境访问", 2),
+        p("适用场景：开发机、局域网联调或域名尚未生效的临时环境。StudyMate 默认以 SITE_ADDRESS=http://localhost 启动本地 HTTP，不需要证书，也不会影响生产环境的 Caddy 数据卷。"),
+        table(
+            ["测试方案", "配置方式", "浏览器表现", "建议"],
+            [
+                ["本地 HTTP", "SITE_ADDRESS=http://localhost", "无证书提示", "开发联调首选"],
+                ["Caddy 内部证书", "站点块加入 tls internal", "首次需信任本地 CA", "仅封闭测试网"],
+                ["手工自签名", "自行生成并挂载证书", "默认显示安全警告", "不建议用于本项目"],
+            ],
+            widths=[3.2, 5.0, 4.0, 3.4],
+            font_size=7.7,
+        ),
+        code("""# 本地基础栈：backend + frontend
+docker compose up -d --build
+curl -I http://127.0.0.1:5173/
+curl http://127.0.0.1:8000/api/ping
+
+# 如需封闭测试网内部 TLS，可在独立 Caddy 配置中使用：
+# https://test.studymate.local {
+#   tls internal
+#   reverse_proxy frontend:80
+# }"""),
+        note("生产公网不得使用自签名证书或引导评委点击“继续访问”。正式域名应使用受浏览器信任的自动 HTTPS。", "测试环境边界"),
+        h("6.2 Let's Encrypt 生产证书", 2),
+        p("生产环境由 Caddy 根据 SITE_ADDRESS 自动申请、保存和续期 Let's Encrypt 证书，等价替代参考文档中的 Certbot 与 Nginx SSL 手工配置。"),
+        table(
+            ["前提条件", "StudyMate 当前配置"],
+            [
+                ["DNS", "matropic.cn 的 A 记录指向 121.40.64.199"],
+                ["网络", "云安全组与 UFW 同时开放 80、443"],
+                ["Compose", "COMPOSE_PROFILES 包含 public"],
+                ["Caddy", "SITE_ADDRESS=matropic.cn，caddy_data/config 持久化"],
+            ],
+            widths=[4.0, 11.6],
+            font_size=8.0,
+        ),
+    ],
+    [
+        h("6.2 Let's Encrypt 生产证书（续）", 2),
+        code("""cd ~/studymate
+getent ahostsv4 matropic.cn
+docker compose --env-file .deploy.env up -d caddy
+docker logs --tail=160 studymate-caddy
+curl -I http://matropic.cn
+curl -I https://matropic.cn"""),
+        p("验证成功标志：Caddy 日志出现证书获取成功信息，HTTP 返回 308 并跳转到 HTTPS，HTTPS 返回 HTTP/2 200；证书保存在 studymate_caddy_data 卷中并由 Caddy 自动续期。"),
+        p("证书签发后还应从外部网络核对证书链、域名和有效期，并复测 HTTP 跳转、安全 Cookie 与 SSE，确认业务链路全部处于 HTTPS 下。"),
+        h("6.3 证书切换与域名变更", 2),
+        p("从本地 HTTP、内部证书或旧域名切换到正式域名时，只修改 .deploy.env 中的 SITE_ADDRESS 和 DNS，不复制旧证书文件，也不安装 Certbot。"),
+        code("""# 1. 先把新域名 A 记录解析到服务器
+# 2. 修改服务器 .deploy.env：SITE_ADDRESS=新域名
+docker compose --env-file .deploy.env config --quiet
+docker compose --env-file .deploy.env up -d caddy
+docker logs --tail=160 studymate-caddy
+
+openssl s_client -connect 新域名:443 -servername 新域名 \\
+  </dev/null 2>/dev/null | openssl x509 -noout -issuer -dates"""),
+        note("保留 caddy_data 与 caddy_config；严禁为“重新签证书”而执行 docker compose down -v。", "证书数据保护"),
+        h("7. 验证部署"),
+        h("7.1 检查服务状态", 2),
+        code("""cd ~/studymate
+docker compose --env-file .deploy.env ps
+docker inspect studymate-backend \\
+  --format '{{.State.Status}} / {{.State.Health.Status}}'
+docker inspect studymate-frontend \\
+  --format '{{.State.Status}} / {{.State.Health.Status}}'"""),
+    ],
+    [
+        h("7.1 检查服务状态（续）", 2),
+        table(
+            ["服务", "当前状态", "验证成功标志"],
+            [
+                ["backend", "running / healthy", "/api/ping 返回 status=ok"],
+                ["frontend", "running / healthy", "Nginx 首页健康检查通过"],
+                ["caddy", "running", "80/443 已映射，HTTPS 正常"],
+                ["piston-api", "running", "Python 与 GCC runtime 可查询"],
+            ],
+            widths=[3.6, 4.4, 7.6],
+            font_size=8.0,
+        ),
+        h("7.2 检查端口监听", 2),
+        code("""ss -lntp | grep -E ':(22|80|443|2000|5173|8000)'
+sudo ufw status numbered"""),
+        table(
+            ["端口", "预期监听", "策略"],
+            [
+                ["22", "服务器公网/受限来源", "SSH 维护"],
+                ["80、443", "0.0.0.0 与 ::", "唯一公网 Web 入口"],
+                ["5173", "127.0.0.1", "前端本机排障"],
+                ["8000", "127.0.0.1", "FastAPI 本机排障"],
+                ["2000", "127.0.0.1", "Piston 本机排障"],
+            ],
+            widths=[3.1, 5.4, 7.1],
+            font_size=8.0,
+        ),
+        h("7.3 测试应用访问", 2),
+        code("""curl -I http://matropic.cn
+curl -I https://matropic.cn
+curl -sS https://matropic.cn/api/ping | python3 -m json.tool
+curl -sS http://127.0.0.1:2000/api/v2/runtimes \\
+  | python3 -m json.tool"""),
+        p("当前公网验收结果为 HTTP 308、HTTPS HTTP/2 200；/api/ping 返回 status=ok、已配置真实模型服务，Piston 可查询 Python 3.10 与 GCC 10.2 运行时。"),
+    ],
+    [
+        h("7.4 浏览器访问测试", 2),
+        p("从服务器以外的 PC 浏览器和手机流量网络访问 https://matropic.cn，避免只验证 localhost 形成假阳性。"),
+        bullets([
+            "首页、登录页、课程页、工作台及静态图片正常加载，地址栏显示可信 HTTPS。",
+            "使用管理员、评委、普通学生三类账号登录，角色权限与安全 Cookie 正常。",
+            "切换五门课程，RAG 来源与生成资源不跨课程串用。",
+            "AI 助教逐段返回 meta、delta、done 事件，语音与附件接口提示正常。",
+            "运行 Python、C11、C++17 示例，确认不是 mock 结果。",
+            "页面底部显示豫ICP备2026028221号并链接工信部备案系统。",
+        ]),
+        h("7.5 运行监控与验收记录", 2),
+        code("""bash scripts/deploy.sh status
+docker stats --no-stream
+df -h /
+docker volume ls --format '{{.Name}}' | grep '^studymate_'"""),
+        table(
+            ["验收维度", "2026-07-18 实际结果"],
+            [
+                ["服务器", "Ubuntu 22.04.5、4 vCPU、7.1 GiB、59G 系统盘/43G 可用"],
+                ["服务", "4 个核心容器运行，前后端 healthy"],
+                ["数据", "部署种子 34 用户；线上当前 38 用户；5 课程、938 知识块"],
+                ["数据库", "integrity_check=ok，foreign_key_check=0"],
+                ["公网", "HTTP 308 → HTTPS，HTTPS HTTP/2 200"],
+            ],
+            widths=[4.0, 11.6],
+            font_size=7.8,
+        ),
+        h("8. 常见问题排查"),
+        h("8.1 应用或容器无法启动", 2),
+        p("症状：Compose 显示 Exited、unhealthy 或 restart count 持续增加。先保留现场，不删除卷、不重装 Docker。"),
+        code("""docker compose --env-file .deploy.env ps -a
+docker compose --env-file .deploy.env config --quiet
+docker logs --tail=200 studymate-backend
+docker logs --tail=200 studymate-frontend"""),
+    ],
+    [
+        h("8.1 应用或容器无法启动（续）", 2),
+        table(
+            ["常见原因", "排查与处理"],
+            [
+                ["环境变量缺失", "只核对变量名和 config 输出；不要把真实值写入工单或文档"],
+                ["端口被占用", "用 ss -lntp 查 80/443/5173/8000/2000，停止旧服务"],
+                ["镜像构建失败", "根据失败域名检查 Docker、Debian、PyPI、npm 或 GHCR 对应镜像源"],
+                ["docker.sock 权限", "重新登录 SSH，确认 deploy 属于 docker 组；不要 chmod 777"],
+                ["健康检查失败", "直接 curl 容器本机端点并查看 health 日志"],
+            ],
+            widths=[4.2, 11.4],
+            font_size=7.8,
+        ),
+        h("8.2 502 Bad Gateway", 2),
+        p("症状：浏览器或 Caddy 返回 502。StudyMate 请求链为 Caddy → frontend Nginx → backend:8000，应逐层定位。"),
+        code("""# 1. FastAPI 宿主机回环
+curl -v http://127.0.0.1:8000/api/ping
+# 2. 前端容器访问后端
+docker exec studymate-frontend \\
+  wget -qO- http://backend:8000/api/ping
+# 3. 前端宿主机回环
+curl -I http://127.0.0.1:5173/
+# 4. 公网网关
+curl -Iv https://matropic.cn/"""),
+        table(
+            ["失败位置", "重点检查"],
+            [
+                ["步骤 1", "backend 状态、启动迁移、SQLite 卷、backend 日志"],
+                ["步骤 2", "Compose 网络、服务名 backend、Nginx upstream"],
+                ["步骤 3", "前端构建产物、Nginx 配置与健康检查"],
+                ["步骤 4", "Caddyfile、域名、证书、80/443 映射"],
+            ],
+            widths=[3.5, 12.1],
+            font_size=8.0,
+        ),
+    ],
+    [
+        h("8.3 SQLite 数据库异常", 2),
+        p("症状：后端日志出现 OperationalError、database is locked、no such table 或数据数量异常。SQLite 位于 studymate_backend_data 卷，不存在独立数据库端口和远程密码。"),
+        code("""docker exec -i studymate-backend python <<'PY'
+import sqlite3
+c = sqlite3.connect('/app/data/studymate.db')
+print(c.execute('pragma integrity_check').fetchone())
+print(c.execute('pragma foreign_key_check').fetchall())
+print('users=', c.execute('select count(*) from users').fetchone()[0])
+print('courses=', c.execute('select count(*) from courses').fetchone()[0])
+print('chunks=', c.execute('select count(*) from knowledge_chunks').fetchone()[0])
+PY"""),
+        table(
+            ["现象", "处理方法"],
+            [
+                ["新卷没有数据库", "确认镜像含 resources/seed/studymate.db.gz，查看 entrypoint 日志"],
+                ["线上仍是旧数据", "这是持久化设计；镜像更新不会覆盖已有 /app/data/studymate.db"],
+                ["完整性失败", "停止写入、二次备份，使用最近已验证备份恢复"],
+                ["短时 locked", "检查并发写入、长事务和磁盘，不复制正在写入的数据库文件"],
+            ],
+            widths=[4.2, 11.4],
+            font_size=7.8,
+        ),
+        h("8.4 SSE 或语音流异常", 2),
+        p("参考文档的 WebSocket 实时通信在 StudyMate 中对应 AI 助教 SSE 单向流和独立语音 HTTP 接口。SSE 无需 Upgrade 头，但代理必须关闭响应缓冲并保留足够超时。"),
+        code("""curl -N https://matropic.cn/api/tutor/chat \\
+  -H 'Content-Type: application/json' \\
+  -b '有效测试会话 Cookie' \\
+  -d '{"course_id":1,"messages":[{"role":"user","content":"请简要解释时间复杂度"}]}'
+
+docker logs --tail=200 studymate-backend
+docker logs --tail=200 studymate-frontend"""),
+        p("若无 delta 事件，检查模型提供商出站连通性、backend 日志和 Nginx/Caddy 的缓冲设置；若语音失败，检查讯飞变量是否配置，但不得输出其真实值。"),
+    ],
+    [
+        h("8.5 静态文件 404 或缓存旧版", 2),
+        p("症状：CSS、JS、图片 404，或服务器已更新但浏览器仍显示旧页面。前端采用 Vite 哈希资源与 Nginx SPA 回退。"),
+        code("""docker compose --env-file .deploy.env up -d --build frontend
+docker compose --env-file .deploy.env ps frontend
+docker exec studymate-frontend \\
+  find /usr/share/nginx/html/assets -maxdepth 1 -type f | sort | tail
+curl -fsSI http://127.0.0.1:5173/
+curl -fsSI https://matropic.cn/"""),
+        table(
+            ["现象", "处理"],
+            [
+                ["首页 404", "检查 /usr/share/nginx/html/index.html 与 default.conf"],
+                ["子路由 404", "确认 try_files 回退到 /index.html"],
+                ["旧版页面", "核对新哈希文件；浏览器 Ctrl+F5，不清理数据库"],
+                ["/api 404", "检查 Nginx /api 代理，不要在前端写死公网后端端口"],
+            ],
+            widths=[4.0, 11.6],
+            font_size=8.0,
+        ),
+        h("8.6 上传文件失败", 2),
+        p("症状：413、415、422、解析失败或内容被截断。前端 Nginx 允许最大 20MB，请求到达后端后仍执行 10MB 文件限制、类型校验和最多 16000 字符的提取限制。"),
+        code("""docker logs --tail=200 studymate-frontend
+docker logs --tail=200 studymate-backend
+docker exec studymate-frontend nginx -T 2>/dev/null \\
+  | grep -n 'client_max_body_size'"""),
+        note("不要使用 chmod -R 777 解决上传问题。上传内容写入 backend_data，应检查卷挂载、容器用户、文件类型和接口限制。", "权限原则"),
+    ],
+    [
+        h("8.7 SSL 证书或 Piston 异常", 2),
+        table(
+            ["症状", "排查与处理"],
+            [
+                ["证书申请失败", "检查 DNS A 记录、80/443、安全组、UFW 与 Caddy 日志"],
+                ["域名不匹配/过期", "检查 SITE_ADDRESS、系统时间和 caddy_data；让 Caddy自动管理"],
+                ["GHCR 镜像失败", "运行 scripts/import-piston-image.sh 或从已验证主机离线导入"],
+                ["runtimes 为空", "运行 scripts/init-piston.sh，确认 piston_data 卷未被删除"],
+                ["代码返回 mock/502", "检查 backend 到 piston-api:2000 的 Docker 内网连接"],
+            ],
+            widths=[4.4, 11.2],
+            font_size=7.8,
+        ),
+        code("""getent ahostsv4 matropic.cn
+docker logs --tail=200 studymate-caddy
+openssl s_client -connect matropic.cn:443 \\
+  -servername matropic.cn </dev/null 2>/dev/null \\
+  | openssl x509 -noout -issuer -dates
+
+docker inspect studymate-piston --format '{{.State.Status}}'
+curl -sS http://127.0.0.1:2000/api/v2/runtimes \\
+  | python3 -m json.tool"""),
+        h("9. 日常运维"),
+        h("9.1 查看日志", 2),
+        code("""cd ~/studymate
+docker compose --env-file .deploy.env logs -f --tail=200 backend
+docker compose --env-file .deploy.env logs -f --tail=200 frontend
+docker compose --env-file .deploy.env logs -f --tail=200 caddy
+docker compose --env-file .deploy.env logs -f --tail=200 piston-api"""),
+        p("Docker daemon 使用 local 日志驱动，单容器日志按 100MB、最多 5 个文件轮换；出现故障时先保存相应时间段日志、请求路径和版本号。"),
+    ],
+    [
+        h("9.2 服务管理、更新与备份", 2),
+        code("""cd ~/studymate
+bash scripts/deploy.sh status
+docker compose --env-file .deploy.env restart backend
+docker compose --env-file .deploy.env restart frontend
+docker compose --env-file .deploy.env restart caddy
+
+# 仅更新前端
+docker compose --env-file .deploy.env up -d --build frontend
+# 完整更新
+bash scripts/deploy.sh"""),
+        p("Docker 的 restart: unless-stopped 与 Compose 命令等价替代参考文档中的 Supervisor：宿主机重启后自动恢复，日常可统一查看状态、日志、重启和更新。停止整个应用可使用 deploy.sh down，该命令不删除卷。"),
+        h("9.2.1 SQLite 在线备份与恢复", 3),
+        code("""mkdir -p ~/studymate-backups
+docker exec studymate-backend python -c '
+import sqlite3
+s=sqlite3.connect("/app/data/studymate.db")
+d=sqlite3.connect("/app/data/studymate-backup.db")
+s.backup(d); d.close(); s.close()'
+docker cp studymate-backend:/app/data/studymate-backup.db \\
+  ~/studymate-backups/studymate-$(date +%F_%H%M%S).db
+docker exec studymate-backend rm -f /app/data/studymate-backup.db"""),
+        p("恢复前先再次备份当前数据库并停止 backend，再把已验证备份写入 studymate_backend_data；启动后重新执行用户/课程/知识块数量、integrity_check 与 foreign_key_check。至少保留一份异机备份。"),
+        note("更新不得执行 docker compose down -v；该命令会删除线上 SQLite、Piston runtime 和 Caddy 证书。", "数据保护红线"),
+    ],
+    [
+        h("9.3 性能与资源优化", 2),
+        table(
+            ["对象", "当前优化", "扩容前检查"],
+            [
+                ["Caddy", "HTTP/2、zstd/gzip、自动 TLS", "连接数、证书日志、出口带宽"],
+                ["Frontend Nginx", "Vite 哈希资源、静态缓存、SPA 回退", "缓存头、资源 404、镜像体积"],
+                ["FastAPI/Uvicorn", "异步接口、SSE、健康检查", "AI 延迟、超时、CPU/内存"],
+                ["SQLite/RAG", "命名卷、在线备份、938×1024 向量内存检索", "写锁、慢查询、数据量与并发"],
+                ["Piston", "2 CPU、2GB、256 PID、2 并发、10/15 秒超时", "沙箱队列、runtime、磁盘"],
+                ["Docker", "构建缓存、local 日志轮换、unless-stopped", "镜像缓存、重启次数、磁盘"],
+            ],
+            widths=[3.2, 7.2, 5.2],
+            font_size=7.5,
+        ),
+        code("""docker stats --no-stream
+docker system df
+df -h /
+docker inspect studymate-backend \\
+  --format 'restart={{.RestartCount}} memory={{.HostConfig.Memory}}'
+
+docker exec -i studymate-backend python <<'PY'
+import sqlite3
+c=sqlite3.connect('/app/data/studymate.db')
+print(c.execute('pragma integrity_check').fetchone())
+c.execute('pragma optimize')
+PY"""),
+        bullets([
+            "当前 4 vCPU、7.1 GiB 服务器适合竞赛演示和小规模访问；扩大并发前先压测。",
+            "不要缓存鉴权、SSE 或个性化 API 响应；长缓存仅用于带内容哈希的静态资源。",
+            "SQLite 适合当前单机规模；只有实际写并发和数据规模超出边界时再评估 PostgreSQL。",
+            "清理镜像、备份或日志前先列出对象并确认用途，不在自动脚本中执行破坏性 prune。",
+        ]),
+    ],
+    [
+        h("10. 附录"),
+        h("10.1 文件说明", 2),
+        code("""studymate/
+├── backend/                         # FastAPI、Uvicorn、SQLite 与种子资源
+│   ├── app/                         # API、模型、智能体、RAG
+│   ├── resources/seed/studymate.db.gz
+│   ├── scripts/docker_entrypoint.py
+│   └── Dockerfile
+├── frontend/                        # React、Vite、Nginx
+│   ├── src/
+│   ├── nginx.conf
+│   └── Dockerfile
+├── scripts/                         # 初始化、部署、种子和 Piston 工具
+├── docs/                            # 应用维护与部署说明
+├── docker-compose.yml
+├── Caddyfile
+├── .env.example                     # 后端运行配置模板
+├── .deploy.env.example
+└── README.md"""),
+        table(
+            ["文件/目录", "用途", "是否含敏感值"],
+            [
+                ["docker-compose.yml", "四个核心服务、网络、卷、资源限制", "否"],
+                ["Caddyfile", "公网 HTTPS、压缩、反向代理", "否"],
+                [".deploy.env.example", "生产 Compose 变量模板", "否"],
+                ["backend/.env", "模型、语音、邮件、认证运行配置", "是，仅服务器"],
+                ["backend_data", "线上 SQLite 与上传内容", "是，命名卷"],
+                ["resources/seed/studymate.db.gz", "脱敏首次启动基线", "仅获准演示数据"],
+            ],
+            widths=[5.2, 7.0, 3.4],
+            font_size=7.6,
+        ),
+    ],
+    [
+        h("10.1 文件说明（续）", 2),
+        table(
+            ["参考文档部署文件", "StudyMate 对应文件/机制"],
+            [
+                ["gunicorn_config.py", "backend 容器内 Uvicorn 启动入口"],
+                ["Nginx sites-available", "frontend/nginx.conf + Caddyfile"],
+                ["Supervisor 配置", "docker-compose.yml restart: unless-stopped"],
+                ["数据库安装/建库脚本", "压缩 SQLite 种子 + backend_data 首次播种"],
+                ["monitor.sh", "deploy.sh status、Compose ps/logs、docker stats"],
+                ["backup.sh", "SQLite backup API 命令；当前由维护人员按需执行"],
+            ],
+            widths=[6.1, 9.5],
+            font_size=7.8,
+        ),
+        table(
+            ["生产项", "当前状态"],
+            [
+                ["公网地址", "https://matropic.cn"],
+                ["ICP备案", "豫ICP备2026028221号"],
+                ["核心容器", "backend/frontend healthy，caddy/piston running"],
+                ["部署数据", "种子 34 用户；线上当前 38 用户；5 课程、938 知识块"],
+                ["代码运行", "Python 3.10、C11、C++17；Python 含 scikit-learn 1.3.2"],
+            ],
+            widths=[4.2, 11.4],
+            font_size=7.8,
+        ),
+        h("10.2 移动端与小程序部署情况", 2),
+        p("StudyMate 当前交付形态是响应式 Web，不另行发布微信小程序。手机浏览器可直接通过备案域名访问，复用同一套 HTTPS、账号、课程和后端接口，不存在体验版、审核中或独立小程序服务器。"),
+        image("mobile_web.png", "图 10-1 StudyMate 移动端 Web 访问示意", 7.0),
+    ],
+    [
+        h("10.2 移动端与小程序部署情况（续）", 2),
+        table(
+            ["终端", "适合功能", "使用建议"],
+            [
+                ["手机浏览器", "登录、课程浏览、AI 助教、笔记、测验、学习报告", "直接访问 matropic.cn"],
+                ["PC 浏览器", "思维导图、复杂可视化、长文档编辑、在线编程", "竞赛完整演示首选"],
+                ["微信小程序", "当前未发布", "如后续立项，需单独完成主体、备案、审核与接口适配"],
+            ],
+            widths=[3.4, 7.0, 5.2],
+            font_size=7.8,
+        ),
+        h("10.3 测试网址与账号", 2),
+        image("site_qr.png", "图 10-2 StudyMate 网页端直达二维码", 5.0),
+        p("公网安全访问网址：https://matropic.cn；公网 IP：121.40.64.199。浏览器应直接显示可信 HTTPS。"),
+        table(
+            ["账号组", "账号范围", "数量", "竞赛测试密码"],
+            [
+                ["管理员", "admin@studymate.com", "1", "admin123456"],
+                ["评委", "judge01@studymate.com ～ judge10@studymate.com", "10", "judge123456"],
+                ["命名学生", "8 个指定 @studymate.com 学生账号", "8", "user123456"],
+                ["编号测试", "test1@studymate.com ～ test15@studymate.com", "15", "由维护变量单独设置，不在文档记录"],
+            ],
+            widths=[2.8, 7.2, 1.6, 4.0],
+            font_size=7.3,
+        ),
+        note("以上共 34 个账号构成可提交种子基线。线上当前共有 38 个用户，新增用户属于持久化运行数据，镜像更新不会自动删除。", "账号口径"),
+    ],
+    [
+        h("10.3 测试网址与账号（续）", 2),
+        p("8 个命名学生账号为：sunjiayu、baixinyue、yuanshicong、chenzhuo、lijiayi、zhouxiang、tianyixin、liufei，邮箱域均为 @studymate.com。测试账号仅用于竞赛环境，正式运营前应统一轮换密码并重新审计权限。"),
+        h("10.4 项目代码与交付清单", 2),
+        p("项目代码随竞赛作品源码压缩包提交，服务器部署目录为 /home/deploy/studymate。正式提交时在本节补充代码仓库或网盘链接及对应二维码；当前文档不虚构尚未确定的公开地址。"),
+        table(
+            ["交付文件", "用途"],
+            [
+                ["scripts/bootstrap-ubuntu.sh", "Ubuntu、Docker、镜像源和 UFW 一次性初始化"],
+                ["scripts/deploy.sh", "一键构建、启动、状态、日志和安全停止"],
+                ["scripts/import-piston-image.sh", "GHCR 受限时导入 Piston 镜像"],
+                ["scripts/init-piston.sh", "幂等安装 Python/GCC runtime 与 scikit-learn"],
+                ["scripts/build_seed_db.py", "生成并校验 34 账号脱敏压缩种子"],
+                ["项目部署文档.docx/.pdf", "完整的部署、验收、排障和运维说明"],
+                ["系统部署说明书.docx/.pdf", "面向快速交付的系统部署说明"],
+            ],
+            widths=[7.0, 8.6],
+            font_size=7.6,
+        ),
+        h("最终验收清单", 3),
+        bullets([
+            "域名、DNS、备案与可信 HTTPS 正常。",
+            "四个核心容器及命名卷状态正常。",
+            "种子 34 个获准账号准确，线上新增数据已区分。",
+            "5 门课程、938 个知识块及 938 个检索向量完整。",
+            "登录、RAG、AI SSE、语音/附件、Python/C/C++ 通过。",
+            "备份、前端快速更新、完整更新和回滚命令可执行。",
+            "交付包排除真实密钥、本地数据库、日志、缓存和私钥。",
+            "作者姓名、代码链接/二维码在正式提交前补齐。",
+        ]),
+        note("公开交付包只能包含 .env.example、.deploy.env.example 和脱敏种子库，不包含服务器 backend/.env、.deploy.env 或任何真实 API Key。", "提交前检查"),
+    ],
+]
 
 
 SHORT_TOC = [
@@ -1323,147 +1907,203 @@ SHORT_PAGES = [
     [
         h("1 系统概述"),
         h("1.1 项目简介", 2),
-        p("StudyMate 是面向高校计算机类课程的个性化资源生成与学习多智能体系统。系统融合大语言模型、RAG、7 组学习画像、语音交互与在线代码执行，将课程知识、智能资源、笔记、测验、学习报告和就业能力建议连接为完整学习闭环。"),
+        p("StudyMate 是面向高校计算机类课程的个性化资源生成与学习多智能体系统，融合学习画像、混合检索、资源生成、测验评估、语音交互和在线代码执行。"),
+        p("系统覆盖五门计算机课程，七个智能体分别负责检索、讲解、导图、测验、阅读、代码和学习路径，生成内容可保存并追溯来源。"),
         h("1.2 环境地址", 2),
         p("开发环境：http://localhost:5173"),
         p("生产环境：https://matropic.cn（已部署，可访问）"),
         p("服务器公网 IP：121.40.64.199；备案号：豫ICP备2026028221号。"),
-        p("测试账户：管理员 admin@studymate.com；评委 judge01 至 judge10。密码仅限竞赛测试使用。"),
+        p("测试账户：种子库共 34 个账号，包括 1 个管理员、10 个评委、15 个编号测试账号和 8 个命名学生；线上当前共有 38 个用户。"),
+        p("竞赛账号使用约定测试密码；test1～test15 的密码由维护人员通过专用变量设置。"),
         h("1.3 核心功能模块", 2),
         table(
             ["功能模块", "核心功能点"],
             [
-                ["用户与画像", "多角色登录、7 组动态画像与就业技能"],
-                ["课程与 RAG", "五门课程、938 知识块、原文追溯"],
-                ["多智能体", "检索与讲解、导图、测验、代码、阅读、路径协同生成"],
-                ["AI 助教", "课程上下文、多轮对话、SSE 流式回复、附件"],
-                ["学习闭环", "笔记、错题、测验、报告、反馈与画像回写"],
-                ["拓展与就业", "300 个可视主题、高相关公开资源、可信阅读直链、可解释岗位推荐"],
-                ["在线编程", "Python、C11、C++17 沙箱运行"],
+                ["用户与权限", "邮箱认证：支持注册、登录、退出和会话续期。\n角色权限：区分 student、judge、admin。\n安全会话：采用 HttpOnly、SameSite 与 Secure Cookie。"],
+                ["学习画像", "七维画像：记录基础、目标、薄弱点和学习偏好。\n证据更新：结合测验、行为和图片识别。\n确认写回：报告经用户确认后更新画像。"],
+                ["课程与 RAG", "课程空间：五门课程独立检索与会话。\n混合检索：BM25 与 Qwen 向量经 RRF 融合。\n引用追溯：展示来源、页码和原文片段。"],
+                ["多智能体生成", "Retriever：检索课程证据。\nDoc、MindMap、Quiz、Reading、Code：生成学习资源。\nPath：规划渐进学习路径并保存工作台。"],
+                ["AI 助教", "课程对话：结合上下文和画像多轮问答。\n学习模式：支持费曼讲解与苏格拉底追问。\n流式与附件：支持 SSE、图片和文档。"],
             ],
             widths=[4.0, 12.0],
-            font_size=8.0,
+            font_size=7.2,
         ),
     ],
     [
+        table(
+            ["功能模块", "核心功能点"],
+            [
+                ["学习闭环", "笔记与错题：支持文件夹、标签和课程归档。\n测验报告：记录作答、掌握度和阶段建议。\n画像回写：确认后的结果用于后续生成。"],
+                ["可视讲解", "主题资源：五门课程共 300 个可视主题。\n呈现方式：包含动画、黑板、公式、代码和图表。"],
+                ["语音与拍照", "语音能力：支持 ASR 输入和多音色 TTS。\n图片能力：支持看图问答、拍照识题和图片转笔记。\n附件能力：支持常用文档与代码文件。"],
+                ["拓展与就业", "学习资源：接入公开课程和可信阅读详情页。\n岗位建议：依据画像、课程和测验生成能力差距建议。"],
+                ["代码与管理", "在线编程：运行 Python、C11 和 C++17，并限制资源。\n管理功能：支持账号、评委测试、反馈和统计。\n终端访问：PC 与手机共用 HTTPS 站点。"],
+            ],
+            widths=[4.0, 12.0],
+            font_size=7.0,
+        ),
         h("2 技术架构"),
         h("2.1 系统架构", 2),
-        p("系统采用前后端分离、分层解耦和 Docker Compose 容器化部署。公网请求经 Caddy 完成 HTTPS 和反向代理，前端 Nginx 托管 React 静态资源并代理 /api，FastAPI 连接 SQLite、课程 RAG、外部 AI 服务和 Piston 沙箱。"),
+        p("系统采用前后端分离和 Docker Compose 部署：Caddy 提供 HTTPS，Nginx 托管前端并代理 /api，FastAPI 连接 SQLite、课程 RAG、AI 服务和 Piston。"),
+        p("业务数据库、Piston runtime 和 HTTPS 证书分别保存在命名卷中，容器重建与前端更新不会覆盖已有运行数据。"),
         image("architecture_short.png", "图 2-1 系统架构图", 11.8, 13.0),
     ],
     [
         h("2.2 技术栈详情", 2),
         table(
-            ["分层", "技术/组件", "核心作用"],
+            ["分层", "技术/组件", "核心作用及当前状态"],
             [
-                ["基础设施", "Ubuntu、Docker、Compose", "统一运行与管理容器"],
-                ["网关", "Caddy 2", "HTTPS、压缩、反向代理"],
-                ["前端", "React 19、Vite 8、Nginx", "交互界面与静态站点"],
-                ["后端", "FastAPI、Uvicorn、SQLAlchemy", "API、认证、SSE 与业务逻辑"],
-                ["数据", "SQLite、BM25、Named Volume", "业务数据与课程检索"],
-                ["智能体", "LangGraph、LLM API", "资源生成和智能答疑"],
-                ["代码执行", "Piston、Python、GCC", "隔离编译和运行代码"],
+                ["基础设施层", "阿里云 ECS / Ubuntu 22.04.5", "提供云主机、公网和备案域名。"],
+                ["基础设施层", "Docker 29.6.1 / Compose v5.3.1", "编排容器、网络、卷和自动重启。"],
+                ["基础设施层", "Caddy 2", "提供 80/443、自动 HTTPS 和压缩。"],
+                ["基础设施层", "Node 20 + Frontend Nginx", "完成前端构建、静态托管和 /api 代理。"],
+                ["数据与检索层", "SQLite / SQLAlchemy / aiosqlite / Named Volume", "保存业务与向量数据，空卷首次播种。"],
+                ["数据与检索层", "BM25 + 中英文分词", "完成课程关键词召回。"],
+                ["数据与检索层", "Qwen Embedding + RRF", "融合语义召回与 BM25 排名。"],
+                ["数据与检索层", "PostgreSQL / Redis / Chroma", "extras 可选预留，主链路未启用。"],
+                ["智能体与模型层", "DeepSeek / 星火 / MiMo / Qwen / Qwen-VL", "提供生成、助教、视觉和向量能力。"],
+                ["智能体与模型层", "并发编排 + 7 个资源 Agent", "并发生成学习资源和路径。"],
+                ["智能体与模型层", "讯飞 ASR/TTS + 可选 CosyVoice", "提供语音输入与多音色朗读。"],
+                ["应用层（后端）", "Python 3.11 + FastAPI 0.115 + Uvicorn 0.32", "提供业务、AI、语音和代码 API。"],
+                ["应用层（后端）", "Pydantic + SSE-Starlette + HTTPX / OpenAI SDK", "负责校验、流式事件和外部调用。"],
+                ["应用层（后端）", "pypdf + multipart + pwdlib / aiosmtplib", "支持附件、认证和邮箱验证码。"],
+                ["应用层（前端）", "React 19.2.6 + TypeScript 6.0.2 + Vite 8.0.12", "构建响应式单页应用。"],
+                ["应用层（前端）", "Tailwind + Framer Motion + Monaco", "实现样式、动画和代码编辑。"],
+                ["应用层（前端）", "Markdown / KaTeX / Shiki / Markmap / XYFlow / Recharts", "展示文档、公式、导图、路径和图表。"],
+                ["代码沙箱层", "Piston isolate", "在 Docker 内网隔离执行代码。"],
+                ["代码沙箱层", "Python 3.10 / GCC 10.2 / scikit-learn 1.3.2", "运行 Python、C11 和 C++17。"],
+                ["用户层", "PC / 手机 Web 浏览器", "通过同一 HTTPS 域名访问。"],
             ],
-            widths=[3.0, 5.1, 7.9],
-            font_size=7.7,
+            widths=[2.7, 4.4, 8.7],
+            font_size=7.9,
+            merge_columns=[0],
+            center_columns=[0, 1],
+            width_ratio=0.93,
         ),
         h("3 环境要求"),
         h("3.1 硬件配置", 2),
         table(
             ["配置级别", "CPU", "内存", "SSD", "带宽", "场景"],
             [
-                ["最低", "2 核", "4GB", "30GB", "5Mbps", "开发、低并发"],
-                ["推荐", "4 核", "8GB", "60GB", "10Mbps", "竞赛公网演示"],
-                ["生产", "8 核+", "16GB+", "100GB+", "20Mbps+", "多用户并发"],
+                ["最低", "2 核", "4GB", "30GB", "5Mbps", "开发、功能测试和低并发演示"],
+                ["推荐", "4 核", "8GB", "60GB", "10Mbps", "竞赛评委访问与小规模公网使用"],
+                ["当前", "4 vCPU", "7.1GiB", "59GB", "公网带宽", "已部署，系统盘约 43GB 可用"],
             ],
             widths=[2.4, 2.0, 2.0, 2.2, 2.3, 5.1],
             font_size=7.5,
         ),
-        p("当前服务器：4 vCPU、7.1 GiB 内存、59 GB 系统盘，满足竞赛展示与小规模访问需求。"),
+        p("当前配置满足竞赛展示与小规模公网访问。"),
     ],
     [
         h("3.2 软件环境", 2),
         table(
-            ["软件/组件", "版本要求", "当前环境"],
+            ["软件/组件", "版本/位置", "作用"],
             [
-                ["操作系统", "Ubuntu 22.04 LTS", "22.04.5 x86_64"],
-                ["Docker", "24+", "29.6.1"],
-                ["Docker Compose", "V2+", "v5.3.1"],
-                ["Python", "3.11（容器）", "3.11 slim"],
-                ["Node.js", "20（构建）", "20 alpine"],
-                ["Caddy", "2.x", "2 alpine"],
+                ["Ubuntu Server", "22.04.5 / 宿主机", "提供 Docker、SSH 和防火墙环境。"],
+                ["Docker + Compose", "29.6.1 / v5.3.1 / 宿主机", "管理镜像、容器、网络、卷和重启。"],
+                ["Caddy", "2.x / caddy 容器", "提供公网 HTTPS、跳转和代理。"],
+                ["Nginx + Node/Vite", "alpine、20 / frontend", "构建并托管前端，代理 /api/SSE。"],
+                ["Python/FastAPI", "3.11 / 0.115 / backend", "由 Uvicorn 运行后端 ASGI 服务。"],
+                ["SQLite/SQLAlchemy", "2.0.36 / backend_data", "持久化业务与向量数据。"],
+                ["Piston", "latest / piston-api", "隔离运行 Python、C 和 C++。"],
+                ["维护工具", "Git/Rsync/Curl/Skopeo/UFW / 宿主机", "上传、检查、镜像导入和防火墙维护。"],
+                ["浏览器/DNS/CA", "现代浏览器 / 公网", "通过正式域名和可信证书访问。"],
             ],
-            widths=[4.2, 5.2, 6.6],
-            font_size=8.0,
+            widths=[3.6, 5.0, 7.6],
+            font_size=7.0,
+            center_columns=[0, 1],
+            width_ratio=0.96,
         ),
         h("3.3 网络与端口", 2),
         table(
-            ["端口", "用途", "访问策略"],
+            ["范围", "端口/网络", "用途", "访问策略"],
             [
-                ["22", "SSH", "建议仅维护 IP"],
-                ["80", "HTTP/ACME", "公网开放"],
-                ["443", "HTTPS", "公网开放"],
-                ["5173/8000/2000", "前端/后端/Piston", "仅 127.0.0.1"],
+                ["SSH", "22/TCP", "远程维护", "仅可信来源"],
+                ["公网 Web", "80/443", "ACME、跳转和 HTTPS", "公网开放"],
+                ["宿主回环", "5173/8000/2000", "前端、后端和 Piston 排障", "仅 127.0.0.1"],
+                ["容器内网", "192.168.242.0/24", "核心服务通过名称互访", "不经公网"],
+                ["出站", "DNS/80/443", "镜像、证书、模型和公开资源", "按需允许"],
             ],
-            widths=[3.2, 5.7, 7.1],
+            widths=[3.0, 3.5, 5.5, 4.2],
+            font_size=7.0,
+            center_columns=[0, 1],
+            width_ratio=0.97,
         ),
         h("4 部署流程"),
         h("4.1 部署准备", 2),
-        bullets(["Ubuntu 22.04 服务器与 deploy 用户", "matropic.cn A 记录指向 121.40.64.199", "安全组开放 22/80/443", "准备项目、脱敏压缩种子库和服务器 backend/.env", "真实 API Key 仅保存在服务器，权限 600"]),
+        bullets(["准备 Ubuntu 22.04 服务器和 deploy 用户", "确认域名解析及 22/80/443 规则", "准备项目、脱敏种子库和服务器环境变量", "真实密钥仅保存在服务器，文件权限设为 600"]),
+        p("Uvicorn、Docker restart/Compose、SQLite 命名卷以及 Caddy + Nginx 分别承担应用运行、进程恢复、数据持久化和公网代理，宿主机无需另装业务运行时。"),
+        p("部署前确认镜像源可用、生产 Profile 已启用，Compose 配置和压缩种子库校验通过。"),
+        p("同时应准备可恢复的数据备份并确认端口边界，避免在缺少回滚点或公网规则不明确时直接上线。"),
     ],
     [
         h("4.2 详细部署步骤", 2),
-        p("步骤一：以 root/云助手安装 Docker、Compose、Skopeo 和 UFW："),
+        p("步骤一：以 root/云助手安装 Docker、Compose、Skopeo 和 UFW，完成后重新登录 SSH："),
         code("""DEPLOY_USER=deploy \\
- bash /home/deploy/studymate-bootstrap.sh"""),
-        p("步骤二：上传项目，排除生产环境变量和本地依赖："),
+ bash /home/deploy/studymate-bootstrap.sh
+docker --version
+docker compose version"""),
+        p("确认 Docker 为 active、deploy 属于 docker 组；下载失败时按 Docker Hub、GHCR 或依赖源分别排查。"),
+        p("步骤二：生成脱敏 Docker 种子，保留 34 个账号、5 门课程和 938 个知识块/向量："),
+        code("""cd studymate
+python3 scripts/build_seed_db.py
+gzip -t backend/resources/seed/studymate.db.gz"""),
+        p("确认数量正确、integrity_check=ok、foreign_key_check=0，且本地运行库未被修改。"),
+        p("步骤三：上传项目，并排除环境变量、本地数据库、依赖、日志和备份："),
         code("""rsync -az --delete --progress \\
  --exclude '.git/' \\
  --exclude 'frontend/node_modules/' \\
  --exclude 'backend/.venv/' \\
  --exclude 'backend/.env' \\
- --exclude 'backend/backups/' \\
  --exclude 'backend/studymate.db' \\
- --exclude 'backups/' \\
  --exclude '.deploy.env' \\
- --exclude '*.log' \\
+ --exclude 'backups/' --exclude '*.log' \\
  ./studymate/ studymate-server:~/studymate/"""),
-        p("步骤三：配置 .deploy.env："),
+        p("上传后确认 Compose、Caddyfile、部署脚本和压缩种子存在，服务器环境变量与备份未被覆盖。"),
+        p("步骤四：配置 .deploy.env 与 backend/.env，真实值仅保存在服务器："),
         code("""COMPOSE_PROFILES=public,code-runner
 SITE_ADDRESS=matropic.cn
-HTTP_PORT=80
-HTTPS_PORT=443"""),
-        p("步骤四：配置 backend/.env，并限制权限："),
-        code("""CORS_ORIGINS=https://matropic.cn
+CORS_ORIGINS=https://matropic.cn
 SESSION_COOKIE_SECURE=true
 chmod 600 backend/.env .deploy.env"""),
+        note("真实模型、语音、邮件和认证密钥不得进入文档、截图、Git 或镜像。", "配置边界"),
     ],
     [
         h("4.2 详细部署步骤（续）", 2),
-        p("步骤五：GHCR 访问受限时导入 Piston："),
+        p("步骤五：GHCR 受限时导入 Piston，并初始化 Python/GCC runtime："),
         code("""cd ~/studymate
 bash scripts/import-piston-image.sh"""),
-        p("步骤六：执行一键部署："),
+        p("Piston 运行时保存在 piston_data，后续更新无需重复下载。"),
+        p("步骤六：一键构建、启动核心服务并初始化运行时："),
         code("""cd ~/studymate
-bash scripts/deploy.sh"""),
-        p("步骤七：检查服务、HTTPS 和运行时："),
+bash scripts/deploy.sh
+docker compose --env-file .deploy.env config --quiet"""),
+        p("步骤七：检查服务、HTTPS、API 与运行时："),
         code("""bash scripts/deploy.sh status
 curl -I https://matropic.cn
 curl https://matropic.cn/api/ping
-curl http://127.0.0.1:2000/api/v2/runtimes"""),
+curl http://127.0.0.1:2000/api/v2/runtimes
+ss -lntp | grep -E ':(80|443|2000|5173|8000)'"""),
         h("4.3 部署完成与访问确认", 2),
         table(
-            ["验收项", "结果"],
+            ["验收对象", "检查方法", "成功标志", "实测"],
             [
-                ["核心容器", "backend/frontend healthy，caddy/piston running"],
-                ["HTTPS", "HTTP 308 → HTTPS，HTTPS HTTP/2 200"],
-                ["数据", "19 用户、5 课程、938 知识块，完整性正常"],
-                ["功能", "登录、AI SSE、可信阅读链接、2MB 上传、Python/C++ 运行通过"],
-                ["备案", "豫ICP备2026028221号已显示"],
+                ["域名与 HTTPS", "getent、curl、外网浏览器", "解析正确，HTTP 跳转，HTTPS 200", "通过"],
+                ["核心容器", "compose ps", "前后端 healthy，网关/沙箱运行", "通过"],
+                ["端口边界", "ss、安全组、UFW", "仅 80/443 公网", "通过"],
+                ["数据完整性", "数量、integrity/FK", "34 个种子账号、5 门课、938 块/向量", "线上 38 用户"],
+                ["角色与会话", "三类账号登录", "权限分离，登录与退出正常", "通过"],
+                ["RAG 与 AI", "课程问答、SSE", "引用正确，流式事件完整", "通过"],
+                ["附件/语音/代码", "文件、录音、Python/C/C++", "解析、ASR/TTS 和运行正常", "通过"],
+                ["备案与移动端", "PC/手机外网访问", "备案可见，页面响应式可用", "通过"],
             ],
-            widths=[4.3, 11.7],
-            font_size=8.0,
+            widths=[2.7, 4.2, 5.5, 3.7],
+            font_size=6.55,
+            center_columns=[0],
+            width_ratio=0.97,
         ),
+        p("Caddy 自动申请并续期正式证书；最终应从服务器外部网络完成角色、课程、AI、附件、语音、代码和备案验收。"),
+        p("验收记录应与本次代码版本和数据库备份对应，便于后续复现问题或执行回滚。"),
     ],
     [
         h("5 运维与监控"),
@@ -1472,24 +2112,479 @@ curl http://127.0.0.1:2000/api/v2/runtimes"""),
 bash scripts/deploy.sh status
 bash scripts/deploy.sh logs
 docker stats --no-stream
-df -h"""),
+docker system df
+df -h
+sudo ufw status numbered"""),
         p("仅更新前端：同步 frontend 后执行 docker compose --env-file .deploy.env up -d --build frontend。完整更新：同步代码后执行 bash scripts/deploy.sh。"),
+        p("每次更新应记录部署时间和验收结果；即使只修改前端，也要从公网复测首页、登录和 /api 代理。"),
         h("5.2 数据备份与恢复", 2),
-        p("线上 SQLite 位于 studymate_backend_data 卷。更新前应使用 SQLite backup API 或 docker cp 生成备份。恢复前停止 backend，恢复后执行 integrity_check。"),
+        p("线上 SQLite 位于 studymate_backend_data 卷，更新前使用 backup API 生成一致快照："),
+        code("""mkdir -p ~/studymate-backups
+docker exec studymate-backend python -c '
+import sqlite3
+s=sqlite3.connect("/app/data/studymate.db")
+d=sqlite3.connect("/app/data/backup.db")
+s.backup(d); d.close(); s.close()'
+docker cp studymate-backend:/app/data/backup.db \\
+ ~/studymate-backups/studymate-$(date +%F_%H%M%S).db"""),
+        p("恢复前停止 backend 并备份当前库；恢复后检查核心数量、完整性和外键。"),
         note("严禁执行 docker compose down -v，该命令会删除数据库、Piston runtime 和 Caddy 证书。", "数据保护"),
-        p("Piston 为运行 isolate 使用 privileged 容器，因此其 2000 端口只绑定 127.0.0.1，并设置 2CPU、2GB、256 PID 和 2 个并发任务的容器整体上限。"),
+        p("Piston 仅绑定 127.0.0.1，并保留 CPU、内存、PID 和并发限制；日常关注日志、磁盘、容器重启和 SQLite 写锁。"),
         h("5.3 故障排查", 2),
         table(
-            ["问题", "处理方法"],
+            ["症状", "定位方法", "处理与禁忌"],
             [
-                ["502/后端异常", "检查 backend health 与前后端日志"],
-                ["证书失败", "检查 DNS、安全组 80/443 和 Caddy 日志"],
-                ["镜像超时", "检查国内 mirror；Piston 执行导入脚本"],
-                ["代码无法运行", "检查 Piston 容器和 runtimes"],
-                ["前端未更新", "重建 frontend 并 Ctrl+F5"],
+                ["容器无法启动", "config、ps 和容器日志", "修复变量或构建，禁止删除卷。"],
+                ["镜像拉取超时", "按 Docker Hub、GHCR、依赖源定位", "切换对应国内源；Piston 使用导入脚本。"],
+                ["502 Bad Gateway", "逐层检查 backend、Nginx、Caddy", "修复失败层并重启对应服务。"],
+                ["SQLite 异常", "检查数据卷、完整性、外键和写锁", "停止写入并在线备份，禁止 down -v。"],
+                ["AI/SSE/语音异常", "检查事件流、日志、出站与配置", "恢复网络或变量，不输出真实密钥。"],
+                ["静态或上传异常", "检查哈希缓存、代理和大小格式", "重建前端或调整文件，不使用 777。"],
+                ["SSL/Piston 异常", "检查 DNS、端口、Caddy、runtime API", "让 Caddy 重试或重新初始化 runtime。"],
             ],
-            widths=[5.0, 11.0],
-            font_size=8.0,
+            widths=[3.0, 5.4, 7.7],
+            font_size=6.65,
+            center_columns=[0],
+            width_ratio=0.97,
         ),
     ],
 ]
+
+
+def _insert_before_heading(pages, heading_text, blocks):
+    """Insert logical-flow content before the first matching heading."""
+    for page in pages:
+        for index, block in enumerate(page):
+            if block.get("kind") == "heading" and block.get("text") == heading_text:
+                page[index:index] = blocks
+                return
+    raise ValueError(f"Heading not found: {heading_text}")
+
+
+# Natural-flow additions: these sections intentionally add explanation and
+# release criteria rather than more copies of Docker/curl commands.
+_insert_before_heading(
+    LONG_PAGES,
+    "2. 系统要求",
+    [
+        h("1.4 部署目标、适用范围与非目标", 2),
+        p("本方案的目标是在一台已备案的 Ubuntu 服务器上，以可复现、可备份、可回滚的方式运行 StudyMate，并为竞赛评委和小规模公网用户提供统一 HTTPS 入口。Docker Compose 负责服务编排，命名卷负责业务数据、代码运行时和证书持久化。"),
+        table(
+            ["边界项", "当前定义", "部署含义"],
+            [
+                ["适用规模", "竞赛展示、小规模公网访问", "以单机资源和 SQLite 写并发为容量边界，扩容前先压测。"],
+                ["核心服务", "Caddy、Frontend、Backend、Piston", "公网只进入 Caddy，其余服务通过回环或 Docker 内网访问。"],
+                ["数据权威", "backend_data 中的线上 SQLite", "镜像种子只初始化空卷，日常构建不得覆盖已有数据。"],
+                ["外部依赖", "模型、语音、邮件和公开资源平台", "不可用时按能力降级，不把第三方故障误判为数据库或容器故障。"],
+                ["非目标", "多机高可用、自动故障转移、多地域容灾", "如业务规模超过单机边界，应单独设计外置数据库、对象存储和负载均衡。"],
+            ],
+            widths=[3.2, 5.0, 7.4],
+            font_size=7.5,
+            center_columns=[0],
+        ),
+        p("因此，本次交付强调的是部署过程可重复、数据可恢复、故障可定位和版本可回退，而不是在竞赛阶段提前引入尚未验证的复杂基础设施。"),
+    ],
+)
+
+_insert_before_heading(
+    LONG_PAGES,
+    "4.4 部署注意事项",
+    [
+        h("4.3.1 关键请求链路、状态归属与故障影响", 3),
+        p("理解请求经过的组件和状态实际保存的位置，可以在故障发生时快速判断应检查网关、应用、外部服务还是数据卷。"),
+        table(
+            ["业务场景", "请求与数据路径", "状态归属", "故障影响与验收重点"],
+            [
+                ["静态页面", "浏览器 → Caddy → Frontend Nginx", "镜像内 dist 静态资源", "页面 404 或旧缓存不影响数据库；核对首页、子路由和哈希资源。"],
+                ["登录与业务", "Nginx /api → FastAPI → SQLite", "backend_data 中的用户、会话和业务表", "后端或数据异常会影响登录和学习记录；检查 Cookie、健康端点和完整性。"],
+                ["RAG 与 AI", "FastAPI → 课程检索 → 模型 → SSE", "课程知识在 SQLite，会话和生成记录写入业务库", "模型失败可与检索成功并存；验收应区分引用、事件流和真实模型状态。"],
+                ["附件与语音", "浏览器 → /api → 文件解析/语音服务", "上传内容进入 backend_data，语音依赖外部服务", "格式、大小、出站网络或凭据均可能单项失败，不应阻塞无关课程功能。"],
+                ["在线代码", "FastAPI → Docker 内网 → Piston", "runtime 保存在 piston_data", "沙箱不可用只影响代码运行；验收语言、超时、资源边界和非 mock 结果。"],
+            ],
+            widths=[2.6, 4.5, 4.1, 4.8],
+            font_size=6.8,
+            center_columns=[0],
+        ),
+        p("排障时应从离用户最近的入口向内逐层验证，同时避免用删除数据卷、清空数据库或重装 Docker 的方式处理单个组件故障。"),
+    ],
+)
+
+_insert_before_heading(
+    LONG_PAGES,
+    "5.6 防火墙、权限与安全",
+    [
+        h("5.5.5 变更分级、上线门禁与回滚边界", 3),
+        p("不同变更的风险、验证范围和回滚对象不同。发布前应先判断变更类型，再决定是否需要停机、备份或完整业务回归。"),
+        table(
+            ["变更类型", "上线前置与影响", "必须验证", "回滚对象"],
+            [
+                ["仅前端页面/样式", "保留后端、环境变量和全部命名卷；通常短暂切换", "生产构建、首页、登录、/api、关键交互与移动端", "上一版 frontend 镜像或代码"],
+                ["后端业务/API", "先备份 SQLite；可能出现短时接口不可用", "/api/ping、登录、目标接口、SSE、权限和数据写入", "backend 镜像与兼容代码"],
+                ["环境变量/模型", "记录变量名和配置摘要，禁止输出真实值", "Compose 校验、后端启动及受影响的模型、语音或邮件能力", "上一版配置与后端容器"],
+                ["Caddy/Nginx/域名", "确认 DNS、证书卷和 80/443；可能影响全部公网访问", "HTTP 跳转、HTTPS、Cookie、SSE、上传和子路由", "上一版网关配置与镜像"],
+                ["种子数据", "只影响未来空卷；不得隐式替换线上卷", "账号白名单、课程/知识块数量、gzip、完整性和外键", "上一版压缩种子"],
+                ["数据库结构", "必须备份并提供显式迁移/兼容方案，不按普通镜像更新处理", "备份副本迁移、旧新代码兼容、完整性、外键和回滚演练", "迁移脚本、应用版本；必要时独立恢复数据"],
+                ["宿主机/Docker", "需要维护窗口并确认 SSH 退路", "Docker、Compose、防火墙、网络、自动恢复和全部核心业务", "系统配置或已验证主机快照"],
+            ],
+            widths=[2.7, 4.6, 5.0, 3.3],
+            font_size=6.7,
+            center_columns=[0],
+        ),
+        note("缺少可恢复备份、Compose 配置失败、核心容器不健康、数据库完整性异常、权限边界失效或真实主链路只能返回 mock 时，均不得标记为上线完成。", "上线阻断项"),
+        p("代码回滚与数据恢复是两项独立决策。通常只回滚镜像并保留当前数据；只有确认数据损坏或迁移不兼容时，才在停止写入和二次备份后恢复数据库。"),
+    ],
+)
+
+_insert_before_heading(
+    LONG_PAGES,
+    "8. 常见问题排查",
+    [
+        h("7.6 验收证据与放行结论", 2),
+        p("最终结论不只依据容器是否 running，而要把版本、配置、数据和公网业务操作绑定为一组可复核证据。"),
+        table(
+            ["结论", "判定条件", "处理方式"],
+            [
+                ["通过", "核心服务、数据、权限、HTTPS、真实 AI/RAG 和代码链路均达到验收标准", "记录版本与证据后允许展示或发布。"],
+                ["限制通过", "非核心外部资源或可选语音能力降级，页面明确提示且学习主链路完整", "记录限制、影响范围和恢复条件，展示时主动说明。"],
+                ["不通过", "登录、课程隔离、数据完整性、权限、HTTPS 或核心真实模型链路失败", "停止放行，保留现场并按失败层排查或回滚。"],
+            ],
+            widths=[2.8, 8.0, 4.8],
+            font_size=7.4,
+            center_columns=[0],
+        ),
+        h("7.6.1 近期前端更新验收", 3),
+        table(
+            ["更新内容", "验收标准", "部署意义"],
+            [
+                ["助教长内容与截图", "长链接、连续文本和代码不撑宽消息区；/tutor?capture=1 可展开完整对话", "便于评委阅读和录制完整问答证据。"],
+                ["学习路径", "每行最多四个节点，按阶段深度蛇形回折；历史直线数据可兼容重排", "减少超宽画布并保持路径顺序清晰。"],
+                ["画像与报告雷达", "轴标签保留文字安全区，助教侧栏显示当前值/5，报告图例位于绘图区外", "避免不同分辨率下文字裁切或遮挡。"],
+                ["代码标准输入", "输入文字、光标和 stdin 控件在浅色/深色外层均清晰可见", "保证在线编程不仅能运行，也能可靠输入测试数据。"],
+                ["浏览器回归", "建议 2～6 五组隔离脚本在生产前端和公网 HTTPS 环境通过", "将关键体验改动转化为可重复的发布门禁。"],
+            ],
+            widths=[3.3, 7.6, 4.7],
+            font_size=7.1,
+            center_columns=[0],
+        ),
+        p("验收记录至少关联 Git 提交、前后端镜像摘要、配置摘要、数据库备份、容器状态、端口/证书结果和外网业务走查；无法复现的口头结论不作为放行依据。"),
+    ],
+)
+
+_insert_before_heading(
+    LONG_PAGES,
+    "10. 附录",
+    [
+        h("9.4 运维责任、恢复口径与外部依赖", 2),
+        p("单机部署仍需要明确维护责任和恢复口径，避免发生故障后才临时判断由谁处理、恢复到哪个状态。"),
+        table(
+            ["维护对象", "主要责任", "最低留痕"],
+            [
+                ["基础设施", "服务器资源、SSH、安全组、UFW、Docker 和磁盘", "资源基线、端口规则、变更时间和异常日志。"],
+                ["应用与配置", "代码版本、镜像、Compose、Caddy/Nginx 和环境变量名称", "提交号、镜像摘要、配置摘要和发布结果。"],
+                ["数据", "SQLite 在线备份、完整性、异机副本和恢复演练", "备份时间、校验结果、存放位置和恢复记录。"],
+                ["业务验收", "角色、课程、RAG、助教、附件、语音、代码和移动端", "测试账号类型、操作路径、结论和限制项。"],
+                ["第三方服务", "模型、Embedding、语音、邮件和公开资源平台", "配置状态、额度/可用性、降级表现和恢复条件。"],
+            ],
+            widths=[3.2, 7.0, 5.4],
+            font_size=7.3,
+            center_columns=[0],
+        ),
+        bullets([
+            "RPO 以上一次已通过完整性校验且可从服务器之外取得的备份为上限，不把镜像内种子视为线上备份。",
+            "RTO 不写未经演练的固定分钟数，以最近一次恢复演练记录、数据规模和当时网络条件为准。",
+            "模型或语音故障若有明确提示且学习主链路完整，可记录为限制通过；登录、数据、权限和 HTTPS 故障属于阻断项。",
+            "比赛结束后应轮换公开测试密码和外部服务凭据，并保留最终版本、镜像和数据库备份。",
+        ]),
+    ],
+)
+
+_insert_before_heading(
+    SHORT_PAGES,
+    "2.2 技术栈详情",
+    [
+        h("2.1.1 部署形态与适用边界", 3),
+        p("生产环境采用单机 Docker Compose：Caddy、Frontend、Backend 和 Piston 通过固定容器网络协作，SQLite、runtime 与证书保存在命名卷中。该形态适合竞赛展示和小规模公网访问，不包含多机高可用或自动数据库故障转移。"),
+        table(
+            ["对象", "当前边界"],
+            [
+                ["公网入口", "仅 Caddy 暴露 80/443，其余服务不直接对公网开放。"],
+                ["数据", "线上 backend_data 为权威数据源，镜像种子只初始化空卷。"],
+                ["外部能力", "模型、语音、邮件和公开资源异常时按能力降级并明确提示。"],
+                ["扩容", "出现持续高并发、SQLite 写锁或单机资源不足后再评估外置服务。"],
+            ],
+            widths=[4.0, 11.6],
+            font_size=7.6,
+            center_columns=[0],
+        ),
+    ],
+)
+
+_insert_before_heading(
+    SHORT_PAGES,
+    "5 运维与监控",
+    [
+        h("4.4 上线判断与变更边界", 2),
+        table(
+            ["变更类型", "上线前置与必测项", "回滚对象"],
+            [
+                ["仅前端", "生产构建通过，复测首页、登录、/api、移动端和关键交互。", "上一版 frontend 镜像。"],
+                ["应用或配置", "先备份数据库，校验 Compose，复测健康、权限、SSE 和受影响能力。", "后端/网关镜像及上一版配置。"],
+                ["数据或结构", "必须有显式迁移、备份副本验证、完整性/外键检查和恢复演练。", "迁移与应用版本；必要时独立恢复数据。"],
+            ],
+            widths=[3.2, 8.0, 4.4],
+            font_size=7.2,
+            center_columns=[0],
+        ),
+        note("缺少可恢复备份、核心容器不健康、数据库异常、权限失效或真实主链路只能返回 mock 时，不得标记为上线完成。", "上线门禁"),
+    ],
+)
+
+SHORT_PAGES[-1].extend([
+    h("5.4 运维边界与验收留痕", 2),
+    p("每次发布应记录代码版本、镜像摘要、配置摘要、数据库备份和最终验收结论。RPO 以上一次已校验且可异机取得的备份为上限；RTO 以实际恢复演练为准，不填写未经验证的固定耗时。"),
+    bullets([
+        "基础设施问题关注服务器、网络、Docker 和磁盘；应用问题关注镜像、配置、接口与日志；数据问题先停止写入并保留现场。",
+        "前端更新后复测助教长内容与长截图、四列蛇形路径、雷达标签安全区以及代码标准输入可见性。",
+        "模型、语音或公开资源降级必须明确提示；登录、数据完整性、权限和 HTTPS 异常属于上线阻断项。",
+    ]),
+    h("5.5 发布后观察与结束处理", 2),
+    table(
+        ["观察对象", "确认内容", "异常处理"],
+        [
+            ["服务", "容器健康、重启次数、错误日志和磁盘余量", "保留日志并定位具体服务，不删除命名卷。"],
+            ["业务", "登录、课程、RAG、SSE、附件、语音和代码运行", "区分核心阻断与可选能力降级，必要时回滚镜像。"],
+            ["数据", "用户/课程/知识块数量、完整性、外键和最新备份", "停止写入、二次备份，再决定修复或恢复。"],
+            ["安全", "证书、公开端口、环境文件权限和测试账号", "关闭多余入口，比赛结束后轮换密码与外部凭据。"],
+        ],
+        widths=[3.2, 7.0, 5.4],
+        font_size=7.3,
+        center_columns=[0],
+    ),
+    p("发布观察完成后，应把最终代码版本、镜像摘要、验收结论和可恢复备份一并归档，作为下一次更新或故障恢复的基线。"),
+    h("5.6 比赛展示与故障兜底", 2),
+    table(
+        ["展示环节", "正常路径", "异常时处理"],
+        [
+            ["登录与课程", "使用评委账号进入指定课程并确认画像", "切换备用测试账号，保留错误信息，不修改线上数据。"],
+            ["AI 与资源生成", "展示真实 SSE、引用和工作台资源", "明确说明外部模型状态，使用已保存的真实生成记录继续展示。"],
+            ["语音与外部资源", "展示已配置能力和可信详情页", "单项降级时保留文字学习主链路并给出可解释提示。"],
+            ["在线代码", "运行已验证的 Python/C/C++ 示例", "Piston 异常时停止重复提交，展示既有结果并在演示后排障。"],
+        ],
+        widths=[3.4, 6.3, 5.9],
+        font_size=7.2,
+        center_columns=[0],
+    ),
+    p("比赛前应完成一次无调试操作的完整彩排，并准备已验证截图或录屏作为外部服务临时不可用时的辅助材料；兜底材料只能补充说明，不能把 mock 结果描述为真实运行。"),
+])
+
+LONG_PAGES[-1].extend([
+    h("10.5 部署交接与复核", 2),
+    table(
+        ["交接项", "应交付内容", "接收方复核"],
+        [
+            ["访问与权限", "服务器地址、SSH 账号、维护人员范围和云控制台归属", "能够登录且未共享 root 密码或私钥。"],
+            ["代码与镜像", "最终 Git 提交、前后端镜像摘要、回滚标签和构建说明", "版本标识与线上运行容器一致。"],
+            ["配置", "环境变量名称、域名、Profile、端口和密钥保管位置", "Compose 校验通过，真实值不进入交付包。"],
+            ["数据与备份", "线上数据数量、最近备份、完整性结果和异机副本位置", "备份可读取、可校验，并明确恢复责任人。"],
+            ["验收与风险", "公网测试结果、限制通过项、已知风险和后续触发条件", "能够复现核心流程并理解禁止 down -v 等红线。"],
+        ],
+        widths=[3.2, 7.2, 5.2],
+        font_size=7.2,
+        center_columns=[0],
+    ),
+    p("交接完成后，由接收方独立执行一次状态检查、外网访问和数据库完整性核对；只有能够在不依赖原开发者临时操作的情况下完成复核，部署文档才算真正可用。"),
+])
+
+_insert_before_heading(
+    LONG_PAGES,
+    "3. 部署前准备",
+    [
+        h("2.4 容量规划与资源水位", 2),
+        p("当前服务器能够满足竞赛展示和小规模公网访问，但部署完成不代表容量可以无限增长。运维时应同时观察宿主机、容器、数据库和外部依赖，依据持续趋势而不是单次峰值决定是否扩容。"),
+        table(
+            ["观察对象", "正常关注点", "风险信号", "建议处理"],
+            [
+                ["CPU", "backend、Piston 与镜像构建的计算占用", "持续高位、接口延迟上升或代码任务长期排队", "区分 AI 等待与本地计算，限制沙箱并发，必要时增加 vCPU。"],
+                ["内存", "后端、前端、Piston 和系统可用内存", "频繁回收、OOM、容器重启或可用内存长期过低", "先确认泄漏与任务峰值，再调整容器上限或扩容。"],
+                ["磁盘", "镜像缓存、日志、SQLite、上传文件和备份", "构建空间不足、数据库写入失败或备份无法落盘", "清理前先列出对象；优先迁移备份，不自动执行破坏性 prune。"],
+                ["网络", "公网带宽、DNS、HTTPS 出站和第三方接口延迟", "证书失败、模型超时、静态资源加载慢或连接重置", "按入口、镜像源、模型和语音域名分层定位。"],
+                ["SQLite", "写锁、事务时长、文件增长和完整性", "locked 频发、慢查询或数据量持续超出演示规模", "优化写入与索引；达到单机边界后再评估 PostgreSQL。"],
+                ["Piston", "并发作业、runtime、超时、CPU/内存/PID", "队列积压、runtime 缺失或容器资源持续顶满", "保留资源限制，减少并发或迁移到独立执行节点。"],
+            ],
+            widths=[2.6, 4.3, 4.5, 4.2],
+            font_size=6.8,
+            center_columns=[0],
+        ),
+        p("容量调整前应保留一份相同业务路径的基线结果，包括首页、登录、RAG、SSE、代码运行和数据库检查，扩容后使用同一口径复测，避免只比较硬件数字。"),
+    ],
+)
+
+_insert_before_heading(
+    LONG_PAGES,
+    "5.3 Uvicorn 与 Piston 运行环境",
+    [
+        h("5.2.5 配置分级与能力降级", 3),
+        p("生产配置应按“入口与安全、核心业务、外部能力、可选扩展”分级维护。这样可以在服务启动或某项能力异常时，快速判断是必须阻断上线还是允许带提示运行。"),
+        table(
+            ["配置类别", "代表配置", "缺失或错误的影响", "验收要求"],
+            [
+                ["公网入口", "SITE_ADDRESS、COMPOSE_PROFILES、HTTP/HTTPS_PORT", "Caddy 不启动、域名不匹配或公网入口不可达", "Compose 校验、DNS、80/443、HTTP 跳转和证书均正确。"],
+                ["认证安全", "AUTH_SECRET_KEY、CORS_ORIGINS、SESSION_COOKIE_SECURE", "登录失效、来源被拒绝或 Cookie 安全属性错误", "生产 HTTPS 下完成登录、刷新、退出和跨来源检查。"],
+                ["核心数据", "DATABASE_URL、种子文件、backend_data", "后端无法启动、空卷无法初始化或写入错误位置", "确认实际数据库路径、播种条件、数据数量和卷挂载。"],
+                ["模型与向量", "LLM_PROVIDER、模型名称、LLM/Embedding Key", "资源生成、助教或语义检索降级", "分别验证真实生成、视觉、Embedding 和纯 BM25 兜底。"],
+                ["语音与邮件", "讯飞、CosyVoice、SMTP 配置", "ASR/TTS 或注册邮件单项不可用", "页面明确提示配置状态，不影响已登录用户的文字学习主链路。"],
+                ["代码沙箱", "COMPOSE profile、PISTON_URL、runtime", "在线代码不可用或返回连接错误", "Python/C/C++ runtime、超时和资源限制通过。"],
+                ["扩展服务", "PostgreSQL、Redis、Chroma extras", "当前主链路不受影响", "未启用时不得写成生产依赖；启用后需单独验证持久化和连接。"],
+            ],
+            widths=[2.7, 4.2, 4.5, 4.2],
+            font_size=6.7,
+            center_columns=[0],
+        ),
+        note("配置检查只记录变量名、是否设置和功能结果，不在日志、验收截图或交付文档中展示真实值。", "配置核查原则"),
+    ],
+)
+
+_insert_before_heading(
+    LONG_PAGES,
+    "8. 常见问题排查",
+    [
+        h("7.7 监控指标与验收采样", 2),
+        p("验收应保留能够复核的采样结果，既覆盖发布瞬间，也覆盖完成一轮真实业务操作后的状态变化。"),
+        table(
+            ["维度", "采样内容", "正常表现", "需要跟进的信号"],
+            [
+                ["容器", "状态、health、RestartCount、资源占用", "核心服务稳定运行，重启次数不持续增长", "反复重启、健康抖动或资源长期触顶。"],
+                ["公网", "DNS、HTTP/2、证书、页面与 /api/ping", "域名和证书一致，跳转及接口响应稳定", "证书链异常、偶发 502、连接重置或跨网不可达。"],
+                ["业务", "三类角色、五门课程、RAG、SSE、附件、语音与代码", "核心路径均为真实结果，课程和权限不串用", "mock 未说明、流式中断、越权或跨课程引用。"],
+                ["数据", "数量、文件大小、完整性、外键和备份", "发布前后数量符合预期，校验通过且备份可取得", "数量异常、锁频发、完整性失败或只有同机备份。"],
+                ["外部依赖", "模型、Embedding、语音、邮件和公开资源来源状态", "成功或按设计清晰降级，不阻塞无关功能", "持续超时、额度不足、错误被静默或泄露敏感信息。"],
+                ["前端体验", "建议 2～6 回归、移动端、缓存与长截图", "关键界面无溢出、遮挡和旧资源残留", "哈希未更新、截图缺内容、路径或图表文字裁切。"],
+            ],
+            widths=[2.6, 4.6, 4.6, 3.8],
+            font_size=6.8,
+            center_columns=[0],
+        ),
+        p("采样记录应注明测试网络、账号角色、代码版本和执行结果。偶发问题如果无法稳定复现，也应记录发生条件和原始日志，不能简单标注为“已解决”。"),
+    ],
+)
+
+_insert_before_heading(
+    LONG_PAGES,
+    "10. 附录",
+    [
+        h("9.5 备份恢复演练与保留策略", 2),
+        p("备份只有在能够被找到、校验并恢复时才有价值。建议把恢复演练放在隔离目录或临时卷中完成，不直接覆盖当前线上数据库。"),
+        table(
+            ["阶段", "主要工作", "通过标准", "留存证据"],
+            [
+                ["准备", "确认当前版本、数据库路径、可用空间和目标备份", "来源明确，恢复操作不会写入线上卷", "版本号、文件名、大小与操作者。"],
+                ["生成备份", "使用 SQLite backup API 创建一致快照并复制到独立目录", "备份过程无错误，权限受限，线上业务继续可用", "生成时间、哈希、权限和存储位置。"],
+                ["异机保存", "将至少一份已校验备份保存到服务器之外", "系统盘故障时仍可取得文件", "外部存储位置与访问责任人。"],
+                ["隔离恢复", "把备份恢复到临时数据库或临时卷", "数据库可打开，表结构与版本兼容", "恢复环境、步骤和实际用时。"],
+                ["业务校验", "检查用户、课程、知识块、画像、会话、完整性和外键", "核心数量符合备份时点，integrity/FK 通过", "查询结果、异常项和最终结论。"],
+                ["清理与归档", "删除临时恢复环境，保留记录并按策略轮换旧备份", "不影响线上卷，不误删唯一有效备份", "保留清单、删除审批和下一次演练条件。"],
+            ],
+            widths=[2.5, 5.1, 4.8, 3.2],
+            font_size=6.8,
+            center_columns=[0],
+        ),
+        bullets([
+            "重大更新、数据库结构变化和批量数据操作前必须生成新备份；普通前端更新仍应确认最近备份可用。",
+            "保留策略应同时考虑时间跨度、版本节点和异机副本，不能只按文件数量机械删除。",
+            "RPO 由最近有效备份的时间点决定；RTO 由实际恢复演练决定，二者都应随数据规模变化重新评估。",
+        ]),
+    ],
+)
+
+LONG_PAGES[-1].extend([
+    h("10.6 文档与版本交付矩阵", 2),
+    table(
+        ["交付对象", "版本标识", "一致性要求"],
+        [
+            ["源码", "Git 提交或源码包校验值", "与构建镜像所用源码一致。"],
+            ["镜像", "前端、后端及可选服务的摘要/标签", "与服务器实际运行容器一致。"],
+            ["配置模板", ".env.example、.deploy.env.example", "变量名称与当前代码、Compose 和文档一致，不包含真实值。"],
+            ["种子库", "studymate.db.gz 大小与校验值", "只用于空卷初始化，并通过账号、课程、知识块、完整性和外键检查。"],
+            ["部署文档", "DOCX/PDF 生成时间与目录", "命令、路径、端口、功能和最终分页与当前实现一致。"],
+            ["验收记录", "测试日期、环境、账号角色和结论", "能够关联源码、镜像、配置摘要与备份文件。"],
+        ],
+        widths=[3.3, 5.0, 7.3],
+        font_size=7.1,
+        center_columns=[0],
+    ),
+])
+
+_insert_before_heading(
+    SHORT_PAGES,
+    "4 部署流程",
+    [
+        h("3.4 容量与资源水位", 2),
+        table(
+            ["对象", "关注信号", "处理原则"],
+            [
+                ["CPU/内存", "持续高占用、OOM、容器反复重启", "区分后端与沙箱负载，保留资源上限后再扩容。"],
+                ["磁盘", "镜像、日志、上传、SQLite 和备份持续增长", "清理前先列出对象，优先转移备份，禁止自动破坏性 prune。"],
+                ["SQLite", "写锁频发、文件快速增长或完整性异常", "先优化事务和写入；超过单机边界后评估外置数据库。"],
+                ["外部网络", "证书、镜像、模型或语音接口超时", "按域名与能力分层定位，不把第三方故障当作数据故障。"],
+            ],
+            widths=[3.4, 6.3, 5.9],
+            font_size=7.2,
+            center_columns=[0],
+        ),
+    ],
+)
+
+_insert_before_heading(
+    SHORT_PAGES,
+    "5 运维与监控",
+    [
+        h("4.5 配置分级与能力降级", 2),
+        table(
+            ["配置类别", "影响范围", "上线要求"],
+            [
+                ["入口与认证", "域名、HTTPS、CORS、会话和全部登录用户", "错误时阻断上线，必须完成登录和 Cookie 验收。"],
+                ["数据与种子", "后端启动、线上业务数据和空卷初始化", "核对卷、数量、完整性和外键，不允许隐式覆盖。"],
+                ["模型与向量", "资源生成、助教、视觉和语义检索", "分别验证真实能力与明确降级，mock 不得冒充通过。"],
+                ["语音/邮件/外部资源", "单项交互或公开资源推荐", "可限制通过，但页面必须清晰提示且文字学习主链路完整。"],
+                ["Piston", "在线代码运行", "启用时验证 runtime、超时和资源限制；未启用时明确说明。"],
+            ],
+            widths=[3.7, 6.0, 5.9],
+            font_size=7.2,
+            center_columns=[0],
+        ),
+    ],
+)
+
+SHORT_PAGES[-1].extend([
+    h("5.7 最终交付验收清单", 2),
+    table(
+        ["验收项", "通过标准"],
+        [
+            ["版本", "源码、镜像、配置模板和部署文档能够相互对应。"],
+            ["公网", "DNS、证书、80/443、备案和外网 PC/手机访问正常。"],
+            ["业务", "三类角色、五门课程、RAG、SSE、附件、语音和代码按启用范围通过。"],
+            ["数据", "数量符合预期，integrity_check=ok、foreign_key_check=0，备份可取得。"],
+            ["安全", "环境文件权限正确，无真实密钥进入源码、文档、截图或交付包。"],
+            ["回滚", "保留上一版镜像或代码，明确代码回滚与数据恢复的不同触发条件。"],
+            ["近期界面", "长截图、蛇形路径、雷达文字安全区和标准输入显示均完成浏览器回归。"],
+        ],
+        widths=[4.2, 11.4],
+        font_size=7.3,
+        center_columns=[0],
+    ),
+    p("交付前由未参与本次修改的成员按清单独立复核，并把发现的问题、限制条件和最终结论写入验收记录。"),
+    h("5.8 部署交接责任与资料去向", 2),
+    table(
+        ["交接对象", "资料去向与责任边界", "接收方复核"],
+        [
+            ["访问与权限", "记录云控制台、SSH、域名/DNS 和证书的维护归属，不在文档中保存私钥。", "确认能够独立登录，且未共享 root 密码或私钥。"],
+            ["版本与镜像", "归档最终 Git 提交、镜像摘要、回滚标签以及本次生成的部署文档。", "核对线上容器与交付版本一致。"],
+            ["配置与密钥", "仅记录变量名称、服务用途、保管位置和轮换责任人。", "确认真实值未进入源码、截图和交付包。"],
+            ["数据与风险", "记录 SQLite 实际路径、最近备份、异机副本位置、限制通过项和已知风险。", "完成完整性检查，并确认备份可读取和可恢复。"],
+        ],
+        widths=[3.2, 7.2, 5.2],
+        font_size=7.1,
+        center_columns=[0],
+    ),
+    p("交接完成后，由接收成员独立执行一次容器状态、公网访问、核心业务和数据库检查；复核通过后再把该版本作为下一次更新的维护基线。"),
+])

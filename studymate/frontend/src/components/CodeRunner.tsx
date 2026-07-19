@@ -90,7 +90,10 @@ export function CodeRunner({
   const runFail = !!result && (compileFail || result.exit_code !== 0)
 
   return (
-    <div className={`border border-[var(--border)] rounded-lg overflow-hidden bg-[var(--card)] ${className}`}>
+    <div
+      data-testid="code-runner"
+      className={`border border-[var(--border)] rounded-lg overflow-hidden bg-[var(--card)] text-[var(--card-foreground)] ${className}`}
+    >
       {/* 顶部操作栏 */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)] bg-[var(--muted)]/30 flex-wrap">
         <button
@@ -160,11 +163,12 @@ export function CodeRunner({
         <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--muted)]/20">
           <div className="text-[11px] text-[var(--muted-foreground)] mb-1">标准输入(每行一条):</div>
           <textarea
+            aria-label="标准输入"
             value={stdin}
             onChange={(e) => setStdin(e.target.value)}
             placeholder="例如:&#10;3&#10;1 2 3"
             spellCheck={false}
-            className="w-full min-h-[60px] p-2 rounded border border-[var(--border)] bg-[var(--background)] text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[var(--ring)] resize-y"
+            className="w-full min-h-[60px] p-2 rounded border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] caret-[var(--primary)] text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[var(--ring)] resize-y"
           />
         </div>
       )}

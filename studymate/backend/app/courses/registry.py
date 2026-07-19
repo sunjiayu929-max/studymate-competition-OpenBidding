@@ -45,7 +45,7 @@ _ML = CourseConfig(
     name="机器学习",
     persona="机器学习课程助教，擅长用直觉 + 公式 + 代码三段式讲清楚算法",
     code_style="ml",
-    code_libs=["numpy", "sklearn", "matplotlib（按需）"],
+    code_libs=["numpy", "scipy", "pandas", "sklearn", "matplotlib", "seaborn", "pillow"],
     reading_sources=[
         "周志华《机器学习》（西瓜书）",
         "吴恩达 CS229 / Coursera 讲义",
@@ -113,7 +113,7 @@ _NET = CourseConfig(
     name="计算机网络",
     persona="计算机网络课程助教，擅长按 OSI / TCP-IP 分层讲，对比有线/无线、IPv4/v6",
     code_style="pseudo",
-    code_libs=["伪代码（socket / 报文结构示意）", "可选少量 Python socket 片段"],
+    code_libs=["伪代码（socket / 报文结构示意）", "Python 标准库 socket", "networkx（拓扑示意）"],
     reading_sources=[
         "《计算机网络：自顶向下方法》(Kurose)",
         "谢希仁《计算机网络》",

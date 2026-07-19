@@ -66,7 +66,7 @@ docker compose --profile code-runner up -d piston-api
 bash scripts/init-piston.sh
 ```
 
-初始化脚本会安装 Python 3.10、C/C++ runtime，并在 Python runtime 中补齐与现有 NumPy/SciPy 兼容的 `scikit-learn`。本地直接运行后端时，`.env` 中的 `PISTON_URL` 默认使用 `http://127.0.0.1:2000`。
+初始化脚本会安装 Python 3.10、C/C++ runtime，并按 `scripts/piston_python_libs.txt` 补齐固定版本的 `scikit-learn`、`matplotlib`、`seaborn`、`pillow`、`pandas`、`networkx`（官方 runtime 已含 NumPy/SciPy）。本地直接运行后端时，`.env` 中的 `PISTON_URL` 默认使用 `http://127.0.0.1:2000`。
 
 ## Docker 启动
 
@@ -122,6 +122,7 @@ STUDYMATE_BASE_URL=http://127.0.0.1:5173 node scripts/check-suggestion2.mjs
 STUDYMATE_BASE_URL=http://127.0.0.1:5173 node scripts/check-suggestion3.mjs
 STUDYMATE_BASE_URL=http://127.0.0.1:5173 node scripts/check-suggestion4.mjs
 STUDYMATE_BASE_URL=http://127.0.0.1:5173 node scripts/check-suggestion5.mjs
+STUDYMATE_BASE_URL=http://127.0.0.1:5173 node scripts/check-suggestion6.mjs
 
 # Compose
 cd ..

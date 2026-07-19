@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { AlertTriangle, BookOpen, Clock3, ShieldCheck, Target } from "lucide-react"
+import { useSearchParams } from "react-router-dom"
 
 import { AppTopbar } from "@/components/AppTopbar"
 import type { ProfileMiniData } from "@/components/ProfileMiniCard"
@@ -16,6 +17,8 @@ export function TutorChat() {
   const user = useCurrentUser()
   const USER_ID = user?.user_id ?? 0
   const course = useCurrentCourse()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const captureMode = searchParams.get("capture") === "1"
   const [profile, setProfile] = useState<ProfileMiniData | null>(null)
   const [radarView, setRadarView] = useState<"knowledge" | "style" | "preference" | "employment">("knowledge")
 
@@ -25,6 +28,13 @@ export function TutorChat() {
     if (!USER_ID) return
     apiGet<ProfileMiniData>(`/profile/${USER_ID}`).then(setProfile).catch(() => {})
   }, [USER_ID])
+
+  const handleCaptureModeChange = useCallback((enabled: boolean) => {
+    const next = new URLSearchParams(searchParams)
+    if (enabled) next.set("capture", "1")
+    else next.delete("capture")
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const goal = profile?.dims.goals.primary?.trim() || "等待画像补充"
   const weakPoints = profile?.dims.weak_points.topics?.filter(Boolean) || []
@@ -44,12 +54,12 @@ export function TutorChat() {
       <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
         <AppTopbar current="tutor" appearance="paper" />
 
-        <main className="mt-4 grid items-stretch gap-4 xl:h-[calc(100dvh-108px)] xl:min-h-[620px] xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="flex min-h-[680px] min-w-0 flex-col overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)] xl:h-full xl:min-h-0">
-            <TutorChatPanel variant="fullscreen" />
+        <main className={`mt-4 grid items-stretch gap-4 xl:min-h-[620px] xl:grid-cols-[minmax(0,1fr)_360px] ${captureMode ? "" : "xl:h-[calc(100dvh-108px)]"}`}>
+          <section className={`flex min-h-[680px] min-w-0 flex-col rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)] ${captureMode ? "overflow-visible" : "overflow-hidden xl:h-full xl:min-h-0"}`}>
+            <TutorChatPanel variant="fullscreen" captureMode={captureMode} onCaptureModeChange={handleCaptureModeChange} />
           </section>
 
-          <aside className="h-fit space-y-3">
+          <aside data-testid="tutor-context-sidebar" className="h-fit space-y-3 xl:flex xl:h-[calc(100dvh-108px)] xl:min-h-[620px] xl:flex-col">
             <section className="rounded-[22px] border border-[#CFC8B9] bg-[#F8F6F0] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
@@ -71,17 +81,17 @@ export function TutorChat() {
             </section>
 
             {profile ? (
-              <section aria-label="画像维度切换">
+              <section aria-label="画像维度切换" className="xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
                 <div role="tablist" aria-label="选择画像维度" className="mb-2 grid grid-cols-4 rounded-2xl border border-[#CFC8B9] bg-[#F8F6F0] p-1">
                   {(["knowledge", "style", "preference", "employment"] as const).map((key) => {
                     const option = radarOptions![key]
                     return <button key={key} type="button" role="tab" aria-selected={radarView === key} onClick={() => setRadarView(key)} className={`h-8 rounded-xl text-[10px] font-bold transition-colors ${radarView === key ? "bg-[#FFFEFA] text-[#244C66] shadow-[0_3px_9px_rgba(24,35,45,.08)]" : "text-[#7A817F] hover:text-[#244C66]"}`}>{option.label}</button>
                   })}
                 </div>
-                {activeRadar && <ProfileRadar key={radarView} title={activeRadar.label} data={activeRadar.data} color={activeRadar.color} height={112} />}
+                {activeRadar && <ProfileRadar key={radarView} title={activeRadar.label} data={activeRadar.data} color={activeRadar.color} height={112} fill showScores />}
               </section>
             ) : (
-              <div className="rounded-[22px] border border-dashed border-[#C9C2B4] bg-[#F8F6F0] p-6 text-center text-xs leading-6 text-[#66717B]">
+              <div className="rounded-[22px] border border-dashed border-[#C9C2B4] bg-[#F8F6F0] p-6 text-center text-xs leading-6 text-[#66717B] xl:flex-1">
                 建立学习画像后，这里会显示助教本轮回答所依据的目标、基础与偏好。
               </div>
             )}
