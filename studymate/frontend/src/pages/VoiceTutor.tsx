@@ -19,6 +19,7 @@ import { useNavigate } from "react-router-dom"
 import { ArrowLeft, MessageSquare, Pause, Play, Trash2, X, Bot, User, Mic2, AlertTriangle, RotateCcw } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
+import { Markdown } from "@/components/Markdown"
 import { VoiceOrb, type VoiceOrbState } from "@/components/VoiceOrb"
 import { VoiceSelector } from "@/components/VoiceSelector"
 import { LearningMethodSelector } from "@/components/LearningMethodSelector"
@@ -682,12 +683,16 @@ function Line({
   const hasIssue = delivery === "error" || delivery === "stopped"
   const displayContent = isUser ? content : formatTutorDisplayContent(content)
   return (
-    <div className={`flex gap-2 ${isUser ? "flex-row-reverse" : ""}`}>
+    <div data-voice-message={role} className={`flex gap-2 ${isUser ? "flex-row-reverse" : ""}`}>
       <div className={`flex size-7 shrink-0 items-center justify-center rounded-full ${isUser ? "bg-[#244C66] text-[#FFFEFA]" : "bg-[#F4ECD8] text-[#8E6925]"}`}>
         {isUser ? <User className="size-3" /> : <Bot className="size-3" />}
       </div>
-      <div className={`max-w-[84%] rounded-2xl px-3.5 py-2.5 text-sm leading-6 ${isUser ? "bg-[#244C66] text-[#FFFEFA]" : "border border-[#D7D1C4] bg-[#F8F6F0] text-[#18232D]"}`}>
-        {displayContent && <span className="whitespace-pre-wrap break-words">{displayContent}</span>}
+      <div className={`min-w-0 max-w-[84%] overflow-hidden rounded-2xl px-3.5 py-2.5 text-sm leading-6 ${isUser ? "bg-[#244C66] text-[#FFFEFA]" : "border border-[#D7D1C4] bg-[#F8F6F0] text-[#18232D]"}`}>
+        {displayContent && (
+          isUser
+            ? <span className="whitespace-pre-wrap break-words">{displayContent}</span>
+            : <Markdown content={displayContent} className="text-sm leading-6" wrapLongContent />
+        )}
         {streaming && <span className="inline-block w-1.5 h-3.5 bg-current ml-0.5 animate-pulse" />}
         {hasIssue && (
           <div className={`${content ? "mt-2 border-t border-[#D7D1C4] pt-2" : ""} text-[10px] leading-4 text-[#8B5B48]`}>

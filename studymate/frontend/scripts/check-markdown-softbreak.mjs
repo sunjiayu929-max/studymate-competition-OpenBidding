@@ -16,7 +16,7 @@ const dims = {
 
 // LLM-like wrapped prose (single newlines) + proper markdown structures
 const assistant = [
-  "梯度下降是一种迭代优化算法，",
+  "**直觉**：梯度下降是一种迭代优化算法，",
   "它通过不断沿着损失函数的负梯度方向更新参数，",
   "从而逐步逼近最小值。",
   "",
@@ -120,6 +120,40 @@ assert.ok(metrics.hasH2 && metrics.hasOl && metrics.olItems === 3, "标题与有
 assert.ok(metrics.hasPre && metrics.hasTable && metrics.hasKatex, "代码块、表格与公式应正常渲染")
 assert.ok(metrics.rootScrollWidth <= metrics.rootClientWidth + 1, "对话 Markdown 容器不应横向撑破")
 
+await page.goto(`${baseUrl}/tutor/voice`, { waitUntil: "networkidle" })
+const voiceAssistant = page.locator('[data-voice-message="assistant"]').first()
+await voiceAssistant.waitFor()
+await page.waitForTimeout(700)
+const voiceMetrics = await voiceAssistant.evaluate((element) => {
+  const root = element.querySelector(".prose")
+  return {
+    hasProse: !!root,
+    hasStrong: !!root?.querySelector("strong"),
+    hasHeading: !!root?.querySelector("h2"),
+    hasList: root?.querySelectorAll("ol > li").length === 3,
+    hasCode: !!root?.querySelector("pre code"),
+    hasTable: !!root?.querySelector("table"),
+    hasKatex: !!root?.querySelector(".katex"),
+    scrollWidth: root?.scrollWidth ?? 0,
+    clientWidth: root?.clientWidth ?? 0,
+  }
+})
+assert.ok(
+  voiceMetrics.hasProse
+  && voiceMetrics.hasStrong
+  && voiceMetrics.hasHeading
+  && voiceMetrics.hasList
+  && voiceMetrics.hasCode
+  && voiceMetrics.hasTable
+  && voiceMetrics.hasKatex,
+  "语音助教历史应渲染加粗、标题、列表、代码块、表格和公式",
+)
+assert.ok(voiceMetrics.scrollWidth <= voiceMetrics.clientWidth + 1, "语音助教 Markdown 不应撑破消息气泡")
+assert.equal(await page.locator('[data-voice-message="user"] .prose').count(), 0, "用户原话仍应按纯文本显示")
+if (process.env.STUDYMATE_VOICE_MARKDOWN_SCREENSHOT) {
+  await voiceAssistant.screenshot({ path: process.env.STUDYMATE_VOICE_MARKDOWN_SCREENSHOT })
+}
+
 await page.screenshot({ path: "/tmp/tutor-markdown-review.png", fullPage: false })
-console.log("对话 Markdown 软换行与结构渲染检查通过")
+console.log("文字与语音助教 Markdown 软换行、公式和结构渲染检查通过")
 await browser.close()
