@@ -201,8 +201,11 @@ export function VoiceTutor() {
 
   const stopTts = useCallback(() => {
     if (ttsAudioRef.current) {
-      try { ttsAudioRef.current.pause() } catch { /* ignore */ }
-      ttsAudioRef.current.src = ""
+      const audio = ttsAudioRef.current
+      audio.onended = null
+      audio.onerror = null
+      try { audio.pause() } catch { /* ignore */ }
+      audio.removeAttribute("src")
       ttsAudioRef.current = null
     }
     if (ttsUrlRef.current) {
@@ -372,10 +375,6 @@ export function VoiceTutor() {
       void startAsr()
       return
     }
-    setVoiceState("speaking")
-    // speaking 期间持续 ASR 用于打断
-    void startAsr()
-
     const ctrl = new AbortController()
     ttsAbortRef.current = ctrl
     try {
@@ -391,8 +390,6 @@ export function VoiceTutor() {
       }
       const blob = await r.blob()
       if (unmountedRef.current) return
-      // 如果在等待响应期间被打断（用户已说话）→ 不要播
-      if (orbStateRef.current !== "speaking") return
 
       const url = URL.createObjectURL(blob)
       ttsUrlRef.current = url
@@ -401,25 +398,28 @@ export function VoiceTutor() {
       setError(null)
 
       audio.onended = () => {
+        if (unmountedRef.current) return
         stopTts()
-        if (!unmountedRef.current && orbStateRef.current === "speaking") {
-          setVoiceState("listening")
+        if (orbStateRef.current === "speaking") {
+          setVoiceState("paused")
         }
       }
       audio.onerror = () => {
+        if (unmountedRef.current) return
         setError("语音播放失败，文字回答已完整保留")
         stopTts()
-        if (!unmountedRef.current && orbStateRef.current === "speaking") {
-          setVoiceState("listening")
+        if (orbStateRef.current === "speaking") {
+          setVoiceState("paused")
         }
       }
       await audio.play()
+      if (!unmountedRef.current) setVoiceState("speaking")
     } catch (e) {
       const err = e as Error
       if (err.name === "AbortError") return
       setError(readableVoiceError(err, "语音合成暂时不可用，文字回答已完整保留"))
-      if (!unmountedRef.current && orbStateRef.current === "speaking") {
-        setVoiceState("listening")
+      if (!unmountedRef.current && orbStateRef.current === "thinking") {
+        setVoiceState("paused")
       }
     }
   }, [setVoiceState, startAsr, stopTts])

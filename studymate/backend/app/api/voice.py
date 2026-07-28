@@ -56,11 +56,11 @@ def _oral_enabled() -> bool:
 
 # ===== 阿里 CosyVoice 发音人（音色更自然，复用 DashScope key）=====
 COSYVOICE_VOICES = [
-    {"id": "longxiaochun", "label": "龙小淳", "tone": "亲和女声", "gender": "female"},
-    {"id": "longxiaoxia", "label": "龙小夏", "tone": "温柔女声", "gender": "female"},
-    {"id": "longwan", "label": "龙婉", "tone": "知性女声", "gender": "female"},
-    {"id": "longcheng", "label": "龙橙", "tone": "沉稳男声", "gender": "male"},
-    {"id": "longhua", "label": "龙华", "tone": "标准男声", "gender": "male"},
+    {"id": "longxiaochun_v3", "label": "龙小淳", "tone": "亲和女声", "gender": "female"},
+    {"id": "longanwen_v3", "label": "龙安温", "tone": "温柔女声", "gender": "female"},
+    {"id": "longyingmu_v3", "label": "龙应沐", "tone": "知性女声", "gender": "female"},
+    {"id": "longanyun_v3", "label": "龙安昀", "tone": "沉稳男声", "gender": "male"},
+    {"id": "longtian_v3", "label": "龙天", "tone": "标准男声", "gender": "male"},
 ]
 COSYVOICE_VALID = {v["id"] for v in COSYVOICE_VOICES}
 

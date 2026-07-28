@@ -12,18 +12,19 @@ export default defineConfig([
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
-      reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
     ],
     languageOptions: {
       globals: globals.browser,
     },
+    plugins: {
+      'react-hooks': reactHooks,
+    },
     rules: {
-      // 项目当前未启用 React Compiler；Canvas 动画会在绘制阶段读取 ref。
-      // 保留 Hooks 的调用顺序和依赖检查，仅关闭编译器专用约束。
-      'react-hooks/refs': 'off',
-      'react-hooks/set-state-in-effect': 'off',
-      'react-hooks/preserve-manual-memoization': 'off',
+      // 项目当前未启用 React Compiler。不继承 compiler 相关 recommended 规则集，
+      // 只保留 Hooks 调用顺序与依赖检查，避免 Canvas 动画与 ref 读取被误报。
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
     },
   },
 ])

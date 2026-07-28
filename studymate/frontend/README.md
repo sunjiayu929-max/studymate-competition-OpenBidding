@@ -99,5 +99,5 @@ STUDYMATE_BASE_URL=http://127.0.0.1:5173 node scripts/check-suggestion6.mjs
 - 页面放 `src/pages/`，可复用业务模块放 `src/components/`。
 - API 请求和共享类型集中放 `src/lib/`，跨页面状态放 `src/store/`。
 - 新增路由时同步更新用户指引、接口说明和访问控制。
-- 项目当前没有启用 React Compiler，因此 ESLint 只关闭 `refs`、`set-state-in-effect` 和 `preserve-manual-memoization` 三条编译器专用规则；Hooks 调用顺序与 `exhaustive-deps` 依赖检查继续启用。
+- 项目当前没有启用 React Compiler；ESLint 不继承 compiler 相关 recommended 规则，只启用 `react-hooks/rules-of-hooks` 与 `react-hooks/exhaustive-deps`。
 - 提交前至少运行 `npm run lint` 与 `npm run build`。

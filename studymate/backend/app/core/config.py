@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
-    DEEPSEEK_MODEL: str = "deepseek-chat"
+    DEEPSEEK_MODEL: str = "deepseek-v4-flash"
 
     SPARK_API_KEY: str = ""
     SPARK_BASE_URL: str = "https://spark-api-open.xf-yun.com/v2"
@@ -43,8 +43,8 @@ class Settings(BaseSettings):
     # TTS 总引擎：xfyun=讯飞（在线/超拟人）；cosyvoice=阿里 CosyVoice（DashScope，音色更自然，复用 QWEN_API_KEY）
     TTS_ENGINE: str = "xfyun"
     # CosyVoice（复用 QWEN_API_KEY / DashScope；需在 DashScope 控制台开通语音合成）
-    COSYVOICE_MODEL: str = "cosyvoice-v1"
-    COSYVOICE_VOICE: str = "longxiaochun"
+    COSYVOICE_MODEL: str = "cosyvoice-v3-flash"
+    COSYVOICE_VOICE: str = "longxiaochun_v3"
     # CosyVoice 专用 DashScope key 池（逗号分隔，留空则回退用 QWEN_API_KEY）。
     # 多用户高并发时填多个不同账号的 key → 请求/重试自动轮询，聚合 QPS 上限随 key 数翻倍。
     # 例：COSYVOICE_API_KEYS=sk-aaa,sk-bbb

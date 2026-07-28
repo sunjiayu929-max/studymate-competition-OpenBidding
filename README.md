@@ -77,6 +77,12 @@ docker compose --profile code-runner up -d --build
     └── docker-compose.yml    # 容器编排入口
 ```
 
+### 本机路径说明
+
+- 规范路径：`/home/ysc/work/Project/Competition/Software Cup/StudyMate`
+- 历史路径 `compitition` 已在 Codex 会话迁移后删除；请统一使用规范路径
+- 外层目录 `Competition/Software Cup/` 下还可并列放置 `StudyMate-Doc` 等非本仓库内容
+
 ## 文档导航
 
 - [系统架构](studymate/docs/系统架构.md)

@@ -8,7 +8,9 @@
 - 赛题、参赛材料、当前项目资料和交付文档放在 `docs/`。
 - 运行代码、部署配置和应用维护文档放在 `studymate/`。
 - 模块专用工具跟随模块放置：前端工具放 `frontend/scripts/`，后端工具放 `backend/scripts/`，跨服务工具放 `studymate/scripts/`。
-- 根目录名 `compitition` 暂不修改。Codex CLI、IDE 工作区、会话恢复和外部脚本可能记录绝对路径，目录改名必须在没有进行中会话时单独迁移。
+- 本机规范路径：`/home/ysc/work/Project/Competition/Software Cup/StudyMate`（仓库根目录；其下 `studymate/` 为可独立运行的应用）。
+- 历史路径 `/home/ysc/work/Project/compitition` 已在会话 cwd 迁移完成后移除；请统一使用规范路径。
+- 外层竞赛目录为 `/home/ysc/work/Project/Competition/Software Cup/`；`StudyMate-Doc` 等并列目录不在本仓库内。
 
 ## 密钥与本地状态
 
