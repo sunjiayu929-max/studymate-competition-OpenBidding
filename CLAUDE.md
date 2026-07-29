@@ -8,9 +8,9 @@
 - 赛题、参赛材料、当前项目资料和交付文档放在 `docs/`。
 - 运行代码、部署配置和应用维护文档放在 `studymate/`。
 - 模块专用工具跟随模块放置：前端工具放 `frontend/scripts/`，后端工具放 `backend/scripts/`，跨服务工具放 `studymate/scripts/`。
-- 本机规范路径：`/home/ysc/work/Project/Competition/Software Cup/StudyMate`（仓库根目录；其下 `studymate/` 为可独立运行的应用）。
-- 历史路径 `/home/ysc/work/Project/compitition` 已在会话 cwd 迁移完成后移除；请统一使用规范路径。
-- 外层竞赛目录为 `/home/ysc/work/Project/Competition/Software Cup/`；`StudyMate-Doc` 等并列目录不在本仓库内。
+- 本仓库根目录即 `studymate/` 的上层目录，其下 `studymate/` 为可独立运行的应用。
+- 历史路径 `compitition` 已在会话 cwd 迁移完成后移除；请统一使用本仓库根目录。
+- 外层竞赛目录为本仓库的上层目录；`StudyMate-Doc` 等并列目录不在本仓库内。
 
 ## 密钥与本地状态
 

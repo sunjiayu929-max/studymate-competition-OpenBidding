@@ -79,9 +79,9 @@ docker compose --profile code-runner up -d --build
 
 ### 本机路径说明
 
-- 规范路径：`/home/ysc/work/Project/Competition/Software Cup/StudyMate`
+- 本仓库根目录即可独立运行应用 `studymate/` 的上层目录
 - 历史路径 `compitition` 已在 Codex 会话迁移后删除；请统一使用规范路径
-- 外层目录 `Competition/Software Cup/` 下还可并列放置 `StudyMate-Doc` 等非本仓库内容
+- 外层目录下还可并列放置 `StudyMate-Doc` 等非本仓库内容
 
 ## 文档导航
 
