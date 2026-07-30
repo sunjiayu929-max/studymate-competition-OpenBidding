@@ -3939,3 +3939,30 @@
     font-size: 10px;
   }
 }
+
+/* 桌面端可用高度受系统显示缩放与字体度量影响。信息栏空间不足时，在栏内滚动，
+   不允许指标区溢出并覆盖下方学习动态。 */
+@media (min-width: 1101px) {
+  .universe-status-panel,
+  .universe-agents-panel {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .universe-status-panel > :not(.universe-module-pulse-frame),
+  .universe-agents-panel > :not(.universe-module-pulse-frame) {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-height: 780px) and (min-width: 1101px) {
+  .universe-status-panel .universe-metric {
+    min-height: 53px;
+  }
+
+  .universe-status-panel .universe-capability-grid > div {
+    min-height: 38px;
+    padding-block: 6px;
+  }
+}
