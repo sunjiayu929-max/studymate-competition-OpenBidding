@@ -24,7 +24,7 @@ services:
         PIP_INDEX_URL: "${PIP_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple}"
     image: studymate-backend:latest
     container_name: studymate-backend
-    restart: "no"
+    restart: unless-stopped
     ports:
       # 仅供宿主机排障；公网入口统一由 Caddy 转发，安全组无需开放 8000。
       - "127.0.0.1:8000:8000"
@@ -61,7 +61,7 @@ services:
     image: "${PISTON_IMAGE:-ghcr.io/engineer-man/piston:latest}"
     container_name: studymate-piston
     profiles: ["code-runner"]
-    restart: "no"
+    restart: unless-stopped
     privileged: true   # Piston 用 isolate 沙箱需要 namespace 权限
     environment:
       # 允许的最大运行墙钟超时（ms）。默认 3000，放宽到 10000 给算法/sklearn 训练用
@@ -89,7 +89,7 @@ services:
         NGINX_IMAGE: "${NGINX_IMAGE:-nginx:alpine}"
     image: studymate-frontend:latest
     container_name: studymate-frontend
-    restart: "no"
+    restart: unless-stopped
     ports:
       # 保留本机直连排障，但不暴露到公网网卡。
       - "127.0.0.1:5173:80"
@@ -103,7 +103,7 @@ services:
     image: "${CADDY_IMAGE:-caddy:2-alpine}"
     container_name: studymate-caddy
     profiles: ["public"]
-    restart: "no"
+    restart: unless-stopped
     environment:
       SITE_ADDRESS: "${SITE_ADDRESS:-http://localhost}"
     ports:
