@@ -1049,8 +1049,8 @@ export function Home() {
     },
     {
       label: "接触知识点",
-      value: touchedTopics.size ? `${touchedTopics.size} 个` : "等待首次学习",
-      detail: touchedTopics.size ? "来自今日测验与学习主题" : "不会用平台数据冒充个人掌握",
+      value: touchedTopics.size ? `${touchedTopics.size} 个` : "等待学习",
+      detail: touchedTopics.size ? "来自今日测验与学习主题" : "等待首次学习",
       source: data.sources.quizzes === "error" && !workspaceStartedToday ? "error" : "ok",
     },
     {
