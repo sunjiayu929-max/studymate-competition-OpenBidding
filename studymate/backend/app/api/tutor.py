@@ -599,7 +599,7 @@ async def tutor_chat(req: TutorChatRequest, user: User = Depends(require_user)):
         if private_context:
             citations = "\n\n".join(
                 f"【私有资料 {index}｜{item['source']}｜"
-                f"{f'第 {item['page']} 页' if item['page'] else '页码未标注'}】\n{item['content']}"
+                f"{('第 ' + str(item['page']) + ' 页') if item['page'] else '页码未标注'}】\n{item['content']}"
                 for index, item in enumerate(private_context, start=1)
             )
             sys["content"] += (
