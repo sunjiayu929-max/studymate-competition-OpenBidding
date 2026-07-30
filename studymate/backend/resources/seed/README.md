@@ -36,7 +36,13 @@ python scripts/build_seed_db.py
 6. 强制核对 34 个账号、5 门课程、938 个知识块，以及正文、向量和密码哈希完整性。
 7. 以固定时间戳压缩为可复现的 `studymate.db.gz`。
 
-## Docker 行为
+## 启动行为
+
+### 本地裸跑
+
+`python run.py` 或 `uvicorn app.main:app` 启动时，若 `backend/studymate.db` 不存在或 `courses` 与 `knowledge_chunks` 均为空，会自动从本目录的 `studymate.db.gz` 解压播种。因此 clone 后直接启动即可获得完整演示数据，无需手动导入。已有数据的库不会被覆盖。
+
+### Docker
 
 后端镜像只复制压缩种子库。容器入口在 `/app/data/studymate.db` 不存在时解压种子；如果持久化卷中已经有数据库，重新构建或重启镜像不会覆盖线上数据。
 

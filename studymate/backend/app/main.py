@@ -1,5 +1,9 @@
+import gzip
+import shutil
+import sqlite3
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -274,8 +278,60 @@ async def _ensure_seed_users(conn):
         )
 
 
+
+
+_SEED_DB_GZ = Path(__file__).resolve().parent.parent / "resources" / "seed" / "studymate.db.gz"
+
+
+def _sqlite_db_path() -> Path | None:
+    """从 DATABASE_URL 解析本地 SQLite 文件路径；非本地 SQLite 返回 None。"""
+    url = settings.DATABASE_URL
+    prefix = "sqlite:///"
+    if not url.startswith(prefix):
+        return None
+    raw = url[len(prefix):]
+    if not raw or raw == ":memory:":
+        return None
+    return Path(raw)
+
+
+def _local_db_needs_seed(db_path: Path) -> bool:
+    """本地库缺失或课程与知识块均为空时返回 True。"""
+    if not db_path.exists():
+        return True
+    try:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        try:
+            courses = conn.execute("SELECT COUNT(*) FROM courses").fetchone()[0]
+            chunks = conn.execute("SELECT COUNT(*) FROM knowledge_chunks").fetchone()[0]
+        finally:
+            conn.close()
+    except sqlite3.OperationalError:
+        return True
+    return courses == 0 and chunks == 0
+
+
+def _seed_from_snapshot(db_path: Path) -> bool:
+    """从脱敏压缩种子库解压到本地运行库路径。成功返回 True。"""
+    if not _SEED_DB_GZ.is_file():
+        return False
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    with gzip.open(_SEED_DB_GZ, "rb") as source, open(db_path, "wb") as target:
+        shutil.copyfileobj(source, target)
+    return True
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 本地裸跑自动播种：库文件不存在或课程/知识块为空时，
+    # 从随仓库分发的脱敏种子库解压，避免空库启动后 RAG 无数据可检索。
+    # Docker 走 docker_entrypoint.py 已独立处理；此处对已有库幂等跳过。
+    db_path = _sqlite_db_path()
+    if db_path is not None and _local_db_needs_seed(db_path):
+        if _seed_from_snapshot(db_path):
+            print(f"[startup] 已从种子库自动播种 {db_path}", flush=True)
+        else:
+            print(f"[startup] 种子库不存在，跳过自动播种：{_SEED_DB_GZ}", flush=True)
     # 启动时：建表（开发用，正式上 alembic）
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

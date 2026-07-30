@@ -41,7 +41,7 @@ python -m pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-首次启动会创建或补齐本地 SQLite 表，并初始化固定演示账号。真实 API Key 只写入 `backend/.env`，不要写入仓库中的示例文件。
+首次启动会创建或补齐本地 SQLite 表，并初始化固定演示账号。若本地数据库不存在或课程与知识块为空，还会自动从随仓库分发的脱敏种子库（`resources/seed/studymate.db.gz`）解压播种，因此 clone 后直接启动即可获得 5 门课程、938 个知识块和 34 个演示账号，无需手动导入。已有数据的库不会被覆盖。真实 API Key 只写入 `backend/.env`，不要写入仓库中的示例文件。
 
 ### 2. 启动前端
 
