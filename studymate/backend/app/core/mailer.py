@@ -2,10 +2,11 @@ from email.message import EmailMessage
 
 import aiosmtplib
 
-from app.core.config import settings
+from app.core.config import require_external_access, settings
 
 
 async def send_verification_code(email: str, code: str) -> None:
+    require_external_access("SMTP")
     if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
         raise RuntimeError("邮件服务未配置，请先在 .env 填写 SMTP 发件账号和授权凭据")
 

@@ -85,3 +85,7 @@ coursework/
 
 # 交付打包产物（体积大，不进 git）
 docs/交付文档/交付文件/*.zip
+
+# ============ 前端设计母图与预览（体积大，非运行时必需）============
+studymate/frontend/assets-source/
+studymate/frontend/preview/

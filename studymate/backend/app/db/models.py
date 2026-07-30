@@ -72,6 +72,14 @@ class Course(Base, TimestampMixin):
     description: Mapped[str] = mapped_column(Text, default="")
 
 
+class SystemMigration(Base):
+    """只读运维可见的结构/数据迁移记录。"""
+    __tablename__ = "system_migrations"
+    version: Mapped[str] = mapped_column(String(64), primary_key=True)
+    description: Mapped[str] = mapped_column(String(512))
+    applied_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class KnowledgeChunk(Base, TimestampMixin):
     """知识库分片。原文 + 元数据 + 语义向量（混合检索用）。"""
     __tablename__ = "knowledge_chunks"
@@ -84,6 +92,49 @@ class KnowledgeChunk(Base, TimestampMixin):
     meta: Mapped[dict] = mapped_column(JSON, default=dict)
     chroma_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     # 混合检索语义分支：chunk 向量（list[float]，JSON 存）。NULL = 未向量化，检索退化为纯 BM25。
+    embedding: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
+
+class UserKnowledgeBase(Base, TimestampMixin):
+    """用户私有知识库；所有读写必须同时按 id 与 user_id 过滤。"""
+    __tablename__ = "user_knowledge_bases"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str] = mapped_column(Text, default="")
+    bound_course_id: Mapped[int | None] = mapped_column(ForeignKey("courses.id"), nullable=True, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class UserKnowledgeDocument(Base, TimestampMixin):
+    __tablename__ = "user_knowledge_documents"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    knowledge_base_id: Mapped[int] = mapped_column(ForeignKey("user_knowledge_bases.id"), index=True)
+    filename: Mapped[str] = mapped_column(String(256))
+    media_type: Mapped[str] = mapped_column(String(128), default="application/octet-stream")
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(32), default="parsing", index=True)
+    parse_progress: Mapped[int] = mapped_column(Integer, default=0)
+    vector_progress: Mapped[int] = mapped_column(Integer, default=0)
+    error_detail: Mapped[str] = mapped_column(Text, default="")
+    page_count: Mapped[int] = mapped_column(Integer, default=0)
+    source_path: Mapped[str] = mapped_column(String(768), default="")
+    checksum_sha256: Mapped[str] = mapped_column(String(64), default="")
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    ocr_status: Mapped[str] = mapped_column(String(32), default="not_needed")
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class UserKnowledgeChunk(Base, TimestampMixin):
+    __tablename__ = "user_knowledge_chunks"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    knowledge_base_id: Mapped[int] = mapped_column(ForeignKey("user_knowledge_bases.id"), index=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("user_knowledge_documents.id"), index=True)
+    content: Mapped[str] = mapped_column(Text)
+    page: Mapped[int | None] = mapped_column(Integer, nullable=True)
     embedding: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
 

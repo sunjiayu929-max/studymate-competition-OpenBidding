@@ -19,6 +19,8 @@ import httpx
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
+from app.core.config import safe_offline_enabled
+
 router = APIRouter(prefix="/bili", tags=["bili"])
 
 _UA = (
@@ -57,13 +59,16 @@ _COURSE_ANCHORS: dict[str, tuple[str, ...]] = {
     "计算机组成原理": ("计算机组成原理", "计组", "cpu", "408"),
 }
 _TECH_TERMS = (
-    "cpu", "取指", "译码", "执行", "指令周期", "流水线", "cache", "缓存", "中断", "总线",
+    "cpu", "取指", "译码", "执行", "指令周期", "流水线", "cache", "缓存", "直接映射", "组相联", "全相联", "中断", "总线",
     "梯度下降", "反向传播", "神经网络", "决策树", "随机森林", "支持向量机", "机器学习",
     "快速排序", "归并排序", "二叉树", "哈希表", "动态规划", "图遍历", "最短路径", "数据结构",
     "进程", "线程", "死锁", "调度", "虚拟内存", "页面置换", "文件系统", "操作系统",
     "tcp", "udp", "三次握手", "四次挥手", "拥塞控制", "路由", "dns", "网络协议",
 )
-_OFF_TOPIC_TERMS = ("宝可梦", "脑叶公司", "王者荣耀", "原神", "我的世界", "指令方块", "游戏攻略")
+_OFF_TOPIC_TERMS = (
+    "宝可梦", "脑叶公司", "王者荣耀", "原神", "我的世界", "指令方块",
+    "游戏", "攻略", "道具",
+)
 
 
 def _search_url(keyword: str) -> str:
@@ -104,10 +109,11 @@ def _core_terms(keyword: str, concept_title: str | None, resolved_query: str) ->
         token = token.lower()
         if token not in terms:
             terms.append(token)
-    if not terms:
-        compact = _normalize_text(resolved_query)
-        if compact:
-            terms.append(compact)
+    # 固定术语表只能识别“Cache”这类主词，容易丢掉“直接映射”“学习率”
+    # 等限定信息。保留完整知识点作为强匹配项；只命中主词时仍可作为相关补充。
+    compact = _normalize_text(resolved_query)
+    if compact and compact not in {_normalize_text(term) for term in terms}:
+        terms.append(compact)
     return list(dict.fromkeys(terms))[:8]
 
 
@@ -129,19 +135,62 @@ def _rank_videos(
     course_name: str | None,
     limit: int,
 ) -> list[dict]:
-    ranked: list[tuple[int, int, dict]] = []
+    ranked: list[tuple[int, int, int, dict]] = []
     for video in candidates:
+        search_text = _normalize_text(str(video.get("_search_text") or video.get("title") or ""))
+        if any(_normalize_text(term) in search_text for term in _OFF_TOPIC_TERMS):
+            continue
         score, hits = _relevance_score(video, core_terms, course_name)
+        if hits == 0:
+            continue
         enough_terms = hits >= min(2, len(core_terms))
         if len(core_terms) == 1:
             enough_terms = hits == 1
-        if enough_terms and score >= 4:
-            ranked.append((score, int(video.get("play") or 0), video))
-    ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        match_level = "exact" if enough_terms else "related"
+        # 一个明确的知识词命中就可进入“相关补充”。课程锚点继续参与排序，
+        # 但不再是卡片能否显示的硬门槛。
+        if score >= 3:
+            ranked.append(
+                (
+                    2 if match_level == "exact" else 1,
+                    score,
+                    int(video.get("play") or 0),
+                    {**video, "match_level": match_level},
+                )
+            )
+    ranked.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
     return [
         {key: value for key, value in video.items() if not key.startswith("_")}
-        for _, _, video in ranked[:limit]
+        for _, _, _, video in ranked[:limit]
     ]
+
+
+def _candidate_queries(
+    resolved_query: str,
+    core_terms: list[str],
+    concept_title: str | None,
+    course_name: str | None,
+) -> list[str]:
+    anchors = _COURSE_ANCHORS.get(course_name or "", ())
+    queries = [resolved_query]
+    if anchors:
+        queries.append(f"{resolved_query} {anchors[0]}")
+    compact = _normalize_text(resolved_query)
+    broad_term = next(
+        (
+            term
+            for term in core_terms
+            if _normalize_text(term) and _normalize_text(term) != compact
+        ),
+        "",
+    )
+    if broad_term:
+        # B 站偶尔会对长而精确的短语返回空列表；再搜一次主知识词，
+        # 最终仍经过本地相关性与跑题词过滤。
+        queries.append(broad_term)
+    if concept_title and concept_title != resolved_query:
+        queries.append(concept_title)
+    return list(dict.fromkeys(query.strip() for query in queries if query.strip()))[:3]
 
 
 async def _get_wbi_keys(client: httpx.AsyncClient) -> tuple[str, str]:
@@ -235,13 +284,7 @@ async def videos(req: VideosRequest):
     course_name = (req.course_name or "").strip() or None
     resolved_query = _resolve_query(kw, concept_title)
     core_terms = _core_terms(kw, concept_title, resolved_query)
-    anchors = _COURSE_ANCHORS.get(course_name or "", ())
-    queries = [resolved_query]
-    if anchors:
-        queries.append(f"{resolved_query} {anchors[0]}")
-    if concept_title and concept_title != resolved_query:
-        queries.append(concept_title)
-    queries = list(dict.fromkeys(query.strip() for query in queries if query.strip()))[:3]
+    queries = _candidate_queries(resolved_query, core_terms, concept_title, course_name)
 
     cache_key = f"{kw}:{concept_title or ''}:{course_name or ''}:{req.limit}"
     hit = _CACHE.get(cache_key)
@@ -254,6 +297,8 @@ async def videos(req: VideosRequest):
         "search_url": _search_url(resolved_query),
         "resolved_query": resolved_query,
     }
+    if safe_offline_enabled():
+        return {**fallback, "source_state": "safe_offline"}
     try:
         batches = await asyncio.gather(*(_search(query, 20) for query in queries), return_exceptions=True)
         candidates: dict[str, dict] = {}
@@ -269,6 +314,7 @@ async def videos(req: VideosRequest):
             "videos": vids,
             "search_url": _search_url(resolved_query),
             "resolved_query": resolved_query,
+            "match_level": vids[0]["match_level"] if vids else "fallback",
         }
     except Exception:
         payload = fallback

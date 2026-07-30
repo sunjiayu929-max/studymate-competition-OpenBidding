@@ -6,10 +6,12 @@ StudyMate 是面向高校计算机类课程的个性化学习系统，覆盖机�
 
 - 7 组学习画像：知识基础、认知风格、学习目标、薄弱点、学习节奏、内容偏好、就业技能。
 - 7 个协作角色：Retriever、Doc、MindMap、Quiz、Reading、Code、Path。
-- 课程知识库：5 门课程、938 个知识块，支持 BM25 + Qwen 向量的 RRF 混合检索与原文追溯。
-- AI 助教：课程级持久会话、页面上下文、SSE 流式回复、图片理解和文件附件。
+- 双层知识库：内置 5 门课程、1709 个知识块；用户可创建私有库、上传 PDF/PPTX/DOCX/Markdown/TXT、绑定课程，并按来源页码追溯。上传进入可观察后台任务，原文件、进度、失败和安全重试均持久化。
+- AI 助教：课程级持久会话、页面上下文、SSE 流式回复、图片理解、文件附件，以及服务端受控的 Qwen、DeepSeek、MiMo 显式选择。
+- PPT 生成：Qwen/DeepSeek/MiMo 受控生成大纲与单页重写，复用课程/私有知识上下文，支持引用、模板、图表页、显式本地降级，并导出元素可继续编辑的 `.pptx`。
 - 学习闭环：课程空间、笔记与错题、智能测验、学习报告、画像回写、埋点和反馈。
-- 可视讲解：五门课各 60 个主题，共 300 个确定性动画或脚本化讲解。
+- 登录首页：单屏“学习宇宙 · 实时指挥舱”同时呈现平台能力、个人今日状态、中央七星球入口、7 Agents 实时 store 状态和真实学习脉冲；进入后保留暖白今日学习桌面。
+- 可视讲解：五门课各 60 个主题，共 300 个确定性动画或脚本化讲解；AI 讲解支持真实/估算时长、seek、逐句高亮和 0.75～1.5 倍速。
 - 外部资源：哔哩哔哩高相关视频、讯飞人才呀知识点课程、论文/图书/博客真实详情页解析，以及本地可解释岗位推荐。
 - 在线编程：通过可选 Piston 服务运行 Python、C11 和 C++17。
 
@@ -41,7 +43,22 @@ python -m pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-首次启动会创建或补齐本地 SQLite 表，并初始化固定演示账号。若本地数据库不存在或课程与知识块为空，还会自动从随仓库分发的脱敏种子库（`resources/seed/studymate.db.gz`）解压播种，因此 clone 后直接启动即可获得 5 门课程、938 个知识块和 34 个演示账号，无需手动导入。已有数据的库不会被覆盖。真实 API Key 只写入 `backend/.env`，不要写入仓库中的示例文件。
+首次启动会创建或补齐本地 SQLite 表，并初始化固定演示账号。真实 API Key 只写入 `backend/.env`，不要写入仓库中的示例文件。
+
+### 安全离线启动（巡检/验收）
+
+需要保证 0 外联时，不要通过“把 Key 赋空字符串”模拟未配置。PowerShell 会删除空字符串环境变量，普通启动随后可能从 `backend/.env` 回读真实配置。使用后端自带的跨 shell 启动器，并显式提供隔离数据库与私库目录：
+
+```bash
+cd backend
+python scripts/run_safe_offline.py \
+  --database-path /absolute/path/studymate-safe.db \
+  --private-knowledge-dir /absolute/path/studymate-safe-private
+```
+
+PowerShell 与 `cmd.exe` 使用同一个 Python 命令，把两个示例路径换成 Windows 绝对路径即可。启动器会在导入应用前设置 `STUDYMATE_SAFE_OFFLINE=1`，完全跳过项目 `.env`；进程中已有的 LLM、Embedding、ASR、TTS、OCR、SMTP 和 Piston 配置也会被覆盖为不可用，并安装出站网络保险丝。它只监听环回地址，不启动 Piston，不使用真实数据库或私库目录。
+
+`STUDYMATE_SAFE_OFFLINE` 必须通过进程环境或该启动器设置，不要写入 `backend/.env`。普通开发模式保持原有启动方式。
 
 ### 2. 启动前端
 
@@ -112,12 +129,19 @@ python scripts/build_seed_db.py
 cd backend
 PYTHONPYCACHEPREFIX=/tmp/studymate-pycache python -m compileall -q app scripts
 python -m unittest discover -s tests -v
+python -m unittest tests.test_safe_offline_mode -v
 
 # 前端
 cd ../frontend
 npm run lint
 npm run build
 node --check scripts/capture-page.mjs
+node --experimental-strip-types scripts/check-phase2-timeline.mjs
+node scripts/check-pptx-export.mjs
+node scripts/check-build-budget.mjs
+npm run check:phase3
+npm run check:e2e
+npm run check:universe
 STUDYMATE_BASE_URL=http://127.0.0.1:5173 node scripts/check-suggestion2.mjs
 STUDYMATE_BASE_URL=http://127.0.0.1:5173 node scripts/check-suggestion3.mjs
 STUDYMATE_BASE_URL=http://127.0.0.1:5173 node scripts/check-suggestion4.mjs
@@ -141,11 +165,16 @@ PYTHONDONTWRITEBYTECODE=1 python scripts/check_workspace_structure.py
 - [`docs/开发与验收指南.md`](docs/开发与验收指南.md)：开发规范与交付前核查。
 - [`docs/Ubuntu部署指南.md`](docs/Ubuntu部署指南.md)：服务器部署、升级、备份和排障。
 - [`docs/密钥管理指南.md`](docs/密钥管理指南.md)：密钥配置、轮换和泄露处理。
+- [`docs/第二阶段实施交接.md`](docs/第二阶段实施交接.md)：真实时间轴、PPT 模型、私库后台任务与当前验证边界。
+- [`docs/第三阶段实施交接.md`](docs/第三阶段实施交接.md)：动态数字人、评委演示、宇宙精修、性能预算与 E2E 回归边界。
+- [`docs/第四阶段最终巡检交接.md`](docs/第四阶段最终巡检交接.md)：双视口视觉基线、比赛主链路巡检、实际修复与现场确认清单。
+- [`docs/学习宇宙实时指挥舱实施交接.md`](docs/学习宇宙实时指挥舱实施交接.md)：指挥舱数据口径、空态、动画边界、三视口截图与回归结果。
 - [`frontend/README.md`](frontend/README.md)：前端开发和截图工具。
 - [`backend/README.md`](backend/README.md)：后端模块和运行说明。
 
 ## 安全提醒
 
 - 不要提交 `backend/.env`、`.deploy.env`、数据库备份、日志、Cookie 或 API Key 清单。
+- 安全巡检统一使用 `backend/scripts/run_safe_offline.py`，不要依赖清空环境变量，也不要从项目 `.env` 所在目录做普通启动。
 - 生产环境必须设置随机 `AUTH_SECRET_KEY`，启用 `SESSION_COOKIE_SECURE=true`，并使用 HTTPS。
 - 任何曾进入聊天、共享文档或他人设备的 Key 都应在服务商控制台撤销后重新创建。

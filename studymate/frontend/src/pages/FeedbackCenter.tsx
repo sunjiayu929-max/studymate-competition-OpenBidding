@@ -174,7 +174,7 @@ export function FeedbackCenter() {
 
   return (
     <div className="app-page paper-theme">
-      <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
+      <div className="mx-auto max-w-[1720px] px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
         <AppTopbar current="feedback" appearance="paper" />
         <section className="mt-4 min-h-[calc(100dvh-120px)] overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)]">
           <header className="flex items-center justify-between gap-2.5 border-b border-[#D7D1C4] bg-[#F8F6F0] px-3 py-3.5 sm:gap-3 sm:px-5">

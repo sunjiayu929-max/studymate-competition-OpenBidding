@@ -45,6 +45,9 @@ class UserStore {
   set(u: CurrentUser | null) {
     const previousUserId = this.current?.user_id ?? null
     this.current = u
+    if (u && typeof window !== "undefined") {
+      window.dispatchEvent(new Event("studymate:event-tracking-resume"))
+    }
     try {
       if (u) localStorage.setItem(STORAGE_KEY, JSON.stringify(u))
       else localStorage.removeItem(STORAGE_KEY)

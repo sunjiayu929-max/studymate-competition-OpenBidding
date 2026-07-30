@@ -14,6 +14,8 @@ from urllib.parse import urlparse
 
 import httpx
 
+from app.core.config import safe_offline_enabled
+
 
 PROVIDER = "讯飞人才呀"
 COURSE_PLATFORM_URL = "http://rencaiya.vip/college/allcourse"
@@ -84,7 +86,7 @@ _course_cache: dict[str, tuple[float, str, str, list[dict[str, Any]]]] = {}
 _job_cache: tuple[float, list[dict[str, Any]]] | None = None
 
 _TOPIC_TERMS = (
-    "cpu", "取指", "译码", "执行", "指令周期", "流水线", "cache", "缓存", "中断", "总线",
+    "cpu", "取指", "译码", "执行", "指令周期", "流水线", "cache", "缓存", "直接映射", "组相联", "全相联", "中断", "总线",
     "梯度下降", "反向传播", "神经网络", "决策树", "随机森林", "支持向量机", "机器学习",
     "快速排序", "归并排序", "二叉树", "哈希表", "动态规划", "图遍历", "最短路径", "数据结构",
     "进程", "线程", "死锁", "调度", "虚拟内存", "页面置换", "文件系统", "操作系统",
@@ -121,10 +123,9 @@ def _topic_terms(keyword: str, resolved_query: str) -> list[str]:
         token = token.lower()
         if token not in terms:
             terms.append(token)
-    if not terms:
-        compact = _normalize_text(resolved_query)
-        if compact:
-            terms.append(compact)
+    compact = _normalize_text(resolved_query)
+    if compact and compact not in {_normalize_text(term) for term in terms}:
+        terms.append(compact)
     return list(dict.fromkeys(terms))[:8]
 
 
@@ -148,6 +149,83 @@ def _course_match_level(
     if any(_normalize_text(alias) in text for alias in aliases):
         return "course"
     return "fallback"
+
+
+def _course_affinity_score(
+    item: dict[str, Any],
+    terms: list[str],
+    resolved_query: str,
+    course_name: str,
+) -> int:
+    """在同一匹配层级内优先保留更贴近知识点/课程的结果。"""
+    title = _normalize_text(item.get("title") or "")
+    text = _normalize_text(f"{item.get('title', '')} {item.get('summary', '')}")
+    resolved = _normalize_text(resolved_query)
+    score = 0
+    if resolved and resolved in title:
+        score += 40
+    elif resolved and resolved in text:
+        score += 20
+    for term in terms:
+        normalized = _normalize_text(term)
+        if not normalized:
+            continue
+        if normalized in title:
+            score += min(len(normalized), 8) * 3
+        elif normalized in text:
+            score += min(len(normalized), 8)
+    for alias in COURSE_ALIASES.get(course_name) or (course_name,):
+        normalized = _normalize_text(alias)
+        if not normalized:
+            continue
+        if normalized in title:
+            score += min(len(normalized), 8) * 3
+        elif normalized in text:
+            score += min(len(normalized), 8)
+    return score
+
+
+def _rank_topic_courses(
+    items: list[dict[str, Any]],
+    terms: list[str],
+    resolved_query: str,
+    course_name: str,
+    limit: int,
+) -> tuple[str, list[dict[str, Any]]]:
+    """强相关优先，并用少量最接近的同课程结果补位。"""
+    rank_value = {"exact": 3, "related": 2, "course": 1, "fallback": 0}
+    ranked = [
+        (
+            _course_match_level(item, terms, resolved_query, course_name),
+            _course_affinity_score(item, terms, resolved_query, course_name),
+            item,
+        )
+        for item in items
+    ]
+    ranked.sort(
+        key=lambda row: (
+            rank_value[row[0]],
+            row[1],
+            row[2]["learned_person"],
+            row[2]["course_id"],
+        ),
+        reverse=True,
+    )
+
+    direct = [row for row in ranked if row[0] in {"exact", "related"}]
+    course_level = [row for row in ranked if row[0] == "course"]
+    selected = direct[:limit]
+    remaining = limit - len(selected)
+    if remaining > 0 and course_level:
+        # 课程级结果只取最贴近当前课程名称的一小组，避免把“硬件”搜索下的
+        # STM32、边缘推理等热门但偏题内容一并展示。
+        best_affinity = course_level[0][1]
+        close_course_rows = [row for row in course_level if row[1] >= best_affinity - 4]
+        selected.extend(close_course_rows[: min(2, remaining)])
+
+    visible = [{**item, "match_level": level} for level, _, item in selected]
+    match_level = selected[0][0] if selected else "fallback"
+    return match_level, visible
 
 
 def _safe_cover(value: Any) -> str:
@@ -273,6 +351,10 @@ async def get_courses(
     now = time.time()
     resolved_query = _resolve_topic_query(keyword, course_name)
     has_topic = bool((keyword or "").strip())
+    if safe_offline_enabled():
+        if has_topic:
+            return "safe_offline", "fallback", resolved_query, []
+        return "safe_offline", "course", resolved_query, _fallback_courses(course_name, limit)
     cache_key = f"{course_name}:{_normalize_text(resolved_query)}"
     cached = _course_cache.get(cache_key)
     if cached and now - cached[0] < _COURSE_TTL:
@@ -311,21 +393,13 @@ async def get_courses(
                 visible = merged
             else:
                 terms = _topic_terms(keyword or "", resolved_query)
-                ranked = [
-                    (_course_match_level(item, terms, resolved_query, course_name), item)
-                    for item in merged
-                ]
-                rank_value = {"exact": 3, "related": 2, "course": 1, "fallback": 0}
-                ranked.sort(
-                    key=lambda pair: (
-                        rank_value[pair[0]],
-                        pair[1]["learned_person"],
-                        pair[1]["course_id"],
-                    ),
-                    reverse=True,
+                match_level, visible = _rank_topic_courses(
+                    merged,
+                    terms,
+                    resolved_query,
+                    course_name,
+                    8,
                 )
-                visible = [item for level, item in ranked if level in {"exact", "related"}]
-                match_level = ranked[0][0] if ranked else "fallback"
             _course_cache[cache_key] = (now, match_level, resolved_query, visible)
             return "live", match_level, resolved_query, visible[:limit]
     except Exception:
@@ -340,6 +414,8 @@ async def get_courses(
 
 async def get_jobs() -> tuple[str, list[dict[str, Any]]]:
     global _job_cache
+    if safe_offline_enabled():
+        return "safe_offline", _fallback_jobs()
     now = time.time()
     if _job_cache and now - _job_cache[0] < _JOB_TTL:
         return "cache", _job_cache[1]

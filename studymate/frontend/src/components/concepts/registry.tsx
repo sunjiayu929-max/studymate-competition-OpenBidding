@@ -106,7 +106,7 @@ export interface ConceptAnimProps {
   /** 旧协议：动画连续自播，每步把字幕喊给外壳朗读（不等念完）。 */
   onCaption?: (text: string) => void
   /** 新协议（分步讲课）：外壳显示大字幕 + 朗读，「念完」后 resolve；动画 await 它再推进下一拍 → 音画同步。 */
-  narrate?: (text: string) => Promise<void>
+  narrate?: (text: string, options?: import("./useLecture").NarrationOptions) => Promise<void>
   /** 讲课开场调用一次，把全部节拍文字传进来一次性预合成语音 → 播放时拍间零等待、连贯不卡。 */
   prepareNarration?: (texts: string[]) => Promise<void>
   /** 该值改变即从头重讲（「再讲一遍」用）。 */

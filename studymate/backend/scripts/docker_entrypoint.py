@@ -13,8 +13,7 @@ Windows/macOS 主机 bind-mount 上不可靠（会损坏 / database is locked）
 落在 Docker 原生 Linux FS 上，锁正常。
 
 注：本地裸跑（python run.py，无 compose env）走 DATABASE_URL 默认 `./studymate.db`，
-不经过本脚本。应用 `lifespan` 启动时若检测到本地库为空会自动从镜像内的同一份种子库解压播种，
-因此本地裸跑同样开箱即用，Docker 与裸跑两者互不干扰。
+不经过本脚本，完全不受影响。
 """
 import gzip
 import os

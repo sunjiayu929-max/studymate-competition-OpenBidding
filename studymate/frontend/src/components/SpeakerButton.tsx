@@ -11,8 +11,8 @@
 import { useEffect, useRef, useState } from "react"
 import { Volume2, Loader2, Square } from "lucide-react"
 import { motion } from "framer-motion"
-import { getCurrentVoice } from "@/store/voice"
-import { sseHeaders } from "@/lib/api"
+import { prepareSpeechText } from "@/lib/speechText"
+import { StreamingTtsPipeline } from "@/lib/ttsPipeline"
 
 type Status = "idle" | "loading" | "playing"
 
@@ -25,42 +25,16 @@ interface Props {
   onError?: (err: Error) => void
 }
 
-function stripMarkdown(md: string): string {
-  return md
-    .replace(/```[\s\S]*?```/g, "（此处省略代码块）")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\$\$[\s\S]*?\$\$/g, "（数学公式）")
-    .replace(/\$([^$]+)\$/g, "$1")
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/[#*_>~|]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
 export function SpeakerButton({ text, size = "sm", onError, className = "" }: Props) {
   const [status, setStatus] = useState<Status>("idle")
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const urlRef = useRef<string | null>(null)
-  const abortRef = useRef<AbortController | null>(null)
+  const pipelineRef = useRef<StreamingTtsPipeline | null>(null)
   const unmountedRef = useRef(false)
   // 稳定的 stop 引用（每次 render 仅更新内部实现，外部 .current 不变）
   const stopRef = useRef<() => void>(() => {})
 
   stopRef.current = () => {
-    if (abortRef.current) {
-      abortRef.current.abort()
-      abortRef.current = null
-    }
-    if (audioRef.current) {
-      try { audioRef.current.pause() } catch { /* ignore */ }
-      audioRef.current.src = ""
-      audioRef.current = null
-    }
-    if (urlRef.current) {
-      URL.revokeObjectURL(urlRef.current)
-      urlRef.current = null
-    }
+    pipelineRef.current?.cancel()
+    pipelineRef.current = null
     if (!unmountedRef.current) setStatus("idle")
   }
 
@@ -76,7 +50,7 @@ export function SpeakerButton({ text, size = "sm", onError, className = "" }: Pr
     }
   }, [])
 
-  const handleClick = async () => {
+  const handleClick = () => {
     // 已经在播 / 在合成 → 自己停掉
     if (status !== "idle") {
       stopRef.current()
@@ -86,7 +60,7 @@ export function SpeakerButton({ text, size = "sm", onError, className = "" }: Pr
       return
     }
 
-    const cleaned = stripMarkdown(text || "")
+    const cleaned = prepareSpeechText(text || "")
     if (!cleaned) return
 
     // 打断别处的播放
@@ -95,49 +69,25 @@ export function SpeakerButton({ text, size = "sm", onError, className = "" }: Pr
     }
     globalState.stopCurrent = stopRef.current
 
-    const ctrl = new AbortController()
-    abortRef.current = ctrl
     setStatus("loading")
-
-    try {
-      const r = await fetch("/api/voice/tts", {
-        method: "POST",
-        headers: sseHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ text: cleaned, voice: getCurrentVoice() }),
-        signal: ctrl.signal,
-      })
-      if (!r.ok) {
-        const detail = await r.text().catch(() => "")
-        throw new Error(`TTS ${r.status}: ${detail.slice(0, 200)}`)
-      }
-      const blob = await r.blob()
-      if (unmountedRef.current) return
-
-      const url = URL.createObjectURL(blob)
-      urlRef.current = url
-      const audio = new Audio(url)
-      audioRef.current = audio
-
-      audio.onended = () => stopRef.current()
-      audio.onerror = () => {
-        console.error("[SpeakerButton] audio playback error")
-        stopRef.current()
-      }
-
-      setStatus("playing")
-      await audio.play()
-    } catch (e) {
-      const err = e as Error
-      if (err.name === "AbortError") return
-      console.error("[SpeakerButton] TTS 失败：", err)
-      if (!unmountedRef.current) setStatus("idle")
-      if (globalState.stopCurrent === stopRef.current) {
-        globalState.stopCurrent = null
-      }
-      onError?.(err)
-    } finally {
-      abortRef.current = null
-    }
+    const pipeline = new StreamingTtsPipeline({
+      prefetch: 1,
+      onPlaybackStart: () => {
+        if (!unmountedRef.current) setStatus("playing")
+      },
+      onDrain: () => {
+        if (pipelineRef.current === pipeline) pipelineRef.current = null
+        if (globalState.stopCurrent === stopRef.current) globalState.stopCurrent = null
+        if (!unmountedRef.current) setStatus("idle")
+      },
+      onError: (err) => {
+        console.error("[SpeakerButton] TTS 失败：", err)
+        onError?.(err)
+      },
+    })
+    pipelineRef.current = pipeline
+    pipeline.append(cleaned)
+    pipeline.finish()
   }
 
   const sz = size === "md" ? "w-8 h-8" : "w-7 h-7"

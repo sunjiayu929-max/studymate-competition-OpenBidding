@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import AsyncIterator, Iterable
 from openai import AsyncOpenAI
 
-from app.core.config import settings
+from app.core.config import require_external_access, safe_offline_enabled, settings
 
 
 class LLMClient:
@@ -102,6 +102,8 @@ def _provider_conf(provider: str) -> tuple[str, str, str]:
 
 def has_llm_key(provider: str | None = None) -> bool:
     """指定 provider 是否配了 key（默认看 LLM_PROVIDER）。"""
+    if safe_offline_enabled():
+        return False
     p = (provider or settings.LLM_PROVIDER).lower()
     try:
         key, _, _ = _provider_conf(p)
@@ -115,6 +117,7 @@ def get_llm_client(provider: str | None = None) -> LLMClient:
 
     每个 provider 一个单例。
     """
+    require_external_access("LLM")
     p = (provider or settings.LLM_PROVIDER).lower()
     if p in _clients:
         return _clients[p]

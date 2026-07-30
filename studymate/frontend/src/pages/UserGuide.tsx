@@ -70,8 +70,8 @@ const CAPABILITY_GROUPS = [
     label: "理解知识",
     description: "从生成、检索到连续追问",
     items: [
-      { label: "智能生成", to: "/workspace", icon: LayoutDashboard },
-      { label: "RAG 检索", to: "/rag", icon: Database },
+      { label: "学习资源工坊", to: "/workspace", icon: LayoutDashboard },
+      { label: "知识库", to: "/knowledge", icon: Database },
       { label: "AI 课程助教", to: "/tutor", icon: MessageCircleMore },
       { label: "可视讲解", to: "/concept", icon: Clapperboard },
     ],

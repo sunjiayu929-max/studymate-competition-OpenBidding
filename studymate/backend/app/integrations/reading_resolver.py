@@ -17,6 +17,8 @@ from xml.etree import ElementTree
 
 import httpx
 
+from app.core.config import safe_offline_enabled
+
 
 _CACHE_TTL = 6 * 60 * 60
 _CACHE_LIMIT = 512
@@ -311,6 +313,8 @@ def _set_cached(key: str, value: dict[str, Any] | None) -> None:
 
 
 async def resolve_reading_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if safe_offline_enabled():
+        return []
     semaphore = asyncio.Semaphore(4)
     timeout = httpx.Timeout(6.5, connect=4.0)
     transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0")

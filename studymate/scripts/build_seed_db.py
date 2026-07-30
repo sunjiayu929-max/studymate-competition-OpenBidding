@@ -32,7 +32,7 @@ except ModuleNotFoundError:  # direct execution: python scripts/build_seed_db.py
 
 
 EXPECTED_COURSE_COUNT = 5
-EXPECTED_KNOWLEDGE_CHUNK_COUNT = 938
+EXPECTED_KNOWLEDGE_CHUNK_COUNT = 1709
 
 
 def parse_args() -> argparse.Namespace:

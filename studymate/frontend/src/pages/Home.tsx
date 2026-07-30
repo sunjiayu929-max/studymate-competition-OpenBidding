@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { Link } from "react-router-dom"
 import { motion, useReducedMotion } from "framer-motion"
 import {
+  Activity,
   AlertCircle,
+  ArrowDown,
   ArrowRight,
   BarChart3,
   BookOpenCheck,
@@ -17,7 +19,9 @@ import {
   MessageCircleMore,
   NotebookPen,
   Orbit,
+  Rocket,
   Route,
+  Search,
   ShieldCheck,
   Sparkles,
   Target,
@@ -31,7 +35,7 @@ import { listQuizSessions, type QuizSession } from "@/lib/quizSession"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { fallbackSamplesFor, useCurrentCourse } from "@/store/course"
 import { useCurrentUser } from "@/store/user"
-import { useWorkspaceStore, type RunStatus } from "@/store/workspace"
+import { useWorkspaceStore, type RunStatus, type WorkspaceState } from "@/store/workspace"
 
 type NoteSource = "manual" | "doc" | "quiz" | "tutor"
 
@@ -50,9 +54,13 @@ interface NotesResponse {
 }
 
 interface ProfileDims {
+  knowledge_base?: Record<string, unknown>
+  cognitive_style?: Record<string, unknown>
   goals?: { primary?: string; deadline?: string; target_topics?: string[] }
   weak_points?: { topics?: string[]; error_types?: string[] }
   pace?: { hours_per_week?: number; intensity?: string }
+  preference?: Record<string, unknown>
+  employment_skills?: Record<string, unknown>
 }
 
 interface ProfileResponse {
@@ -78,6 +86,13 @@ interface HomeData {
   notes: NotesResponse
   quizzes: QuizSession[]
   evaluations: EvalHistoryItem[]
+  platform: {
+    courseCount: number
+    chunkCount: number
+    source: "live" | "baseline"
+  }
+  sources: Record<"profile" | "notes" | "quizzes" | "evaluations" | "courses" | "rag", "loading" | "ok" | "error">
+  lastSyncedAt: number
 }
 
 const EMPTY_HOME_DATA: HomeData = {
@@ -85,6 +100,16 @@ const EMPTY_HOME_DATA: HomeData = {
   notes: { count: 0, items: [] },
   quizzes: [],
   evaluations: [],
+  platform: { courseCount: 5, chunkCount: 938, source: "baseline" },
+  sources: {
+    profile: "loading",
+    notes: "loading",
+    quizzes: "loading",
+    evaluations: "loading",
+    courses: "loading",
+    rag: "loading",
+  },
+  lastSyncedAt: 0,
 }
 
 const MODULES = [
@@ -102,6 +127,537 @@ const SOURCE_LABEL: Record<NoteSource, string> = {
   doc: "讲解摘录",
   quiz: "错题笔记",
   tutor: "助教摘录",
+}
+
+const AGENT_DEFINITIONS = [
+  { id: "retriever", name: "Retriever", role: "知识检索" },
+  { id: "doc", name: "Doc", role: "讲解文档" },
+  { id: "mindmap", name: "MindMap", role: "思维导图" },
+  { id: "quiz", name: "Quiz", role: "智能测验" },
+  { id: "reading", name: "Reading", role: "拓展阅读" },
+  { id: "code", name: "Code", role: "代码案例" },
+  { id: "path", name: "Path", role: "学习路径" },
+] as const
+
+interface UniverseMetric {
+  label: string
+  value: string
+  detail: string
+  source: "ok" | "error"
+}
+
+interface UniverseActivity {
+  key: string
+  to: string
+  title: string
+  detail: string
+  timestamp: number
+  tone: string
+}
+
+interface UniverseTrendPoint {
+  key: string
+  label: string
+  value: number
+}
+
+interface LearningUniverseProps {
+  learnerName: string
+  courseName: string
+  courseSelected: boolean
+  courseChunkCount: number
+  metrics: UniverseMetric[]
+  platform: HomeData["platform"]
+  profileCompleteness: number
+  profileVersion: number
+  generatedResourceCount: number
+  quizCount: number
+  noteCount: number
+  reportCount: number
+  todayProgress: number
+  activities: UniverseActivity[]
+  trend: UniverseTrendPoint[]
+  sources: HomeData["sources"]
+  lastSyncedAt: number
+  workspace: WorkspaceState
+}
+
+const UNIVERSE_PLANETS = [
+  { id: "profile", to: "/profile", label: "学习画像", position: "planet-profile", orbit: "inner", size: "lg", icon: UserRoundSearch, tone: "#6EC8ED" },
+  { id: "knowledge", to: "/knowledge", label: "知识库", position: "planet-knowledge", orbit: "middle", size: "md", icon: Library, tone: "#62C6B6" },
+  { id: "quiz", to: "/quiz", label: "智能测验", position: "planet-quiz", orbit: "outer", size: "lg", icon: BookOpenCheck, tone: "#E2BC66" },
+  { id: "notes", to: "/notes", label: "智能笔记", position: "planet-notes", orbit: "inner", size: "sm", icon: NotebookPen, tone: "#78BE8B" },
+  { id: "workspace", to: "/workspace", label: "Agent 成果", position: "planet-workspace", orbit: "middle", size: "xl", icon: Sparkles, tone: "#DE9564" },
+  { id: "report", to: "/report", label: "学习报告", position: "planet-report", orbit: "outer", size: "md", icon: BarChart3, tone: "#A99BE0" },
+  { id: "course", to: "/courses", label: "课程路径", position: "planet-course", orbit: "outer", size: "sm", icon: Route, tone: "#79AEE8" },
+] as const
+
+function UniversePulseFrame({ className }: { className: string }) {
+  return (
+    <svg className={`universe-module-pulse-frame ${className}`} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <rect x="0.7" y="0.7" width="98.6" height="98.6" rx="3.2" ry="3.2" pathLength="100" />
+    </svg>
+  )
+}
+
+function agentStatusCopy(status: string, workspaceStatus: RunStatus) {
+  if (status === "running") return "执行中"
+  if (status === "streaming") return "生成中"
+  if (status === "done") return "已完成"
+  if (status === "error") return workspaceStatus === "interrupted" ? "已降级" : "异常"
+  return "待命"
+}
+
+function formatBeijingTime(value: Date) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(value)
+}
+
+function formatBeijingDate(value: Date) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  }).format(value)
+}
+
+function LearningUniverse(props: LearningUniverseProps) {
+  const {
+    learnerName,
+    courseName,
+    courseSelected,
+    courseChunkCount,
+    metrics,
+    platform,
+    profileCompleteness,
+    profileVersion,
+    generatedResourceCount,
+    quizCount,
+    noteCount,
+    reportCount,
+    todayProgress,
+    activities,
+    trend,
+    sources,
+    lastSyncedAt,
+    workspace,
+  } = props
+  const reduceMotion = useReducedMotion()
+  const rootRef = useRef<HTMLElement>(null)
+  const farLayerRef = useRef<HTMLDivElement>(null)
+  const midLayerRef = useRef<HTMLDivElement>(null)
+  const nearLayerRef = useRef<HTMLDivElement>(null)
+  const stageLayerRef = useRef<HTMLDivElement>(null)
+  const [active, setActive] = useState(true)
+  const [now, setNow] = useState(() => new Date())
+  const [firstEntrance] = useState(() => {
+    try {
+      return sessionStorage.getItem("sm:learning-universe-entered") !== "1"
+    } catch {
+      return true
+    }
+  })
+
+  const enterDesk = () => {
+    document.getElementById("learning-desk")?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" })
+  }
+
+  const moveParallax = (clientX?: number, clientY?: number) => {
+    if (reduceMotion) return
+    const root = rootRef.current
+    if (!root) return
+    const rect = root.getBoundingClientRect()
+    const x = clientX === undefined ? 0 : ((clientX - rect.left) / rect.width - 0.5) * 2
+    const y = clientY === undefined ? 0 : ((clientY - rect.top) / rect.height - 0.5) * 2
+    if (farLayerRef.current) farLayerRef.current.style.transform = `translate3d(${x * 5}px, ${y * 4}px, 0)`
+    if (midLayerRef.current) midLayerRef.current.style.transform = `translate3d(${x * 8}px, ${y * 6}px, 0)`
+    if (nearLayerRef.current) nearLayerRef.current.style.transform = `translate3d(${x * 10}px, ${y * 8}px, 0)`
+    if (stageLayerRef.current) stageLayerRef.current.style.transform = `translate3d(${x * -4}px, ${y * -3}px, 0)`
+  }
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("sm:learning-universe-entered", "1")
+    } catch {
+      /* entrance remains non-persistent */
+    }
+  }, [])
+
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    let frame = 0
+    const updateVisibility = () => {
+      window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(() => {
+        if (document.hidden) {
+          setActive(false)
+          window.dispatchEvent(new CustomEvent("studymate:home-universe-visibility", {
+            detail: { visible: false },
+          }))
+          return
+        }
+        const rect = root.getBoundingClientRect()
+        const visibleHeight = Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0))
+        const visibleRatio = rect.height > 0 ? visibleHeight / rect.height : 0
+        setActive(visibleRatio > 0.12)
+        window.dispatchEvent(new CustomEvent("studymate:home-universe-visibility", {
+          detail: { visible: visibleRatio > 0.48 },
+        }))
+      })
+    }
+    const observer = new IntersectionObserver(updateVisibility, { threshold: [0, 0.12, 0.48, 0.72] })
+    observer.observe(root)
+    window.addEventListener("scroll", updateVisibility, { passive: true })
+    window.addEventListener("resize", updateVisibility)
+    document.addEventListener("visibilitychange", updateVisibility)
+    updateVisibility()
+    return () => {
+      observer.disconnect()
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener("scroll", updateVisibility)
+      window.removeEventListener("resize", updateVisibility)
+      document.removeEventListener("visibilitychange", updateVisibility)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!active) return
+    const timer = window.setInterval(() => setNow(new Date()), 1000)
+    return () => window.clearInterval(timer)
+  }, [active])
+
+  const sourceValues = Object.values(sources)
+  const okCount = sourceValues.filter((status) => status === "ok").length
+  const errorCount = sourceValues.filter((status) => status === "error").length
+  const syncState = errorCount === 0 && okCount === sourceValues.length
+    ? "live"
+    : okCount > 0
+      ? "partial"
+      : "waiting"
+  const syncLabel = syncState === "live" ? "实时同步" : syncState === "partial" ? "部分降级" : "待连接"
+  const syncDetail = lastSyncedAt
+    ? `最近同步 ${new Date(lastSyncedAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })}`
+    : "正在读取真实数据"
+
+  const planetValues: Record<(typeof UNIVERSE_PLANETS)[number]["id"], { value: string; detail: string }> = {
+    profile: { value: `${profileCompleteness}%`, detail: profileVersion ? `画像 v${profileVersion}` : "等待建立画像" },
+    knowledge: { value: platform.chunkCount.toLocaleString(), detail: "平台知识片段" },
+    quiz: { value: String(quizCount), detail: "个人测验记录" },
+    notes: { value: String(noteCount), detail: "个人笔记" },
+    workspace: { value: `${generatedResourceCount}/7`, detail: workspace.status === "running" ? "正在生成" : "Agent 资源" },
+    report: { value: String(reportCount), detail: "阶段评估" },
+    course: { value: courseSelected ? String(courseChunkCount) : "待选", detail: courseSelected ? "当前课知识片段" : "选择学习场景" },
+  }
+
+  const visibleAgents = AGENT_DEFINITIONS.map((definition) => {
+    const live = workspace.agents.find((agent) => agent.meta.id === definition.id)
+    const status = live?.status || workspace.agentStatus[definition.id] || "pending"
+    const outputCount = definition.id === "retriever" ? workspace.outputs.retriever?.chunks?.length : undefined
+    return {
+      ...definition,
+      status,
+      message: live?.message || (outputCount ? `找到 ${outputCount} 条课程依据` : definition.role),
+    }
+  })
+  const activeAgentCount = visibleAgents.filter((agent) => agent.status === "running" || agent.status === "streaming").length
+  const doneAgentCount = visibleAgents.filter((agent) => agent.status === "done").length
+  const maxTrend = Math.max(1, ...trend.map((item) => item.value))
+
+  return (
+    <section
+      ref={rootRef}
+      onPointerMove={(event) => moveParallax(event.clientX, event.clientY)}
+      onPointerLeave={() => moveParallax()}
+      className="learning-universe relative isolate min-h-[100svh] overflow-hidden bg-[#090D14] text-white"
+      data-active={active ? "true" : "false"}
+      data-intro={firstEntrance && !reduceMotion ? "true" : "false"}
+      data-testid="learning-universe-command-center"
+      aria-label="StudyMate 学习宇宙实时指挥舱"
+    >
+      <div ref={farLayerRef} className="pointer-events-none absolute inset-0 transition-transform duration-300 ease-out" aria-hidden="true"><div className="universe-stars universe-stars-far" /></div>
+      <div ref={midLayerRef} className="pointer-events-none absolute inset-0 transition-transform duration-300 ease-out" aria-hidden="true"><div className="universe-stars universe-stars-mid" /></div>
+      <div ref={nearLayerRef} className="pointer-events-none absolute inset-0 transition-transform duration-200 ease-out" aria-hidden="true"><div className="universe-stars universe-stars-near" /></div>
+      {!reduceMotion && active && (
+        <>
+          <span className="universe-comet" aria-hidden="true" />
+          <span className="universe-meteor-field" aria-hidden="true">
+            {Array.from({ length: 10 }, (_, index) => <i key={index} />)}
+          </span>
+          <span className="universe-solo-meteor" aria-hidden="true" />
+          <span className="universe-flyby-ship" aria-hidden="true"><i /><b /></span>
+        </>
+      )}
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+        <span className="universe-distant-planet universe-distant-planet-a" />
+        <span className="universe-distant-planet universe-distant-planet-b" />
+        <span className="universe-nebula universe-nebula-a" />
+        <span className="universe-nebula universe-nebula-b" />
+        <span className="universe-galaxy-band" />
+        <span className="universe-horizon-glow" />
+      </div>
+      <div className="universe-color-grade pointer-events-none absolute inset-0" />
+
+      <motion.div
+        className="universe-command-shell relative z-10"
+        initial={reduceMotion || !firstEntrance ? false : { opacity: 0, scale: 1.045, y: 10, filter: "blur(3px)" }}
+        animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
+        transition={{ duration: 1.9, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <header className="universe-command-topbar universe-glass-panel">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-[10px] font-bold tracking-[.16em] text-[#C9B581]">
+              <Orbit className="size-3.5" />
+              STUDYMATE LEARNING UNIVERSE
+            </div>
+            <h1 className="mt-0.5 text-[clamp(16px,1.55vw,23px)] font-semibold tracking-[-.035em] text-[#F1EFE9]">
+              学习宇宙 · 实时指挥舱
+            </h1>
+          </div>
+          <div className="flex items-center gap-3 sm:gap-5">
+            <div className="hidden text-right sm:block">
+              <span className="block text-[9px] tracking-[.12em] text-[#7F8A98]">当前课程</span>
+              <strong className={`mt-0.5 block max-w-52 truncate text-[11px] ${courseSelected ? "text-[#DDE5E8]" : "text-[#D2B36D]"}`}>{courseName}</strong>
+            </div>
+            <div className="h-7 w-px bg-white/10" />
+            <div className="text-right" aria-label="北京时间" data-testid="beijing-clock">
+              <span className="block text-[9px] tracking-[.12em] text-[#7F8A98]">北京时间 · {formatBeijingDate(now)}</span>
+              <strong className="mt-0.5 block font-mono text-[clamp(15px,1.35vw,20px)] tabular-nums tracking-[.06em] text-[#E8E4DA]">{formatBeijingTime(now)}</strong>
+            </div>
+            <div className={`universe-sync-badge universe-sync-${syncState}`} title={syncDetail} aria-live="polite">
+              <span className="universe-sync-dot" />
+              <span>{syncLabel}</span>
+            </div>
+          </div>
+        </header>
+
+        <div className="universe-command-grid">
+          <aside className="universe-glass-panel universe-status-panel" data-testid="personal-live-data" aria-label="今日学习状态与平台基础能力">
+            <UniversePulseFrame className="universe-module-pulse-left" />
+            <div className="universe-panel-heading">
+              <div>
+                <span>PERSONAL · REAL DATA</span>
+                <h2>今日学习状态</h2>
+              </div>
+              <Activity className="size-4 text-[#86A9B2]" />
+            </div>
+            <div className="universe-metric-grid">
+              {metrics.map((metric) => (
+                <div key={metric.label} className={`universe-metric ${metric.source === "error" ? "is-degraded" : ""}`}>
+                  <span>{metric.label}</span>
+                  <strong>{metric.value}</strong>
+                  <small>{metric.source === "error" ? "数据源暂不可用" : metric.detail}</small>
+                </div>
+              ))}
+            </div>
+            <div className="universe-panel-divider" />
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <span className="universe-kicker">PLATFORM · CAPABILITY</span>
+                <h3 className="mt-0.5 text-[12px] font-semibold text-[#E5E3DD]">平台基础能力</h3>
+              </div>
+              <span className="rounded-full border border-white/10 px-2 py-1 text-[8px] text-[#8D98A6]">
+                {platform.source === "live" ? "实时汇总" : "产品基线"}
+              </span>
+            </div>
+            <div className="universe-capability-grid" data-testid="platform-capabilities">
+              <div><strong>{platform.courseCount}</strong><span>门课程</span></div>
+              <div><strong>{platform.chunkCount.toLocaleString()}</strong><span>知识片段</span></div>
+              <div><strong>300</strong><span>可视主题</span></div>
+              <div><strong>7</strong><span>协作 Agent</span></div>
+            </div>
+            {!courseSelected && (
+              <Link to="/courses" className="universe-secondary-cta">
+                选择课程，建立个人学习场景 <ArrowRight className="size-3.5" />
+              </Link>
+            )}
+          </aside>
+
+          <main ref={stageLayerRef} className="universe-glass-panel universe-core-panel transition-transform duration-300 ease-out" aria-label="中央学习宇宙">
+            <UniversePulseFrame className="universe-module-pulse-core" />
+            <div className="universe-core-heading">
+              <div>
+                <span className="universe-kicker">LEARNER CORE · LIVE ORBIT</span>
+                <h2>中央学习星球</h2>
+              </div>
+              <span className="text-right text-[9px] leading-4 text-[#7F8A98]">七项能力围绕同一学习者<br />点击星球进入真实页面</span>
+            </div>
+            <div className="universe-orbit-stage">
+              <span className="universe-radar-scan" aria-hidden="true" />
+              {[0, 1, 2].map((index) => (
+                <span
+                  key={index}
+                  className={`universe-orbit universe-orbit-${index + 1}`}
+                  style={{ "--orbit-delay": `${index * 1.8}s` } as CSSProperties}
+                  aria-hidden="true"
+                />
+              ))}
+              <span
+                key={`${lastSyncedAt}:${workspace.status}:${profileVersion}:${activities[0]?.timestamp || 0}`}
+                className="universe-system-pulse"
+                aria-hidden="true"
+              >
+                <i className="universe-system-pulse-core" />
+                <i className="universe-system-pulse-track universe-system-pulse-track-a" />
+                <i className="universe-system-pulse-track universe-system-pulse-track-b" />
+              </span>
+
+              <button type="button" onClick={enterDesk} className="universe-learner-core group" aria-label="进入今日学习桌面">
+                <svg viewBox="0 0 240 240" className="universe-progress-ring" aria-hidden="true">
+                  <circle cx="120" cy="120" r="111" pathLength="100" />
+                  <circle cx="120" cy="120" r="111" pathLength="100" style={{ strokeDasharray: `${todayProgress} 100` }} />
+                </svg>
+                <span className="relative z-10 text-center">
+                  <span className="block text-[9px] font-bold tracking-[.2em] text-[#D0BC89]">LEARNER CORE</span>
+                  <strong className="mt-1 block max-w-[150px] truncate text-[18px] text-[#F6F2E8]">{learnerName}</strong>
+                  <span className="mx-auto mt-1 block max-w-[150px] truncate text-[10px] text-[#B4BDC5]">{courseName}</span>
+                  <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/10 px-2 py-1 text-[9px] font-bold text-[#D7C59A]">
+                    今日闭环 {todayProgress}%
+                  </span>
+                </span>
+              </button>
+
+              {UNIVERSE_PLANETS.map(({ id, to, label, position, orbit, size, icon: Icon, tone }, index) => {
+                const planet = planetValues[id]
+                return (
+                  <motion.div
+                    key={id}
+                    className={`universe-planet-wrap universe-planet-orbit-${orbit} ${position}`}
+                    initial={false}
+                  >
+                    <Link
+                      to={to}
+                      className={`universe-planet universe-planet-${size} universe-planet-material-${id}`}
+                      style={{ "--planet-tone": tone, "--planet-delay": `${index * -1.7}s` } as CSSProperties}
+                      data-planet={id}
+                      aria-label={`${label}：${planet.value}，${planet.detail}`}
+                    >
+                      <span className="universe-planet-surface"><Icon /></span>
+                      <span className="universe-planet-caption">
+                        <strong>{label}</strong>
+                        <small>{planet.value}</small>
+                      </span>
+                      <span className="universe-planet-summary">{planet.detail}</span>
+                      {!reduceMotion && <span className="universe-node-signal" aria-hidden="true" />}
+                    </Link>
+                  </motion.div>
+                )
+              })}
+
+              {!reduceMotion && active && (
+                <span className={`universe-task-ship ${workspace.status === "running" ? "is-active" : "is-cruising"}`} aria-label={workspace.status === "running" ? `${activeAgentCount} 个 Agent 正在执行任务` : "Agent 装饰巡航"}>
+                  <Rocket />
+                  {workspace.status === "running" && <i />}
+                </span>
+              )}
+            </div>
+            <div className="universe-core-actions">
+              <button type="button" onClick={enterDesk} className="universe-primary-cta" data-testid="universe-primary-cta">
+                进入今日学习 <ArrowDown className="size-3.5" />
+              </button>
+              {!courseSelected && <Link to="/courses" className="universe-course-cta">选择课程 <ArrowRight className="size-3.5" /></Link>}
+            </div>
+          </main>
+
+          <aside className="universe-glass-panel universe-agents-panel" data-testid="agents-live" aria-label="7 Agents 实时协作">
+            <UniversePulseFrame className="universe-module-pulse-agents" />
+            <div className="universe-panel-heading">
+              <div>
+                <span>WORKSPACE · LIVE STORE</span>
+                <h2>7 Agents 实时协作</h2>
+              </div>
+              <span className={`universe-agent-summary ${workspace.status}`}>
+                {workspace.status === "running" ? `${activeAgentCount} 运行中` : workspace.status === "done" ? `${doneAgentCount} 已完成` : workspace.status === "error" || workspace.status === "interrupted" ? "需要关注" : "全部待命"}
+              </span>
+            </div>
+            <div className="universe-agent-list">
+              {visibleAgents.map((agent, index) => {
+                const state = agentStatusCopy(agent.status, workspace.status)
+                const live = agent.status === "running" || agent.status === "streaming"
+                return (
+                  <Link key={agent.id} to="/workspace" className={`universe-agent-row status-${agent.status}`}>
+                    <span className="universe-agent-index">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="min-w-0 flex-1">
+                      <strong>{agent.name}</strong>
+                      <small>{agent.message}</small>
+                    </span>
+                    <span className="universe-agent-state">
+                      <i className={live && !reduceMotion ? "is-live" : ""} />
+                      {state}
+                    </span>
+                  </Link>
+                )
+              })}
+            </div>
+            <div className="universe-agent-footer">
+              <Search className="size-3.5" />
+              <span>{workspace.topic ? `当前主题 · ${compactTopic(workspace.topic, 18)}` : "无运行任务时仅显示真实待命"}</span>
+            </div>
+          </aside>
+        </div>
+
+        <section className="universe-glass-panel universe-pulse-panel" aria-label="实时学习脉冲与近七日趋势">
+          <UniversePulseFrame className="universe-module-pulse-bottom" />
+          <div className="universe-pulse-flow">
+            <span className="universe-kicker">实时学习脉冲</span>
+            <div className="universe-flow-steps" aria-label="学习闭环">
+              {["知识检索", "资源生成", "讲解", "测验", "画像更新"].map((item, index) => (
+                <span key={item} className={(workspace.status === "running" && index <= 1) || (todayProgress > index * 20) ? "is-active" : ""}>
+                  <i />{item}{index < 4 && <ArrowRight />}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="universe-pulse-content">
+            <div className="universe-event-stream">
+              <div className="flex items-center justify-between gap-3">
+                <h2>最近学习动态 / 实时事件</h2>
+                <span>{syncDetail}</span>
+              </div>
+              {activities.length ? (
+                <div className="universe-event-grid">
+                  {activities.slice(0, 3).map((event) => (
+                    <Link key={event.key} to={event.to} className="universe-event-item">
+                      <i style={{ backgroundColor: event.tone }} />
+                      <span className="min-w-0 flex-1"><strong>{event.title}</strong><small>{event.detail}</small></span>
+                      <time>{new Date(event.timestamp).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })}</time>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="universe-empty-pulse" data-testid="universe-empty-state">
+                  <span>尚无个人学习事件。完成一次笔记、测验或 Agent 任务后，这里会出现真实脉冲。</span>
+                  <Link to={courseSelected ? "/workspace" : "/courses"}>{courseSelected ? "生成第一次学习任务" : "先选择课程"}<ArrowRight className="size-3" /></Link>
+                </div>
+              )}
+            </div>
+            <div className="universe-trend" data-testid="universe-seven-day-trend">
+              <div className="flex items-center justify-between gap-3">
+                <h2>近 7 日学习趋势</h2>
+                <span>笔记 · 测验 · 画像版本</span>
+              </div>
+              <div className="universe-trend-bars" aria-label="近七日真实学习事件数">
+                {trend.map((point) => (
+                  <div key={point.key}>
+                    <span className="universe-trend-value">{point.value || ""}</span>
+                    <i style={{ height: point.value ? `${Math.max(12, (point.value / maxTrend) * 100)}%` : "3px" }} />
+                    <small>{point.label}</small>
+                  </div>
+                ))}
+              </div>
+              {trend.every((point) => point.value === 0) && <span className="universe-trend-empty">暂无历史，不绘制虚假曲线</span>}
+            </div>
+          </div>
+        </section>
+      </motion.div>
+    </section>
+  )
 }
 
 function greetingForNow() {
@@ -154,6 +710,53 @@ function compactTopic(value: string | null | undefined, maxLength = 30) {
   clean = clean.replace(/[.…]+$/u, "")
   if (clean.length <= maxLength) return clean
   return `${clean.slice(0, maxLength).replace(/[.…]+$/u, "")}…`
+}
+
+function shanghaiDayKey(value: string | number | Date | null | undefined) {
+  if (value == null) return ""
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ""
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date)
+  const year = parts.find((part) => part.type === "year")?.value
+  const month = parts.find((part) => part.type === "month")?.value
+  const day = parts.find((part) => part.type === "day")?.value
+  return year && month && day ? `${year}-${month}-${day}` : ""
+}
+
+function isMeaningfulProfileValue(value: unknown): boolean {
+  if (typeof value === "number") return Number.isFinite(value) && value > 0
+  if (typeof value === "string") return Boolean(value.trim())
+  if (Array.isArray(value)) return value.some(isMeaningfulProfileValue)
+  if (value && typeof value === "object") return Object.values(value).some(isMeaningfulProfileValue)
+  return false
+}
+
+function calculateProfileCompleteness(profile: ProfileResponse | null) {
+  if (!profile) return 0
+  const groups: Array<keyof ProfileDims> = [
+    "knowledge_base",
+    "cognitive_style",
+    "goals",
+    "weak_points",
+    "pace",
+    "preference",
+    "employment_skills",
+  ]
+  const complete = groups.filter((group) => isMeaningfulProfileValue(profile.dims[group])).length
+  return Math.round((complete / groups.length) * 100)
+}
+
+function formatTrackedDuration(minutes: number) {
+  if (minutes <= 0) return "0 分钟"
+  if (minutes < 60) return `${minutes} 分钟`
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  return rest ? `${hours} 小时 ${rest} 分` : `${hours} 小时`
 }
 
 function OrbitMap({ learnerName }: { learnerName: string }) {
@@ -241,24 +844,56 @@ export function Home() {
     let cancelled = false
     const courseFilter = courseId ? `&course_id=${courseId}` : ""
 
-    Promise.allSettled([
-      apiGet<ProfileResponse>(`/profile/${userId}`),
-      apiGet<NotesResponse>(`/notes?user_id=${userId}${courseFilter}`),
-      listQuizSessions({ user_id: userId, course_id: courseId, limit: 12 }),
-      apiGet<EvalHistoryResponse>(`/eval/history/${userId}?limit=4`),
-    ]).then(([profileResult, notesResult, quizResult, evalResult]) => {
+    const refresh = async () => {
+      const [profileResult, notesResult, quizResult, evalResult, coursesResult, ragResult] = await Promise.allSettled([
+        apiGet<ProfileResponse>(`/profile/${userId}`),
+        apiGet<NotesResponse>(`/notes?user_id=${userId}${courseFilter}`),
+        listQuizSessions({ user_id: userId, course_id: courseId, limit: 30 }),
+        apiGet<EvalHistoryResponse>(`/eval/history/${userId}?limit=14`),
+        apiGet<{ count: number; items: Array<{ chunk_count?: number }> }>("/courses"),
+        apiGet<{ count: number; vectorized?: number }>("/rag/stats"),
+      ])
       if (cancelled) return
+
+      const liveCourseCount = coursesResult.status === "fulfilled" ? coursesResult.value.count : 5
+      const courseChunkTotal = coursesResult.status === "fulfilled"
+        ? coursesResult.value.items.reduce((sum, item) => sum + (item.chunk_count || 0), 0)
+        : 0
+      const liveChunkCount = ragResult.status === "fulfilled"
+        ? ragResult.value.count
+        : courseChunkTotal || 938
+
       setData({
         profile: profileResult.status === "fulfilled" ? profileResult.value : null,
         notes: notesResult.status === "fulfilled" ? notesResult.value : { count: 0, items: [] },
         quizzes: quizResult.status === "fulfilled" ? quizResult.value : [],
         evaluations: evalResult.status === "fulfilled" ? evalResult.value.items : [],
+        platform: {
+          courseCount: liveCourseCount,
+          chunkCount: liveChunkCount,
+          source: coursesResult.status === "fulfilled" && ragResult.status === "fulfilled" ? "live" : "baseline",
+        },
+        sources: {
+          profile: profileResult.status === "fulfilled" ? "ok" : "error",
+          notes: notesResult.status === "fulfilled" ? "ok" : "error",
+          quizzes: quizResult.status === "fulfilled" ? "ok" : "error",
+          evaluations: evalResult.status === "fulfilled" ? "ok" : "error",
+          courses: coursesResult.status === "fulfilled" ? "ok" : "error",
+          rag: ragResult.status === "fulfilled" ? "ok" : "error",
+        },
+        lastSyncedAt: Date.now(),
       })
       setLoading(false)
-    })
+    }
+
+    void refresh()
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refresh()
+    }, 30_000)
 
     return () => {
       cancelled = true
+      window.clearInterval(timer)
     }
   }, [courseId, user?.user_id])
 
@@ -382,10 +1017,157 @@ export function Home() {
     Boolean(workspace.outputs.path?.nodes?.length),
     Boolean(workspace.topic),
   ].filter(Boolean).length
+  const todayKey = shanghaiDayKey(new Date())
+  const todaySubmittedQuizzes = submittedQuizzes.filter((quiz) => shanghaiDayKey(quiz.submitted_at) === todayKey)
+  const todayNotes = data.notes.items.filter((note) => shanghaiDayKey(note.updated_at || note.created_at) === todayKey)
+  const todayEvaluations = data.evaluations.filter((evaluation) => shanghaiDayKey(evaluation.created_at) === todayKey)
+  const workspaceStartedToday = shanghaiDayKey(workspace.learningStartedAt || workspace.startedAt) === todayKey
+  const workspaceFinishedToday = workspace.status === "done" && shanghaiDayKey(workspace.finishedAt) === todayKey
+  const workspaceMinutes = workspaceStartedToday ? Math.round(workspace.learningDurationMs / 60_000) : 0
+  const quizMinutes = todaySubmittedQuizzes.reduce((sum, quiz) => sum + Math.max(0, quiz.duration_ms || 0), 0) / 60_000
+  const todayMinutes = Math.max(workspaceMinutes, Math.round(quizMinutes))
+  const completedTasks = todaySubmittedQuizzes.length + (workspaceFinishedToday ? 1 : 0)
+  const touchedTopics = new Set([
+    ...todaySubmittedQuizzes.map((quiz) => quiz.topic).filter(Boolean),
+    ...(workspaceStartedToday && workspace.topic ? [workspace.topic] : []),
+  ])
+  const profileCompleteness = calculateProfileCompleteness(data.profile)
+  const todayProgress = [todayNotes.length > 0, todaySubmittedQuizzes.length > 0, workspaceFinishedToday, todayEvaluations.length > 0]
+    .filter(Boolean).length * 25
+  const personalMetrics: UniverseMetric[] = [
+    {
+      label: "今日学习时长",
+      value: formatTrackedDuration(todayMinutes),
+      detail: todayMinutes ? "前台学习与测验的已记录时长" : "尚未开始记录",
+      source: data.sources.quizzes === "error" && !workspaceStartedToday ? "error" : "ok",
+    },
+    {
+      label: "已完成任务",
+      value: completedTasks ? `${completedTasks} 项` : "尚未开始",
+      detail: completedTasks ? "今日测验与完整 Agent 任务" : "等待首个任务",
+      source: data.sources.quizzes === "error" && !workspaceFinishedToday ? "error" : "ok",
+    },
+    {
+      label: "接触知识点",
+      value: touchedTopics.size ? `${touchedTopics.size} 个` : "等待学习",
+      detail: touchedTopics.size ? "来自今日测验与学习主题" : "不会用平台数据冒充个人掌握",
+      source: data.sources.quizzes === "error" && !workspaceStartedToday ? "error" : "ok",
+    },
+    {
+      label: "画像完整度",
+      value: data.sources.profile === "error" ? "暂不可用" : `${profileCompleteness}%`,
+      detail: data.profile ? `7 组画像 · 当前 v${data.profile.version}` : "完成对话后形成画像",
+      source: data.sources.profile === "error" ? "error" : "ok",
+    },
+  ]
+
+  const universeActivities = useMemo<UniverseActivity[]>(() => {
+    const rows: UniverseActivity[] = []
+    data.notes.items.slice(0, 5).forEach((note) => {
+      const timestamp = new Date(note.updated_at || note.created_at || 0).getTime()
+      if (timestamp > 0) rows.push({
+        key: `pulse-note-${note.id}`,
+        to: "/notes",
+        title: "笔记已更新",
+        detail: compactTopic(note.title || "未命名笔记", 24),
+        timestamp,
+        tone: "#86A9B2",
+      })
+    })
+    data.quizzes.slice(0, 8).forEach((quiz) => {
+      const timestamp = new Date(quiz.submitted_at || quiz.created_at || 0).getTime()
+      if (timestamp > 0) rows.push({
+        key: `pulse-quiz-${quiz.id}`,
+        to: quiz.status === "ready" || quiz.status === "submitted" ? `/quiz/${quiz.id}` : "/quiz",
+        title: quiz.status === "submitted" ? "测验已完成" : quiz.status === "ready" ? "测验等待作答" : quiz.status === "generating" ? "测验正在生成" : "测验生成异常",
+        detail: compactTopic(quiz.topic || "未命名测验", 24),
+        timestamp,
+        tone: quiz.status === "error" ? "#B97B65" : "#C8A767",
+      })
+    })
+    data.evaluations.slice(0, 5).forEach((evaluation) => {
+      const timestamp = new Date(evaluation.created_at || 0).getTime()
+      if (timestamp > 0) rows.push({
+        key: `pulse-eval-${evaluation.id}`,
+        to: "/report",
+        title: "画像评估已归档",
+        detail: evaluation.suggestions?.[0] ? compactTopic(evaluation.suggestions[0], 24) : "阶段学习建议已更新",
+        timestamp,
+        tone: "#A59AB4",
+      })
+    })
+    const workspaceTimestamp = workspace.updatedAt || workspace.finishedAt || workspace.startedAt
+    if (workspaceTimestamp > 0 && workspace.topic) {
+      rows.push({
+        key: `pulse-workspace-${workspaceTimestamp}`,
+        to: "/workspace",
+        title: workspace.status === "running" ? "7 Agents 正在协作" : workspace.status === "done" ? "Agent 资源包已完成" : workspace.status === "error" || workspace.status === "interrupted" ? "Agent 任务需要关注" : "Agent 工作台已更新",
+        detail: compactTopic(workspace.logs.at(-1) || workspace.topic, 26),
+        timestamp: workspaceTimestamp,
+        tone: workspace.status === "error" || workspace.status === "interrupted" ? "#B97B65" : "#91A98C",
+      })
+    }
+    return rows.sort((a, b) => b.timestamp - a.timestamp)
+  }, [data.evaluations, data.notes.items, data.quizzes, workspace.finishedAt, workspace.logs, workspace.startedAt, workspace.status, workspace.topic, workspace.updatedAt])
+
+  const universeTrend = useMemo<UniverseTrendPoint[]>(() => {
+    const now = new Date()
+    const points = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(now.getTime() - (6 - index) * 86_400_000)
+      const key = shanghaiDayKey(date)
+      return {
+        key,
+        label: new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", weekday: "short" }).format(date).replace("周", ""),
+        value: 0,
+      }
+    })
+    const byKey = new Map(points.map((point) => [point.key, point]))
+    const increment = (value: string | null | undefined) => {
+      const point = byKey.get(shanghaiDayKey(value))
+      if (point) point.value += 1
+    }
+    data.notes.items.forEach((note) => increment(note.updated_at || note.created_at))
+    data.quizzes.filter((quiz) => quiz.status === "submitted").forEach((quiz) => increment(quiz.submitted_at))
+    data.evaluations.forEach((evaluation) => increment(evaluation.created_at))
+    if (workspaceFinishedToday) {
+      const point = byKey.get(todayKey)
+      if (point) point.value += 1
+    }
+    return points
+  }, [data.evaluations, data.notes.items, data.quizzes, todayKey, workspaceFinishedToday])
 
   return (
     <div className="app-page paper-theme">
-      <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
+      <LearningUniverse
+        learnerName={user?.name || "学习者"}
+        courseName={course?.name || "尚未选择课程"}
+        courseSelected={Boolean(course)}
+        courseChunkCount={course?.chunk_count || 0}
+        metrics={personalMetrics}
+        platform={data.platform}
+        profileCompleteness={profileCompleteness}
+        profileVersion={data.profile?.version || 0}
+        generatedResourceCount={generatedResourceCount}
+        quizCount={submittedQuizzes.length + readyQuizzes.length}
+        noteCount={data.notes.count}
+        reportCount={data.evaluations.length}
+        todayProgress={todayProgress}
+        activities={universeActivities}
+        trend={universeTrend}
+        sources={data.sources}
+        lastSyncedAt={data.lastSyncedAt}
+        workspace={workspace}
+      />
+      <div id="learning-desk" className="w-full scroll-mt-2 p-3 sm:p-4">
+        <div className="mb-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" })}
+            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3 text-[10px] font-bold text-[#59636B] shadow-sm hover:bg-[#ECE8DE]"
+          >
+            <Orbit className="size-3.5 text-[#315E83]" />返回学习宇宙
+          </button>
+        </div>
         <AppTopbar current="home" appearance="paper" />
 
         <main className="pb-14 pt-6 sm:pt-8">

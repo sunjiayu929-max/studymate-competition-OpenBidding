@@ -25,7 +25,9 @@ try {
   browser = await chromium.launch({ channel: "chrome" })
 }
 
-const context = await browser.newContext({ viewport: { width: 1440, height: 960 } })
+const viewportWidth = Number(process.env.STUDYMATE_VIEWPORT_WIDTH || 1440)
+const viewportHeight = Number(process.env.STUDYMATE_VIEWPORT_HEIGHT || 960)
+const context = await browser.newContext({ viewport: { width: viewportWidth, height: viewportHeight } })
 const page = await context.newPage()
 let workspaceGenerateRequests = 0
 let conceptExplainRequests = 0
@@ -232,7 +234,10 @@ for (let index = 0; index < compareCardCount; index += 1) {
   assert.ok(legendBox.y >= svgBox.y + svgBox.height - 1, `学习报告第 ${index + 1} 张雷达图的图例不应遮挡坐标文字`)
 }
 if (process.env.STUDYMATE_REPORT_SCREENSHOT) {
-  await page.screenshot({ path: process.env.STUDYMATE_REPORT_SCREENSHOT, fullPage: true })
+  await page.screenshot({
+    path: process.env.STUDYMATE_REPORT_SCREENSHOT,
+    fullPage: process.env.STUDYMATE_SCREENSHOT_VIEWPORT_ONLY !== "1",
+  })
 }
 await page.getByRole("button", { name: "应用到画像" }).click()
 await page.waitForTimeout(150)

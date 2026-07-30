@@ -1,10 +1,33 @@
+from __future__ import annotations
+
+import os
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.core.offline import install_outbound_network_guard
+
+
+_TRUE_VALUES = {"1", "true", "yes", "on"}
+
+
+def _safe_offline_requested() -> bool:
+    """只检查进程环境；不能通过读取项目 .env 来决定是否读取项目 .env。"""
+    return os.environ.get("STUDYMATE_SAFE_OFFLINE", "").strip().lower() in _TRUE_VALUES
+
+
+class ExternalAccessDisabledError(RuntimeError):
+    """安全离线模式下调用了外部服务入口。"""
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    # 必须由进程环境或安全启动脚本显式开启。开启后 Settings 初始化完全跳过 .env。
+    STUDYMATE_SAFE_OFFLINE: bool = False
+
     LLM_PROVIDER: str = "deepseek"
+    TUTOR_DEFAULT_PROVIDER: str = "qwen"
 
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
@@ -34,6 +57,10 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "sqlite:///./studymate.db"
     CHROMA_PERSIST_DIR: str = "./data/chroma"
+    # 私有知识资料原文件目录。Docker 中与数据库同处 /app/data 持久卷。
+    PRIVATE_KNOWLEDGE_DIR: str = "./data/private_knowledge"
+    # 当前仓库未绑定 OCR 引擎；保留明确的可插拔状态，避免把扫描 PDF 误报为解析成功。
+    PRIVATE_KNOWLEDGE_OCR_MODE: str = "unconfigured"
 
     # 讯飞语音 ASR + TTS（与星火大模型不同 SKU，需独立开通）
     XFYUN_APP_ID: str = ""
@@ -85,9 +112,50 @@ class Settings(BaseSettings):
     SESSION_EXPIRE_DAYS: int = 7
     SESSION_COOKIE_SECURE: bool = False
 
+    @model_validator(mode="after")
+    def disable_external_services_in_safe_offline(self):
+        """即使父进程仍带有凭据，安全离线模式也把所有外部能力视为未配置。"""
+        if not self.STUDYMATE_SAFE_OFFLINE:
+            return self
+        for field in (
+            "DEEPSEEK_API_KEY",
+            "SPARK_API_KEY",
+            "MIMO_API_KEY",
+            "QWEN_API_KEY",
+            "XFYUN_APP_ID",
+            "XFYUN_API_KEY",
+            "XFYUN_API_SECRET",
+            "XFYUN_ORAL_TTS_URL",
+            "COSYVOICE_API_KEYS",
+            "SMTP_USERNAME",
+            "SMTP_PASSWORD",
+            "SMTP_FROM_EMAIL",
+            "PISTON_URL",
+        ):
+            setattr(self, field, "")
+        self.PRIVATE_KNOWLEDGE_OCR_MODE = "unconfigured"
+        return self
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
 
-settings = Settings()
+def safe_offline_enabled() -> bool:
+    return bool(settings.STUDYMATE_SAFE_OFFLINE)
+
+
+def require_external_access(service: str) -> None:
+    if safe_offline_enabled():
+        raise ExternalAccessDisabledError(f"安全离线模式已禁用外部服务：{service}")
+
+
+# 关键边界：模式开关只接受进程环境，先决定不读取 .env，再创建 Settings。
+# 显式 init 值也保证 .env 中即使误写同名变量，也不能在文件读取之后才“开启”模式。
+_SAFE_OFFLINE_FROM_PROCESS = _safe_offline_requested()
+settings = Settings(
+    STUDYMATE_SAFE_OFFLINE=_SAFE_OFFLINE_FROM_PROCESS,
+    _env_file=None if _SAFE_OFFLINE_FROM_PROCESS else ".env",
+)
+if settings.STUDYMATE_SAFE_OFFLINE:
+    install_outbound_network_guard()

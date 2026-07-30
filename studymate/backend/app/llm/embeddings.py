@@ -13,7 +13,7 @@ from __future__ import annotations
 import httpx
 from openai import AsyncOpenAI
 
-from app.core.config import settings
+from app.core.config import require_external_access, safe_offline_enabled, settings
 
 _emb_client: AsyncOpenAI | None = None
 
@@ -28,12 +28,15 @@ def _provider_conf() -> tuple[str, str]:
 
 
 def has_embedding_key() -> bool:
+    if safe_offline_enabled():
+        return False
     key, _ = _provider_conf()
     return bool(key)
 
 
 def _client() -> AsyncOpenAI:
     global _emb_client
+    require_external_access("Embedding")
     if _emb_client is None:
         key, base = _provider_conf()
         _emb_client = AsyncOpenAI(
@@ -50,6 +53,7 @@ async def embed_texts(texts: list[str], batch_size: int = 10) -> list[list[float
     """批量向量化。DashScope text-embedding-v3 单请求上限 10 条，故默认分批 10。"""
     if not texts:
         return []
+    require_external_access("Embedding")
     cli = _client()
     model = settings.EMBEDDING_MODEL
     out: list[list[float]] = []

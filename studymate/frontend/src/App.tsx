@@ -1,8 +1,10 @@
-import { Component, lazy, Suspense, useEffect, type ReactNode } from "react"
+import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react"
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
 import { RequireAuth, RequireAdmin } from "@/components/guards"
 import { JudgeTour } from "@/components/JudgeTour"
+import { JudgeDemoMode } from "@/components/JudgeDemoMode"
 import { SiteFiling } from "@/components/SiteFiling"
+import { AppShell } from "@/components/AppShell"
 import { useCurrentUser } from "@/store/user"
 
 // 页面按路由拆包：首屏只下载当前页面，图表、PDF、编辑器等重依赖不再一次性阻塞启动。
@@ -24,12 +26,16 @@ const FeedbackCenter = lazy(() => import("@/pages/FeedbackCenter").then((m) => (
 const UserGuide = lazy(() => import("@/pages/UserGuide").then((m) => ({ default: m.UserGuide })))
 const ConceptDemo = lazy(() => import("@/pages/ConceptDemo").then((m) => ({ default: m.ConceptDemo })))
 const ConceptLibrary = lazy(() => import("@/pages/ConceptLibrary").then((m) => ({ default: m.ConceptLibrary })))
+const KnowledgeBase = lazy(() => import("@/pages/KnowledgeBase").then((m) => ({ default: m.KnowledgeBase })))
+const PptGenerator = lazy(() => import("@/pages/PptGenerator").then((m) => ({ default: m.PptGenerator })))
+const LearningResources = lazy(() => import("@/pages/LearningResources").then((m) => ({ default: m.LearningResources })))
+const CareerExplorer = lazy(() => import("@/pages/CareerExplorer").then((m) => ({ default: m.CareerExplorer })))
 const Login = lazy(() => import("@/pages/Login").then((m) => ({ default: m.Login })))
 const NotFound = lazy(() => import("@/pages/NotFound").then((m) => ({ default: m.NotFound })))
 const TutorBubble = lazy(() => import("@/components/TutorBubble").then((m) => ({ default: m.TutorBubble })))
 
-// 登录页和助教自身页面不重复显示；其余业务页都可随时呼出学习助手。
-const BUBBLE_HIDDEN_PATHS = ["/login", "/tutor", "/tutor/voice"]
+// 登录、助教自身、沉浸工具与高密度数据页不叠加悬浮人物，避免遮挡关键控件和数据卡。
+const BUBBLE_HIDDEN_PATHS = ["/login", "/tutor", "/tutor/voice", "/concept", "/ppt", "/report", "/tests"]
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -42,10 +48,25 @@ function ScrollToTop() {
 function GlobalTutorBubble() {
   const location = useLocation()
   const user = useCurrentUser()
+  const [homeUniverseVisible, setHomeUniverseVisible] = useState(location.pathname === "/")
+
+  useEffect(() => {
+    if (location.pathname !== "/") {
+      setHomeUniverseVisible(false)
+      return
+    }
+    setHomeUniverseVisible(true)
+    const onVisibility = (event: Event) => {
+      setHomeUniverseVisible(Boolean((event as CustomEvent<{ visible?: boolean }>).detail?.visible))
+    }
+    window.addEventListener("studymate:home-universe-visibility", onVisibility)
+    return () => window.removeEventListener("studymate:home-universe-visibility", onVisibility)
+  }, [location.pathname])
+
   if (!user) return null
   const hidden = BUBBLE_HIDDEN_PATHS.some(
     (p) => location.pathname === p || location.pathname.startsWith(p + "/")
-  )
+  ) || (location.pathname === "/" && homeUniverseVisible)
   if (hidden) return null
   return <Suspense fallback={null}><TutorBubble /></Suspense>
 }
@@ -54,6 +75,19 @@ function GlobalSiteFiling() {
   const { pathname } = useLocation()
   if (pathname === "/tutor/voice") return null
   return <SiteFiling />
+}
+
+function RootEntry() {
+  const user = useCurrentUser()
+  useEffect(() => {
+    if (!user) window.location.replace("/landing/index.html")
+  }, [user])
+  if (!user) return null
+  return <AppShell><Home /></AppShell>
+}
+
+function ProtectedPage({ children }: { children: ReactNode }) {
+  return <RequireAuth><AppShell>{children}</AppShell></RequireAuth>
 }
 
 function RouteFallback() {
@@ -113,31 +147,36 @@ export default function App() {
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />
-          <Route path="/profile" element={<RequireAuth><ProfileChat /></RequireAuth>} />
-          <Route path="/rag" element={<RequireAuth><RagDemo /></RequireAuth>} />
-          <Route path="/rag/source/:chunkId" element={<RequireAuth><RagSource /></RequireAuth>} />
-          <Route path="/workspace" element={<RequireAuth><Workspace /></RequireAuth>} />
-          <Route path="/workspace/r/:agentId" element={<RequireAuth><WorkspaceDetail /></RequireAuth>} />
-          <Route path="/tutor" element={<RequireAuth><TutorChat /></RequireAuth>} />
-          <Route path="/tutor/voice" element={<RequireAuth><VoiceTutor /></RequireAuth>} />
-          <Route path="/report" element={<RequireAuth><Report /></RequireAuth>} />
-          <Route path="/courses" element={<RequireAuth><Courses /></RequireAuth>} />
-          <Route path="/notes" element={<RequireAuth><Notes /></RequireAuth>} />
-          <Route path="/quiz" element={<RequireAuth><QuizLibrary /></RequireAuth>} />
-          <Route path="/quiz/:id" element={<RequireAuth><QuizPlay /></RequireAuth>} />
-          <Route path="/concept" element={<RequireAuth><ConceptDemo /></RequireAuth>} />
-          <Route path="/concept/library" element={<RequireAuth><ConceptLibrary /></RequireAuth>} />
+          <Route path="/" element={<RootEntry />} />
+          <Route path="/profile" element={<ProtectedPage><ProfileChat /></ProtectedPage>} />
+          <Route path="/rag" element={<ProtectedPage><RagDemo /></ProtectedPage>} />
+          <Route path="/rag/source/:chunkId" element={<ProtectedPage><RagSource /></ProtectedPage>} />
+          <Route path="/knowledge" element={<ProtectedPage><KnowledgeBase /></ProtectedPage>} />
+          <Route path="/ppt" element={<ProtectedPage><PptGenerator /></ProtectedPage>} />
+          <Route path="/resources" element={<ProtectedPage><LearningResources /></ProtectedPage>} />
+          <Route path="/career" element={<ProtectedPage><CareerExplorer /></ProtectedPage>} />
+          <Route path="/workspace" element={<ProtectedPage><Workspace /></ProtectedPage>} />
+          <Route path="/workspace/r/:agentId" element={<ProtectedPage><WorkspaceDetail /></ProtectedPage>} />
+          <Route path="/tutor" element={<ProtectedPage><TutorChat /></ProtectedPage>} />
+          <Route path="/tutor/voice" element={<ProtectedPage><VoiceTutor /></ProtectedPage>} />
+          <Route path="/report" element={<ProtectedPage><Report /></ProtectedPage>} />
+          <Route path="/courses" element={<ProtectedPage><Courses /></ProtectedPage>} />
+          <Route path="/notes" element={<ProtectedPage><Notes /></ProtectedPage>} />
+          <Route path="/quiz" element={<ProtectedPage><QuizLibrary /></ProtectedPage>} />
+          <Route path="/quiz/:id" element={<ProtectedPage><QuizPlay /></ProtectedPage>} />
+          <Route path="/concept" element={<ProtectedPage><ConceptDemo /></ProtectedPage>} />
+          <Route path="/concept/library" element={<ProtectedPage><ConceptLibrary /></ProtectedPage>} />
           {/* 管理员与评委可管理测试；所有登录用户均可进入反馈中心 */}
-          <Route path="/tests" element={<RequireAdmin><Tests /></RequireAdmin>} />
-          <Route path="/feedback" element={<RequireAuth><FeedbackCenter /></RequireAuth>} />
-          <Route path="/guide" element={<RequireAuth><UserGuide /></RequireAuth>} />
-          <Route path="*" element={<RequireAuth><NotFound /></RequireAuth>} />
+          <Route path="/tests" element={<RequireAdmin><AppShell><Tests /></AppShell></RequireAdmin>} />
+          <Route path="/feedback" element={<ProtectedPage><FeedbackCenter /></ProtectedPage>} />
+          <Route path="/guide" element={<ProtectedPage><UserGuide /></ProtectedPage>} />
+          <Route path="*" element={<ProtectedPage><NotFound /></ProtectedPage>} />
         </Routes>
       </Suspense>
       </RouteErrorBoundary>
       <GlobalSiteFiling />
       <JudgeTour />
+      <JudgeDemoMode />
       <GlobalTutorBubble />
     </BrowserRouter>
   )

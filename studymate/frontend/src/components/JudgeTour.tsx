@@ -108,7 +108,7 @@ const GUIDE_STEPS: TourStep[] = [
   {
     to: "/workspace",
     phase: "生成学习资源",
-    label: "智能生成",
+    label: "学习资源工坊",
     title: "观察七个智能体的真实协作过程",
     description: "系统先检索课程依据，再并行生成六类内容与可视讲解。生成过程、异常、质量检查和最终七类资源都可见。",
     check: "发起一次生成，查看 7 个 Agent 状态；完成后进入任一资源，验证下载、笔记与后续学习入口。",
@@ -119,9 +119,9 @@ const GUIDE_STEPS: TourStep[] = [
     wash: "#E8EDE5",
   },
   {
-    to: "/rag",
+    to: "/knowledge",
     phase: "验证知识依据",
-    label: "RAG 检索",
+    label: "知识库",
     title: "验证生成和回答不是无依据结论",
     description: "检索结果保留教材名称、页码、相关片段与原文入口，便于逐条复核内容来源。",
     check: "搜索一个知识点，打开一条“查看原文”，核对教材、页码、命中片段和前后文。",

@@ -36,6 +36,7 @@ interface RencaiyaCourse {
   summary: string
   difficulty: string
   url: string
+  match_level?: "exact" | "related" | "course"
 }
 
 interface RencaiyaCoursesResponse {
@@ -169,7 +170,7 @@ export function ReadingList({ items, topic = "" }: { items: ReadingItem[]; topic
         const result = await apiGet<RencaiyaCoursesResponse>(`/rencaiya/courses?${exactQuery}`)
 
         if (!alive) return
-        const matched = result.match_level === "exact" || result.match_level === "related"
+        const matched = result.match_level === "exact" || result.match_level === "related" || result.match_level === "course"
           ? result.items
           : []
         setExternalItems(matched.slice(0, 3).map((item) => ({
@@ -177,7 +178,7 @@ export function ReadingList({ items, topic = "" }: { items: ReadingItem[]; topic
           type: "course",
           lang: "zh",
           url: item.url,
-          source: `${result.provider} · 知识点匹配`,
+          source: `${result.provider} · ${(item.match_level || result.match_level) === "course" ? "课程方向补充" : "知识点匹配"}`,
           difficulty: courseDifficulty(item.difficulty),
           summary: item.summary || "前往人才呀查看课程介绍与学习内容。",
         })))
@@ -305,7 +306,7 @@ export function ReadingList({ items, topic = "" }: { items: ReadingItem[]; topic
     <div className="space-y-5">
       <div className="flex items-start gap-2 rounded-2xl border border-[#C9D1CB] bg-[#E9EEE6] px-3.5 py-3 text-[11px] leading-5 text-[#557052]">
         <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-        <span>已优先展示可验证的官方原文、知识点匹配的人才呀课程和真实 B站视频，并尝试匹配论文、书籍和博客的详情页；未可靠匹配的资源仍会明确标记为搜索入口。</span>
+        <span>已优先展示可验证的官方原文、知识点或课程方向匹配的人才呀课程和真实 B站视频，并尝试匹配论文、书籍和博客的详情页；未可靠匹配的资源仍会明确标记为搜索入口。</span>
       </div>
       {externalLoading && <div role="status" className="inline-flex items-center gap-1.5 text-[11px] text-[#66717B]"><Loader2 className="size-3.5 animate-spin" />正在匹配人才呀课程…</div>}
       {videoLoading && <div role="status" className="inline-flex items-center gap-1.5 text-[11px] text-[#66717B]"><Loader2 className="size-3.5 animate-spin" />正在匹配 B站真实视频…</div>}

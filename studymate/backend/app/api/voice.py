@@ -13,16 +13,20 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import hashlib
 import json
 import random
 import uuid
+import weakref
+from dataclasses import dataclass
 
 import websockets
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from app.core.config import settings
+from app.core.config import require_external_access, safe_offline_enabled, settings
+from app.voice.speech_text import prepare_tts_text
 from app.voice.xfyun_ws import build_xfyun_ws_url
 
 router = APIRouter(prefix="/voice", tags=["voice"])
@@ -51,6 +55,8 @@ ORAL_VOICES = [
 
 def _oral_enabled() -> bool:
     """是否启用超拟人合成：模式为 oral 且填了服务地址。"""
+    if safe_offline_enabled():
+        return False
     return settings.XFYUN_TTS_MODE.strip().lower() == "oral" and bool(settings.XFYUN_ORAL_TTS_URL.strip())
 
 
@@ -67,10 +73,16 @@ COSYVOICE_VALID = {v["id"] for v in COSYVOICE_VOICES}
 
 def _cosyvoice_enabled() -> bool:
     """是否启用 CosyVoice：总引擎为 cosyvoice 且有 DashScope(QWEN) key。"""
+    if safe_offline_enabled():
+        return False
     return settings.TTS_ENGINE.strip().lower() == "cosyvoice" and bool(settings.QWEN_API_KEY.strip())
 
 
 def _xfyun_creds() -> tuple[str, str, str]:
+    try:
+        require_external_access("ASR/TTS")
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     app_id = settings.XFYUN_APP_ID.strip()
     api_key = settings.XFYUN_API_KEY.strip()
     api_secret = settings.XFYUN_API_SECRET.strip()
@@ -83,6 +95,36 @@ def _xfyun_creds() -> tuple[str, str, str]:
 
 
 # ===== 发音人列表 =====
+
+
+def _xfyun_configured() -> bool:
+    if safe_offline_enabled():
+        return False
+    return bool(
+        settings.XFYUN_APP_ID.strip()
+        and settings.XFYUN_API_KEY.strip()
+        and settings.XFYUN_API_SECRET.strip()
+    )
+
+
+def _tts_configured() -> bool:
+    if safe_offline_enabled():
+        return False
+    if settings.TTS_ENGINE.strip().lower() == "cosyvoice":
+        return bool(settings.COSYVOICE_API_KEYS.strip() or settings.QWEN_API_KEY.strip())
+    return _xfyun_configured()
+
+
+@router.get("/status")
+async def voice_status():
+    """只返回可安全公开的配置状态，不生成签名地址，也不调用外部语音服务。"""
+    return {
+        "asr_configured": _xfyun_configured(),
+        "tts_configured": _tts_configured(),
+        "tts_engine": settings.TTS_ENGINE.strip().lower() or "online",
+        "permission_policy": "user_gesture_only",
+        "safe_offline": safe_offline_enabled(),
+    }
 
 
 @router.get("/voices")
@@ -126,6 +168,12 @@ class TtsRequest(BaseModel):
 async def tts(req: TtsRequest):
     """TTS 入口：按引擎分发（CosyVoice / 讯飞超拟人 / 讯飞在线）。
     前端无感知——始终 POST /api/voice/tts 拿 mp3，切换只动后端配置。"""
+    if safe_offline_enabled():
+        raise HTTPException(status_code=503, detail="安全离线模式已禁用外部服务：TTS")
+    spoken_text = prepare_tts_text(req.text)
+    if not spoken_text:
+        raise HTTPException(status_code=422, detail="没有可朗读的文字内容")
+    req = req.model_copy(update={"text": spoken_text})
     if _cosyvoice_enabled():
         audio = await _tts_cosyvoice(req)
     elif _oral_enabled():
@@ -149,34 +197,160 @@ def _is_rate_limit(msg: str) -> bool:
 def _dashscope_keys() -> list[str]:
     """CosyVoice 用的 DashScope key 池：优先 COSYVOICE_API_KEYS（逗号分隔），否则回退 QWEN_API_KEY。"""
     raw = settings.COSYVOICE_API_KEYS.strip() or settings.QWEN_API_KEY.strip()
-    return [k.strip() for k in raw.split(",") if k.strip()]
+    return list(dict.fromkeys(k.strip() for k in raw.split(",") if k.strip()))
+
+
+@dataclass
+class _CosyKeySlot:
+    fingerprint: str
+    api_key: str
+    busy: bool = False
+    cooldown_until: float = 0.0
+    rate_limit_streak: int = 0
+
+
+class _CosyVoiceDispatcher:
+    """在单个事件循环内按 key 排队；每个 key 同时只运行一个合成任务。"""
+
+    MAX_PENDING_PER_KEY = 4
+
+    def __init__(self):
+        self.condition = asyncio.Condition()
+        self.slots: dict[str, _CosyKeySlot] = {}
+        self.cursor = 0
+        self.pending = 0
+
+    @staticmethod
+    def _fingerprint(api_key: str) -> str:
+        return hashlib.sha256(api_key.encode("utf-8")).hexdigest()[:16]
+
+    def _active_slots(self, keys: list[str]) -> list[_CosyKeySlot]:
+        active: list[_CosyKeySlot] = []
+        for api_key in keys:
+            fingerprint = self._fingerprint(api_key)
+            slot = self.slots.get(fingerprint)
+            if slot is None:
+                slot = _CosyKeySlot(fingerprint=fingerprint, api_key=api_key)
+                self.slots[fingerprint] = slot
+            else:
+                slot.api_key = api_key
+            active.append(slot)
+        return active
+
+    async def enter(self, keys: list[str]) -> None:
+        async with self.condition:
+            max_pending = max(len(keys), len(keys) * self.MAX_PENDING_PER_KEY)
+            if self.pending >= max_pending:
+                raise HTTPException(
+                    status_code=429,
+                    detail="TTS 请求较多，请稍后继续；文字回答已完整保留",
+                )
+            self.pending += 1
+
+    async def leave(self) -> None:
+        async with self.condition:
+            self.pending = max(0, self.pending - 1)
+            self.condition.notify_all()
+
+    async def acquire(
+        self,
+        keys: list[str],
+        excluded: set[str],
+    ) -> _CosyKeySlot:
+        async with self.condition:
+            while True:
+                slots = self._active_slots(keys)
+                candidates = [slot for slot in slots if slot.fingerprint not in excluded] or slots
+                now = asyncio.get_running_loop().time()
+                start = self.cursor % len(candidates)
+                for offset in range(len(candidates)):
+                    index = (start + offset) % len(candidates)
+                    slot = candidates[index]
+                    if not slot.busy and slot.cooldown_until <= now:
+                        slot.busy = True
+                        self.cursor = index + 1
+                        return slot
+
+                cooldown_delays = [
+                    slot.cooldown_until - now
+                    for slot in candidates
+                    if not slot.busy and slot.cooldown_until > now
+                ]
+                if not cooldown_delays:
+                    await self.condition.wait()
+                    continue
+                try:
+                    await asyncio.wait_for(
+                        self.condition.wait(),
+                        timeout=max(0.01, min(cooldown_delays)),
+                    )
+                except TimeoutError:
+                    pass
+
+    async def release(self, slot: _CosyKeySlot, outcome: str) -> None:
+        async with self.condition:
+            slot.busy = False
+            if outcome == "success":
+                slot.rate_limit_streak = 0
+                slot.cooldown_until = 0.0
+            elif outcome == "rate_limited":
+                slot.rate_limit_streak += 1
+                backoff = min(2.0, 0.35 * (2 ** (slot.rate_limit_streak - 1)))
+                slot.cooldown_until = (
+                    asyncio.get_running_loop().time()
+                    + backoff
+                    + random.random() * 0.25
+                )
+            self.condition.notify_all()
+
+
+_cosyvoice_dispatchers: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+
+
+def _cosyvoice_dispatcher() -> _CosyVoiceDispatcher:
+    loop = asyncio.get_running_loop()
+    dispatcher = _cosyvoice_dispatchers.get(loop)
+    if dispatcher is None:
+        dispatcher = _CosyVoiceDispatcher()
+        _cosyvoice_dispatchers[loop] = dispatcher
+    return dispatcher
 
 
 async def _tts_cosyvoice(req: TtsRequest) -> bytes:
     """阿里 CosyVoice（DashScope WebSocket 流式合成）。
 
-    频率限制(QPS)是按账号(key)算的：遇到 rate limit 时退避并轮换到下一个 key 重试，
-    既能扛单账号的瞬时并发(退避重试)，又能在配了多 key 时把负载摊到多个账号(聚合 QPS 翻倍)。
+    频率限制(QPS)是按账号(key)算的：每个 key 单并发排队，多个 key 可自然并行；
+    遇到 rate limit 时为该 key 设置冷却时间，并优先轮换到其他 key。
     启用：.env 设 TTS_ENGINE=cosyvoice（需在 DashScope 控制台开通语音合成）。
     """
     keys = _dashscope_keys()
     if not keys:
         raise HTTPException(status_code=503, detail="未配置 DashScope key（COSYVOICE_API_KEYS 或 QWEN_API_KEY）")
     voice = req.voice if req.voice in COSYVOICE_VALID else settings.COSYVOICE_VOICE
-
-    # 起始 key 随机错开 → 多请求并发时天然分散到不同账号，而非都砸第一个
-    start = random.randrange(len(keys))
+    dispatcher = _cosyvoice_dispatcher()
     attempts = max(4, len(keys) + 1)  # 至少 4 次；key 多时保证每个都试过
     last_err = "rate limit"
-    for i in range(attempts):
-        api_key = keys[(start + i) % len(keys)]
-        try:
-            return await _cosyvoice_once(req, api_key, voice)
-        except _RateLimited as e:
-            last_err = str(e)
-            # 指数退避 + 抖动；多 key 时下一轮已换号，等待可更短
-            await asyncio.sleep(min(2.0, 0.35 * (2**i)) + random.random() * 0.25)
-    raise HTTPException(status_code=502, detail=f"CosyVoice 限流重试仍失败：{last_err}")
+    excluded: set[str] = set()
+    await dispatcher.enter(keys)
+    try:
+        for _attempt in range(attempts):
+            if len(excluded) >= len(keys):
+                excluded.clear()
+            slot = await dispatcher.acquire(keys, excluded)
+            outcome = "failure"
+            try:
+                audio = await _cosyvoice_once(req, slot.api_key, voice)
+                outcome = "success"
+                return audio
+            except _RateLimited as exc:
+                last_err = str(exc)
+                outcome = "rate_limited"
+                excluded.add(slot.fingerprint)
+            finally:
+                await dispatcher.release(slot, outcome)
+        raise HTTPException(status_code=502, detail=f"CosyVoice 限流重试仍失败：{last_err}")
+    finally:
+        await dispatcher.leave()
 
 
 async def _cosyvoice_once(req: TtsRequest, api_key: str, voice: str) -> bytes:

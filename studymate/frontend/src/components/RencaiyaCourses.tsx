@@ -15,6 +15,7 @@ interface RencaiyaCourse {
   teachers: string[]
   provider: string
   url: string
+  match_level?: "exact" | "related" | "course"
 }
 
 interface RencaiyaCoursesResponse {
@@ -69,7 +70,13 @@ export function RencaiyaCourses({ keyword }: { keyword: string }) {
           <span className="grid size-8 place-items-center rounded-xl border border-[#B9C9D3] bg-[#E7EDF3] text-[#315E83]"><GraduationCap className="size-4" /></span>
           讯飞人才呀课程
           <span className="text-xs font-normal text-[var(--muted-foreground)]/70">
-            · {data?.match_level === "exact" ? "知识点直接匹配" : data?.match_level === "related" ? "知识点相关匹配" : "精确匹配优先"}
+            · {data?.match_level === "exact"
+              ? "知识点直接匹配"
+              : data?.match_level === "related"
+                ? "知识点相关匹配"
+                : data?.match_level === "course"
+                  ? "同课程方向补充"
+                  : "精确匹配优先"}
           </span>
         </h2>
         <a href={platformUrl} target="_blank" rel="noreferrer noopener" onClick={() => track("external_resource_open", "rencaiya_platform", data?.course_name || course?.name || null)} className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#315E83] hover:underline">
@@ -101,6 +108,9 @@ export function RencaiyaCourses({ keyword }: { keyword: string }) {
                   <div className="grid size-full place-items-center text-[#315E83]"><BookOpenCheck className="size-8" /></div>
                 )}
                 <span className="absolute left-2 top-2 rounded-full border border-white/60 bg-[#244C66]/92 px-2 py-1 text-[9px] font-bold text-white">讯飞人才呀</span>
+                <span className="absolute right-2 top-2 rounded-full border border-white/60 bg-[#FFFEFA]/92 px-2 py-1 text-[9px] font-bold text-[#315E83]">
+                  {item.match_level === "course" ? "课程方向补充" : item.match_level === "related" ? "主题相关" : "直接相关"}
+                </span>
               </div>
               <div className="p-3">
                 <div className="flex items-start justify-between gap-2">
@@ -122,7 +132,7 @@ export function RencaiyaCourses({ keyword }: { keyword: string }) {
       {!loading && (!data || data.items.length === 0) && (
         <a href={platformUrl} target="_blank" rel="noreferrer noopener" className="paper-lift flex items-center gap-3 rounded-[18px] border border-[#C7D2D8] bg-[#FFFEFA] p-4 hover:bg-[#F5F8FA]">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#E7EDF3] text-[#315E83]"><GraduationCap className="size-5" /></span>
-          <span className="min-w-0 flex-1"><strong className="block text-sm text-[#18232D]">暂未找到与「{data?.resolved_query || keyword}」直接相关的课程</strong><span className="mt-0.5 block text-xs text-[#66717B]">已隐藏课程级泛化结果，可前往人才呀平台继续查找</span></span>
+          <span className="min-w-0 flex-1"><strong className="block text-sm text-[#18232D]">暂未找到与「{data?.resolved_query || keyword}」相关的课程</strong><span className="mt-0.5 block text-xs text-[#66717B]">明显跑题的结果仍已过滤，可前往人才呀平台继续查找</span></span>
           <ExternalLink className="size-4 text-[#66717B]" />
         </a>
       )}

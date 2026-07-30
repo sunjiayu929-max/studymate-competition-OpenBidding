@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 
@@ -20,7 +21,7 @@ class NumberedTestAccountTests(unittest.TestCase):
     def test_account_creation_is_idempotent_and_preserves_other_users(self):
         with tempfile.TemporaryDirectory(prefix="studymate-test-accounts-") as temp_dir:
             db_path = Path(temp_dir) / "studymate.db"
-            with sqlite3.connect(db_path) as conn:
+            with closing(sqlite3.connect(db_path)) as conn, conn:
                 conn.executescript(
                     """
                     PRAGMA foreign_keys = ON;
@@ -53,7 +54,7 @@ class NumberedTestAccountTests(unittest.TestCase):
                 created, reset, _ = ensure_accounts(db_path, "unit-test-password", backup=False)
                 self.assertEqual((created, reset), (15, 0))
 
-                with sqlite3.connect(db_path) as conn:
+                with closing(sqlite3.connect(db_path)) as conn, conn:
                     test1_id = conn.execute(
                         "SELECT id FROM users WHERE email = ?", (TEST_ACCOUNT_EMAILS[0],)
                     ).fetchone()[0]
@@ -69,7 +70,7 @@ class NumberedTestAccountTests(unittest.TestCase):
                 created, reset, _ = ensure_accounts(db_path, "unit-test-password", backup=False)
                 self.assertEqual((created, reset), (0, 15))
 
-            with sqlite3.connect(db_path) as conn:
+            with closing(sqlite3.connect(db_path)) as conn, conn:
                 self.assertEqual(
                     conn.execute(
                         f"SELECT COUNT(*) FROM users WHERE email IN ({','.join('?' for _ in TEST_ACCOUNT_EMAILS)})",

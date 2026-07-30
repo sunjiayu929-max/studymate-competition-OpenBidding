@@ -19,7 +19,7 @@ from urllib.parse import urlencode, urlparse
 
 import httpx
 
-from app.core.config import settings
+from app.core.config import safe_offline_enabled, settings
 
 # 通用文字识别 ability：sf8e6aca1
 OCR_URL = "https://api.xf-yun.com/v1/private/sf8e6aca1"
@@ -44,11 +44,18 @@ def build_post_auth_url(url: str, api_key: str, api_secret: str) -> str:
 
 
 def main() -> None:
+    if safe_offline_enabled():
+        raise SystemExit("[blocked] 安全离线模式禁止 OCR 连通性测试。")
     img_path = sys.argv[1] if len(sys.argv) > 1 else "../../服务器配置.jpg"
     app_id = settings.XFYUN_APP_ID.strip()
     api_key = settings.XFYUN_API_KEY.strip()
     api_secret = settings.XFYUN_API_SECRET.strip()
-    print(f"APPID={app_id!r}  key={'set' if api_key else 'MISSING'}  secret={'set' if api_secret else 'MISSING'}")
+    print(
+        "credentials="
+        f"{'configured' if app_id and api_key and api_secret else 'MISSING'}"
+    )
+    if not (app_id and api_key and api_secret):
+        raise SystemExit("[blocked] OCR 凭据未完整配置，不发起请求。")
 
     with open(img_path, "rb") as f:
         img_b64 = base64.b64encode(f.read()).decode()

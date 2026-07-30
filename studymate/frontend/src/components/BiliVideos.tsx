@@ -17,12 +17,14 @@ interface BiliVideo {
   play: number
   duration: string
   url: string
+  match_level?: "exact" | "related"
 }
 interface VideosResp {
   ok: boolean
   videos: BiliVideo[]
   search_url: string
   resolved_query?: string
+  match_level?: "exact" | "related" | "fallback"
 }
 
 function fmtPlay(n: number): string {
@@ -72,7 +74,7 @@ export function BiliVideos({
     <div className="mt-6">
       <h2 className="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-semibold text-[#27343D]">
         <span className="grid size-8 place-items-center rounded-xl border border-[#DFC9BE] bg-[#F6ECE7] text-[#A65339]"><Tv className="size-4" /></span> B 站上的讲解视频
-        <span className="text-xs font-normal text-[var(--muted-foreground)]/70">· 真人讲解，外部补充</span>
+        <span className="text-xs font-normal text-[var(--muted-foreground)]/70">· 精确匹配优先，相关内容补充</span>
       </h2>
 
       {loading && (
@@ -106,6 +108,9 @@ export function BiliVideos({
                 {v.duration && (
                   <span className="absolute bottom-1 right-1 text-[10px] text-white bg-black/70 rounded px-1 py-0.5">{v.duration}</span>
                 )}
+                <span className="absolute left-2 top-2 rounded-full border border-white/60 bg-[#244C66]/90 px-2 py-1 text-[9px] font-bold text-white">
+                  {v.match_level === "related" ? "相关补充" : "直接相关"}
+                </span>
               </div>
               <div className="p-2.5">
                 <p className="line-clamp-2 text-sm font-semibold leading-snug text-[var(--foreground)] transition-colors group-hover:text-[#A65339]">{v.title}</p>
@@ -135,7 +140,7 @@ export function BiliVideos({
             <span className="block text-sm font-semibold text-[var(--foreground)] transition-colors group-hover:text-[#A65339]">
               去 B 站精确搜索「{resolvedQuery}」
             </span>
-            <span className="block text-xs text-[var(--muted-foreground)]">暂未找到高相关卡片，已隐藏可能跑题的结果</span>
+            <span className="block text-xs text-[var(--muted-foreground)]">暂未找到可用的相关卡片，明显跑题的结果仍已过滤</span>
           </span>
           <ExternalLink className="size-4 text-[var(--muted-foreground)] transition-colors group-hover:text-[#A65339]" />
         </a>

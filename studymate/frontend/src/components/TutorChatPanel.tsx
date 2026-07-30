@@ -15,6 +15,7 @@ import { SpeakerButton } from "@/components/SpeakerButton"
 import { VoiceSelector } from "@/components/VoiceSelector"
 import { TutorConversationPanel } from "@/components/TutorConversationPanel"
 import { LearningMethodSelector } from "@/components/LearningMethodSelector"
+import { ModelSelector } from "@/components/ModelSelector"
 import { compressImage } from "@/lib/image"
 import {
   useCurrentCourse,
@@ -335,6 +336,7 @@ export function TutorChatPanel({
               </button>
             )}
             <LearningMethodSelector value={learningMethod} onChange={handleLearningMethodChange} variant="compact" />
+            <ModelSelector compact />
             <button
               type="button"
               onClick={() => { setHistoryOpen(false); tutorHistory.startNew(USER_ID, courseId) }}

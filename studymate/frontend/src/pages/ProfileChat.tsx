@@ -284,8 +284,8 @@ export function ProfileChat() {
       <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
         <AppTopbar current="profile" appearance="paper" />
 
-        <main className="mt-4 grid items-stretch gap-4 xl:min-h-[calc(100dvh-120px)] xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="flex min-h-[680px] min-w-0 flex-col overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)] xl:min-h-0">
+        <main className="mt-4 grid items-stretch gap-4 xl:h-[calc(100dvh-122px)] xl:min-h-[660px] xl:grid-cols-[minmax(0,1fr)_360px]">
+          <section className="flex min-h-[680px] min-w-0 flex-col overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)] xl:h-full xl:min-h-0">
             <header className="flex flex-col items-stretch gap-2.5 border-b border-[#D7D1C4] bg-[#F8F6F0] px-3 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
               <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
                 <Link to="/" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]">
@@ -397,7 +397,7 @@ export function ProfileChat() {
             </form>
           </section>
 
-          <aside className="space-y-3 xl:flex xl:min-h-full xl:flex-col xl:justify-between xl:space-y-0">
+          <aside className="space-y-3 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:pr-1 [scrollbar-color:#CFC8B9_transparent] [scrollbar-width:thin]">
             <section className="rounded-[22px] border border-[#CFC8B9] bg-[#F8F6F0] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
@@ -457,7 +457,7 @@ export function ProfileChat() {
                 <h3 className="mt-2 text-sm font-bold text-[#18232D]">下一步，让 7 个智能体生成第一套资源</h3>
                 <p className="mt-1 text-[11px] leading-5 text-[#596A75]">{course ? `将结合《${course.name}》知识库和画像 v${profile?.version} 组织内容。` : "还需先选择一门课程，确保知识来源与学习记录不会混淆。"}</p>
                 <Link to={course ? "/workspace" : "/courses"} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] hover:bg-[#193B50]">
-                  {course ? "进入智能生成" : "先选择课程"}<ArrowRight className="size-3.5" />
+                  {course ? "进入学习资源工坊" : "先选择课程"}<ArrowRight className="size-3.5" />
                 </Link>
               </section>
             )}

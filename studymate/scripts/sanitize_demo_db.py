@@ -21,7 +21,6 @@ from pathlib import Path
 APPROVED_EMAILS = (
     "admin@studymate.com",
     *(f"judge{number:02d}@studymate.com" for number in range(1, 11)),
-    *(f"test{number}@studymate.com" for number in range(1, 16)),
     "sunjiayu@studymate.com",
     "baixinyue@studymate.com",
     "yuanshicong@studymate.com",
@@ -32,9 +31,9 @@ APPROVED_EMAILS = (
     "liufei@studymate.com",
 )
 
-# Course id=2 was an early "data structures" record that was later replaced by
-# the current id=3 course. Six generated rows still reference the retired id.
-COURSE_ID_REMAP = {2: 3}
+# Current seeds use course IDs 1-5 as the five active courses. Keep this map
+# empty unless a future schema migration explicitly retires a course ID.
+COURSE_ID_REMAP: dict[int, int] = {}
 
 
 def parse_args() -> argparse.Namespace:

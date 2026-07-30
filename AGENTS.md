@@ -1,6 +1,6 @@
 # StudyMate 工作区协作规则
 
-本文件是本仓库中供 Codex、Claude Code 等开发代理共同读取的项目规则。Codex 读取 `AGENTS.md`，Claude Code 读取同目录下的 `CLAUDE.md` 软链接，两者指向同一份内容。在 Windows 上无法创建或识别 POSIX 软链接时，直接复制本文件为 `CLAUDE.md` 即可。
+本文件是本仓库中供 Codex、Claude Code 等开发代理共同读取的项目规则。`AGENTS.md` 为普通文件；Claude Code 可在同目录下创建 `CLAUDE.md` 软链接或复制本文件，在 Windows 上直接复制即可。
 
 ## 项目边界
 

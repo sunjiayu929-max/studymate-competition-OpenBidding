@@ -126,7 +126,7 @@ export function Workspace() {
 
   useTutorContext({
     page: "workspace",
-    title: `智能生成${topic ? ` · ${topic}` : ""}`,
+    title: `学习资源工坊${topic ? ` · ${topic}` : ""}`,
     topic: topic || undefined,
   })
 

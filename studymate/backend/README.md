@@ -37,6 +37,16 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 curl http://localhost:8000/api/ping
 ```
 
+安全巡检或接口验收使用专用离线启动器，不读取 `.env`：
+
+```bash
+python scripts/run_safe_offline.py \
+  --database-path /absolute/path/studymate-safe.db \
+  --private-knowledge-dir /absolute/path/studymate-safe-private
+```
+
+该命令可从 PowerShell、`cmd.exe` 或 bash 调用。两个路径参数必须是隔离的绝对路径；启动器只绑定 `127.0.0.1`/`::1`。模式在导入 `app` 前设置 `STUDYMATE_SAFE_OFFLINE=1`，因此不会加载项目 `.env`；所有模型、Embedding、语音、视觉 OCR、SMTP、外部资源解析、外部队列和 Piston 均不可用，私库 TXT 明确降级为 `ready_keyword`，进程级 socket 保险丝继续兜底阻止出站连接。不要把该开关写入 `.env`，也不要用 PowerShell 空字符串代替它。
+
 交互式接口文档位于 `http://localhost:8000/docs`。项目维护版接口索引见 [`../docs/接口说明.md`](../docs/接口说明.md)。
 
 ## 认证与权限
@@ -50,10 +60,14 @@ curl http://localhost:8000/api/ping
 ## 数据与检索
 
 - 默认数据库：`sqlite:///./studymate.db`。
-- 当前知识库规模：5 门课程、938 个知识块。
+- 当前知识库规模：5 门课程、1709 个知识块。
 - 检索链路：BM25 关键词检索 + Qwen `text-embedding-v3` 1024 维语义检索，再通过 RRF 融合。
 - 向量以 JSON 形式保存在 SQLite `knowledge_chunks.embedding`；当前主链路不依赖 Chroma。
-- 数据模型包括用户、验证码、会话、画像、画像快照、课程、知识块、资源、学习路径、练习、作答、埋点、反馈、助教会话、评估、文件夹、笔记、测验会话和测试用例。
+- 用户私有资料存储在 `user_knowledge_bases`、`user_knowledge_documents`、`user_knowledge_chunks`，每次读写都以登录用户 `user_id` 过滤。原文件保存到 `PRIVATE_KNOWLEDGE_DIR` 的用户隔离目录，上传返回后台任务状态；解析进度、校验和、失败、中断恢复与重试次数持久化。
+- 私有库支持 PDF、PPTX、DOCX、Markdown 与 TXT；没有向量服务 Key 时会明确显示 `ready_keyword`，继续提供关键词检索，不伪装向量化完成。
+- 扫描 PDF 未配置 OCR 时标记 `required_unconfigured` 并保留原文件供安全重试，不伪装解析成功。当前 OCR 是明确的可插拔状态，不包含内置 OCR 引擎。
+- PPT 大纲与单页重写通过受控 Qwen/DeepSeek/MiMo 路由生成，注入课程 RAG 与当前用户私有库；未配置时只有显式 `allow_local_fallback=true` 才使用确定性策略。
+- 数据模型包括用户、验证码、会话、画像、画像快照、课程、内置与私有知识块、资源、学习路径、练习、作答、埋点、反馈、助教会话、评估、文件夹、笔记、测验会话和测试用例。
 
 ## 外部服务
 
@@ -68,6 +82,8 @@ curl http://localhost:8000/api/ping
 | arXiv / Crossref | 论文标题解析与 DOI 校验 | 不生成直链，前端保留搜索入口 |
 | 豆瓣图书 / CSDN / 掘金 | 图书和博客真实详情页解析 | 不生成直链，前端保留搜索入口 |
 
+安全离线模式下，上表全部外部服务直接视为未配置或不可用；人才呀只返回内置目录，阅读解析返回空，B 站只保留可解释的搜索入口信息，后端不会主动访问这些站点。私库任务当前是进程内 `BackgroundTasks`，没有外部队列实现。
+
 人才呀集成只获取公开目录；知识点推荐仅发送清洗后的技术主题和课程名称。阅读解析只发送公开标题、资源类型、来源名称和语言，不发送用户标识、画像、对话历史或认证信息。岗位匹配在本地完成。
 
 `POST /api/reading/resolve` 每次最多解析 12 个 `paper`、`book` 或 `blog` 项目，只返回经过标题相似度、主机和路径格式校验的 arXiv 摘要页、DOI、豆瓣图书页、CSDN 文章页或掘金文章页。请求并发上限为 4、单次超时 6.5 秒，成功和未命中结果均缓存 6 小时，进程内最多保留 512 项。
@@ -77,6 +93,7 @@ curl http://localhost:8000/api/ping
 ```bash
 PYTHONPYCACHEPREFIX=/tmp/studymate-pycache python -m compileall -q app scripts
 python -m unittest discover -s tests -v
+python -m unittest tests.test_safe_offline_mode -v
 ```
 
 涉及数据库或 Docker 种子时，还应在应用根目录运行：

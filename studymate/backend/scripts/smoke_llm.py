@@ -16,11 +16,13 @@ from pathlib import Path
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", line_buffering=True)
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.core.config import settings
+from app.core.config import safe_offline_enabled, settings
 from app.llm.client import get_llm_client
 
 
 async def main() -> None:
+    if safe_offline_enabled():
+        raise SystemExit("[blocked] 安全离线模式禁止 LLM 连通性测试。")
     client = get_llm_client()
     print(f"[provider] {client.provider}  [model] {client.model}")
     print(f"[base_url] {client._client.base_url}")

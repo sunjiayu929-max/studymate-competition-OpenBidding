@@ -17,6 +17,7 @@ import {
   ClipboardCheck, Loader2, Play, PlayCircle, Plus, RefreshCw, Trash2, Edit3,
   CheckCircle2, XCircle, AlertCircle, Sparkles, Download, ChevronDown, ChevronUp, Save, X,
   Filter, ArrowUpDown, Activity, ArrowLeft,
+  Database,
 } from "lucide-react"
 import { AppTopbar } from "@/components/AppTopbar"
 import { Button } from "@/components/ui/button"
@@ -25,6 +26,7 @@ import { usePostSSE } from "@/hooks/usePostSSE"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useTutorContext } from "@/hooks/useTutorContext"
 import { useCurrentCourse } from "@/store/course"
+import { useCurrentUser } from "@/store/user"
 
 interface TestCase {
   id: number
@@ -87,15 +89,28 @@ interface RunProgress {
   failedSoFar: number
 }
 
+interface DataHealth {
+  courses: number
+  knowledge_chunks: number
+  knowledge_vectors: number
+  private_libraries: number
+  private_chunks: number
+  private_tasks: Record<string, number>
+  ocr: { mode: string; available: boolean; note: string }
+  migrations: Array<{ version: string; description: string; applied_at: string }>
+}
+
 export function Tests() {
   useTrackPage("tests")
   const course = useCurrentCourse()
+  const user = useCurrentUser()
   useTutorContext({
     page: "tests",
     title: `测试用例管理${course?.name ? ` · ${course.name}` : ""}`,
   })
   const reportRef = useRef<HTMLDivElement>(null)
   const [cases, setCases] = useState<TestCase[]>([])
+  const [dataHealth, setDataHealth] = useState<DataHealth | null>(null)
   // summary 直接从 cases 派生，避免 SSE 跑完还要二次拉取
   const summary = useMemo(() => ({
     count: cases.length,
@@ -141,6 +156,16 @@ export function Tests() {
     const frame = window.requestAnimationFrame(() => void fetchList())
     return () => window.cancelAnimationFrame(frame)
   }, [fetchList])
+
+  useEffect(() => {
+    if (user?.role !== "admin") return
+    const frame = window.requestAnimationFrame(() => {
+      void apiGet<DataHealth>("/admin/data-health")
+        .then(setDataHealth)
+        .catch((healthError) => setError(String(healthError)))
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [user?.role])
 
   const passRate = useMemo(() => {
     const run = summary.passed + summary.failed
@@ -379,6 +404,24 @@ export function Tests() {
         )}
 
         <div ref={reportRef} className="bg-[#FFFEFA]">
+          {user?.role === "admin" && dataHealth && (
+            <section className="mb-4 rounded-[20px] border border-[#C7D2D8] bg-[#EDF2F5] p-4" aria-label="只读数据健康">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="grid size-9 place-items-center rounded-xl bg-[#244C66] text-[#F0D6A4]"><Database className="size-4" /></span>
+                  <div><strong className="block text-[12px] text-[#18232D]">只读数据健康</strong><span className="text-[9px] text-[#66717B]">课程、知识块、向量、私有任务与迁移记录</span></div>
+                </div>
+                <span className={`rounded-full px-2 py-1 text-[9px] font-bold ${Object.values(dataHealth.private_tasks).some((count) => count > 0) && (dataHealth.private_tasks.error || 0) > 0 ? "bg-[#F4ECD8] text-[#8E6925]" : "bg-[#E9EEE6] text-[#557052]"}`}>只读 · 不提供开放接口</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                {[["课程", dataHealth.courses], ["课程知识块", dataHealth.knowledge_chunks], ["课程向量", dataHealth.knowledge_vectors], ["私有库", dataHealth.private_libraries], ["私有分片", dataHealth.private_chunks], ["失败任务", dataHealth.private_tasks.error || 0]].map(([label, value]) => <div key={label} className="rounded-xl border border-[#D7D1C4] bg-white px-3 py-2"><span className="block text-[8px] font-bold text-[#7A817F]">{label}</span><strong className="mt-0.5 block text-lg tabular-nums text-[#244C66]">{value}</strong></div>)}
+              </div>
+              <div className="mt-3 grid gap-2 lg:grid-cols-2">
+                <div className="rounded-xl border border-[#D7D1C4] bg-white px-3 py-2 text-[9px] leading-5 text-[#59636B]"><strong className="text-[#18232D]">私有任务</strong><div className="mt-1 flex flex-wrap gap-1.5">{Object.keys(dataHealth.private_tasks).length ? Object.entries(dataHealth.private_tasks).map(([taskStatus, count]) => <span key={taskStatus} className="rounded-full bg-[#F1EDE4] px-2 py-0.5">{taskStatus} {count}</span>) : <span>暂无任务</span>}</div><p className="mt-1">{dataHealth.ocr.note}</p></div>
+                <div className="rounded-xl border border-[#D7D1C4] bg-white px-3 py-2 text-[9px] leading-5 text-[#59636B]"><strong className="text-[#18232D]">最近迁移</strong><div className="mt-1">{dataHealth.migrations.slice(0, 3).map((migration) => <div key={migration.version}><span className="font-mono text-[#315E83]">{migration.version}</span> · {migration.description}</div>)}</div></div>
+              </div>
+            </section>
+          )}
           {/* 顶部统计 */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <StatBox label="总数"     value={summary.count}   color="indigo" />

@@ -20,6 +20,14 @@ interface CourseListResp {
 
 const FIXED_COURSES = new Set(["机器学习", "数据结构与算法", "操作系统", "计算机网络", "计算机组成原理"])
 
+const COURSE_COVERS: Record<string, string> = {
+  机器学习: "/course-covers/machine-learning.jpg",
+  数据结构与算法: "/course-covers/algorithms.jpg",
+  操作系统: "/course-covers/operating-systems.jpg",
+  计算机网络: "/course-covers/computer-networking.jpg",
+  计算机组成原理: "/course-covers/computer-organization.jpg",
+}
+
 // 预设课程的图标 / 配色（按 name 匹配；未命中给默认）
 const PRESET: Record<string, { icon: LucideIcon; iconTone: string; accent: string; subtitle: string }> = {
   机器学习: { icon: Bot, iconTone: "bg-[#E7EDF3] text-[#315E83]", accent: "bg-[#315E83]", subtitle: "模型训练、神经网络与智能算法" },
@@ -86,7 +94,7 @@ export function Courses() {
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Library className="size-4" /></span>
               <div className="min-w-0">
                 <h1 className="text-[15px] font-bold text-[#18232D]">选择你的学习课程</h1>
-                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">每门课程拥有独立知识库、学习画像上下文与智能生成记录</p>
+                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">每门课程拥有独立知识库、学习画像上下文与学习资源工坊记录</p>
               </div>
             </div>
             <div className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-[11px] font-bold ${current ? "border-[#C9D1CB] bg-[#E9EEE6] text-[#557052]" : "border-[#D7D1C4] bg-[#FFFEFA] text-[#7A817F]"}`}>
@@ -100,7 +108,7 @@ export function Courses() {
               <div className="pointer-events-none absolute -right-16 -top-20 size-52 rounded-full border border-[#DDD4BF]" />
               <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] text-[#6F8A69]"><Sparkles className="size-3.5 text-[#B1842C]" />课程工作区</span>
               <h2 className="relative mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D]">选定课程后，所有学习能力会自动围绕它协同</h2>
-              <p className="relative mt-1.5 max-w-3xl text-sm leading-6 text-[#66717B]">知识检索、智能生成、AI 助教、笔记和测验都会使用同一课程上下文；切换课程不会混淆不同学科的学习记录。</p>
+              <p className="relative mt-1.5 max-w-3xl text-sm leading-6 text-[#66717B]">知识库、学习资源工坊、AI 助教、笔记和测验都会使用同一课程上下文；切换课程不会混淆不同学科的学习记录。</p>
             </div>
 
         {err && (
@@ -125,10 +133,9 @@ export function Courses() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {items.map((c, i) => {
               const palette = paletteFor(c.name)
-              const Icon = palette.icon
               const isCurrent = current?.id === c.id
               return (
                 <motion.div
@@ -137,19 +144,20 @@ export function Courses() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.35, delay: i * 0.04 }}
                 >
-                  <article className={`group relative min-h-[185px] overflow-hidden rounded-[22px] border bg-[#FFFEFA] shadow-[0_8px_22px_rgba(24,35,45,.04)] transition-all hover:-translate-y-1 hover:shadow-[0_14px_28px_rgba(24,35,45,.09)] ${isCurrent ? "border-[#7F9AAA] ring-2 ring-[#315E83]/12" : "border-[#D7D1C4] hover:border-[#AEBAB5]"}`}>
+                  <article className={`group relative min-h-[224px] overflow-hidden rounded-[22px] border bg-[#FFFEFA] shadow-[0_8px_22px_rgba(24,35,45,.04)] transition-all hover:-translate-y-1 hover:shadow-[0_18px_34px_rgba(24,35,45,.11)] ${isCurrent ? "border-[#7F9AAA] ring-2 ring-[#315E83]/12" : "border-[#D7D1C4] hover:border-[#AEBAB5]"}`}>
                     <span className={`absolute inset-x-0 top-0 h-1 ${palette.accent}`} />
-                    <CourseMotif name={c.name} />
-                    <button type="button" onClick={() => pick(c)} className="relative z-10 flex h-full min-h-[185px] w-full flex-col p-5 text-left">
-                      <div className="flex w-full items-start justify-between gap-3">
-                        <span className={`grid size-11 place-items-center rounded-2xl ${palette.iconTone}`}><Icon className="size-5" /></span>
-                        {isCurrent && <span className="inline-flex items-center gap-1 rounded-full bg-[#E9EEE6] px-2 py-1 text-[10px] font-bold text-[#557052]"><CheckCircle2 className="size-3" />正在学习</span>}
-                      </div>
-                      <h3 className="mt-4 text-lg font-bold tracking-[-0.025em] text-[#18232D]">{c.name}</h3>
-                      <p className="mt-1 text-xs leading-5 text-[#66717B]">{palette.subtitle}</p>
-                      <div className="mt-auto flex w-full items-end justify-between pt-5">
-                        <span className="text-[11px] text-[#7A817F]"><strong className="mr-1 font-mono text-[#315E83]">{c.name === "机器学习" ? "1000+" : "500+"}</strong>知识片段</span>
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#315E83]">进入课程<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" /></span>
+                    <button type="button" onClick={() => pick(c)} className="relative z-10 grid h-full min-h-[224px] w-full grid-cols-[104px_minmax(0,1fr)] gap-4 p-4 text-left sm:grid-cols-[116px_minmax(0,1fr)]">
+                      <CourseCover name={c.name} />
+                      <div className="flex min-w-0 flex-col py-1">
+                        <div className="flex min-h-6 items-start justify-end">
+                          {isCurrent && <span className="inline-flex items-center gap-1 rounded-full bg-[#E9EEE6] px-2 py-1 text-[10px] font-bold text-[#557052]"><CheckCircle2 className="size-3" />正在学习</span>}
+                        </div>
+                        <h3 className="mt-3 text-lg font-bold tracking-[-0.025em] text-[#18232D]">{c.name}</h3>
+                        <p className="mt-1.5 text-xs leading-5 text-[#66717B]">{c.description?.trim() || palette.subtitle}</p>
+                        <div className="mt-auto flex w-full items-end justify-between gap-2 pt-4">
+                          <span className="text-[11px] text-[#7A817F]"><strong className="mr-1 font-mono text-[#315E83]">{c.chunk_count ? c.chunk_count.toLocaleString() : c.name === "机器学习" ? "1000+" : "500+"}</strong>知识片段</span>
+                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-[#315E83]">进入课程<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" /></span>
+                        </div>
                       </div>
                     </button>
                   </article>
@@ -165,8 +173,33 @@ export function Courses() {
   )
 }
 
+function CourseCover({ name }: { name: string }) {
+  const [failed, setFailed] = useState(false)
+  const src = COURSE_COVERS[name]
+
+  return (
+    <span className="relative my-auto block aspect-[0.73] w-full overflow-hidden rounded-[9px] border border-black/10 bg-[#F1EDE4] shadow-[0_12px_22px_rgba(24,35,45,.18),-5px_0_0_#ece7db] transition duration-500 group-hover:-rotate-1 group-hover:scale-[1.025]">
+      {src && !failed ? (
+        <img
+          src={src}
+          alt={`${name}教材封面`}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <span className="absolute inset-0 overflow-hidden bg-[#F8F6F0]">
+          <CourseMotif name={name} />
+          <span className="absolute inset-x-3 bottom-3 text-center text-[10px] font-bold leading-4 text-[#59636B]">{name}</span>
+        </span>
+      )}
+      <span className="pointer-events-none absolute inset-y-0 left-0 w-2 bg-gradient-to-r from-black/15 to-transparent" />
+    </span>
+  )
+}
+
 function CourseMotif({ name }: { name: string }) {
-  const base = "pointer-events-none absolute -right-2 top-3 h-[170px] w-[48%] transition-transform duration-500 group-hover:scale-[1.04]"
+  const base = "pointer-events-none absolute -right-8 top-2 h-[140px] w-[145%] transition-transform duration-500 group-hover:scale-[1.04]"
 
   if (name === "机器学习") {
     return (

@@ -32,8 +32,8 @@ from app.agents.profile_agent import (
     merge_patch,
     sanitize_profile_patch,
 )
-from app.api.bili import _core_terms, _rank_videos, _resolve_query
-from app.integrations.rencaiya import _course_match_level, _topic_terms
+from app.api.bili import _candidate_queries, _core_terms, _rank_videos, _resolve_query
+from app.integrations.rencaiya import _course_match_level, _rank_topic_courses, _topic_terms
 from app.schemas.profile import ProfileDims
 
 
@@ -187,6 +187,67 @@ class ExternalResourceRelevanceTests(unittest.TestCase):
             _course_match_level(precise, terms, query, "计算机组成原理"),
             "exact",
         )
+
+    def test_bili_uses_partial_topic_hits_as_related_supplements(self):
+        query = _resolve_query("Cache 直接映射", "Cache 直接映射")
+        terms = _core_terms("Cache 直接映射", "Cache 直接映射", query)
+        candidates = [
+            {
+                "bvid": "exact",
+                "title": "Cache直接映射详解",
+                "play": 10,
+                "_search_text": "Cache直接映射详解",
+            },
+            {
+                "bvid": "related",
+                "title": "Cache的三种映射方式",
+                "play": 100,
+                "_search_text": "Cache的三种映射方式",
+            },
+            {
+                "bvid": "game",
+                "title": "我的世界 Cache 教程",
+                "play": 100000,
+                "_search_text": "我的世界 游戏攻略 Cache",
+            },
+        ]
+        ranked = _rank_videos(candidates, terms, "计算机组成原理", 6)
+        self.assertEqual([video["bvid"] for video in ranked], ["exact", "related"])
+        self.assertEqual([video["match_level"] for video in ranked], ["exact", "related"])
+        self.assertIn("cache", [item.lower() for item in _candidate_queries(
+            query,
+            terms,
+            "Cache 直接映射",
+            "计算机组成原理",
+        )])
+
+    def test_rencaiya_uses_closest_course_result_as_supplement(self):
+        query = "Cache 直接映射"
+        terms = _topic_terms(query, query)
+        candidates = [
+            {
+                "course_id": 1,
+                "title": "STM32硬件接口技术",
+                "summary": "嵌入式硬件接口开发。",
+                "learned_person": 580,
+            },
+            {
+                "course_id": 2,
+                "title": "计算机硬件基础",
+                "summary": "认识计算机硬件组成。",
+                "learned_person": 18,
+            },
+        ]
+        level, ranked = _rank_topic_courses(
+            candidates,
+            terms,
+            query,
+            "计算机组成原理",
+            6,
+        )
+        self.assertEqual(level, "course")
+        self.assertEqual([item["course_id"] for item in ranked], [2])
+        self.assertEqual(ranked[0]["match_level"], "course")
 
 
 if __name__ == "__main__":

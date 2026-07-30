@@ -11,7 +11,8 @@
  *
  * buildBeats 用 ref 捕获，闭包里能拿最新 state setter；effect 仅依赖 lecture/replayNonce。
  */
-import { useEffect, useRef } from "react"
+import { createContext, useContext, useEffect, useRef } from "react"
+import { estimateNarrationMs, resolveLectureSeek } from "@/lib/lectureTimeline"
 
 export interface LectureBeat {
   /** 这一拍朗读 + 显示的讲解文字。 */
@@ -24,14 +25,41 @@ export interface LectureBeat {
   seek?: (i: number) => void
 }
 
+export interface NarrationOptions {
+  startAtMs?: number
+  onProgress?: (elapsedMs: number, durationMs: number) => void
+  onDuration?: (durationMs: number) => void
+}
+
+export interface LectureTimelineController {
+  seekRevision: number
+  seekMs: number
+  paused: boolean
+  registerBeats: (beats: LectureBeat[]) => void
+  durationFor: (index: number, text: string) => number
+  reportBeat: (index: number, elapsedMs?: number, durationMs?: number) => void
+  reportDone: () => void
+  isPaused: () => boolean
+  playbackRate: () => number
+}
+
+export const LectureTimelineContext = createContext<LectureTimelineController | null>(null)
+
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
 /**
  * 估算一句中文旁白的朗读时长（CosyVoice 实测约 175ms/字），用来把动态拍的帧均摊到整句上，
  * 让画面在念这句话的全程持续推进，而不是几帧飞快走完、剩下大半句对着定格画面干讲。
  */
-function estNarrationMs(text: string): number {
-  return text.length * 175 + 300
+export const estNarrationMs = estimateNarrationMs
+
+async function timelineSleep(ms: number, timeline: LectureTimelineController | null) {
+  let remaining = Math.max(0, ms)
+  while (remaining > 0) {
+    const slice = Math.min(remaining, 80)
+    await sleep(slice)
+    if (!timeline?.isPaused()) remaining -= slice
+  }
 }
 
 /**
@@ -51,7 +79,7 @@ export function chunkedBeats(total: number, sentences: string[], seek: (i: numbe
 export function useLecture(opts: {
   lecture: boolean
   replayNonce?: number
-  narrate?: (text: string) => Promise<void>
+  narrate?: (text: string, options?: NarrationOptions) => Promise<void>
   prepareNarration?: (texts: string[]) => Promise<void>
   onLectureEnd?: () => void
   buildBeats: () => LectureBeat[]
@@ -59,8 +87,12 @@ export function useLecture(opts: {
   onEnter?: () => void
 }) {
   const { lecture, replayNonce = 0 } = opts
+  const timeline = useContext(LectureTimelineContext)
   const ref = useRef(opts)
+  const timelineRef = useRef(timeline)
   ref.current = opts
+  timelineRef.current = timeline
+  const seekRevision = timeline?.seekRevision
 
   useEffect(() => {
     if (!lecture) {
@@ -75,36 +107,70 @@ export function useLecture(opts: {
     }
 
     const run = async () => {
+      const activeTimeline = timelineRef.current
       ref.current.onEnter?.()
       const beats = ref.current.buildBeats()
+      activeTimeline?.registerBeats(beats)
       if (beats.length === 0) {
         ref.current.onLectureEnd?.()
         return
       }
-      setStart(beats[0]) // 合成前先停在起始画面，避免「深度思考」期间残留旧状态
+      let startIndex = 0
+      let startOffsetMs = 0
+      if (activeTimeline && activeTimeline.seekMs > 0) {
+        const point = resolveLectureSeek(
+          beats.map((beat, index) => activeTimeline.durationFor(index, beat.text)),
+          activeTimeline.seekMs,
+        )
+        startIndex = point.beatIndex
+        startOffsetMs = point.offsetMs
+      }
+      const firstBeat = beats[startIndex]
+      if (firstBeat.frames?.length && firstBeat.seek && startOffsetMs > 0) {
+        const duration = activeTimeline?.durationFor(startIndex, firstBeat.text) || estNarrationMs(firstBeat.text)
+        const frameIndex = Math.min(
+          firstBeat.frames.length - 1,
+          Math.floor((startOffsetMs / Math.max(1, duration)) * firstBeat.frames.length),
+        )
+        firstBeat.seek(firstBeat.frames[frameIndex])
+      } else {
+        setStart(firstBeat)
+      }
       await settle()
       if (cancelled) return
       await (ref.current.prepareNarration?.(beats.map((b) => b.text)) ?? Promise.resolve())
       if (cancelled) return
 
-      for (const b of beats) {
+      for (let beatIndex = startIndex; beatIndex < beats.length; beatIndex++) {
+        const b = beats[beatIndex]
         if (cancelled) return
-        setStart(b)
+        const offsetMs = beatIndex === startIndex ? startOffsetMs : 0
+        if (offsetMs <= 0) setStart(b)
         await settle()
         if (cancelled) return
-        const narration = ref.current.narrate?.(b.text) ?? Promise.resolve()
+        activeTimeline?.reportBeat(beatIndex, offsetMs)
+        const narration = ref.current.narrate?.(b.text, {
+          startAtMs: offsetMs,
+          onProgress: (elapsedMs, durationMs) => activeTimeline?.reportBeat(beatIndex, elapsedMs, durationMs),
+          onDuration: (durationMs) => activeTimeline?.reportBeat(beatIndex, offsetMs, durationMs),
+        }) ?? Promise.resolve()
 
         // 动态拍：念这句话时连续走过这段帧。节奏自适应——把帧均摊到整句旁白时长上，
         // 画面在念这句话全程持续推进（不再是几帧飞快走完、剩下大半句对着定格画面干讲）。
         if (b.frames && b.frames.length > 1 && b.seek) {
           let voiceDone = false
           narration.then(() => (voiceDone = true), () => (voiceDone = true))
-          const gaps = b.frames.length - 1
+          const duration = activeTimeline?.durationFor(beatIndex, b.text) || estNarrationMs(b.text)
+          const startFrameIndex = offsetMs > 0
+            ? Math.min(b.frames.length - 1, Math.floor((offsetMs / Math.max(1, duration)) * b.frames.length))
+            : 0
+          const gaps = Math.max(1, b.frames.length - 1 - startFrameIndex)
           // 每帧停留 = 整句估算时长 / 帧数；上下限防止稠密动画爬太慢、稀疏拍单帧停太久
-          const perFrame = Math.min(3200, Math.max(260, Math.round(estNarrationMs(b.text) / gaps)))
-          for (let k = 1; k < b.frames.length; k++) {
+          const remainingMs = Math.max(300, duration - offsetMs)
+          const perFrame = Math.min(3200, Math.max(120, Math.round(remainingMs / gaps)))
+          for (let k = startFrameIndex + 1; k < b.frames.length; k++) {
             if (cancelled) return
-            await sleep(perFrame)
+            await timelineSleep(perFrame / (activeTimeline?.playbackRate() || 1), activeTimeline)
             if (cancelled) return
             b.seek(b.frames[k])
             await settle()
@@ -113,7 +179,7 @@ export function useLecture(opts: {
               for (let j = k + 1; j < b.frames.length; j++) {
                 if (cancelled) return
                 b.seek(b.frames[j])
-                await sleep(120)
+                await timelineSleep(120 / (activeTimeline?.playbackRate() || 1), activeTimeline)
               }
               break
             }
@@ -121,11 +187,14 @@ export function useLecture(opts: {
         }
         await narration // 帧先走完则停在末帧等语音念完
       }
-      if (!cancelled) ref.current.onLectureEnd?.()
+      if (!cancelled) {
+        activeTimeline?.reportDone()
+        ref.current.onLectureEnd?.()
+      }
     }
     run()
     return () => {
       cancelled = true
     }
-  }, [lecture, replayNonce])
+  }, [lecture, replayNonce, seekRevision])
 }

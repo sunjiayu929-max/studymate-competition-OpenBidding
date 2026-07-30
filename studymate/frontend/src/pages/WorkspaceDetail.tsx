@@ -337,7 +337,7 @@ export function WorkspaceDetail() {
               </div>
               <div className="flex flex-col-reverse gap-2 border-t border-[#E0DACE] bg-[#FCFAF5] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <Link to="/concept/library" className="text-xs font-semibold text-[#66717B] transition-colors hover:text-[#8E6925]">查看 300 个可视讲解</Link>
-                <Link to="/workspace" className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white transition-colors hover:bg-[#1D4058]"><Sparkles className="size-4" />返回智能生成工作台</Link>
+                <Link to="/workspace" className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white transition-colors hover:bg-[#1D4058]"><Sparkles className="size-4" />返回学习资源工坊</Link>
               </div>
             </section>
           </div>

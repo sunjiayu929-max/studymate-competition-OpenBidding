@@ -22,6 +22,7 @@ interface EventPayload {
 
 const queue: EventPayload[] = []
 let timer: number | null = null
+let loggingOut = false
 
 function ensureTimer() {
   if (timer != null) return
@@ -31,7 +32,7 @@ function ensureTimer() {
 }
 
 export async function flush(): Promise<void> {
-  if (queue.length === 0) return
+  if (loggingOut || queue.length === 0) return
   const batch = queue.splice(0, BATCH_SIZE)
   try {
     await fetch("/api/events/batch", {
@@ -52,6 +53,7 @@ export function track(
   meta?: Record<string, unknown>,
   duration_ms = 0,
 ): void {
+  if (loggingOut) return
   queue.push({
     user_id: getCurrentUserId(),
     action,
@@ -64,10 +66,26 @@ export function track(
   if (queue.length >= BATCH_SIZE) void flush()
 }
 
+/** 退出前立即停止计时器并丢弃残留队列，避免 Session 清除后继续发送 events/batch。 */
+export function discardPendingEventsForLogout(): void {
+  loggingOut = true
+  queue.splice(0, queue.length)
+  if (timer != null) {
+    window.clearInterval(timer)
+    timer = null
+  }
+}
+
+/** 新登录会话建立后恢复埋点。 */
+export function resumeEventTracking(): void {
+  loggingOut = false
+}
+
 // 全局：页面卸载 / 隐藏时 flush
 if (typeof window !== "undefined") {
+  window.addEventListener("studymate:event-tracking-resume", resumeEventTracking)
   window.addEventListener("beforeunload", () => {
-    if (queue.length === 0) return
+    if (loggingOut || queue.length === 0) return
     // 用 sendBeacon 保证关页前送达
     const batch = queue.splice(0, queue.length)
     const body = new Blob([JSON.stringify({ events: batch })], { type: "application/json" })

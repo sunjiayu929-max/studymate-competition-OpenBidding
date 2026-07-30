@@ -6,9 +6,9 @@ import { useTrackPage } from "@/lib/useTrackPage"
 
 const DESTINATIONS = [
   { to: "/courses", label: "课程空间", detail: "先确定学习范围", icon: Library, color: "#8E6925", wash: "#F4ECD8" },
-  { to: "/workspace", label: "智能生成", detail: "生成完整资源包", icon: LayoutDashboard, color: "#315E83", wash: "#E7EDF3" },
+  { to: "/workspace", label: "学习资源工坊", detail: "7 Agents 生成完整资源包", icon: LayoutDashboard, color: "#315E83", wash: "#E7EDF3" },
   { to: "/tutor", label: "AI 课程助教", detail: "继续当前问题", icon: MessageCircleMore, color: "#6F8A69", wash: "#E8EDE5" },
-  { to: "/rag", label: "RAG 检索", detail: "核对课程原文", icon: Database, color: "#B85C3E", wash: "#F4E8E2" },
+  { to: "/knowledge", label: "知识库", detail: "管理私有资料与来源", icon: Database, color: "#B85C3E", wash: "#F4E8E2" },
 ]
 
 export function NotFound() {

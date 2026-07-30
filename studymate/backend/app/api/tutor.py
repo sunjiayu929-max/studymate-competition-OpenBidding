@@ -1,6 +1,6 @@
-"""AI 助教对话（独立通义千问 Qwen3.7-Max 端点）
+"""AI 助教对话（Qwen / DeepSeek / MiMo 服务端受控路由）
 
-- 强制走 qwen provider，与主流程的 LLM_PROVIDER 解耦
+- 浏览器只传 provider 标识；Key、Base URL 与模型名始终留在服务端
 - 三引擎差异化：工作台 deepseek / 助教 qwen / 语音 ASR+TTS 讯飞
 - 多轮上下文（前端维护 messages，后端拼接）
 - 流式 SSE
@@ -21,15 +21,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
 
 from app.courses import get_course_by_id
+from app.core.config import settings
 from app.db import get_db
 from app.db.session import async_session_maker
 from app.db.models import Profile, TutorSession, User
 from app.deps import require_user
 from app.llm import get_llm_client, has_llm_key
+from app.api.knowledge import search_owned_library
 
 router = APIRouter(prefix="/tutor", tags=["tutor"])
 
-PROVIDER = "qwen"
+SUPPORTED_PROVIDERS = ("qwen", "deepseek", "mimo")
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_EXTRACTED_CHARS = 16_000
 TEXT_FILE_SUFFIXES = {
@@ -77,6 +79,8 @@ class TutorChatRequest(BaseModel):
     page_context: PageContext | None = None
     # 文字/语音助教显式传入；笔记总结等内部直接任务省略该字段。
     learning_method: Literal["feynman", "socratic"] | None = None
+    provider: Literal["qwen", "deepseek", "mimo"] | None = None
+    knowledge_base_id: int | None = None
 
 
 class TutorConversationCourse(BaseModel):
@@ -494,11 +498,41 @@ async def extract_tutor_file(file: UploadFile = File(...)):
     }
 
 
+@router.get("/models")
+async def tutor_models():
+    default = settings.TUTOR_DEFAULT_PROVIDER.lower()
+    if default not in SUPPORTED_PROVIDERS:
+        default = "qwen"
+    descriptions = {
+        "qwen": ("Qwen", "课程问答与多模态附件"),
+        "deepseek": ("DeepSeek", "推理、公式与代码讲解"),
+        "mimo": ("MiMo", "自然对话、提炼与总结"),
+    }
+    return {
+        "default": default,
+        "items": [
+            {
+                "id": provider,
+                "label": descriptions[provider][0],
+                "description": descriptions[provider][1],
+                "configured": has_llm_key(provider),
+                "recommended": provider == default,
+            }
+            for provider in SUPPORTED_PROVIDERS
+        ],
+    }
+
+
 @router.post("/chat")
 async def tutor_chat(req: TutorChatRequest, user: User = Depends(require_user)):
-    # 任一用户消息带图 → 走视觉模型 qwen-vl（同一 DashScope key）
+    selected_provider = (req.provider or settings.TUTOR_DEFAULT_PROVIDER).lower()
+    if selected_provider not in SUPPORTED_PROVIDERS:
+        raise HTTPException(status_code=422, detail="回答模型仅支持 Qwen、DeepSeek 或 MiMo")
+    # 视觉输入只允许用户明确选择 Qwen，避免后端静默替换其选择。
     has_image = any(m.images for m in req.messages if m.role == "user")
-    provider = "qwen-vl" if has_image else PROVIDER
+    if has_image and selected_provider != "qwen":
+        raise HTTPException(status_code=422, detail="图片问答目前仅由 Qwen 支持，请明确切换到 Qwen 后重试")
+    provider = "qwen-vl" if has_image else selected_provider
     key_ok = has_llm_key(provider)
 
     async def gen():
@@ -509,6 +543,21 @@ async def tutor_chat(req: TutorChatRequest, user: User = Depends(require_user)):
             p = q.scalar_one_or_none()
             if p:
                 profile_dims = p.dims
+            private_context: list[dict] = []
+            if req.knowledge_base_id:
+                last_question = next(
+                    (message.content for message in reversed(req.messages) if message.role == "user" and message.content.strip()),
+                    "",
+                )
+                if last_question:
+                    private_context = await search_owned_library(
+                        db,
+                        user_id=user.id,
+                        library_id=req.knowledge_base_id,
+                        query=last_question,
+                        limit=5,
+                        with_semantic=False,
+                    )
 
         # 拉课程配置
         course_cfg = await get_course_by_id(req.course_id)
@@ -517,16 +566,19 @@ async def tutor_chat(req: TutorChatRequest, user: User = Depends(require_user)):
             "event": "meta",
             "data": json.dumps({
                 "provider": provider,
+                "selected_provider": selected_provider,
                 "mock": not key_ok,
                 "vision": has_image,
                 "learning_method": req.learning_method or "direct",
                 "with_profile": profile_dims is not None,
+                "private_knowledge_hits": len(private_context),
                 "course": course_cfg.name,
             }),
         }
 
         if not key_ok:
-            mock = "（mock 模式）通义千问 key 没配，跳到 .env 把 QWEN_API_KEY 补上即可启用助教对话。"
+            provider_label = {"qwen": "Qwen", "deepseek": "DeepSeek", "mimo": "MiMo"}[selected_provider]
+            mock = f"（演示降级）{provider_label} 尚未配置服务端凭据，当前保留对话流程与文字结果；请配置对应服务后重试。"
             for ch in mock:
                 yield {"event": "delta", "data": ch}
                 await _sleep(0.015)
@@ -544,6 +596,17 @@ async def tutor_chat(req: TutorChatRequest, user: User = Depends(require_user)):
                 req.learning_method,
             ),
         }
+        if private_context:
+            citations = "\n\n".join(
+                f"【私有资料 {index}｜{item['source']}｜"
+                f"{f'第 {item['page']} 页' if item['page'] else '页码未标注'}】\n{item['content']}"
+                for index, item in enumerate(private_context, start=1)
+            )
+            sys["content"] += (
+                "\n\n【用户私有知识库检索结果】\n"
+                "回答应优先依据以下资料；引用时明确写出文件名和页码，不得把资料内容暴露给其他用户。\n"
+                f"{citations}"
+            )
         hist = [
             {"role": m.role, "content": _build_content(m)}
             for m in req.messages

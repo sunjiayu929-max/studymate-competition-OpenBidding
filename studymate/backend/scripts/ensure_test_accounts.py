@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import os
 import sqlite3
+from contextlib import closing
 from datetime import datetime
 from pathlib import Path
 
@@ -50,7 +51,7 @@ def create_backup(db_path: Path) -> Path:
     backup_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     backup_path = backup_dir / f"studymate-before-test-accounts-{stamp}.db"
-    with sqlite3.connect(db_path) as source, sqlite3.connect(backup_path) as destination:
+    with closing(sqlite3.connect(db_path)) as source, closing(sqlite3.connect(backup_path)) as destination:
         source.backup(destination)
     return backup_path
 
@@ -67,7 +68,7 @@ def ensure_accounts(db_path: Path, password: str, *, backup: bool = True) -> tup
     created = 0
     reset = 0
 
-    with sqlite3.connect(db_path) as conn:
+    with closing(sqlite3.connect(db_path)) as conn, conn:
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("BEGIN IMMEDIATE")
         try:

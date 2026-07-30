@@ -188,10 +188,23 @@ HTTPS_PORT=443
 CORS_ORIGINS=https://你的备案域名
 AUTH_SECRET_KEY=使用密码管理器生成的高强度随机值
 SESSION_COOKIE_SECURE=true
+PRIVATE_KNOWLEDGE_DIR=./data/private_knowledge
+PRIVATE_KNOWLEDGE_OCR_MODE=unconfigured
 ```
 
 如果同时使用主域名和 `www`，将两个 HTTPS 来源都写入 `CORS_ORIGINS`，逗号分隔。
 模型、语音、邮件和 Piston 变量按 `.env.example` 配置；没有启用的服务保持空值，不要复制其他环境中的旧 Key。
+私有知识库原文件默认保存在 `/app/data/private_knowledge`，与 SQLite 共用
+`studymate_backend_data` 命名卷，因此容器重建不会丢失。未接入 OCR 服务时应保持
+`PRIVATE_KNOWLEDGE_OCR_MODE=unconfigured`，扫描版 PDF 会进入可观察的失败状态，
+不会被当作解析成功。
+
+安全巡检不要通过清空环境变量启动生产 Compose。需要在服务器上做 0 外联的本地接口检查时，
+应停止使用生产入口，改在独立目录中通过 `backend/scripts/run_safe_offline.py` 启动，并显式
+传入隔离 SQLite 文件和私有资料目录。`STUDYMATE_SAFE_OFFLINE=1` 必须由该启动器或进程
+环境在导入应用前设置，不能写入 `backend/.env`；该模式完全跳过 `.env`、只绑定环回地址，
+并禁用模型、Embedding、语音、OCR、SMTP、公开站点解析和 Piston。它是巡检工具，不是生产
+部署 Profile。
 
 ## 5. 一键部署
 
@@ -243,8 +256,9 @@ bash scripts/deploy.sh
 docker compose down -v
 ```
 
-`-v` 会删除服务器上的 SQLite 用户数据和 Piston runtime。更新前必须备份
-`studymate_backend_data` 卷中的 `/app/data/studymate.db`。
+`-v` 会删除服务器上的 SQLite 用户数据、私有知识库原文件和 Piston runtime。
+更新前必须同时备份 `studymate_backend_data` 卷中的 `/app/data/studymate.db`
+与 `/app/data/private_knowledge`；数据库记录与原文件应作为同一恢复点保存。
 
 ### 6.1 备份 SQLite
 
@@ -266,6 +280,17 @@ chmod 600 ~/studymate-backups/studymate-*.db
 ```
 
 备份文件应另存到独立存储，并定期执行 `PRAGMA integrity_check`。
+
+私有知识库原文件需单独从同一数据卷导出：
+
+```bash
+docker cp studymate-backend:/app/data/private_knowledge \
+  ~/studymate-backups/private_knowledge-$(date +%F_%H%M%S)
+chmod -R go-rwx ~/studymate-backups/private_knowledge-*
+```
+
+恢复时应先停止后端，再将数据库与对应时间点的 `private_knowledge` 目录一起恢复，
+避免文档任务记录存在但原文件缺失。
 
 ### 6.2 恢复或回滚
 

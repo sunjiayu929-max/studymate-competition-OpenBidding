@@ -222,6 +222,7 @@ export function Report() {
   const USER_ID = user?.user_id ?? 0
   const reportRef = useRef<HTMLDivElement>(null)
   const noticeTimerRef = useRef<number | null>(null)
+  const autoEvalMilestoneRef = useRef("")
 
   const [profile, setProfile] = useState<ProfileMiniData | null>(null)
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
@@ -312,7 +313,35 @@ export function Report() {
     if (historyResult.status === "fulfilled") setEvalHistory(historyResult.value.items || [])
     else failed.push("评估历史")
 
-    setReport((current) => current ?? readCachedReport(USER_ID))
+    setReport((current) => {
+      const cached = current ?? readCachedReport(USER_ID)
+      if (cached) return cached
+      if (profileResult.status !== "fulfilled" || historyResult.status !== "fulfilled") return null
+      const latest = historyResult.value.items?.[0]
+      if (!latest) return null
+      return {
+        user_id: USER_ID,
+        profile_version: profileResult.value.version,
+        current_dims: profileResult.value.dims,
+        projected_dims: profileResult.value.dims,
+        scores: latest.scores,
+        profile_delta: {},
+        suggestions: latest.suggestions || [],
+        next_topics: [],
+        summary_markdown: "这是最近一次阶段评估的实时数据快照。完成新的测验或一轮资源学习后，StudyMate 会在关键里程碑更新阶段总结。",
+        generated_at: latest.created_at || undefined,
+        evidence: {
+          course_id: evidenceCourseId,
+          course_name: evidenceCourseName,
+          topic: ws.topic,
+          quiz_count: latest.scores?.total_attempts || 0,
+          time_spent_min: timeSpentMin,
+          resources_consumed: [...resourcesConsumed],
+          resources_available: [...availableResources],
+          topics_studied: [...topicsStudied],
+        },
+      }
+    })
     if (failed.length > 0) {
       setError(`${failed.join("、")}加载失败，其他报告内容仍可继续使用。`)
       setErrorAction("initial")
@@ -320,11 +349,19 @@ export function Report() {
       setError(null)
       setErrorAction(null)
     }
-  }, [USER_ID])
+  }, [USER_ID, availableResources, evidenceCourseId, evidenceCourseName, resourcesConsumed, timeSpentMin, topicsStudied, ws.topic])
 
   useEffect(() => {
     // 页面进入时同步远端画像与历史；函数内部的状态更新均发生在请求完成后。
     void fetchInitial()
+  }, [fetchInitial])
+
+  // 报告主体短轮询刷新真实事件、画像和历史；不会因此重复调用 AI 阶段总结。
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void fetchInitial()
+    }, 25_000)
+    return () => window.clearInterval(timer)
   }, [fetchInitial])
 
   // 用户在生成期间离开再返回时，重新订阅同一个模块级任务，而不是重新发起评估。
@@ -564,6 +601,15 @@ export function Report() {
   const reportEvidence = report?.evidence
   const reportAttemptCount = report?.scores?.total_attempts ?? 0
 
+  // 仅在“完成测验 / 完成一轮资源学习”这一关键里程碑自动评估一次。
+  useEffect(() => {
+    if (!canRunEval || report || loading) return
+    const milestone = `${USER_ID}:${quizAttempts.length}:${resourcesConsumed.length}:${ws.finishedAt}`
+    if (autoEvalMilestoneRef.current === milestone) return
+    autoEvalMilestoneRef.current = milestone
+    void runEval()
+  }, [USER_ID, canRunEval, loading, quizAttempts.length, report, resourcesConsumed.length, runEval, ws.finishedAt])
+
   const retryError = () => {
     const action = errorAction
     setError(null)
@@ -591,8 +637,8 @@ export function Report() {
               </div>
             </div>
             <div className="nav-scroll flex w-full items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto sm:overflow-visible sm:pb-0">
-              <button type="button" aria-label={report ? "基于当前学习证据重新评估" : "开始生成学习报告"} title={workspaceGenerating ? "资源包仍在生成，完成后将自动开放评估" : !hasEvalData ? "完成资源学习或测验后即可评估" : undefined} onClick={runEval} disabled={loading || !canRunEval} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 text-[11px] font-bold text-[#59636B] transition-colors hover:bg-[#E9EEE6] hover:text-[#315E83] disabled:cursor-not-allowed disabled:opacity-45">
-                {loading ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}{loading ? (report ? "重新评估中" : "评估中") : (report ? "重新评估" : "开始评估")}
+              <button type="button" aria-label="重新生成阶段总结" title={workspaceGenerating ? "资源包仍在生成，完成后将自动开放评估" : !hasEvalData ? "完成资源学习或测验后即可评估" : undefined} onClick={runEval} disabled={loading || !canRunEval} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 text-[11px] font-bold text-[#59636B] transition-colors hover:bg-[#E9EEE6] hover:text-[#315E83] disabled:cursor-not-allowed disabled:opacity-45">
+                {loading ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}{loading ? "阶段总结更新中" : "重新生成阶段总结"}
               </button>
               <button type="button" aria-label="导出学习报告 PDF" onClick={exportPDF} disabled={!report || exporting} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-[#244C66] px-3.5 text-[11px] font-bold text-[#FFFEFA] transition-colors hover:bg-[#193B50] disabled:cursor-not-allowed disabled:opacity-40">
                 {exporting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}导出 PDF
@@ -820,7 +866,7 @@ export function Report() {
                       <Link
                         key={i}
                         to={`/workspace?topic=${encodeURIComponent(t)}`}
-                        aria-label={`用主题「${t}」进入智能生成工作台`}
+                        aria-label={`用主题「${t}」进入学习资源工坊`}
                         className="rounded-full border border-[#C9D1CB] bg-[#E9EEE6] px-2.5 py-1 text-xs text-[#557052] transition-colors hover:bg-[#DDE7DA]"
                       >
                         {t}

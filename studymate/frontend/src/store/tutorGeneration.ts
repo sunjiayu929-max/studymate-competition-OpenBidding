@@ -12,6 +12,8 @@ import type { TutorLearningMethod } from "@/store/tutorLearningMethod"
 import type { TutorPageContext } from "@/store/tutorContext"
 import { tutorHistory, type TutorMsg } from "@/store/tutorHistory"
 import { USER_SESSION_RESET_EVENT } from "@/store/user"
+import { getTutorModelProvider } from "@/store/tutorModel"
+import { getSelectedKnowledgeBaseId } from "@/store/knowledgeBase"
 
 export type TutorGenerationOrigin = "text" | "voice"
 
@@ -30,6 +32,11 @@ interface StartTutorGeneration {
   pageContext?: TutorPageContext | null
   learningMethod: TutorLearningMethod
   origin?: TutorGenerationOrigin
+  historySink?: TutorGenerationHistorySink
+}
+
+export interface TutorGenerationHistorySink {
+  append(userId: number, courseId: number | null, message: TutorMsg): void
 }
 
 const DRAFT_PREFIX = "sm:tutor-draft"
@@ -67,6 +74,7 @@ class TutorGenerationStore {
   private listeners = new Map<string, Set<() => void>>()
   private controllers = new Map<string, AbortController>()
   private terminalRuns = new Set<string>()
+  private historySinks = new Map<string, TutorGenerationHistorySink>()
   private draftCache = new Map<string, string>()
   private draftListeners = new Map<string, Set<() => void>>()
 
@@ -104,16 +112,18 @@ class TutorGenerationStore {
     this.terminalRuns.add(runId)
     const state = this.get(userId, courseId)
     const content = state.partial.trim()
+    const historySink = this.historySinks.get(runId) ?? tutorHistory
     if (delivery === "complete" && content) {
-      tutorHistory.append(userId, courseId, { role: "assistant", content, delivery: "complete" })
+      historySink.append(userId, courseId, { role: "assistant", content, delivery: "complete" })
     } else if (delivery !== "complete" || !content) {
-      tutorHistory.append(userId, courseId, {
+      historySink.append(userId, courseId, {
         role: "assistant",
         content,
         delivery: delivery === "complete" ? "error" : delivery,
         error_detail: delivery === "complete" ? "模型没有返回有效内容，可以直接重试。" : errorDetail,
       })
     }
+    this.historySinks.delete(runId)
     this.controllers.delete(generationKey(userId, courseId))
     this.update(userId, courseId, idleState())
   }
@@ -125,6 +135,7 @@ class TutorGenerationStore {
     pageContext,
     learningMethod,
     origin = "text",
+    historySink = tutorHistory,
   }: StartTutorGeneration): string | null {
     if (!userId || this.get(userId, courseId).status === "open") return null
     const key = generationKey(userId, courseId)
@@ -132,6 +143,7 @@ class TutorGenerationStore {
     const controller = new AbortController()
     const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
     this.controllers.set(key, controller)
+    this.historySinks.set(runId, historySink)
     this.update(userId, courseId, {
       status: "open",
       partial: "",
@@ -156,6 +168,8 @@ class TutorGenerationStore {
         })),
         page_context: pageContext ?? undefined,
         learning_method: learningMethod,
+        provider: getTutorModelProvider(),
+        knowledge_base_id: getSelectedKnowledgeBaseId(),
       }),
       signal: controller.signal,
       openWhenHidden: true,
@@ -214,6 +228,7 @@ class TutorGenerationStore {
     this.controllers.clear()
     this.states.clear()
     this.terminalRuns.clear()
+    this.historySinks.clear()
     this.listeners.forEach((listeners) => listeners.forEach((listener) => listener()))
     if (typeof window !== "undefined") {
       for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {

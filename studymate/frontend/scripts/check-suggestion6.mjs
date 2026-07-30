@@ -91,6 +91,14 @@ await page.route("**/api/**", async (route) => {
   })
   if (path === `/api/profile/${user.user_id}`) return json(route, { user_id: user.user_id, version: 6, dims })
   if (path === "/api/tutor/conversations") return json(route, conversationState)
+  if (path === "/api/tutor/models") return json(route, {
+    default: "qwen",
+    items: [
+      { id: "qwen", label: "Qwen", description: "课程问答与多模态", configured: false, recommended: true },
+      { id: "deepseek", label: "DeepSeek", description: "推理与代码讲解", configured: false, recommended: false },
+      { id: "mimo", label: "MiMo", description: "自然对话与总结", configured: false, recommended: false },
+    ],
+  })
   if (path === "/api/events" || path === "/api/events/batch") return json(route, { ok: true })
   return json(route, { ok: true })
 })

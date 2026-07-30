@@ -34,7 +34,7 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.core.config import settings
+from app.core.config import safe_offline_enabled, settings
 from app.core.run_sandbox import (
     prepare_python_source,
     run_capabilities,
@@ -106,13 +106,21 @@ class RunResponse(BaseModel):
 @router.get("/languages")
 async def list_languages() -> dict:
     """前端 CodeRunner 拉支持的语言列表（带显示名）"""
-    return {"languages": run_capabilities()["languages"]}
+    return {
+        "languages": run_capabilities()["languages"],
+        "available": not safe_offline_enabled(),
+        "mode": "safe_offline" if safe_offline_enabled() else "configured",
+    }
 
 
 @router.get("/capabilities")
 async def list_capabilities() -> dict:
     """返回当前在线沙箱真实支持的语言与第三方库白名单。"""
-    return run_capabilities()
+    return {
+        **run_capabilities(),
+        "available": not safe_offline_enabled(),
+        "mode": "safe_offline" if safe_offline_enabled() else "configured",
+    }
 
 
 @router.post("", response_model=RunResponse)
@@ -125,6 +133,18 @@ async def run(req: RunRequest) -> RunResponse:
         )
 
     started = time.time()
+    if safe_offline_enabled():
+        return RunResponse(
+            stdout="",
+            stderr="安全离线模式已禁用 Piston 代码运行服务。",
+            exit_code=-1,
+            signal=None,
+            language=req.language,
+            version=lang_cfg["version"],
+            compile=None,
+            duration_ms=int((time.time() - started) * 1000),
+            mock=True,
+        )
     if req.language.lower() == "python":
         unsupported = unsupported_third_party_imports(req.source)
         if unsupported:
