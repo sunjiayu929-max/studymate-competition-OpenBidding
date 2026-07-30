@@ -158,7 +158,7 @@ await page.route("**/api/**", async (route) => {
     created_at: new Date().toISOString(), submitted_at: new Date().toISOString(),
     items: [{ id: 701, idx: 0, type: "fill", question: "动量超参数符号是？", options: [], starter: "", answer_key: "beta", explanation: "知识记忆。", difficulty: 2, user_answer: null, is_correct: false, score: 0, judge_reason: "", error_tags: ["未作答", "知识记忆"] }],
   })
-  if (path === "/api/rag/stats") return json(route, { count: 938, engine: "BM25+Vector (RRF hybrid)", course_id: 1 })
+  if (path === "/api/rag/stats") return json(route, { count: 1709, engine: "BM25+Vector (RRF hybrid)", course_id: 1 })
   if (path === "/api/rag/search") {
     ragRequestUrl = request.url()
     return json(route, {

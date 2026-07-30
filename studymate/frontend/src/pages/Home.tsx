@@ -100,7 +100,7 @@ const EMPTY_HOME_DATA: HomeData = {
   notes: { count: 0, items: [] },
   quizzes: [],
   evaluations: [],
-  platform: { courseCount: 5, chunkCount: 938, source: "baseline" },
+  platform: { courseCount: 5, chunkCount: 1709, source: "baseline" },
   sources: {
     profile: "loading",
     notes: "loading",
@@ -651,7 +651,7 @@ function LearningUniverse(props: LearningUniverseProps) {
                   </div>
                 ))}
               </div>
-              {trend.every((point) => point.value === 0) && <span className="universe-trend-empty">暂无历史，不绘制虚假曲线</span>}
+              {trend.every((point) => point.value === 0) && <span className="universe-trend-empty">暂无历史</span>}
             </div>
           </div>
         </section>
@@ -861,7 +861,7 @@ export function Home() {
         : 0
       const liveChunkCount = ragResult.status === "fulfilled"
         ? ragResult.value.count
-        : courseChunkTotal || 938
+        : courseChunkTotal || 1709
 
       setData({
         profile: profileResult.status === "fulfilled" ? profileResult.value : null,
@@ -1049,7 +1049,7 @@ export function Home() {
     },
     {
       label: "接触知识点",
-      value: touchedTopics.size ? `${touchedTopics.size} 个` : "等待学习",
+      value: touchedTopics.size ? `${touchedTopics.size} 个` : "等待首次学习",
       detail: touchedTopics.size ? "来自今日测验与学习主题" : "不会用平台数据冒充个人掌握",
       source: data.sources.quizzes === "error" && !workspaceStartedToday ? "error" : "ok",
     },

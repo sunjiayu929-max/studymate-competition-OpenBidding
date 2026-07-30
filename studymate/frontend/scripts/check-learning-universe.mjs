@@ -42,7 +42,7 @@ const browser = await chromium.launch({ headless: true })
 const now = new Date()
 const isoNow = now.toISOString()
 const user = { user_id: 9101, name: "布局测试用户", email: "universe.fixture@example.test", role: "student" }
-const course = { id: 1, name: "机器学习", description: "机器学习", chunk_count: 938 }
+const course = { id: 1, name: "机器学习", description: "机器学习", chunk_count: 269 }
 
 async function installMocks(context, { withRealData }) {
   const unexpectedWrites = []
@@ -59,8 +59,8 @@ async function installMocks(context, { withRealData }) {
 
     if (method !== "GET" && !path.startsWith("/events")) unexpectedWrites.push(`${method} ${path}`)
     if (path === "/auth/me") return fulfill(user)
-    if (path === "/courses") return fulfill({ count: 5, items: [course, { id: 2, name: "数据结构与算法", chunk_count: 0 }, { id: 3, name: "操作系统", chunk_count: 0 }, { id: 4, name: "计算机网络", chunk_count: 0 }, { id: 5, name: "计算机组成原理", chunk_count: 0 }] })
-    if (path === "/rag/stats") return fulfill({ count: 938, vectorized: 938, engine: "fixture" })
+    if (path === "/courses") return fulfill({ count: 5, items: [course, { id: 2, name: "数据结构与算法", chunk_count: 360 }, { id: 3, name: "操作系统", chunk_count: 360 }, { id: 4, name: "计算机网络", chunk_count: 360 }, { id: 5, name: "计算机组成原理", chunk_count: 360 }] })
+    if (path === "/rag/stats") return fulfill({ count: 1709, vectorized: 1709, engine: "fixture" })
     if (path === "/profile/9101") {
       return fulfill(withRealData
         ? {

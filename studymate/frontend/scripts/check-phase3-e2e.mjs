@@ -35,11 +35,11 @@ if (!process.env.STUDYMATE_BASE_URL) {
 }
 
 const courses = [
-  { id: 1, name: "机器学习", description: "模型训练、神经网络与智能算法", chunk_count: 938 },
-  { id: 2, name: "数据结构与算法", description: "线性结构、树、图与算法设计", chunk_count: 240 },
-  { id: 3, name: "操作系统", description: "进程、内存与文件系统", chunk_count: 180 },
-  { id: 4, name: "计算机网络", description: "协议与传输控制", chunk_count: 170 },
-  { id: 5, name: "计算机组成原理", description: "处理器与存储系统", chunk_count: 210 },
+  { id: 1, name: "机器学习", description: "模型训练、神经网络与智能算法", chunk_count: 269 },
+  { id: 2, name: "数据结构与算法", description: "线性结构、树、图与算法设计", chunk_count: 360 },
+  { id: 3, name: "操作系统", description: "进程、内存与文件系统", chunk_count: 360 },
+  { id: 4, name: "计算机网络", description: "协议与传输控制", chunk_count: 360 },
+  { id: 5, name: "计算机组成原理", description: "处理器与存储系统", chunk_count: 360 },
 ]
 
 const user = { user_id: 9001, name: "E2E 评委", email: "judge.fixture@example.test", role: "admin", created: false }
@@ -103,7 +103,7 @@ async function installApiMocks(context) {
     if (path.startsWith("/notes")) return json(route, { count: 0, items: [] })
     if (path.startsWith("/quiz-sessions")) return json(route, [])
     if (path.startsWith("/eval/history/")) return json(route, { count: 0, items: [] })
-    if (path.startsWith("/rag/stats")) return json(route, { count: 938, engine: "BM25 + Vector + RRF", course_id: 1 })
+    if (path.startsWith("/rag/stats")) return json(route, { count: 1709, engine: "BM25 + Vector + RRF", course_id: 1 })
     if (path.startsWith("/rag/search")) {
       return json(route, {
         query: url.searchParams.get("q") || "梯度下降",
@@ -194,8 +194,8 @@ async function installApiMocks(context) {
     if (path === "/admin/data-health") {
       return json(route, {
         courses: 5,
-        knowledge_chunks: 938,
-        knowledge_vectors: 938,
+        knowledge_chunks: 1709,
+        knowledge_vectors: 1709,
         private_libraries: 0,
         private_chunks: 0,
         private_tasks: { pending: 0, running: 0, completed: 0, failed: 0 },
@@ -291,7 +291,7 @@ try {
 
   await page.getByRole("heading", { name: "学习宇宙 · 实时指挥舱" }).waitFor()
   await page.getByTestId("beijing-clock").waitFor()
-  await page.getByTestId("platform-capabilities").getByText("938", { exact: true }).waitFor()
+  await page.getByTestId("platform-capabilities").getByText("1,709", { exact: true }).waitFor()
   assert.equal(await page.getByTestId("agents-live").locator(".universe-agent-row").count(), 7, "learning universe must show all 7 Agents")
   assert.equal(await page.locator(".universe-planet").count(), 7, "learning universe must show all 7 capability planets")
   assert.equal(await page.getByRole("button", { name: /打开 StudyMate 真人学习助手/u }).count(), 0, "global digital human must be hidden over the learning universe")

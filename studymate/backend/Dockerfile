@@ -33,7 +33,7 @@ RUN for source in /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources; 
 COPY requirements.txt .
 RUN pip install -r requirements.txt --index-url "$PIP_INDEX_URL"
 
-# 拷贝源码 + 脱敏压缩种子库（5 门课 938 chunks + 向量）。这是只读基线，
+# 拷贝源码 + 脱敏压缩种子库（5 门课 1709 chunks + 向量）。这是只读基线，
 # 运行期由 docker_entrypoint.py 在首启时解压到 /app/data 命名 volume（数据持久化）。
 COPY app ./app
 COPY scripts ./scripts

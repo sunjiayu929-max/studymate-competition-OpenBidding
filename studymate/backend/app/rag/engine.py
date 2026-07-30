@@ -150,7 +150,7 @@ class BM25Engine:
 
 class VectorIndex:
     """纯 Python 余弦相似度向量检索（不依赖 numpy —— 本机 MINGW numpy 会 segfault）。
-    938×1024 维点积约 ~1M 次乘法/查询，单次 < 50ms，演示规模完全够用。
+    1709×1024 维点积约 ~1.75M 次乘法/查询，单次 < 50ms，演示规模完全够用。
     与 BM25Engine 同接口，便于在 RAGService 里做混合融合。
     """
 

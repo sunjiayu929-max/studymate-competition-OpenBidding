@@ -145,7 +145,7 @@ await context.route("**/api/**", async (route) => {
   const request = route.request()
   const path = new URL(request.url()).pathname.replace(/^\/api/u, "")
   if (path === "/auth/me") return json(route, { user_id: 9001, name: "PPT UI", email: "ppt-ui@example.test", role: "admin" })
-  if (path === "/courses") return json(route, { count: 1, items: [{ id: 1, name: "机器学习", description: "机器学习", chunk_count: 938 }] })
+  if (path === "/courses") return json(route, { count: 1, items: [{ id: 1, name: "机器学习", description: "机器学习", chunk_count: 269 }] })
   if (path === "/courses/1/config") return json(route, { id: 1, name: "机器学习", description: "机器学习", persona: "课程助教", code_style: "ml", code_libs: [], reading_sources: [], sample_topics: ["梯度下降"], sample_questions: [], syllabus_hint: "", from_registry: true })
   if (path === "/profile/9001") return json(route, { user_id: 9001, version: 1, dims: {} })
   if (path.startsWith("/profile/snapshots/")) return json(route, { count: 0, items: [] })

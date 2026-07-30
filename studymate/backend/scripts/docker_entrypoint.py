@@ -2,7 +2,7 @@
 
 机制：
 - 镜像里的 `/app/resources/seed/studymate.db.gz` 是**脱敏压缩种子库**
-  （938 chunks + 向量，只读基线）。
+  （1709 chunks + 向量，只读基线）。
 - 运行期真正读写的库在 `/app/data/studymate.db`（compose 把命名 volume `backend_data`
   挂到 `/app/data`，compose env 把 `DATABASE_URL` 指到 `./data/studymate.db`）。
 - **首次启动**（volume 为空）→ 把种子库解压进 volume；之后每次重部署 volume 已有库 →
