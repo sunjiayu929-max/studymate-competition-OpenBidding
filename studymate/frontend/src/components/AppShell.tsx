@@ -255,7 +255,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
         </div>
 
-        <nav className="nav-scroll min-h-0 flex-initial overflow-y-auto px-3 py-3" aria-label="主功能">
+        <nav className="nav-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3" aria-label="主功能">
           <ShellLink item={{ label: "今日学习", to: "/", icon: Home, exact: true }} compact={effectiveCollapsed} pathname={pathname} />
           <ShellLink
             item={{ label: "学习资源工坊", to: "/workspace", icon: WandSparkles, exact: true }}
@@ -301,7 +301,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        <div className="flex min-h-0 flex-1 flex-col border-t border-[#DED8CC] p-3">
+        <div className="shrink-0 border-t border-[#DED8CC] p-3">
           <ShellLink item={{ label: "新手指引", to: "/guide", icon: Compass }} compact={effectiveCollapsed} pathname={pathname} />
           {isPrivilegedRole(user?.role) && (
             <button

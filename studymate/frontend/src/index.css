@@ -238,6 +238,17 @@
     display: none;
   }
 
+  /* 侧栏入口较多时只滚动主导航，底部操作始终保留在可视区域。 */
+  .app-shell-navigation .nav-scroll {
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+  }
+
+  .app-shell-navigation .nav-scroll::-webkit-scrollbar {
+    display: block;
+    width: 6px;
+  }
+
   .paper-lift {
     transition:
       transform 180ms cubic-bezier(.2, .8, .2, 1),
