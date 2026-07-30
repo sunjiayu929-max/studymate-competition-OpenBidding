@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import os
 import re
 import subprocess
 import urllib.parse
@@ -18,7 +17,6 @@ ALLOWED_ROOT_ENTRIES = {
     ".gitattributes",
     ".gitignore",
     "AGENTS.md",
-    "CLAUDE.md",
     "README.md",
     "docs",
     "studymate",
@@ -82,7 +80,6 @@ ALLOWED_FRONTEND_ENTRIES = {
 
 REQUIRED_PATHS = {
     ROOT / "README.md",
-    ROOT / "CLAUDE.md",
     ROOT / "AGENTS.md",
     ROOT / "docs" / "README.md",
     ROOT / "docs" / "赛事相关",
@@ -192,8 +189,8 @@ def main() -> int:
             errors.append(f"发现已退役或位置错误的文件：{path.relative_to(ROOT)}")
 
     agents = ROOT / "AGENTS.md"
-    if not agents.is_symlink() or os.readlink(agents) != "CLAUDE.md":
-        errors.append("AGENTS.md 必须是指向 CLAUDE.md 的符号链接")
+    if not agents.is_file():
+        errors.append("AGENTS.md 必须存在且为普通文件")
 
     caches = [
         path.relative_to(ROOT)
