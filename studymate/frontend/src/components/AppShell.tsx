@@ -73,7 +73,8 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
     label: "知识与笔记",
     icon: Database,
     items: [
-      { label: "知识库", to: "/knowledge", icon: Database },
+      { label: "课程知识库", to: "/rag", icon: Library },
+      { label: "自建知识库", to: "/knowledge", icon: Database },
       { label: "智能笔记", to: "/notes", icon: NotebookPen },
     ],
   },
