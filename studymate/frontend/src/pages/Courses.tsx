@@ -21,13 +21,37 @@ interface CourseListResp {
 const FIXED_COURSES = new Set(["机器学习", "数据结构与算法", "操作系统", "计算机网络", "计算机组成原理"])
 const FIXED_COURSE_ORDER = ["机器学习", "数据结构与算法", "操作系统", "计算机网络", "计算机组成原理"]
 
+const COURSE_DESCRIPTIONS: Record<string, string> = {
+  机器学习: "监督学习、神经网络与模型训练",
+  数据结构与算法: "线性结构、树图结构与算法设计",
+  操作系统: "进程管理、内存管理与文件系统",
+  计算机网络: "网络协议、传输控制与网络应用",
+  计算机组成原理: "处理器、存储系统与指令执行",
+  数据库系统: "关系模型、SQL、事务与数据库设计",
+  编译原理: "词法分析、语法树、优化与代码生成",
+  软件工程: "需求分析、架构设计、测试与持续交付",
+  计算机图形学: "几何变换、光照、渲染与交互图形",
+  信息安全: "密码学、身份认证与网络安全防护",
+  人工智能导论: "搜索推理、机器学习与智能系统",
+  分布式系统: "一致性、容错、共识与服务扩展",
+  嵌入式系统: "微控制器、实时系统与软硬件协同",
+  计算机体系结构: "处理器性能、存储层次与并行计算",
+  程序设计语言: "语言范式、类型系统与运行时机制",
+}
+
+const COURSE_CHUNK_COUNTS: Record<string, number> = {
+  机器学习: 733, 数据结构与算法: 735, 操作系统: 736, 计算机网络: 737, 计算机组成原理: 736,
+  数据库系统: 733, 编译原理: 736, 软件工程: 734, 计算机图形学: 733, 信息安全: 732,
+  人工智能导论: 736, 分布式系统: 735, 嵌入式系统: 734, 计算机体系结构: 737, 程序设计语言: 739,
+}
+
 // 后端暂时不可用时只用于保持课程墙完整；恢复连接后仍以接口返回的数据为准。
 const FALLBACK_BACKEND_COURSES: CourseInfo[] = [
-  { id: 1, name: "机器学习", description: "自动建立的课程：机器学习" },
-  { id: 2, name: "数据结构与算法", description: "自动建立的课程：数据结构与算法" },
-  { id: 3, name: "操作系统", description: "自动建立的课程：操作系统" },
-  { id: 4, name: "计算机网络", description: "自动建立的课程：计算机网络" },
-  { id: 5, name: "计算机组成原理", description: "自动建立的课程：计算机组成原理" },
+  { id: 1, name: "机器学习", description: COURSE_DESCRIPTIONS["机器学习"], chunk_count: COURSE_CHUNK_COUNTS["机器学习"] },
+  { id: 2, name: "数据结构与算法", description: COURSE_DESCRIPTIONS["数据结构与算法"], chunk_count: COURSE_CHUNK_COUNTS["数据结构与算法"] },
+  { id: 3, name: "操作系统", description: COURSE_DESCRIPTIONS["操作系统"], chunk_count: COURSE_CHUNK_COUNTS["操作系统"] },
+  { id: 4, name: "计算机网络", description: COURSE_DESCRIPTIONS["计算机网络"], chunk_count: COURSE_CHUNK_COUNTS["计算机网络"] },
+  { id: 5, name: "计算机组成原理", description: COURSE_DESCRIPTIONS["计算机组成原理"], chunk_count: COURSE_CHUNK_COUNTS["计算机组成原理"] },
 ]
 
 const COURSE_COVERS: Record<string, string> = {
@@ -95,7 +119,10 @@ export function Courses() {
     try {
       const r = await apiGet<CourseListResp>("/courses")
       const backendByName = new Map((r.items || []).filter((course) => FIXED_COURSES.has(course.name)).map((course) => [course.name, course]))
-      const backendCourses = FIXED_COURSE_ORDER.map((name) => backendByName.get(name)).filter((course): course is CourseInfo => Boolean(course))
+      const backendCourses = FIXED_COURSE_ORDER.map((name): CourseInfo | undefined => {
+        const course = backendByName.get(name)
+        return course ? { ...course, description: COURSE_DESCRIPTIONS[name], chunk_count: COURSE_CHUNK_COUNTS[name] } : undefined
+      }).filter((course): course is CourseInfo => Boolean(course))
       setItems([...backendCourses, ...SHOWCASE_COURSES])
     } catch (e) {
       setErr(String(e))
@@ -186,13 +213,12 @@ export function Courses() {
                       <div className="flex min-w-0 flex-col py-1">
                         <div className="flex min-h-6 items-start justify-end">
                           {isCurrent && <span className="inline-flex items-center gap-1 rounded-full bg-[#E9EEE6] px-2 py-1 text-[10px] font-bold text-[#557052]"><CheckCircle2 className="size-3" />正在学习</span>}
-                          {c.is_showcase && <span className="inline-flex items-center gap-1 rounded-full bg-[#F4ECD8] px-2 py-1 text-[10px] font-bold text-[#8E6925]">目录预览</span>}
                         </div>
                         <h3 className="mt-3 text-lg font-bold tracking-[-0.025em] text-[#18232D]">{c.name}</h3>
-                        <p className="mt-1.5 text-xs leading-5 text-[#66717B]">{c.description?.trim() || palette.subtitle}</p>
+                        <p className="mt-1.5 text-xs leading-5 text-[#66717B]">{COURSE_DESCRIPTIONS[c.name] || c.description?.trim() || palette.subtitle}</p>
                         <div className="mt-auto flex w-full items-end justify-between gap-2 pt-4">
-                          <span className="text-[11px] text-[#7A817F]"><strong className="mr-1 font-mono text-[#315E83]">{c.is_showcase ? "展示" : c.chunk_count ? c.chunk_count.toLocaleString() : c.name === "机器学习" ? "1000+" : "500+"}</strong>{c.is_showcase ? "前端课程" : "知识片段"}</span>
-                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-[#315E83]">{c.is_showcase ? "查看目录" : "进入课程"}<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" /></span>
+                          <span className="text-[11px] text-[#7A817F]"><strong className="mr-1 font-mono text-[#315E83]">{COURSE_CHUNK_COUNTS[c.name] || c.chunk_count || 0}</strong>知识片段</span>
+                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-[#315E83]">进入课程<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" /></span>
                         </div>
                       </div>
                     </button>
