@@ -136,14 +136,14 @@
 }
 
 @layer components {
-  @keyframes ppt-generation-spinner {
+  @keyframes loading-spinner {
     to {
       transform: rotate(360deg);
     }
   }
 
   .ppt-generation-spinner {
-    animation: ppt-generation-spinner 0.75s linear infinite !important;
+    animation: loading-spinner 0.75s linear infinite !important;
   }
 
   .app-page {
@@ -408,6 +408,11 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /* 加载状态必须持续反馈，避免所有 loading 圈在减少动态效果下看似卡死。 */
+  .animate-spin {
+    animation: loading-spinner 0.75s linear infinite !important;
   }
 }
 
