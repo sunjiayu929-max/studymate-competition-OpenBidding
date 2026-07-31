@@ -347,7 +347,7 @@ function LearningUniverse(props: LearningUniverseProps) {
     : "正在读取真实数据"
 
   const planetValues: Record<(typeof UNIVERSE_PLANETS)[number]["id"], { value: string; detail: string }> = {
-    profile: { value: `${profileCompleteness}%`, detail: profileVersion ? `画像 v${profileVersion}` : "等待建立画像" },
+    profile: { value: `${profileCompleteness}%`, detail: profileCompleteness ? `画像 v${profileVersion}` : "等待建立画像" },
     knowledge: { value: platform.chunkCount.toLocaleString(), detail: "平台知识片段" },
     quiz: { value: String(quizCount), detail: "个人测验记录" },
     notes: { value: String(noteCount), detail: "个人笔记" },
@@ -728,16 +728,17 @@ function shanghaiDayKey(value: string | number | Date | null | undefined) {
   return year && month && day ? `${year}-${month}-${day}` : ""
 }
 
-function isMeaningfulProfileValue(value: unknown): boolean {
-  if (typeof value === "number") return Number.isFinite(value) && value > 0
-  if (typeof value === "string") return Boolean(value.trim())
-  if (Array.isArray(value)) return value.some(isMeaningfulProfileValue)
-  if (value && typeof value === "object") return Object.values(value).some(isMeaningfulProfileValue)
-  return false
-}
-
 function calculateProfileCompleteness(profile: ProfileResponse | null) {
   if (!profile) return 0
+  const defaults: Required<ProfileDims> = {
+    knowledge_base: { math: 3, programming: 3, statistics: 3, english: 3, subject_prior: 3 },
+    cognitive_style: { visual: 3, reading: 3, hands_on: 3, auditory: 3 },
+    goals: { primary: "", deadline: "", target_topics: [] },
+    weak_points: { topics: [], error_types: [] },
+    pace: { hours_per_week: 0, intensity: "" },
+    preference: { document: 3, mindmap: 3, quiz: 3, code: 3, video: 3, reading: 3 },
+    employment_skills: { programming: 0, algorithms: 0, data_ai: 0, systems: 0, engineering: 0, professional: 0 },
+  }
   const groups: Array<keyof ProfileDims> = [
     "knowledge_base",
     "cognitive_style",
@@ -747,7 +748,7 @@ function calculateProfileCompleteness(profile: ProfileResponse | null) {
     "preference",
     "employment_skills",
   ]
-  const complete = groups.filter((group) => isMeaningfulProfileValue(profile.dims[group])).length
+  const complete = groups.filter((group) => JSON.stringify(profile.dims[group] ?? defaults[group]) !== JSON.stringify(defaults[group])).length
   return Math.round((complete / groups.length) * 100)
 }
 
@@ -1032,6 +1033,7 @@ export function Home() {
     ...(workspaceStartedToday && workspace.topic ? [workspace.topic] : []),
   ])
   const profileCompleteness = calculateProfileCompleteness(data.profile)
+  const effectiveProfileVersion = profileCompleteness ? data.profile?.version || 0 : 0
   const todayProgress = [todayNotes.length > 0, todaySubmittedQuizzes.length > 0, workspaceFinishedToday, todayEvaluations.length > 0]
     .filter(Boolean).length * 25
   const personalMetrics: UniverseMetric[] = [
@@ -1056,7 +1058,7 @@ export function Home() {
     {
       label: "画像完整度",
       value: data.sources.profile === "error" ? "暂不可用" : `${profileCompleteness}%`,
-      detail: data.profile ? `7 组画像 · 当前 v${data.profile.version}` : "完成对话后形成画像",
+      detail: profileCompleteness ? `7 组画像 · 当前 v${data.profile?.version}` : "完成对话后形成画像",
       source: data.sources.profile === "error" ? "error" : "ok",
     },
   ]
@@ -1146,7 +1148,7 @@ export function Home() {
         metrics={personalMetrics}
         platform={data.platform}
         profileCompleteness={profileCompleteness}
-        profileVersion={data.profile?.version || 0}
+        profileVersion={effectiveProfileVersion}
         generatedResourceCount={generatedResourceCount}
         quizCount={submittedQuizzes.length + readyQuizzes.length}
         noteCount={data.notes.count}
@@ -1387,7 +1389,7 @@ export function Home() {
           </motion.section>
 
           <LearningLoopPanel
-            profileVersion={data.profile?.version || 0}
+            profileVersion={effectiveProfileVersion}
             generatedResourceCount={generatedResourceCount}
             noteCount={data.notes.count}
             submittedQuizCount={submittedQuizzes.length}
