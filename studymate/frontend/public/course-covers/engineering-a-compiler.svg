@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 370 500" role="img" aria-labelledby="title">
+  <title id="title">Engineering a Compiler textbook cover</title>
+  <rect width="370" height="500" fill="#24243b"/><rect x="26" y="26" width="318" height="448" rx="8" fill="#f0e9dc"/>
+  <g stroke="#b85c3e" stroke-width="3" fill="none"><path d="M50 86h270M50 116h218M50 146h250M50 176h170"/><path d="M73 235 132 207l51 35 54-48 51 30"/><circle cx="73" cy="235" r="8" fill="#b85c3e"/><circle cx="132" cy="207" r="8" fill="#b85c3e"/><circle cx="183" cy="242" r="8" fill="#b85c3e"/><circle cx="237" cy="194" r="8" fill="#b85c3e"/><circle cx="288" cy="224" r="8" fill="#b85c3e"/></g>
+  <text x="50" y="315" fill="#24243b" font-family="Arial,sans-serif" font-size="31" font-weight="800">Engineering</text><text x="50" y="351" fill="#24243b" font-family="Arial,sans-serif" font-size="31" font-weight="800">a Compiler</text><text x="50" y="399" fill="#b85c3e" font-family="Arial,sans-serif" font-size="13" letter-spacing="1.7">COOPER · TORCZON</text><text x="50" y="447" fill="#59636b" font-family="Arial,sans-serif" font-size="11">THIRD EDITION · ISBN 9780128154120</text>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 370 500" role="img" aria-labelledby="title">
+  <title id="title">Embedded Systems Introduction to ARM Cortex-M Microcontrollers textbook cover</title>
+  <rect width="370" height="500" fill="#ece8de"/><rect x="22" y="22" width="326" height="456" rx="8" fill="#8e6925"/>
+  <g fill="#fffaf0" stroke="#8e6925" stroke-width="4"><rect x="102" y="90" width="166" height="166" rx="15"/><path d="M132 128h106v90H132z" fill="#d8c9a8"/><path d="M132 153h106M132 178h106M132 203h106"/><path d="M84 115h18m-18 36h18m-18 36h18m-18 36h18m166-108h18m-18 36h18m-18 36h18m-18 36h18M137 72v18m34-18v18m34-18v18m34-18v18M137 256v18m34-18v18m34-18v18m34-18v18"/></g>
+  <text x="42" y="335" fill="#fffaf0" font-family="Arial,sans-serif" font-size="28" font-weight="800">Embedded</text><text x="42" y="370" fill="#fffaf0" font-family="Arial,sans-serif" font-size="28" font-weight="800">Systems</text><text x="42" y="411" fill="#f5dfae" font-family="Arial,sans-serif" font-size="12">INTRODUCTION TO ARM CORTEX-M</text><text x="42" y="458" fill="#f5dfae" font-family="Arial,sans-serif" font-size="10">VALVANO · ISBN 9781477508992</text>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 370 500" role="img" aria-labelledby="title">
+  <title id="title">Computer Architecture A Quantitative Approach textbook cover</title>
+  <defs><linearGradient id="g" x2="0" y2="1"><stop stop-color="#d5e5e9"/><stop offset="1" stop-color="#edf2ec"/></linearGradient></defs><rect width="370" height="500" fill="url(#g)"/>
+  <g fill="#315e83" opacity=".92"><path d="M55 112h260v42H55zM84 170h202v38H84zM113 224h144v42H113z"/><path d="M66 315h238v8H66zM66 338h188v8H66z" fill="#b1842c"/></g><g fill="#b1842c"><circle cx="72" cy="130" r="12"/><circle cx="98" cy="189" r="12"/><circle cx="128" cy="245" r="12"/></g>
+  <text x="42" y="385" fill="#18232d" font-family="Arial,sans-serif" font-size="28" font-weight="800">Computer</text><text x="42" y="420" fill="#18232d" font-family="Arial,sans-serif" font-size="28" font-weight="800">Architecture</text><text x="42" y="460" fill="#315e83" font-family="Arial,sans-serif" font-size="10">HENNESSY · PATTERSON · SIXTH EDITION</text>
+</svg>

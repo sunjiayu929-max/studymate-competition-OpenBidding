@@ -13,6 +13,25 @@ export interface CourseInfo {
   name: string
   description?: string
   chunk_count?: number
+  /** 仅用于前端课程目录展示，不对应后端课程表。 */
+  is_showcase?: boolean
+}
+
+export const SHOWCASE_COURSES: CourseInfo[] = [
+  { id: -1, name: "数据库系统", description: "关系模型、SQL、事务与数据库设计", is_showcase: true },
+  { id: -2, name: "编译原理", description: "词法分析、语法树、优化与代码生成", is_showcase: true },
+  { id: -3, name: "软件工程", description: "需求分析、架构设计、测试与持续交付", is_showcase: true },
+  { id: -4, name: "计算机图形学", description: "几何变换、光照、渲染与交互图形", is_showcase: true },
+  { id: -5, name: "信息安全", description: "密码学、身份认证、网络防护与安全工程", is_showcase: true },
+  { id: -6, name: "人工智能导论", description: "搜索、推理、机器学习与智能系统", is_showcase: true },
+  { id: -7, name: "分布式系统", description: "一致性、容错、共识与可扩展服务", is_showcase: true },
+  { id: -8, name: "嵌入式系统", description: "微控制器、实时系统与软硬件协同", is_showcase: true },
+  { id: -9, name: "计算机体系结构", description: "处理器性能、存储层次与并行计算", is_showcase: true },
+  { id: -10, name: "程序设计语言", description: "语言范式、类型系统、运行时与抽象机制", is_showcase: true },
+]
+
+export function isShowcaseCourse(course: CourseInfo | null | undefined): boolean {
+  return Boolean(course?.is_showcase || (course && course.id < 0))
 }
 
 export interface CourseConfig {
@@ -128,7 +147,7 @@ export function setCurrentCourse(c: CourseInfo | null) {
 /** 课程查询串：course_id=X，没选课时返回空串。 */
 export function courseQuery(): string {
   const c = courseStore.get()
-  return c ? `course_id=${c.id}` : ""
+  return c && !isShowcaseCourse(c) ? `course_id=${c.id}` : ""
 }
 
 /** 拉当前课程的配置（示例题 / persona / reading_sources）。
@@ -140,7 +159,7 @@ export function useCourseConfig(): CourseConfig | null {
   const [cfg, setCfg] = useState<CourseConfig | null>(null)
 
   useEffect(() => {
-    if (!course) {
+    if (!course || isShowcaseCourse(course)) {
       const frame = window.requestAnimationFrame(() => setCfg(null))
       return () => window.cancelAnimationFrame(frame)
     }

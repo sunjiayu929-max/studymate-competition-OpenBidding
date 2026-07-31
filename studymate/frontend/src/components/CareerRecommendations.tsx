@@ -3,7 +3,7 @@ import { BriefcaseBusiness, ExternalLink, Loader2, Route, Sparkles, Target } fro
 
 import { apiGet } from "@/lib/api"
 import { track } from "@/lib/track"
-import { useCurrentCourse } from "@/store/course"
+import { isShowcaseCourse, useCurrentCourse } from "@/store/course"
 
 interface CareerItem {
   post_id: number
@@ -30,10 +30,16 @@ interface CareerResponse {
 
 export function CareerRecommendations({ profileVersion = 0, compact = false }: { profileVersion?: number; compact?: boolean }) {
   const course = useCurrentCourse()
+  const showcaseCourse = isShowcaseCourse(course)
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<CareerResponse | null>(null)
 
   useEffect(() => {
+    if (showcaseCourse) {
+      setLoading(false)
+      setData(null)
+      return
+    }
     let alive = true
     const frame = window.requestAnimationFrame(() => {
       setLoading(true)
@@ -48,7 +54,7 @@ export function CareerRecommendations({ profileVersion = 0, compact = false }: {
       alive = false
       window.cancelAnimationFrame(frame)
     }
-  }, [compact, course?.id, profileVersion])
+  }, [compact, course?.id, profileVersion, showcaseCourse])
 
   if (loading) {
     return (

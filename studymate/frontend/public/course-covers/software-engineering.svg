@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 370 500" role="img" aria-labelledby="title">
+  <title id="title">Software Engineering textbook cover</title>
+  <rect width="370" height="500" fill="#dfe9e1"/><rect x="24" y="24" width="322" height="452" rx="10" fill="#557052"/>
+  <g fill="#e8ede5"><rect x="52" y="70" width="266" height="18" rx="9"/><rect x="52" y="104" width="205" height="12" rx="6"/><circle cx="92" cy="230" r="34"/><circle cx="184" cy="190" r="34"/><circle cx="277" cy="230" r="34"/><path d="M119 211l39-17m57 17-27-20M92 264v44m92-84v84m93-44v44" fill="none" stroke="#e8ede5" stroke-width="5"/></g>
+  <text x="52" y="359" fill="#fffdf8" font-family="Arial,sans-serif" font-size="34" font-weight="800">Software</text><text x="52" y="398" fill="#fffdf8" font-family="Arial,sans-serif" font-size="34" font-weight="800">Engineering</text><text x="52" y="438" fill="#d8e8d9" font-family="Arial,sans-serif" font-size="12">SOMMERVILLE · TENTH EDITION</text><text x="52" y="458" fill="#d8e8d9" font-family="Arial,sans-serif" font-size="10">ISBN 9780133943030</text>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 370 500" role="img" aria-labelledby="title">
+  <title id="title">Distributed Systems textbook cover</title>
+  <rect width="370" height="500" fill="#233e5a"/><rect x="22" y="22" width="326" height="456" rx="8" fill="#f5f3eb"/>
+  <g fill="#315e83" stroke="#d5b96f" stroke-width="3"><circle cx="91" cy="151" r="25"/><circle cx="185" cy="104" r="25"/><circle cx="279" cy="151" r="25"/><circle cx="125" cy="245" r="25"/><circle cx="245" cy="245" r="25"/><path d="M113 140 163 115m44 0 50 25m-148 28 16 44m108-44-16 44m-72 32h60" fill="none"/></g>
+  <text x="42" y="335" fill="#233e5a" font-family="Arial,sans-serif" font-size="33" font-weight="800">Distributed</text><text x="42" y="374" fill="#233e5a" font-family="Arial,sans-serif" font-size="33" font-weight="800">Systems</text><text x="42" y="418" fill="#b1842c" font-family="Arial,sans-serif" font-size="14">PRINCIPLES AND PARADIGMS</text><text x="42" y="458" fill="#59636b" font-family="Arial,sans-serif" font-size="10">TANENBAUM · VAN STEEN · ISBN 9780132143011</text>
+</svg>

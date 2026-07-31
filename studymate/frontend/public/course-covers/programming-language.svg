@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 370 500" role="img" aria-labelledby="title">
+  <title id="title">Programming Language Pragmatics textbook cover</title>
+  <rect width="370" height="500" fill="#503e59"/><rect x="22" y="22" width="326" height="456" rx="8" fill="#f4eee4"/>
+  <g fill="#7e6b83"><rect x="55" y="76" width="260" height="42" rx="21"/><rect x="55" y="136" width="195" height="42" rx="21"/><rect x="55" y="196" width="230" height="42" rx="21"/></g><g fill="#f0d6a4" font-family="monospace" font-size="21" font-weight="700"><text x="72" y="105">(λ x =&gt; x + 1)</text><text x="72" y="165">type &lt;T&gt; = value</text><text x="72" y="225">parse(tokens)</text></g>
+  <text x="42" y="335" fill="#503e59" font-family="Arial,sans-serif" font-size="27" font-weight="800">Programming</text><text x="42" y="370" fill="#503e59" font-family="Arial,sans-serif" font-size="27" font-weight="800">Language</text><text x="42" y="407" fill="#9a4e35" font-family="Arial,sans-serif" font-size="14">PRAGMATICS · FOURTH EDITION</text><text x="42" y="458" fill="#59636b" font-family="Arial,sans-serif" font-size="10">SCOTT · ISBN 9780124104099</text>
+</svg>

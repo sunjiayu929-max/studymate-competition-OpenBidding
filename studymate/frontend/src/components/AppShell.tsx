@@ -32,6 +32,8 @@ import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { apiPost } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { useCurrentCourse } from "@/store/course"
+import { isShowcaseCourse } from "@/store/course"
+import { ShowcaseCourseGuard } from "@/components/ShowcaseCourseGuard"
 import { useWorkspaceStore } from "@/store/workspace"
 import { isPrivilegedRole, logoutUser, useCurrentUser } from "@/store/user"
 import { discardPendingEventsForLogout } from "@/lib/track"
@@ -39,6 +41,10 @@ import { JUDGE_DEMO_EVENT } from "@/components/JudgeDemoMode"
 
 const SIDEBAR_KEY = "sm:app-shell:collapsed"
 const GROUP_KEY = "sm:app-shell:groups"
+const SHOWCASE_BLOCKED_PATHS = [
+  "/workspace", "/tutor", "/rag", "/knowledge", "/ppt",
+  "/resources", "/report", "/quiz", "/concept", "/career", "/notes",
+]
 
 type NavItem = {
   label: string
@@ -125,6 +131,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const user = useCurrentUser()
   const course = useCurrentCourse()
+  const showcaseCourse = isShowcaseCourse(course)
   const workspace = useWorkspaceStore()
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -136,6 +143,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const immersive = pathname === "/tutor/voice" || /^\/quiz\/[^/]+$/u.test(pathname)
   const shellHidden = pathname === "/" && homeUniverseVisible
   const effectiveCollapsed = collapsed || immersive
+  const showcaseBlocked = showcaseCourse && SHOWCASE_BLOCKED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
 
   const currentGroup = useMemo(
     () => GROUPS.find((group) => group.items.some((item) => matches(pathname, item)))?.id,
@@ -349,7 +357,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           shellHidden && "lg:pl-0",
         )}
       >
-        {children}
+        {showcaseBlocked ? <ShowcaseCourseGuard /> : children}
       </div>
 
       <ConfirmDialog

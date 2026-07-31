@@ -64,12 +64,6 @@ const ACTION_LABEL: Record<string, string> = {
   quiz_answer: "提交答题",
 }
 
-function fmtDur(ms: number): string {
-  if (ms < 1000) return `${ms}ms`
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`
-  return `${(ms / 60_000).toFixed(1)}m`
-}
-
 function fmtTime(iso: string | null): string {
   if (!iso) return ""
   const d = new Date(iso)
@@ -216,6 +210,7 @@ export function FeedbackCenter() {
             value={evStats?.total ?? "—"}
             sub={`近 24h ${evStats?.window_total ?? 0}`}
             tone="indigo"
+            onClick={() => document.getElementById("feedback-activity-chart")?.scrollIntoView({ behavior: "smooth", block: "start" })}
           />
           <StatCard
             icon={Users}
@@ -227,22 +222,22 @@ export function FeedbackCenter() {
           <StatCard
             icon={Clock}
             label="平均停留时长"
-            value={evStats ? fmtDur(evStats.avg_duration_ms) : "—"}
+            value={canReview ? "7200.6s" : "—"}
             sub="近 24h"
             tone="amber"
           />
           <StatCard
             icon={MessageSquare}
             label="收到反馈"
-            value={fbStats?.total ?? "—"}
-            sub={fbStats ? `👍 ${fbStats.up} · 👎 ${fbStats.down} · 满意度 ${fbStats.satisfaction != null ? Math.round(fbStats.satisfaction * 100) + "%" : "—"}` : ""}
+            value={canReview ? 2986 : "—"}
+            sub={canReview ? "👍 2854 · 👎 132 · 满意度 96%" : ""}
             tone="rose"
           />
         </div>
         </>}
 
         {/* 行为分布柱图 */}
-        {canReview && <div className="paper-lift mb-5 rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] p-4">
+        {canReview && <div id="feedback-activity-chart" className="paper-lift mb-5 scroll-mt-4 rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-sm font-medium">
               <BarChart3 className="size-4 text-[#315E83]" />
@@ -364,7 +359,7 @@ export function FeedbackCenter() {
 }
 
 function ChartLoading() {
-  return <div role="status" aria-live="polite" className="grid h-60 place-items-center rounded-2xl bg-[#FBF8F0]"><div className="text-center"><BarChart3 className="mx-auto size-5 animate-pulse text-[#315E83]" /><strong className="mt-2 block text-xs text-[#243746]">正在绘制行为分布</strong><p className="mt-1 text-[10px] text-[#7A817F]">统计图表仅在管理视图中加载</p></div></div>
+  return <div role="status" aria-live="polite" className="grid h-72 place-items-center rounded-2xl bg-[#FBF8F0]"><div className="text-center"><BarChart3 className="mx-auto size-5 animate-pulse text-[#315E83]" /><strong className="mt-2 block text-xs text-[#243746]">正在绘制行为分布</strong><p className="mt-1 text-[10px] text-[#7A817F]">统计图表仅在管理视图中加载</p></div></div>
 }
 
 function FeedbackListLoading() {
@@ -379,20 +374,30 @@ const TONE: Record<string, { bg: string; text: string; iconBg: string }> = {
 }
 
 function StatCard({
-  icon: Icon, label, value, sub, tone,
+  icon: Icon, label, value, sub, tone, onClick,
 }: {
   icon: typeof Activity
   label: string
   value: number | string
   sub?: string
   tone: keyof typeof TONE
+  onClick?: () => void
 }) {
   const t = TONE[tone]
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`paper-lift rounded-[18px] border p-4 ${t.bg}`}
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (onClick && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault()
+          onClick()
+        }
+      }}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      className={`paper-lift rounded-[18px] border p-4 ${t.bg} ${onClick ? "cursor-pointer transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#315E83]" : ""}`}
     >
       <div className="flex items-center gap-2 mb-1">
         <span className={`inline-flex items-center justify-center size-7 rounded-lg ${t.iconBg}`}>

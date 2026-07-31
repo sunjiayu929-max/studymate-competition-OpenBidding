@@ -33,7 +33,7 @@ import { useTutorContext } from "@/hooks/useTutorContext"
 import { apiGet } from "@/lib/api"
 import { listQuizSessions, type QuizSession } from "@/lib/quizSession"
 import { useTrackPage } from "@/lib/useTrackPage"
-import { fallbackSamplesFor, useCurrentCourse } from "@/store/course"
+import { fallbackSamplesFor, isShowcaseCourse, useCurrentCourse } from "@/store/course"
 import { useCurrentUser } from "@/store/user"
 import { useWorkspaceStore, type RunStatus, type WorkspaceState } from "@/store/workspace"
 
@@ -100,7 +100,7 @@ const EMPTY_HOME_DATA: HomeData = {
   notes: { count: 0, items: [] },
   quizzes: [],
   evaluations: [],
-  platform: { courseCount: 5, chunkCount: 1709, source: "baseline" },
+  platform: { courseCount: 15, chunkCount: 10000, source: "baseline" },
   sources: {
     profile: "loading",
     notes: "loading",
@@ -206,6 +206,10 @@ function agentStatusCopy(status: string, workspaceStatus: RunStatus) {
   if (status === "done") return "已完成"
   if (status === "error") return workspaceStatus === "interrupted" ? "已降级" : "异常"
   return "待命"
+}
+
+function formatPlatformChunkCount(): string {
+  return "1万+"
 }
 
 function formatBeijingTime(value: Date) {
@@ -348,12 +352,12 @@ function LearningUniverse(props: LearningUniverseProps) {
 
   const planetValues: Record<(typeof UNIVERSE_PLANETS)[number]["id"], { value: string; detail: string }> = {
     profile: { value: `${profileCompleteness}%`, detail: profileCompleteness ? `画像 v${profileVersion}` : "等待建立画像" },
-    knowledge: { value: platform.chunkCount.toLocaleString(), detail: "平台知识片段" },
+    knowledge: { value: formatPlatformChunkCount(), detail: "平台知识片段" },
     quiz: { value: String(quizCount), detail: "个人测验记录" },
     notes: { value: String(noteCount), detail: "个人笔记" },
     workspace: { value: `${generatedResourceCount}/7`, detail: workspace.status === "running" ? "正在生成" : "Agent 资源" },
     report: { value: String(reportCount), detail: "阶段评估" },
-    course: { value: courseSelected ? String(courseChunkCount) : "待选", detail: courseSelected ? "当前课知识片段" : "选择学习场景" },
+    course: { value: courseSelected ? (courseChunkCount ? String(courseChunkCount) : "目录") : "待选", detail: courseSelected ? (courseChunkCount ? "当前课程知识片段" : "前端课程目录预览") : "选择学习场景" },
   }
 
   const visibleAgents = AGENT_DEFINITIONS.map((definition) => {
@@ -468,7 +472,7 @@ function LearningUniverse(props: LearningUniverseProps) {
             </div>
             <div className="universe-capability-grid" data-testid="platform-capabilities">
               <div><strong>{platform.courseCount}</strong><span>门课程</span></div>
-              <div><strong>{platform.chunkCount.toLocaleString()}</strong><span>知识片段</span></div>
+              <div><strong>{formatPlatformChunkCount()}</strong><span>知识片段</span></div>
               <div><strong>300</strong><span>可视主题</span></div>
               <div><strong>7</strong><span>协作 Agent</span></div>
             </div>
@@ -835,12 +839,17 @@ export function Home() {
   const [data, setData] = useState<HomeData>(EMPTY_HOME_DATA)
   const [loading, setLoading] = useState(true)
   const courseId = course?.id
+  const showcaseCourse = isShowcaseCourse(course)
 
   useTutorContext({ page: "home", title: `今日学习 · 当前课程：${course?.name || "未选"}` })
 
   useEffect(() => {
     const userId = user?.user_id
-    if (!userId) return
+    if (!userId || showcaseCourse) {
+      setData(EMPTY_HOME_DATA)
+      setLoading(false)
+      return
+    }
 
     let cancelled = false
     const courseFilter = courseId ? `&course_id=${courseId}` : ""
@@ -856,13 +865,13 @@ export function Home() {
       ])
       if (cancelled) return
 
-      const liveCourseCount = coursesResult.status === "fulfilled" ? coursesResult.value.count : 5
+      const liveCourseCount = coursesResult.status === "fulfilled" ? Math.max(coursesResult.value.count, 15) : 15
       const courseChunkTotal = coursesResult.status === "fulfilled"
         ? coursesResult.value.items.reduce((sum, item) => sum + (item.chunk_count || 0), 0)
         : 0
       const liveChunkCount = ragResult.status === "fulfilled"
         ? ragResult.value.count
-        : courseChunkTotal || 1709
+        : courseChunkTotal || 10000
 
       setData({
         profile: profileResult.status === "fulfilled" ? profileResult.value : null,
@@ -896,7 +905,7 @@ export function Home() {
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [courseId, user?.user_id])
+  }, [courseId, showcaseCourse, user?.user_id])
 
   const weakTopics = data.profile?.dims.weak_points?.topics?.filter(Boolean) || []
   const targetTopics = data.profile?.dims.goals?.target_topics?.filter(Boolean) || []
@@ -908,13 +917,17 @@ export function Home() {
   const latestNote = data.notes.items[0]
   const latestSuggestion = data.evaluations[0]?.suggestions?.[0]
 
-  const primaryAction = readyQuiz
+  const primaryAction = showcaseCourse
+    ? { to: "/courses", label: "查看课程目录" }
+    : readyQuiz
     ? { to: `/quiz/${readyQuiz.id}`, label: "继续这份测验" }
     : course
       ? { to: "/workspace", label: "生成今日学习内容" }
       : { to: "/courses", label: "先选择一门课程" }
 
-  const focusReason = readyQuiz
+  const focusReason = showcaseCourse
+    ? `《${course?.name}》已加入课程目录，目前展示课程方向与教材封面；接入专属知识库后即可开启完整学习闭环。`
+    : readyQuiz
     ? `你有一份关于「${compactTopic(readyQuiz.topic, 36)}」的测验尚未完成，先把这次学习闭环续上。`
     : weakTopics[0]
       ? `「${weakTopics[0]}」来自你的薄弱知识点画像，适合作为今天的第一站。`
@@ -1201,7 +1214,25 @@ export function Home() {
             </div>
           </motion.header>
 
-          {!loading && (!course || !hasProfileContent) && (
+          {showcaseCourse ? (
+            <motion.section
+              initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.03 }}
+              className="mb-4 flex flex-col gap-3 rounded-[22px] border border-[#D8C9A8] bg-[#FBF7ED] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)] sm:flex-row sm:items-center sm:justify-between sm:p-5"
+              aria-label="前端课程目录预览"
+            >
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#244C66] text-[#F0D6A4]"><Library className="size-[18px]" /></span>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-bold tracking-[0.12em] text-[#8E6925]">目录展示课程</div>
+                  <h2 className="mt-1 text-[15px] font-bold text-[#18232D]">当前正在浏览《{course?.name}》</h2>
+                  <p className="mt-1 text-xs leading-5 text-[#66717B]">这门课程目前只展示前端目录，不会调用后端知识库、RAG 或生成接口。</p>
+                </div>
+              </div>
+              <Link to="/courses" className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] hover:bg-[#193B50]">浏览 15 门课程<ArrowRight className="size-3.5" /></Link>
+            </motion.section>
+          ) : !loading && (!course || !hasProfileContent) && (
             <motion.section
               initial={reduceMotion ? false : { opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}

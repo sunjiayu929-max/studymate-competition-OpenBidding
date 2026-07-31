@@ -6,12 +6,12 @@
 import { useCallback, useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Library, ArrowRight, Loader2, CheckCircle2, Sparkles, Bot, Sigma, Boxes, ArrowLeft, BookOpenCheck, Cpu, Network, MonitorCog, RefreshCw } from "lucide-react"
+import { Library, ArrowRight, Loader2, CheckCircle2, Sparkles, Bot, Sigma, Boxes, ArrowLeft, BookOpenCheck, Cpu, Network, MonitorCog, RefreshCw, Database, Code2, ShieldCheck } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { AppTopbar } from "@/components/AppTopbar"
 import { apiGet } from "@/lib/api"
 import { useTrackPage } from "@/lib/useTrackPage"
-import { setCurrentCourse, useCurrentCourse, type CourseInfo } from "@/store/course"
+import { SHOWCASE_COURSES, isShowcaseCourse, setCurrentCourse, useCurrentCourse, type CourseInfo } from "@/store/course"
 
 interface CourseListResp {
   count: number
@@ -19,6 +19,7 @@ interface CourseListResp {
 }
 
 const FIXED_COURSES = new Set(["机器学习", "数据结构与算法", "操作系统", "计算机网络", "计算机组成原理"])
+const FIXED_COURSE_ORDER = ["机器学习", "数据结构与算法", "操作系统", "计算机网络", "计算机组成原理"]
 
 const COURSE_COVERS: Record<string, string> = {
   机器学习: "/course-covers/machine-learning.jpg",
@@ -26,6 +27,16 @@ const COURSE_COVERS: Record<string, string> = {
   操作系统: "/course-covers/operating-systems.jpg",
   计算机网络: "/course-covers/computer-networking.jpg",
   计算机组成原理: "/course-covers/computer-organization.jpg",
+  数据库系统: "/course-covers/database-systems.svg",
+  编译原理: "/course-covers/engineering-a-compiler.svg",
+  软件工程: "/course-covers/software-engineering.svg",
+  计算机图形学: "/course-covers/computer-graphics.svg",
+  信息安全: "/course-covers/computer-security.svg",
+  人工智能导论: "/course-covers/artificial-intelligence.svg",
+  分布式系统: "/course-covers/distributed-systems.svg",
+  嵌入式系统: "/course-covers/embedded-systems.svg",
+  计算机体系结构: "/course-covers/computer-architecture.svg",
+  程序设计语言: "/course-covers/programming-language.svg",
 }
 
 // 预设课程的图标 / 配色（按 name 匹配；未命中给默认）
@@ -36,6 +47,16 @@ const PRESET: Record<string, { icon: LucideIcon; iconTone: string; accent: strin
   操作系统: { icon: MonitorCog, iconTone: "bg-[#F4ECD8] text-[#8E6925]", accent: "bg-[#B1842C]", subtitle: "进程、内存、文件系统与并发机制" },
   计算机网络: { icon: Network, iconTone: "bg-[#E5EFEC] text-[#3E7774]", accent: "bg-[#4A8884]", subtitle: "协议分层、传输控制与网络应用" },
   计算机组成原理: { icon: Cpu, iconTone: "bg-[#F4E8E2] text-[#9A4E35]", accent: "bg-[#B85C3E]", subtitle: "处理器、存储系统与指令执行" },
+  数据库系统: { icon: Database, iconTone: "bg-[#E7EDF3] text-[#315E83]", accent: "bg-[#315E83]", subtitle: "关系模型、SQL、事务与数据库设计" },
+  编译原理: { icon: Code2, iconTone: "bg-[#EEE9EF] text-[#7E6B83]", accent: "bg-[#7E6B83]", subtitle: "词法分析、语法树、优化与代码生成" },
+  软件工程: { icon: Sparkles, iconTone: "bg-[#E9EEE6] text-[#557052]", accent: "bg-[#6F8A69]", subtitle: "需求分析、架构设计、测试与持续交付" },
+  计算机图形学: { icon: Boxes, iconTone: "bg-[#F4ECD8] text-[#8E6925]", accent: "bg-[#B1842C]", subtitle: "几何变换、光照、渲染与交互图形" },
+  信息安全: { icon: ShieldCheck, iconTone: "bg-[#F4E8E2] text-[#9A4E35]", accent: "bg-[#B85C3E]", subtitle: "密码学、身份认证、网络防护与安全工程" },
+  人工智能导论: { icon: Bot, iconTone: "bg-[#E5EFEC] text-[#3E7774]", accent: "bg-[#4A8884]", subtitle: "搜索、推理、机器学习与智能系统" },
+  分布式系统: { icon: Network, iconTone: "bg-[#E7EDF3] text-[#315E83]", accent: "bg-[#315E83]", subtitle: "一致性、容错、共识与可扩展服务" },
+  嵌入式系统: { icon: MonitorCog, iconTone: "bg-[#F4ECD8] text-[#8E6925]", accent: "bg-[#B1842C]", subtitle: "微控制器、实时系统与软硬件协同" },
+  计算机体系结构: { icon: Cpu, iconTone: "bg-[#F4E8E2] text-[#9A4E35]", accent: "bg-[#B85C3E]", subtitle: "处理器性能、存储层次与并行计算" },
+  程序设计语言: { icon: Code2, iconTone: "bg-[#EEE9EF] text-[#7E6B83]", accent: "bg-[#7E6B83]", subtitle: "语言范式、类型系统、运行时与抽象机制" },
 }
 
 function paletteFor(name: string) {
@@ -62,9 +83,12 @@ export function Courses() {
     setErr("")
     try {
       const r = await apiGet<CourseListResp>("/courses")
-      setItems((r.items || []).filter((course) => FIXED_COURSES.has(course.name)))
+      const backendByName = new Map((r.items || []).filter((course) => FIXED_COURSES.has(course.name)).map((course) => [course.name, course]))
+      const backendCourses = FIXED_COURSE_ORDER.map((name) => backendByName.get(name)).filter((course): course is CourseInfo => Boolean(course))
+      setItems([...backendCourses, ...SHOWCASE_COURSES])
     } catch (e) {
       setErr(String(e))
+      setItems(SHOWCASE_COURSES)
     } finally {
       setLoading(false)
     }
@@ -77,7 +101,7 @@ export function Courses() {
   const pick = (c: CourseInfo) => {
     const isFirstSelection = !current
     setCurrentCourse(c)
-    navigate(isFirstSelection ? "/" : "/workspace")
+    navigate(isShowcaseCourse(c) || isFirstSelection ? "/" : "/workspace")
   }
 
   return (
@@ -94,7 +118,7 @@ export function Courses() {
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Library className="size-4" /></span>
               <div className="min-w-0">
                 <h1 className="text-[15px] font-bold text-[#18232D]">选择你的学习课程</h1>
-                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">每门课程拥有独立知识库、学习画像上下文与学习资源工坊记录</p>
+                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">前五门课程接入完整学习能力，后十门用于课程目录预览</p>
               </div>
             </div>
             <div className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-[11px] font-bold ${current ? "border-[#C9D1CB] bg-[#E9EEE6] text-[#557052]" : "border-[#D7D1C4] bg-[#FFFEFA] text-[#7A817F]"}`}>
@@ -108,7 +132,7 @@ export function Courses() {
               <div className="pointer-events-none absolute -right-16 -top-20 size-52 rounded-full border border-[#DDD4BF]" />
               <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] text-[#6F8A69]"><Sparkles className="size-3.5 text-[#B1842C]" />课程工作区</span>
               <h2 className="relative mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D]">选定课程后，所有学习能力会自动围绕它协同</h2>
-              <p className="relative mt-1.5 max-w-3xl text-sm leading-6 text-[#66717B]">知识库、学习资源工坊、AI 助教、笔记和测验都会使用同一课程上下文；切换课程不会混淆不同学科的学习记录。</p>
+              <p className="relative mt-1.5 max-w-3xl text-sm leading-6 text-[#66717B]">前五门课程拥有完整知识库与学习闭环；后十门为前端教材目录展示，后续可继续接入专属数据。</p>
             </div>
 
         {err && (
@@ -151,12 +175,13 @@ export function Courses() {
                       <div className="flex min-w-0 flex-col py-1">
                         <div className="flex min-h-6 items-start justify-end">
                           {isCurrent && <span className="inline-flex items-center gap-1 rounded-full bg-[#E9EEE6] px-2 py-1 text-[10px] font-bold text-[#557052]"><CheckCircle2 className="size-3" />正在学习</span>}
+                          {c.is_showcase && <span className="inline-flex items-center gap-1 rounded-full bg-[#F4ECD8] px-2 py-1 text-[10px] font-bold text-[#8E6925]">目录预览</span>}
                         </div>
                         <h3 className="mt-3 text-lg font-bold tracking-[-0.025em] text-[#18232D]">{c.name}</h3>
                         <p className="mt-1.5 text-xs leading-5 text-[#66717B]">{c.description?.trim() || palette.subtitle}</p>
                         <div className="mt-auto flex w-full items-end justify-between gap-2 pt-4">
-                          <span className="text-[11px] text-[#7A817F]"><strong className="mr-1 font-mono text-[#315E83]">{c.chunk_count ? c.chunk_count.toLocaleString() : c.name === "机器学习" ? "1000+" : "500+"}</strong>知识片段</span>
-                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-[#315E83]">进入课程<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" /></span>
+                          <span className="text-[11px] text-[#7A817F]"><strong className="mr-1 font-mono text-[#315E83]">{c.is_showcase ? "展示" : c.chunk_count ? c.chunk_count.toLocaleString() : c.name === "机器学习" ? "1000+" : "500+"}</strong>{c.is_showcase ? "前端课程" : "知识片段"}</span>
+                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-[#315E83]">{c.is_showcase ? "查看目录" : "进入课程"}<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" /></span>
                         </div>
                       </div>
                     </button>

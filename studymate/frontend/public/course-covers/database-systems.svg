@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 370 500" role="img" aria-labelledby="title">
+  <title id="title">Database System Concepts textbook cover</title>
+  <rect width="370" height="500" fill="#123e57"/><rect x="22" y="22" width="326" height="456" rx="8" fill="none" stroke="#d9b96e" stroke-width="2"/>
+  <g fill="#d9b96e"><ellipse cx="184" cy="157" rx="83" ry="22"/><path d="M101 157v57c0 12 37 22 83 22s83-10 83-22v-57c0 12-37 22-83 22s-83-10-83-22Z"/></g>
+  <g fill="#123e57"><ellipse cx="184" cy="157" rx="65" ry="13"/><ellipse cx="184" cy="201" rx="65" ry="13"/></g>
+  <text x="38" y="300" fill="#fffaf0" font-family="Georgia,serif" font-size="34" font-weight="700">Database</text><text x="38" y="339" fill="#fffaf0" font-family="Georgia,serif" font-size="34" font-weight="700">System Concepts</text>
+  <text x="38" y="387" fill="#d9b96e" font-family="Arial,sans-serif" font-size="13" letter-spacing="2">KORTH · SILBERSCHATZ · SUDARSHAN</text><text x="38" y="442" fill="#fffaf0" font-family="Arial,sans-serif" font-size="12">SEVENTH EDITION · ISBN 9780078022159</text>
+</svg>
