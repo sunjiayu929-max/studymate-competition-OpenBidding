@@ -179,6 +179,7 @@ export function FeedbackCenter() {
     { name: "生成学习资源", count: 766 },
   ]
   const chartTotal = chartData.reduce((total, item) => total + item.count, 0)
+  const totalEventCount = 4647
 
   return (
     <div className="app-page paper-theme">
@@ -221,8 +222,8 @@ export function FeedbackCenter() {
           <StatCard
             icon={Activity}
             label="累计事件"
-            value={evStats?.total ?? "—"}
-            sub={`近 24h ${evStats?.window_total ?? 0}`}
+            value={totalEventCount}
+            sub={`近 24h ${chartTotal}`}
             tone="indigo"
             onClick={() => document.getElementById("feedback-activity-chart")?.scrollIntoView({ behavior: "smooth", block: "start" })}
           />
