@@ -21,6 +21,15 @@ interface CourseListResp {
 const FIXED_COURSES = new Set(["机器学习", "数据结构与算法", "操作系统", "计算机网络", "计算机组成原理"])
 const FIXED_COURSE_ORDER = ["机器学习", "数据结构与算法", "操作系统", "计算机网络", "计算机组成原理"]
 
+// 后端暂时不可用时只用于保持课程墙完整；恢复连接后仍以接口返回的数据为准。
+const FALLBACK_BACKEND_COURSES: CourseInfo[] = [
+  { id: 1, name: "机器学习", description: "自动建立的课程：机器学习" },
+  { id: 2, name: "数据结构与算法", description: "自动建立的课程：数据结构与算法" },
+  { id: 3, name: "操作系统", description: "自动建立的课程：操作系统" },
+  { id: 4, name: "计算机网络", description: "自动建立的课程：计算机网络" },
+  { id: 5, name: "计算机组成原理", description: "自动建立的课程：计算机组成原理" },
+]
+
 const COURSE_COVERS: Record<string, string> = {
   机器学习: "/course-covers/machine-learning.jpg",
   数据结构与算法: "/course-covers/algorithms.jpg",
@@ -60,6 +69,8 @@ const PRESET: Record<string, { icon: LucideIcon; iconTone: string; accent: strin
 }
 
 function paletteFor(name: string) {
+  const preset = PRESET[name]
+  if (preset) return preset
   if (name.includes("机器学习")) return PRESET.机器学习
   if (name.includes("数据结构")) return PRESET.数据结构
   if (name.includes("操作系统")) return PRESET.操作系统
@@ -88,7 +99,7 @@ export function Courses() {
       setItems([...backendCourses, ...SHOWCASE_COURSES])
     } catch (e) {
       setErr(String(e))
-      setItems(SHOWCASE_COURSES)
+      setItems([...FALLBACK_BACKEND_COURSES, ...SHOWCASE_COURSES])
     } finally {
       setLoading(false)
     }
