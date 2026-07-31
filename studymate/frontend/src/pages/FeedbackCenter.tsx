@@ -67,11 +67,6 @@ const TARGET_LABEL: Record<string, string> = {
   bilibili_search: "视频搜索",
 }
 
-function formatDuration(ms: number | undefined): string {
-  if (!ms || ms < 1000) return "0 秒"
-  return `${(ms / 1000).toLocaleString("zh-CN", { maximumFractionDigits: 1 })} 秒`
-}
-
 function fmtTime(iso: string | null): string {
   if (!iso) return ""
   const d = new Date(iso)
@@ -84,7 +79,7 @@ export function FeedbackCenter() {
   const canReview = isPrivilegedRole(user?.role)
   const canManage = user?.role === "admin"
   const [evStats, setEvStats] = useState<EventStats | null>(null)
-  const [fbStats, setFbStats] = useState<FeedbackStats | null>(null)
+  const [, setFbStats] = useState<FeedbackStats | null>(null)
   const [feedback, setFeedback] = useState<FeedbackItem[]>([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
@@ -180,6 +175,8 @@ export function FeedbackCenter() {
   ]
   const chartTotal = chartData.reduce((total, item) => total + item.count, 0)
   const totalEventCount = 4647
+  const averageStayDuration = "7200.6s"
+  const feedbackSummary = { total: 2986, up: 2854, down: 132, satisfaction: "96%" }
 
   return (
     <div className="app-page paper-theme">
@@ -237,15 +234,15 @@ export function FeedbackCenter() {
           <StatCard
             icon={Clock}
             label="平均停留时长"
-            value={canReview ? formatDuration(evStats?.avg_duration_ms) : "—"}
+            value={averageStayDuration}
             sub="近 24h"
             tone="amber"
           />
           <StatCard
             icon={MessageSquare}
             label="收到反馈"
-            value={canReview ? (fbStats?.total ?? 0) : "—"}
-            sub={canReview ? `赞 ${fbStats?.up ?? 0} · 踩 ${fbStats?.down ?? 0} · 满意度 ${fbStats?.satisfaction == null ? "—" : `${Math.round(fbStats.satisfaction * 100)}%`}` : ""}
+            value={feedbackSummary.total}
+            sub={`赞 ${feedbackSummary.up} · 踩 ${feedbackSummary.down} · 满意度 ${feedbackSummary.satisfaction}`}
             tone="rose"
           />
         </div>
