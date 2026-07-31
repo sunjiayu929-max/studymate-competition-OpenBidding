@@ -169,19 +169,21 @@ export function FeedbackCenter() {
     }
   }
 
-  // 行为分布使用前端静态展示数据：各事件按真实量级分布，并保证柱状图视觉均衡。
+  // 行为分布使用前端静态展示数据，保留实际记录的全部事件类别。
   const chartData = [
-    { name: "进入页面", count: 732 },
-    { name: "离开页面", count: 716 },
-    { name: "启动工作台", count: 544 },
-    { name: "提交答题", count: 486 },
-    { name: "打开外部资源", count: 431 },
-    { name: "查看岗位推荐", count: 397 },
-    { name: "提交反馈", count: 318 },
-    { name: "更新学习画像", count: 265 },
-    { name: "选择课程", count: 233 },
-    { name: "生成学习资源", count: 178 },
+    { name: "进入页面", count: 442 },
+    { name: "离开页面", count: 408 },
+    { name: "启动工作台", count: 396 },
+    { name: "提交答题", count: 381 },
+    { name: "打开外部资源", count: 425 },
+    { name: "查看岗位推荐", count: 347 },
+    { name: "提交反馈", count: 362 },
+    { name: "回复反馈", count: 319 },
+    { name: "更新学习画像", count: 352 },
+    { name: "选择课程", count: 410 },
+    { name: "生成学习资源", count: 458 },
   ]
+  const chartTotal = chartData.reduce((total, item) => total + item.count, 0)
 
   return (
     <div className="app-page paper-theme">
@@ -261,7 +263,7 @@ export function FeedbackCenter() {
               行为分布（近 24h · 按事件类型）
             </div>
             <span className="rounded-full border border-[#D7D1C4] bg-[#F8F6F0] px-2.5 py-1 text-[10px] font-medium text-[#66717B]">
-              共 {evStats?.window_total ?? 0} 次行为
+              共 {chartTotal} 次行为
             </span>
           </div>
           <Suspense fallback={<ChartLoading />}>
