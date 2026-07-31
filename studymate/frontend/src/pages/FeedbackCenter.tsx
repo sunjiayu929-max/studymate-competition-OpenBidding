@@ -169,19 +169,14 @@ export function FeedbackCenter() {
     }
   }
 
-  // 行为分布使用前端静态展示数据，保留实际记录的全部事件类别。
+  // 行为分布使用前端静态展示数据，选取主要学习行为便于阅读。
   const chartData = [
-    { name: "进入页面", count: 442 },
-    { name: "离开页面", count: 408 },
-    { name: "启动工作台", count: 396 },
-    { name: "提交答题", count: 381 },
-    { name: "打开外部资源", count: 425 },
-    { name: "查看岗位推荐", count: 347 },
-    { name: "提交反馈", count: 362 },
-    { name: "回复反馈", count: 319 },
-    { name: "更新学习画像", count: 352 },
-    { name: "选择课程", count: 410 },
-    { name: "生成学习资源", count: 458 },
+    { name: "进入页面", count: 738 },
+    { name: "启动工作台", count: 689 },
+    { name: "提交答题", count: 712 },
+    { name: "打开外部资源", count: 674 },
+    { name: "查看岗位推荐", count: 721 },
+    { name: "生成学习资源", count: 766 },
   ]
   const chartTotal = chartData.reduce((total, item) => total + item.count, 0)
 
