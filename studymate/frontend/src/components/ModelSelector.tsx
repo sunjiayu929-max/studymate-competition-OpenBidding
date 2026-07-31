@@ -25,6 +25,7 @@ interface ModelsResponse {
 const FALLBACK: ModelInfo[] = [
   { id: "qwen", label: "Qwen", description: "课程问答与多模态", configured: false, recommended: true },
   { id: "deepseek", label: "DeepSeek", description: "推理与代码讲解", configured: false, recommended: false },
+  { id: "spark", label: "讯飞星火 4.0 Ultra", description: "通用问答与学习辅导", configured: false, recommended: false },
   { id: "mimo", label: "MiMo", description: "自然对话与总结", configured: false, recommended: false },
 ]
 

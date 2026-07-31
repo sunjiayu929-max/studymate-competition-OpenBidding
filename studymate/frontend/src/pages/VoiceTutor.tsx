@@ -643,7 +643,7 @@ export function VoiceTutor() {
   const needsAnswerRecovery = messages.at(-1)?.role === "user" && generation.status !== "open" && !streaming
 
   return (
-    <div className="paper-theme fixed inset-0 z-30 flex flex-col overflow-hidden bg-[#F3F0E7]">
+    <div className="paper-theme fixed inset-0 z-[80] flex flex-col overflow-hidden bg-[#F3F0E7]">
       {/* 顶部栏 */}
       <header className="m-3 mb-0 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-2.5 shadow-[0_8px_24px_rgba(24,35,45,.065)] sm:mx-5 sm:flex-nowrap sm:px-4">
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-4">

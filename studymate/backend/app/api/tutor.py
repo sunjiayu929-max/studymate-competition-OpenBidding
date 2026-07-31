@@ -31,7 +31,7 @@ from app.api.knowledge import search_owned_library
 
 router = APIRouter(prefix="/tutor", tags=["tutor"])
 
-SUPPORTED_PROVIDERS = ("qwen", "deepseek", "mimo")
+SUPPORTED_PROVIDERS = ("qwen", "deepseek", "spark", "mimo")
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_EXTRACTED_CHARS = 16_000
 TEXT_FILE_SUFFIXES = {
@@ -79,7 +79,7 @@ class TutorChatRequest(BaseModel):
     page_context: PageContext | None = None
     # 文字/语音助教显式传入；笔记总结等内部直接任务省略该字段。
     learning_method: Literal["feynman", "socratic"] | None = None
-    provider: Literal["qwen", "deepseek", "mimo"] | None = None
+    provider: Literal["qwen", "deepseek", "spark", "mimo"] | None = None
     knowledge_base_id: int | None = None
 
 
@@ -506,6 +506,7 @@ async def tutor_models():
     descriptions = {
         "qwen": ("Qwen", "课程问答与多模态附件"),
         "deepseek": ("DeepSeek", "推理、公式与代码讲解"),
+        "spark": ("讯飞星火 4.0 Ultra", "通用问答与学习辅导"),
         "mimo": ("MiMo", "自然对话、提炼与总结"),
     }
     return {
@@ -527,7 +528,7 @@ async def tutor_models():
 async def tutor_chat(req: TutorChatRequest, user: User = Depends(require_user)):
     selected_provider = (req.provider or settings.TUTOR_DEFAULT_PROVIDER).lower()
     if selected_provider not in SUPPORTED_PROVIDERS:
-        raise HTTPException(status_code=422, detail="回答模型仅支持 Qwen、DeepSeek 或 MiMo")
+        raise HTTPException(status_code=422, detail="回答模型仅支持 Qwen、DeepSeek、讯飞星火 4.0 Ultra 或 MiMo")
     # 视觉输入只允许用户明确选择 Qwen，避免后端静默替换其选择。
     has_image = any(m.images for m in req.messages if m.role == "user")
     if has_image and selected_provider != "qwen":
@@ -577,7 +578,7 @@ async def tutor_chat(req: TutorChatRequest, user: User = Depends(require_user)):
         }
 
         if not key_ok:
-            provider_label = {"qwen": "Qwen", "deepseek": "DeepSeek", "mimo": "MiMo"}[selected_provider]
+            provider_label = {"qwen": "Qwen", "deepseek": "DeepSeek", "spark": "讯飞星火 4.0 Ultra", "mimo": "MiMo"}[selected_provider]
             mock = f"（演示降级）{provider_label} 尚未配置服务端凭据，当前保留对话流程与文字结果；请配置对应服务后重试。"
             for ch in mock:
                 yield {"event": "delta", "data": ch}

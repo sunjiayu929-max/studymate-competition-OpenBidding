@@ -21,7 +21,7 @@ from app.rag import get_rag_service
 router = APIRouter(prefix="/ppt", tags=["ppt"])
 logger = logging.getLogger(__name__)
 
-Provider = Literal["qwen", "deepseek", "mimo"]
+Provider = Literal["qwen", "deepseek", "spark", "mimo"]
 Layout = Literal[
     "cover",
     "agenda",
@@ -35,7 +35,7 @@ Layout = Literal[
     "qa",
 ]
 VisualStyle = Literal["paper", "graphite", "sage"]
-SUPPORTED_PROVIDERS = ("qwen", "deepseek", "mimo")
+SUPPORTED_PROVIDERS = ("qwen", "deepseek", "spark", "mimo")
 
 
 class Citation(BaseModel):
@@ -93,7 +93,7 @@ class RewriteRequest(BaseModel):
 
 
 def _provider_label(provider: str) -> str:
-    return {"qwen": "Qwen", "deepseek": "DeepSeek", "mimo": "MiMo"}[provider]
+    return {"qwen": "Qwen", "deepseek": "DeepSeek", "spark": "讯飞星火 4.0 Ultra", "mimo": "MiMo"}[provider]
 
 
 def _visual_style_label(style: VisualStyle) -> str:

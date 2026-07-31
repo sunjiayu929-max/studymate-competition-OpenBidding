@@ -92,7 +92,7 @@ class CurrentBatchApiTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_model_catalog_exposes_status_but_not_credentials(self):
         payload = await tutor_models()
-        self.assertEqual([item["id"] for item in payload["items"]], ["qwen", "deepseek", "mimo"])
+        self.assertEqual([item["id"] for item in payload["items"]], ["qwen", "deepseek", "spark", "mimo"])
         serialized = repr(payload).lower()
         self.assertNotIn("api_key", serialized)
         self.assertNotIn("base_url", serialized)

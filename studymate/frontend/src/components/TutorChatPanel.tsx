@@ -307,7 +307,7 @@ export function TutorChatPanel({
   if (!isDrawer) {
     return (
       <div className={`relative flex min-h-0 flex-col ${captureMode ? "overflow-visible" : "h-full overflow-hidden"}`}>
-        <header className="flex flex-col items-stretch gap-2.5 border-b border-[#D7D1C4] bg-[#F8F6F0] px-3 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
+        <header className="flex flex-col items-stretch gap-2.5 border-b border-[#D7D1C4] bg-[#F8F6F0] px-3 py-3.5 sm:px-5 min-[1800px]:flex-row min-[1800px]:items-center min-[1800px]:justify-between min-[1800px]:gap-3">
           <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
             <Link to="/" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]">
               <ArrowLeft className="size-3.5" /><span className="hidden sm:inline">返回首页</span>
@@ -319,8 +319,8 @@ export function TutorChatPanel({
               <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">正在辅导《{courseLabel}》· {learningMethod === "feynman" ? "大白话讲清，再由你复述" : "一次一问，沿你的回答继续推理"}</p>
             </div>
           </div>
-          <div className="nav-scroll flex w-full items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto sm:shrink-0 sm:overflow-visible sm:pb-0">
-            <span className="hidden items-center gap-2 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-1.5 text-[11px] font-bold text-[#59636B] 2xl:inline-flex" aria-live="polite">
+          <div className="nav-scroll flex min-w-0 items-center gap-2 overflow-x-auto pb-0.5 min-[1800px]:w-auto min-[1800px]:shrink-0 min-[1800px]:overflow-visible min-[1800px]:pb-0">
+            <span className="hidden shrink-0 items-center gap-2 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-1.5 text-[11px] font-bold text-[#59636B] 2xl:inline-flex" aria-live="polite">
               {status === "open" ? <Loader2 className="size-3.5 animate-spin text-[#B85C3E]" /> : <span className="size-2 rounded-full bg-[#6F8A69]" />}
               {status === "open" ? "正在组织答案" : "可以继续提问"}
             </span>
@@ -335,13 +335,13 @@ export function TutorChatPanel({
                 <ScanLine className="size-3.5" /><span className="hidden lg:inline">{captureMode ? "退出长截图" : "长截图模式"}</span>
               </button>
             )}
-            <LearningMethodSelector value={learningMethod} onChange={handleLearningMethodChange} variant="compact" />
-            <ModelSelector compact />
+            <LearningMethodSelector value={learningMethod} onChange={handleLearningMethodChange} variant="compact" className="shrink-0" />
+            <span className="shrink-0"><ModelSelector compact /></span>
             <button
               type="button"
               onClick={() => { setHistoryOpen(false); tutorHistory.startNew(USER_ID, courseId) }}
               disabled={status === "open"}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#CFC8B9] bg-[#244C66] px-3 text-[11px] font-bold text-[#FFFEFA] shadow-[0_5px_12px_rgba(36,76,102,.12)] transition-colors hover:bg-[#193B50] disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-[#CFC8B9] bg-[#244C66] px-3 text-[11px] font-bold text-[#FFFEFA] shadow-[0_5px_12px_rgba(36,76,102,.12)] transition-colors hover:bg-[#193B50] disabled:cursor-not-allowed disabled:opacity-45"
             >
               <MessageSquarePlus className="size-3.5" /><span className="hidden lg:inline">新对话</span>
             </button>
@@ -349,17 +349,17 @@ export function TutorChatPanel({
               type="button"
               onClick={() => setHistoryOpen((value) => !value)}
               disabled={status === "open"}
-              className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-[11px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${historyOpen ? "border-[#9FB1BC] bg-[#E7EDF3] text-[#244C66]" : "border-[#D7D1C4] bg-[#FFFEFA] text-[#59636B] hover:bg-[#F1EDE4] hover:text-[#244C66]"}`}
+              className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-[11px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${historyOpen ? "border-[#9FB1BC] bg-[#E7EDF3] text-[#244C66]" : "border-[#D7D1C4] bg-[#FFFEFA] text-[#59636B] hover:bg-[#F1EDE4] hover:text-[#244C66]"}`}
               aria-expanded={historyOpen}
             >
               <History className="size-3.5" /><span className="hidden lg:inline">历史</span>{conversations.length > 0 && <span className="rounded-full bg-[#F4ECD8] px-1.5 py-0.5 text-[9px] text-[#8E6925]">{conversations.length}</span>}
             </button>
-            <VoiceSelector compact />
+            <span className="shrink-0"><VoiceSelector compact /></span>
             <button
               type="button"
               onClick={() => setClearConfirmOpen(true)}
               disabled={status === "open" || persistedMessages.length === 0}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 text-[11px] font-bold text-[#7A817F] transition-colors hover:bg-[#F4E8E2] hover:text-[#9A4E35] disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 text-[11px] font-bold text-[#7A817F] transition-colors hover:bg-[#F4E8E2] hover:text-[#9A4E35] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Trash2 className="size-3.5" /><span className="hidden sm:inline">清空对话</span>
             </button>

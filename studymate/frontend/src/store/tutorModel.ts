@@ -1,11 +1,11 @@
 import { useSyncExternalStore } from "react"
 
-export type TutorModelProvider = "qwen" | "deepseek" | "mimo"
+export type TutorModelProvider = "qwen" | "deepseek" | "spark" | "mimo"
 
 // v2 resets the former server-default DeepSeek value once, so the new Qwen
 // default is visible immediately. Choices made after this migration persist.
 const STORAGE_KEY = "sm:tutor-model-provider-v2"
-const VALID = new Set<TutorModelProvider>(["qwen", "deepseek", "mimo"])
+const VALID = new Set<TutorModelProvider>(["qwen", "deepseek", "spark", "mimo"])
 
 function readStored(): TutorModelProvider | null {
   try {

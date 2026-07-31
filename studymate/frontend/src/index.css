@@ -136,6 +136,16 @@
 }
 
 @layer components {
+  @keyframes ppt-generation-spinner {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .ppt-generation-spinner {
+    animation: ppt-generation-spinner 0.75s linear infinite !important;
+  }
+
   .app-page {
     min-height: 100dvh;
     background:
