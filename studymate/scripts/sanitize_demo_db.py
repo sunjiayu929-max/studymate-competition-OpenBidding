@@ -21,6 +21,7 @@ from pathlib import Path
 APPROVED_EMAILS = (
     "admin@studymate.com",
     *(f"judge{number:02d}@studymate.com" for number in range(1, 11)),
+    *(f"test{number}@studymate.com" for number in range(1, 16)),
     "sunjiayu@studymate.com",
     "baixinyue@studymate.com",
     "yuanshicong@studymate.com",
