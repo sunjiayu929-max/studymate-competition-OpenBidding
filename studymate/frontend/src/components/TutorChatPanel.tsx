@@ -319,7 +319,7 @@ export function TutorChatPanel({
               <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">正在辅导《{courseLabel}》· {learningMethod === "feynman" ? "大白话讲清，再由你复述" : "一次一问，沿你的回答继续推理"}</p>
             </div>
           </div>
-          <div className="nav-scroll flex min-w-0 items-center gap-2 overflow-x-auto pb-0.5 min-[1800px]:w-auto min-[1800px]:shrink-0 min-[1800px]:overflow-visible min-[1800px]:pb-0">
+          <div className="tutor-toolbar-scroll nav-scroll flex min-w-0 items-center gap-2 overflow-x-auto pb-0.5 min-[1800px]:w-auto min-[1800px]:shrink-0 min-[1800px]:overflow-visible min-[1800px]:pb-0">
             <span className="hidden shrink-0 items-center gap-2 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-1.5 text-[11px] font-bold text-[#59636B] 2xl:inline-flex" aria-live="polite">
               {status === "open" ? <Loader2 className="size-3.5 animate-spin text-[#B85C3E]" /> : <span className="size-2 rounded-full bg-[#6F8A69]" />}
               {status === "open" ? "正在组织答案" : "可以继续提问"}

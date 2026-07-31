@@ -175,7 +175,9 @@ export function Login() {
                 StudyMate 让学习画像、AI 助教与成长路径围绕你协同工作，把分散的课程、笔记和练习连接起来。
               </motion.p>
 
-              <OrbitalLearningSystem reduced={Boolean(reduceMotion)} />
+              <div className="hidden sm:block">
+                <OrbitalLearningSystem reduced={Boolean(reduceMotion)} />
+              </div>
             </div>
           </section>
 

@@ -294,10 +294,10 @@ export function PptGenerator() {
               <div><span className="mx-auto grid size-14 place-items-center rounded-2xl bg-[#F4ECD8] text-[#8E6925]"><Presentation className="size-6" /></span><h2 className="mt-4 text-base font-bold text-[#18232D]">先让模型策划整套叙事</h2><p className="mx-auto mt-2 max-w-md text-[11px] leading-5 text-[#66717B]">它会选择封面、聚焦、流程、对比、案例、图表等不同构图；图表只使用有依据的数据。</p></div>
             </div>
           ) : (
-            <div className="grid min-h-[560px] lg:grid-cols-[260px_minmax(0,1fr)]">
-              <aside className="border-r border-[#D7D1C4] bg-[#F8F6F0] p-3">
+            <div className="grid lg:min-h-[560px] lg:grid-cols-[260px_minmax(0,1fr)]">
+              <aside className="border-b border-[#D7D1C4] bg-[#F8F6F0] p-3 lg:border-b-0 lg:border-r">
                 <div className="mb-3 flex items-center justify-between px-1"><strong className="text-[11px] text-[#18232D]">{confirmed ? "页面缩略图" : "可编辑大纲"}</strong><span className="text-[9px] text-[#7A817F]">{slides.length} 页</span></div>
-                <div className="nav-scroll max-h-[500px] space-y-2 overflow-y-auto pr-1">
+                <div className="nav-scroll flex gap-2 overflow-x-auto pb-1 lg:block lg:max-h-[500px] lg:space-y-2 lg:overflow-y-auto lg:pr-1">
                   {slides.map((slide, index) => (
                     <div
                       key={slide.id}
@@ -316,14 +316,14 @@ export function PptGenerator() {
                         })
                         setDraggedId(null)
                       }}
-                      className={`group rounded-2xl border p-2.5 transition-colors ${selected?.id === slide.id ? "border-[#9FB1BC] bg-[#E7EDF3]" : "border-[#D7D1C4] bg-[#FFFEFA]"}`}
+                      className={`group min-w-[178px] shrink-0 rounded-2xl border p-2.5 transition-colors lg:min-w-0 ${selected?.id === slide.id ? "border-[#9FB1BC] bg-[#E7EDF3]" : "border-[#D7D1C4] bg-[#FFFEFA]"}`}
                     >
                       <button type="button" onClick={() => setSelectedId(slide.id)} className="flex w-full items-start gap-2 text-left">
                         <span className="mt-0.5 text-[9px] font-bold tabular-nums text-[#8A8172]">{String(index + 1).padStart(2, "0")}</span>
                         <span className="min-w-0 flex-1"><strong className="line-clamp-2 text-[10px] leading-4 text-[#18232D]">{slide.title}</strong><small className="mt-1 block truncate text-[8px] text-[#7A817F]">{LAYOUT_LABELS[slide.layout]}</small></span>
                         <GripVertical className="size-3.5 shrink-0 text-[#A3A39D]" />
                       </button>
-                      <div className="mt-1 flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="mt-1 flex justify-end gap-1 opacity-100 transition-opacity lg:opacity-0 lg:group-hover:opacity-100">
                         <button type="button" onClick={() => move(slide.id, -1)} disabled={index === 0} className="grid size-6 place-items-center rounded-lg hover:bg-[#ECE8DE] disabled:opacity-30" aria-label="上移"><ArrowUp className="size-3" /></button>
                         <button type="button" onClick={() => move(slide.id, 1)} disabled={index === slides.length - 1} className="grid size-6 place-items-center rounded-lg hover:bg-[#ECE8DE] disabled:opacity-30" aria-label="下移"><ArrowDown className="size-3" /></button>
                       </div>
@@ -348,9 +348,9 @@ export function PptGenerator() {
                     </div>
                     <div className="mx-auto mt-4 flex max-w-[900px] flex-wrap items-center justify-between gap-2">
                       <div className="text-[10px] text-[#66717B]">标题、结论、内容分区和图表均可直接编辑</div>
-                      <div className="flex gap-2">
-                        <button type="button" onClick={() => void rewriteSlide(false)} disabled={generating} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 text-[10px] font-bold text-[#315E83] hover:bg-[#E7EDF3] disabled:opacity-40">{generating ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}使用所选模型重写</button>
-                        <button type="button" onClick={exportPptx} disabled={!confirmed || exporting} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#244C66] px-3.5 text-[10px] font-bold text-white disabled:opacity-40">{exporting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}导出可编辑 .pptx</button>
+                      <div className="flex w-full gap-2 sm:w-auto">
+                        <button type="button" onClick={() => void rewriteSlide(false)} disabled={generating} className="inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 text-[10px] font-bold text-[#315E83] hover:bg-[#E7EDF3] disabled:opacity-40 sm:flex-none">{generating ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}使用所选模型重写</button>
+                        <button type="button" onClick={exportPptx} disabled={!confirmed || exporting} className="inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-3.5 text-[10px] font-bold text-white disabled:opacity-40 sm:flex-none">{exporting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}导出可编辑 .pptx</button>
                       </div>
                     </div>
                   </>

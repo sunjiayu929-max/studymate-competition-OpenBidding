@@ -416,6 +416,19 @@
   }
 }
 
+@media (max-width: 639px) {
+  .tutor-toolbar-scroll {
+    margin-inline: -2px;
+    padding-inline: 2px;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 2px;
+  }
+
+  .tutor-toolbar-scroll > * {
+    scroll-snap-align: start;
+  }
+}
+
 /* 概念动画 · 全屏模式
    各动画的画布内联写死 height:320px；进入全屏时用这条带 !important 的规则覆盖，
    填满「整屏高度 - 头部/字幕条/控制条」。画布按容器分辨率(clientWidth/Height × dpr)实时重绘，放大不糊。 */
