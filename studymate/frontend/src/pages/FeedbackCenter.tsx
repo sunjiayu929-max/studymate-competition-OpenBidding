@@ -62,6 +62,28 @@ const ACTION_LABEL: Record<string, string> = {
   page_leave: "离开页面",
   workspace_start: "启动工作台",
   quiz_answer: "提交答题",
+  external_resource_open: "打开外部资源",
+  career_recommendation_open: "查看岗位推荐",
+  feedback_submit: "提交反馈",
+  feedback_reply: "回复反馈",
+  profile_update: "更新学习画像",
+  course_select: "选择课程",
+  resource_generate: "生成学习资源",
+}
+
+const TARGET_LABEL: Record<string, string> = {
+  page: "页面",
+  resource: "学习资源",
+  quiz: "测验",
+  topic: "学习主题",
+  course: "课程",
+  bilibili_video: "视频资源",
+  bilibili_search: "视频搜索",
+}
+
+function formatDuration(ms: number | undefined): string {
+  if (!ms || ms < 1000) return "0 秒"
+  return `${(ms / 1000).toLocaleString("zh-CN", { maximumFractionDigits: 1 })} 秒`
 }
 
 function fmtTime(iso: string | null): string {
@@ -161,10 +183,16 @@ export function FeedbackCenter() {
     }
   }
 
-  const chartData = (evStats?.by_action || []).map((b) => ({
-    name: ACTION_LABEL[b.action] || b.action,
-    count: b.count,
-  }))
+  const chartData = (() => {
+    const grouped = new Map<string, number>()
+    for (const item of evStats?.by_action || []) {
+      const name = ACTION_LABEL[item.action] || "其他事件"
+      grouped.set(name, (grouped.get(name) || 0) + item.count)
+    }
+    const items = [...grouped].map(([name, count]) => ({ name, count }))
+    const remainder = Math.max(0, (evStats?.window_total || 0) - items.reduce((sum, item) => sum + item.count, 0))
+    return remainder ? [...items, { name: "其他事件", count: remainder }] : items
+  })()
 
   return (
     <div className="app-page paper-theme">
@@ -222,15 +250,15 @@ export function FeedbackCenter() {
           <StatCard
             icon={Clock}
             label="平均停留时长"
-            value={canReview ? "7200.6s" : "—"}
+            value={canReview ? formatDuration(evStats?.avg_duration_ms) : "—"}
             sub="近 24h"
             tone="amber"
           />
           <StatCard
             icon={MessageSquare}
             label="收到反馈"
-            value={canReview ? 2986 : "—"}
-            sub={canReview ? "👍 2854 · 👎 132 · 满意度 96%" : ""}
+            value={canReview ? (fbStats?.total ?? 0) : "—"}
+            sub={canReview ? `赞 ${fbStats?.up ?? 0} · 踩 ${fbStats?.down ?? 0} · 满意度 ${fbStats?.satisfaction == null ? "—" : `${Math.round(fbStats.satisfaction * 100)}%`}` : ""}
             tone="rose"
           />
         </div>
@@ -244,7 +272,7 @@ export function FeedbackCenter() {
               行为分布（近 24h · 按事件类型）
             </div>
             <span className="rounded-full border border-[#D7D1C4] bg-[#F8F6F0] px-2.5 py-1 text-[10px] font-medium text-[#66717B]">
-              共 {chartData.reduce((sum, item) => sum + item.count, 0)} 次行为
+              共 {evStats?.window_total ?? 0} 次行为
             </span>
           </div>
           <Suspense fallback={<ChartLoading />}>
@@ -256,9 +284,6 @@ export function FeedbackCenter() {
         <div className="overflow-hidden rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] shadow-[0_8px_24px_rgba(24,35,45,.035)]">
           <div className="flex items-center justify-between border-b border-[#D7D1C4] bg-[#F8F6F0] px-4 py-3">
             <div className="text-sm font-medium">{canManage ? "用户反馈（最近 50 条）" : canReview ? "反馈评审视图（最近 50 条）" : "我的反馈"}</div>
-            <div className="text-xs text-[var(--muted-foreground)]">
-              {feedback.length} 条{canReview ? ` · 含评论 ${fbStats?.with_comment ?? 0}` : ""}
-            </div>
           </div>
           {loading && feedback.length === 0 ? (
             <FeedbackListLoading />
@@ -278,7 +303,7 @@ export function FeedbackCenter() {
                   <RatingBadge rating={f.rating} />
                   <div className="flex-1 min-w-0">
                     <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#7A817F]">
-                      <code className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--muted)]">{f.target_type}</code>
+                      <code className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--muted)]">{TARGET_LABEL[f.target_type] || "反馈对象"}</code>
                       <span className="truncate">{f.target_id}</span>
                       <span>·</span>
                       <span>{canReview ? `${f.user_name} · #${f.user_id}` : "我"}</span>

@@ -805,7 +805,7 @@ export function Report() {
                         return [`${v}% (${c}/${t})`, "正确率"]
                       }) as never}
                     />
-                    <Bar dataKey="rate" fill="#B85C3E" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="rate" fill="#B85C3E" radius={[6, 6, 0, 0]} minPointSize={8} maxBarSize={72} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
