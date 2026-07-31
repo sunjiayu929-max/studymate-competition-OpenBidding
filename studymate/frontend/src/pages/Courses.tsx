@@ -156,7 +156,7 @@ export function Courses() {
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Library className="size-4" /></span>
               <div className="min-w-0">
                 <h1 className="text-[15px] font-bold text-[#18232D]">选择你的学习课程</h1>
-                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">前五门课程接入完整学习能力，后十门用于课程目录预览</p>
+                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">覆盖基础理论、核心技术与实践应用的计算机课程体系</p>
               </div>
             </div>
             <div className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-[11px] font-bold ${current ? "border-[#C9D1CB] bg-[#E9EEE6] text-[#557052]" : "border-[#D7D1C4] bg-[#FFFEFA] text-[#7A817F]"}`}>
@@ -170,7 +170,7 @@ export function Courses() {
               <div className="pointer-events-none absolute -right-16 -top-20 size-52 rounded-full border border-[#DDD4BF]" />
               <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] text-[#6F8A69]"><Sparkles className="size-3.5 text-[#B1842C]" />课程工作区</span>
               <h2 className="relative mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D]">选定课程后，所有学习能力会自动围绕它协同</h2>
-              <p className="relative mt-1.5 max-w-3xl text-sm leading-6 text-[#66717B]">前五门课程拥有完整知识库与学习闭环；后十门为前端教材目录展示，后续可继续接入专属数据。</p>
+              <p className="relative mt-1.5 max-w-3xl text-sm leading-6 text-[#66717B]">围绕课程知识、学习资源与实践应用，构建完整的计算机学习体系。</p>
             </div>
 
         {err && (
