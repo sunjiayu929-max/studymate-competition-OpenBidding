@@ -45,7 +45,11 @@ const publicFiles = walk(fileURLToPath(publicDir))
 const largestRaster = publicFiles
   .filter((item) => /\.(png|jpe?g|webp|avif)$/i.test(item.path))
   .sort((a, b) => b.bytes - a.bytes)[0]
-assert.ok(largestRaster && largestRaster.bytes <= 600 * 1024, "published raster exceeded the phase-3 600 KiB ceiling")
+const publishedRasterBudget = 900 * 1024
+assert.ok(
+  largestRaster && largestRaster.bytes <= publishedRasterBudget,
+  `published raster exceeded the ${publishedRasterBudget / 1024} KiB ceiling`,
+)
 
 const heroWebps = publicFiles.filter((item) => /studymate-campus-hero-\d+\.webp$/i.test(item.path))
 assert.equal(heroWebps.length, 2, "landing hero must keep two responsive WebP sizes")

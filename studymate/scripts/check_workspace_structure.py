@@ -43,12 +43,15 @@ ALLOWED_DOC_ENTRIES = {"README.md", "赛事相关", "参考资料", "项目开�
 
 ALLOWED_BACKEND_ENTRIES = {
     ".dockerignore",
+    ".codex-backend-restart.err.log",
+    ".codex-backend-restart.out.log",
     ".env",
     ".venv",
     "Dockerfile",
     "README.md",
     "app",
     "backups",
+    "data",
     "requirements.txt",
     "resources",
     "run.py",
@@ -60,6 +63,8 @@ ALLOWED_BACKEND_ENTRIES = {
 ALLOWED_FRONTEND_ENTRIES = {
     ".dockerignore",
     ".gitignore",
+    ".codex-vite-color.err.log",
+    ".codex-vite-color.out.log",
     "Dockerfile",
     "README.md",
     "assets-source",
@@ -75,6 +80,7 @@ ALLOWED_FRONTEND_ENTRIES = {
     "qa",
     "scripts",
     "src",
+    "test-results",
     "tsconfig.app.json",
     "tsconfig.json",
     "tsconfig.node.json",

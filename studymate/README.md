@@ -7,8 +7,8 @@ StudyMate 是面向高校计算机类课程的个性化学习系统，覆盖机�
 - 7 组学习画像：知识基础、认知风格、学习目标、薄弱点、学习节奏、内容偏好、就业技能。
 - 7 个协作角色：Retriever、Doc、MindMap、Quiz、Reading、Code、Path。
 - 双层知识库：内置 5 门课程、1709 个知识块；用户可创建私有库、上传 PDF/PPTX/DOCX/Markdown/TXT、绑定课程，并按来源页码追溯。上传进入可观察后台任务，原文件、进度、失败和安全重试均持久化。
-- AI 助教：课程级持久会话、页面上下文、SSE 流式回复、图片理解、文件附件，以及服务端受控的 Qwen、DeepSeek、MiMo 显式选择。
-- PPT 生成：Qwen/DeepSeek/MiMo 受控生成大纲与单页重写，复用课程/私有知识上下文，支持引用、模板、图表页、显式本地降级，并导出元素可继续编辑的 `.pptx`。
+- AI 助教：课程级持久会话、页面上下文、SSE 流式回复、图片理解、文件附件，以及服务端受控的 Qwen、DeepSeek、讯飞星火、MiMo 显式选择。
+- PPT 生成：Qwen/DeepSeek/讯飞星火/MiMo 受控生成大纲与单页重写，复用课程/私有知识上下文，支持引用、模板、图表页、显式本地降级，并导出元素可继续编辑的 `.pptx`。
 - 学习闭环：课程空间、笔记与错题、智能测验、学习报告、画像回写、埋点和反馈。
 - 登录首页：单屏“学习宇宙 · 实时指挥舱”同时呈现平台能力、个人今日状态、中央七星球入口、7 Agents 实时 store 状态和真实学习脉冲；进入后保留暖白今日学习桌面。
 - 可视讲解：五门课各 60 个主题，共 300 个确定性动画或脚本化讲解；AI 讲解支持真实/估算时长、seek、逐句高亮和 0.75～1.5 倍速。
@@ -52,11 +52,11 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```bash
 cd backend
 python scripts/run_safe_offline.py \
-  --database-path /absolute/path/studymate-safe.db \
-  --private-knowledge-dir /absolute/path/studymate-safe-private
+  --database-path .runtime/studymate-safe.db \
+  --private-knowledge-dir .runtime/studymate-safe-private
 ```
 
-PowerShell 与 `cmd.exe` 使用同一个 Python 命令，把两个示例路径换成 Windows 绝对路径即可。启动器会在导入应用前设置 `STUDYMATE_SAFE_OFFLINE=1`，完全跳过项目 `.env`；进程中已有的 LLM、Embedding、ASR、TTS、OCR、SMTP 和 Piston 配置也会被覆盖为不可用，并安装出站网络保险丝。它只监听环回地址，不启动 Piston，不使用真实数据库或私库目录。
+PowerShell 与 `cmd.exe` 使用同一个 Python 命令。路径以当前 `backend/` 目录为基准，也可以按需传入绝对路径。启动器会在导入应用前设置 `STUDYMATE_SAFE_OFFLINE=1`，完全跳过项目 `.env`；进程中已有的 LLM、Embedding、ASR、TTS、OCR、SMTP 和 Piston 配置也会被覆盖为不可用，并安装出站网络保险丝。它只监听环回地址，不启动 Piston，不使用真实数据库或私库目录。
 
 `STUDYMATE_SAFE_OFFLINE` 必须通过进程环境或该启动器设置，不要写入 `backend/.env`。普通开发模式保持原有启动方式。
 
@@ -113,6 +113,7 @@ docker compose --profile extras up -d
 
 - 本地运行库：`backend/studymate.db`，由 Git 忽略。
 - Docker 提交用种子：`backend/resources/seed/studymate.db.gz`。
+- 本地裸跑时，如果 `backend/studymate.db` 不存在，会自动从上述种子库初始化；已有数据库不会覆盖。
 - 容器首次发现 `/app/data/studymate.db` 不存在时，会解压种子库；已有数据卷不会被镜像更新覆盖。
 - 重新生成脱敏种子库：
 
@@ -120,7 +121,7 @@ docker compose --profile extras up -d
 python scripts/build_seed_db.py
 ```
 
-种子生成脚本会只保留获准的演示账号，清空会话和验证码等认证状态，并执行 SQLite 外键与完整性检查。详见 [`backend/resources/seed/README.md`](backend/resources/seed/README.md)。
+种子生成脚本会只保留获准的演示账号，清空认证会话和验证码，并执行 SQLite 外键与完整性检查；展示用助教会话和学习事件按演示数据保留。详见 [`backend/resources/seed/README.md`](backend/resources/seed/README.md)。
 
 ## 常用验证
 
@@ -165,10 +166,6 @@ PYTHONDONTWRITEBYTECODE=1 python scripts/check_workspace_structure.py
 - [`docs/开发与验收指南.md`](docs/开发与验收指南.md)：开发规范与交付前核查。
 - [`docs/Ubuntu部署指南.md`](docs/Ubuntu部署指南.md)：服务器部署、升级、备份和排障。
 - [`docs/密钥管理指南.md`](docs/密钥管理指南.md)：密钥配置、轮换和泄露处理。
-- [`docs/第二阶段实施交接.md`](docs/第二阶段实施交接.md)：真实时间轴、PPT 模型、私库后台任务与当前验证边界。
-- [`docs/第三阶段实施交接.md`](docs/第三阶段实施交接.md)：动态数字人、评委演示、宇宙精修、性能预算与 E2E 回归边界。
-- [`docs/第四阶段最终巡检交接.md`](docs/第四阶段最终巡检交接.md)：双视口视觉基线、比赛主链路巡检、实际修复与现场确认清单。
-- [`docs/学习宇宙实时指挥舱实施交接.md`](docs/学习宇宙实时指挥舱实施交接.md)：指挥舱数据口径、空态、动画边界、三视口截图与回归结果。
 - [`frontend/README.md`](frontend/README.md)：前端开发和截图工具。
 - [`backend/README.md`](backend/README.md)：后端模块和运行说明。
 

@@ -46,12 +46,12 @@ docker compose --profile code-runner up -d --build
 
 后端镜像携带经过脱敏和完整性校验的压缩 SQLite 种子库。首次使用空数据卷启动时，会自动初始化：
 
-- 19 个固定演示账号：1 个管理员、10 个评委、8 个学生；
+- 34 个固定演示账号：1 个管理员、10 个评委、23 个学生；
 - 5 门基础课程；
 - 1709 个包含正文和检索向量的知识块；
 - 演示画像、评估、笔记、资源和测验数据。
 
-账号只保存 Argon2 密码哈希，种子库不包含登录会话、邮箱验证码、Cookie、API Key 或 SMTP 凭据。已有 Docker 数据卷不会被镜像更新覆盖。
+账号只保存 Argon2 密码哈希，种子库不包含认证会话、邮箱验证码、Cookie、API Key 或 SMTP 凭据；用于展示的助教会话和学习事件属于演示数据。已有 Docker 数据卷不会被镜像更新覆盖。
 
 种子库说明见 [`studymate/backend/resources/seed/README.md`](studymate/backend/resources/seed/README.md)。
 
@@ -81,7 +81,6 @@ docker compose --profile code-runner up -d --build
 ### 本机路径说明
 
 - 本仓库根目录即可独立运行应用 `studymate/` 的上层目录
-- 历史路径 `compitition` 已在 Codex 会话迁移后删除；请统一使用规范路径
 - 外层目录下还可并列放置 `StudyMate-Doc` 等非本仓库内容
 
 ## 文档导航

@@ -20,14 +20,14 @@ for (const state of states.filter((item) => item !== "paused")) {
 }
 
 const mediaPlayer = source("src/components/DigitalHumanMedia.tsx")
-assert.match(mediaPlayer, /AnimatePresence/u)
+assert.match(mediaPlayer, /data-digital-human-fallback="static-fullbody"/u)
 assert.match(mediaPlayer, /prefers|useReducedMotion/u)
-assert.match(mediaPlayer, /srcSet/u)
+assert.match(mediaPlayer, /DIGITAL_HUMAN_FULLBODY_POSTER/u)
 
 const tutorBubble = source("src/components/TutorBubble.tsx")
 const voiceTutor = source("src/pages/VoiceTutor.tsx")
-assert.match(tutorBubble, /DigitalHumanMedia/u)
-assert.match(voiceTutor, /DigitalHumanMedia/u)
+assert.match(tutorBubble, /DigitalHumanVideo/u)
+assert.match(voiceTutor, /LecturerAvatar/u)
 assert.match(voiceTutor, /只有用户明确点击后才申请麦克风/u)
 assert.doesNotMatch(voiceTutor, /进页面自动启 ASR/u)
 

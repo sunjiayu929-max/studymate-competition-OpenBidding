@@ -304,7 +304,8 @@ try {
   assert.ok(await page.locator("#learning-desk").evaluate((element) => element.getBoundingClientRect().top < window.innerHeight), "learning desk did not enter viewport")
 
   await page.goto(`${baseUrl}/courses`)
-  await page.getByRole("button", { name: /机器学习/u }).click()
+  const machineLearningCard = page.locator("article").filter({ has: page.getByRole("heading", { name: "机器学习", exact: true }) })
+  await machineLearningCard.getByRole("button").click()
   await page.waitForURL((url) => url.pathname === "/" || url.pathname === "/workspace")
 
   await page.goto(`${baseUrl}/rag`)
@@ -360,7 +361,7 @@ try {
 
   await page.goto(`${baseUrl}/tutor/voice`)
   await page.getByText("演示降级：", { exact: false }).waitFor()
-  await page.getByText("完整文字回答仍然保留并可继续阅读。", { exact: false }).waitFor()
+  await page.getByText("现有文字回答仍可完整阅读", { exact: false }).waitFor()
   const permissionCalls = await page.evaluate(() => window.__studyMatePermissionCalls)
   assert.deepEqual(permissionCalls, { microphone: 0, fullscreen: 0 }, "E2E triggered a permission-gated API")
 

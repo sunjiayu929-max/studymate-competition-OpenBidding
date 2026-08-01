@@ -2,8 +2,8 @@
 
 示例（PowerShell、cmd、bash 均可）：
   python scripts/run_safe_offline.py \
-    --database-path C:/tmp/studymate-safe.db \
-    --private-knowledge-dir C:/tmp/studymate-private
+    --database-path .runtime/studymate-safe.db \
+    --private-knowledge-dir .runtime/studymate-private
 
 必须在导入 app 之前设置 STUDYMATE_SAFE_OFFLINE，确保配置层完全跳过项目 .env。
 """
@@ -15,10 +15,10 @@ import sys
 from pathlib import Path
 
 
-def _absolute_path(value: str, *, label: str) -> Path:
+def _runtime_path(value: str, *, label: str) -> Path:
     path = Path(value).expanduser()
     if not path.is_absolute():
-        raise argparse.ArgumentTypeError(f"{label} 必须是绝对路径")
+        path = Path.cwd() / path
     return path.resolve()
 
 
@@ -26,11 +26,15 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="以 0 外联、忽略项目 .env 的安全离线模式启动 StudyMate 后端"
     )
-    parser.add_argument("--database-path", required=True, help="隔离 SQLite 数据库的绝对路径")
+    parser.add_argument(
+        "--database-path",
+        required=True,
+        help="隔离 SQLite 数据库路径（相对路径以当前 backend 目录为基准）",
+    )
     parser.add_argument(
         "--private-knowledge-dir",
         required=True,
-        help="隔离私有知识原文件目录的绝对路径",
+        help="隔离私有知识原文件目录（相对路径以当前 backend 目录为基准）",
     )
     parser.add_argument("--host", default="127.0.0.1", choices=("127.0.0.1", "::1"))
     parser.add_argument("--port", type=int, default=8000)
@@ -46,8 +50,8 @@ def main() -> None:
     if not 1 <= args.port <= 65535:
         raise SystemExit("--port 必须在 1..65535 之间")
 
-    database_path = _absolute_path(args.database_path, label="--database-path")
-    private_dir = _absolute_path(
+    database_path = _runtime_path(args.database_path, label="--database-path")
+    private_dir = _runtime_path(
         args.private_knowledge_dir,
         label="--private-knowledge-dir",
     )

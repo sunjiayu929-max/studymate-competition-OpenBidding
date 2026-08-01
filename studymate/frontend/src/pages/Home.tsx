@@ -208,8 +208,8 @@ function agentStatusCopy(status: string, workspaceStatus: RunStatus) {
   return "待命"
 }
 
-function formatPlatformChunkCount(): string {
-  return "1万+"
+function formatPlatformChunkCount(count: number): string {
+  return new Intl.NumberFormat("en-US").format(Math.max(0, count))
 }
 
 function formatBeijingTime(value: Date) {
@@ -352,7 +352,7 @@ function LearningUniverse(props: LearningUniverseProps) {
 
   const planetValues: Record<(typeof UNIVERSE_PLANETS)[number]["id"], { value: string; detail: string }> = {
     profile: { value: `${profileCompleteness}%`, detail: profileCompleteness ? `画像 v${profileVersion}` : "等待建立画像" },
-    knowledge: { value: formatPlatformChunkCount(), detail: "平台知识片段" },
+    knowledge: { value: formatPlatformChunkCount(platform.chunkCount), detail: "平台知识片段" },
     quiz: { value: String(quizCount), detail: "个人测验记录" },
     notes: { value: String(noteCount), detail: "个人笔记" },
     workspace: { value: `${generatedResourceCount}/7`, detail: workspace.status === "running" ? "正在生成" : "Agent 资源" },
@@ -472,7 +472,7 @@ function LearningUniverse(props: LearningUniverseProps) {
             </div>
             <div className="universe-capability-grid" data-testid="platform-capabilities">
               <div><strong>{platform.courseCount}</strong><span>门课程</span></div>
-              <div><strong>{formatPlatformChunkCount()}</strong><span>知识片段</span></div>
+              <div><strong>{formatPlatformChunkCount(platform.chunkCount)}</strong><span>知识片段</span></div>
               <div><strong>300</strong><span>可视主题</span></div>
               <div><strong>7</strong><span>协作 Agent</span></div>
             </div>
@@ -655,7 +655,7 @@ function LearningUniverse(props: LearningUniverseProps) {
                   </div>
                 ))}
               </div>
-              {trend.every((point) => point.value === 0) && <span className="universe-trend-empty">暂无历史</span>}
+              {trend.every((point) => point.value === 0) && <span className="universe-trend-empty">暂无历史，不绘制虚假曲线</span>}
             </div>
           </div>
         </section>
