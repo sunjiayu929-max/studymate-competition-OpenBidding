@@ -59,7 +59,7 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
     label: "学习中心",
     icon: GraduationCap,
     items: [
-      { label: "课程空间", to: "/courses", icon: Library },
+      { label: "岗位空间", to: "/courses", icon: Library },
       { label: "学习画像", to: "/profile", icon: GraduationCap },
     ],
   },
@@ -79,7 +79,7 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
     label: "知识与笔记",
     icon: Database,
     items: [
-      { label: "课程知识库", to: "/rag", icon: Library },
+      { label: "岗位知识库", to: "/rag", icon: Library },
       { label: "自建知识库", to: "/knowledge", icon: Database },
       { label: "智能笔记", to: "/notes", icon: NotebookPen },
     ],
@@ -253,14 +253,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="shrink-0 px-3 pt-3">
           <Link
             to="/courses"
-            title={course?.name || "选择当前课程"}
+            title={course?.name || "选择当前岗位"}
             className={cn(
               "flex items-center rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] shadow-[0_5px_14px_rgba(24,35,45,.045)] transition-colors hover:bg-[#F7F2E7]",
               effectiveCollapsed ? "h-11 justify-center" : "gap-2.5 px-3 py-2.5",
             )}
           >
             <span className="app-nav-icon"><Library className="size-3.5" /></span>
-            {!effectiveCollapsed && <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">当前课程</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{course?.name || "选择一门课程"}</strong></span>}
+            {!effectiveCollapsed && <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">当前岗位</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{course?.name || "选择目标岗位"}</strong></span>}
           </Link>
         </div>
 

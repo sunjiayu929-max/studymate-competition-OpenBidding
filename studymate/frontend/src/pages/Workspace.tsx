@@ -42,6 +42,7 @@ import { apiGet } from "@/lib/api"
 import { track } from "@/lib/track"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { fallbackSamplesFor, DEFAULT_SAMPLE_TOPICS, useCourseConfig, useCurrentCourse } from "@/store/course"
+import { useTargetRole } from "@/store/targetRole"
 import { useCurrentUser } from "@/store/user"
 import { workspaceStore, useWorkspaceStore, type RunStatus } from "@/store/workspace"
 
@@ -110,6 +111,7 @@ export function Workspace() {
   const user = useCurrentUser()
   const userId = user?.user_id ?? 0
   const course = useCurrentCourse()
+  const targetRole = useTargetRole()
   const courseCfg = useCourseConfig()
   const { topic, status, agents, logs, outputs, startedAt, finishedAt, lastError } = useWorkspaceStore()
   const isRunning = status === "running"
@@ -225,7 +227,7 @@ export function Workspace() {
   )
   const profileGoal = profile?.dims.goals?.primary?.trim() || ""
   const weakTopics = profile?.dims.weak_points?.topics?.filter(Boolean) || []
-  const courseChunkLabel = course?.name === "机器学习" ? "1000+" : course ? "500+" : ""
+  const trainingTarget = targetRole?.name || course?.name || "目标岗位"
 
   const qualityChecks: Array<{ label: string; value: string; state: CheckState }> = [
     {
@@ -273,17 +275,17 @@ export function Workspace() {
             <div className="max-w-3xl">
               <div className="mb-2 flex items-center gap-2 text-[11px] font-bold tracking-[0.12em] text-[#315E83]">
                 <span className="size-1.5 rounded-full bg-[#B85C3E]" />
-                核心能力 · 多智能体资源生成
+                当前目标岗位 · {trainingTarget}
               </div>
               <h1 className="text-balance text-[28px] font-bold leading-[1.18] tracking-[-0.045em] text-[#18232D] sm:text-[36px]">
-                把一个知识点，<span className="text-[#315E83]">组织成完整学习资源包。</span>
+                围绕目标岗位，<span className="text-[#315E83]">组织可验证的训练资源。</span>
               </h1>
-              <p className="mt-2 text-sm leading-6 text-[#66717B]">由 7 个学习 Agent 协同完成知识检索、内容生成与路径编排，并把可视讲解一并纳入本次学习资源包。</p>
+              <p className="mt-2 text-sm leading-6 text-[#66717B]">先从岗位知识库检索有来源的依据，再由 7 个 Agent 协同生成讲义、实操指南、测试题和训练路径。</p>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Link to="/courses" className="inline-flex h-10 items-center gap-2 rounded-full border border-[#C9C2B4] bg-[#FFFEFA] px-4 text-xs font-semibold text-[#244C66] hover:bg-[#F1EDE4]">
-                <Database className="size-4" />{course?.name || "选择课程知识库"}<ChevronRight className="size-3.5" />
+              <Link to="/rag" className="inline-flex h-10 items-center gap-2 rounded-full border border-[#C9C2B4] bg-[#FFFEFA] px-4 text-xs font-semibold text-[#244C66] hover:bg-[#F1EDE4]">
+                <Database className="size-4" />{course?.name || "打开岗位知识库"}<ChevronRight className="size-3.5" />
               </Link>
               <Link to="/profile" className="inline-flex h-10 items-center gap-2 rounded-full border border-[#C9C2B4] bg-[#F7F2E7] px-4 text-xs font-semibold text-[#6A5941] hover:bg-[#EEE8DB]">
                 <UserRoundSearch className="size-4" />{profile ? `画像 v${profile.version}` : "建立学习画像"}<ChevronRight className="size-3.5" />
@@ -296,11 +298,11 @@ export function Workspace() {
               <div className="flex items-start gap-3">
                 <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#F4ECD8] text-[#8E6925]"><AlertCircle className="size-4" /></span>
                 <div>
-                  <h2 className="text-sm font-bold text-[#18232D]">生成前需要先确定课程知识库</h2>
-                  <p className="mt-1 text-[11px] leading-5 text-[#66717B]">课程决定 RAG 检索范围、引用来源和后续测验归档。选定后，你刚刚填写的主题仍会保留。</p>
+                  <h2 className="text-sm font-bold text-[#18232D]">生成前需要先确定目标岗位</h2>
+                  <p className="mt-1 text-[11px] leading-5 text-[#66717B]">目标岗位决定 RAG 检索范围、引用来源和后续测验归档。选定后，你刚刚填写的主题仍会保留。</p>
                 </div>
               </div>
-              <Link to="/courses" className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] hover:bg-[#193B50]">选择课程 <ArrowRight className="size-3.5" /></Link>
+              <Link to="/courses" className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] hover:bg-[#193B50]">选择岗位 <ArrowRight className="size-3.5" /></Link>
             </section>
           )}
 
@@ -317,7 +319,7 @@ export function Workspace() {
                   <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <span className="text-[11px] font-bold tracking-[0.1em] text-[#B85C3E]">01 · 定义生成任务</span>
-                      <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#18232D]">今天要把哪个知识点讲清楚？</h2>
+                      <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#18232D]">这次要训练哪个岗位问题？</h2>
                     </div>
                     <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold text-[#59636B]">
                       <span className="rounded-full border border-[#D7D1C4] bg-[#F8F6F0] px-2.5 py-1">先检索后生成</span>
@@ -340,7 +342,7 @@ export function Workspace() {
                         value={topicInput}
                         onChange={(event) => setTopicInput(event.target.value)}
                         disabled={isRunning}
-                        placeholder="例如：梯度下降为什么会收敛？"
+                        placeholder="例如：现场部署前需要确认哪些依赖？"
                         className="h-13 w-full rounded-xl border border-[#CFC8B9] bg-[#FDFBF6] pl-11 pr-4 text-sm text-[#18232D] outline-none transition-shadow placeholder:text-[#929792] focus:border-[#315E83] focus:ring-3 focus:ring-[#315E83]/10 disabled:opacity-60"
                       />
                     </label>
@@ -361,7 +363,7 @@ export function Workspace() {
                         disabled={isRunning || !topicInput.trim() || !course}
                         className="inline-flex h-13 flex-1 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] shadow-[0_9px_20px_rgba(36,76,102,.18)] transition-all hover:-translate-y-0.5 hover:bg-[#193B50] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55 sm:flex-none"
                       >
-                        {isRunning ? <><Loader2 className="size-4 animate-spin" />协作生成中</> : !course ? <><Library className="size-4" />先选课程</> : <><Rocket className="size-4" />启动协同生成</>}
+                        {isRunning ? <><Loader2 className="size-4 animate-spin" />协作生成中</> : !course ? <><Library className="size-4" />先选岗位</> : <><Rocket className="size-4" />启动协同生成</>}
                       </button>
                     </div>
                   </form>
@@ -436,7 +438,7 @@ export function Workspace() {
                 </div>
 
                 <div className="mt-4 space-y-2">
-                  <EvidenceRow icon={Database} label="课程范围" value={course?.name || "尚未选择"} hint={course ? `${courseChunkLabel} 个知识片段可检索` : "选择课程后锁定检索与引用范围"} />
+                  <EvidenceRow icon={Database} label="岗位知识库" value={targetRole?.name || course?.name || "尚未选择"} hint={course ? `${course.chunk_count ?? "已导入"} 条知识片段可检索；点击顶部知识库可查看来源` : "选择岗位后锁定检索与引用范围"} />
                   <EvidenceRow icon={UserRoundSearch} label="画像依据" value={profile ? `版本 v${profile.version}` : "尚未建立"} hint={profileGoal || "目标、节奏与资源偏好将参与生成"} />
                   <EvidenceRow icon={Target} label="当前主题" value={topic || "等待启动"} hint={weakTopics.length ? `优先关注：${weakTopics.slice(0, 2).join("、")}` : "完成画像后可匹配薄弱知识点"} />
                 </div>

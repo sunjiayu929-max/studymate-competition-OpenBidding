@@ -20,18 +20,18 @@ export function externalSourceUrl(url: string | null | undefined): string | null
 }
 
 export function sourceLink(chunkId: string, url: string | null | undefined) {
-  const external = externalSourceUrl(url)
-  return external
-    ? { href: external, external: true }
-    : { href: `/rag/source/${encodeURIComponent(chunkId)}`, external: false }
+  // 检索结果先打开站内来源页：即使 GitHub 等外部站点暂时不可达，
+  // 用户仍能核对已入库的命中片段、来源章节与相邻上下文。
+  void url
+  return { href: `/rag/source/${encodeURIComponent(chunkId)}`, external: false }
 }
 
 export function formatInternalLocator(url: string | null | undefined): string {
-  if (!url) return "课程知识库内部索引"
-  if (url.startsWith("doc://")) return `课程资料 / ${url.slice(6).replace(/#/g, " / ")}`
-  if (url.startsWith("ai://")) return "课程知识库内部索引"
+  if (!url) return "岗位知识库内部索引"
+  if (url.startsWith("doc://")) return `岗位资料 / ${url.slice(6).replace(/#/g, " / ")}`
+  if (url.startsWith("ai://")) return "岗位知识库内部索引"
   if (url.startsWith("doi://")) return `DOI ${url.slice(6)}`
-  return externalSourceUrl(url) ? "外部权威来源" : "课程知识库内部索引"
+  return externalSourceUrl(url) ? "外部权威来源" : "岗位知识库内部索引"
 }
 
 export function visibleMetadata(meta: Record<string, unknown>) {

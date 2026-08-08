@@ -594,7 +594,7 @@ function LearningUniverse(props: LearningUniverseProps) {
     notes: { value: String(noteCount), detail: "个人笔记" },
     workspace: { value: `${generatedResourceCount}/7`, detail: workspace.status === "running" ? "正在生成" : "Agent 资源" },
     report: { value: String(reportCount), detail: "阶段评估" },
-    course: { value: courseSelected ? (courseChunkCount ? String(courseChunkCount) : "目录") : "待选", detail: courseSelected ? (courseChunkCount ? "当前课程知识片段" : "前端课程目录预览") : "选择学习场景" },
+    course: { value: courseSelected ? (courseChunkCount ? String(courseChunkCount) : "目录") : "待选", detail: courseSelected ? (courseChunkCount ? "当前岗位知识片段" : "前端岗位目录预览") : "选择目标岗位" },
   }
 
   const visibleAgents = AGENT_DEFINITIONS.map((definition) => {
@@ -682,7 +682,7 @@ function LearningUniverse(props: LearningUniverseProps) {
           </div>
           <div className="flex items-center gap-3 sm:gap-5">
             <div className="hidden text-right sm:block">
-              <span className="block text-[9px] tracking-[.12em] text-[#7F8A98]">当前课程</span>
+              <span className="block text-[9px] tracking-[.12em] text-[#7F8A98]">当前岗位</span>
               <strong className={`mt-0.5 block max-w-52 truncate text-[11px] ${courseSelected ? "text-[#DDE5E8]" : "text-[#D2B36D]"}`}>{courseName}</strong>
             </div>
             <div className="h-7 w-px bg-white/10" />
@@ -1097,7 +1097,7 @@ export function Home() {
   const courseId = course?.id
   const showcaseCourse = isShowcaseCourse(course)
 
-  useTutorContext({ page: "home", title: `今日学习 · 当前课程：${course?.name || "未选"}` })
+  useTutorContext({ page: "home", title: `今日学习 · 当前岗位：${course?.name || "未选"}` })
 
   useEffect(() => {
     const userId = user?.user_id
@@ -1190,7 +1190,7 @@ export function Home() {
       : targetTopics[0]
         ? `这个主题来自你的学习目标，StudyMate 已把它放到今日路线的中心。`
         : course
-          ? `围绕当前课程「${course.name}」给出一条清晰起点，完成后再依据表现调整下一步。`
+          ? `围绕当前岗位「${course.name}」给出一条清晰起点，完成后再依据表现调整下一步。`
           : "选定课程后，笔记、测验与画像会汇成一条只属于你的学习路线。"
 
   const routeSteps = [
@@ -1590,7 +1590,7 @@ export function Home() {
                   <div>
                     <p className="text-xs font-bold text-[#18232D]">路线依据</p>
                     <p className="mt-1 text-[11px] leading-5 text-[#66717B]">
-                      {profileGoal ? `当前目标：${profileGoal}` : course ? `当前课程：${course.name}` : "完成画像后，路线会更贴近你的目标与节奏"}
+                      {profileGoal ? `当前目标：${profileGoal}` : course ? `当前岗位：${course.name}` : "完成画像后，路线会更贴近你的目标与节奏"}
                     </p>
                   </div>
                 </div>

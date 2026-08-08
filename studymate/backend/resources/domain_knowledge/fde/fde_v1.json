@@ -1,0 +1,85 @@
+{
+  "catalog_version": "fde-v1-2026-08-08",
+  "course_name": "FDE 岗位知识库",
+  "course_description": "面向求职者的前线部署工程师（FDE）岗位知识切片，用于检索、Agent 测试和后续资源生成。",
+  "source_notice": "本数据集是对公开资料的短摘要，不收录长段原文。每条均保留来源链接和章节。公开展示或商业使用前应再次确认原始资料的授权范围。",
+  "items": [
+    {
+      "id": "fde-definition",
+      "content": "FDE（Forward Deployed Engineer，前线部署工程师）的核心任务，是把产品已有能力与客户真实需要之间的差距转化为可运行、可验证的解决方案。工作语境要进入客户的业务流程、数据和协作方式；岗位成果是生产或准生产环境中可用的系统，而不是只完成演示文稿。",
+      "source": "范冰《前线部署工程师》v1.0.14，第 1 章",
+      "url": "https://github.com/xdash/FDE-the-Guidance-Book-of-Forward-Deployed-Engineer/blob/main/01-%E7%AC%AC1%E7%AB%A0-FDE%E7%9A%84%E5%B4%9B%E8%B5%B7.md",
+      "meta": {"role": "FDE", "topic": "岗位定义", "source_type": "source_summary", "difficulty": 1}
+    },
+    {
+      "id": "fde-boundary",
+      "content": "FDE 不等同于售前、传统驻场外包或只给建议的咨询。售前主要在签约前证明可行性；FDE 在交付阶段对结果负责。FDE 也应把现场发现反哺产品能力，并以客户团队能够独立使用为重要交付标准。",
+      "source": "范冰《前线部署工程师》v1.0.14，第 1 章",
+      "url": "https://github.com/xdash/FDE-the-Guidance-Book-of-Forward-Deployed-Engineer/blob/main/01-%E7%AC%AC1%E7%AB%A0-FDE%E7%9A%84%E5%B4%9B%E8%B5%B7.md",
+      "meta": {"role": "FDE", "topic": "岗位边界", "source_type": "source_summary", "difficulty": 1}
+    },
+    {
+      "id": "fde-discovery",
+      "content": "FDE 的起点不是先承诺一个大而全的方案，而是和业务使用者一起识别具体工作流中的高价值问题。调研时需要问清当前流程、痛点发生位置、可获得的数据、约束条件、相关责任人，以及什么证据能够证明结果有效。",
+      "source": "范冰《前线部署工程师》v1.0.14，第 2 章：解决正确的问题",
+      "url": "https://github.com/xdash/FDE-the-Guidance-Book-of-Forward-Deployed-Engineer/blob/main/02-%E7%AC%AC2%E7%AB%A0-%E8%A7%A3%E5%86%B3%E6%AD%A3%E7%A1%AE%E7%9A%84%E9%97%AE%E9%A2%98.md",
+      "meta": {"role": "FDE", "topic": "场景调研", "source_type": "source_summary", "difficulty": 2}
+    },
+    {
+      "id": "fde-value-hypothesis",
+      "content": "在开始集成前，FDE 应把业务需求整理成可验证的价值假设：为谁解决什么问题、通过哪条流程产生改变、使用哪些数据或系统、预期用哪些业务指标或验收样例判断是否有效。这样可以避免把“能做”误当成“值得做”。",
+      "source": "范冰《前线部署工程师》v1.0.14，第 2 章：解决正确的问题",
+      "url": "https://github.com/xdash/FDE-the-Guidance-Book-of-Forward-Deployed-Engineer/blob/main/02-%E7%AC%AC2%E7%AB%A0-%E8%A7%A3%E5%86%B3%E6%AD%A3%E7%A1%AE%E7%9A%84%E9%97%AE%E9%A2%98.md",
+      "meta": {"role": "FDE", "topic": "价值验证", "source_type": "source_summary", "difficulty": 2}
+    },
+    {
+      "id": "fde-stakeholder",
+      "content": "客户交付需要同时建立业务使用者、技术对接人和决策者的共同预期。FDE 要用可见的原型、演示或交付物讨论需求，并记录范围、依赖、风险、决策和下一步责任人，避免信息只停留在口头会议中。",
+      "source": "范冰《前线部署工程师》v1.0.14，第 3 章：赢得客户",
+      "url": "https://github.com/xdash/FDE-the-Guidance-Book-of-Forward-Deployed-Engineer/blob/main/03-%E7%AC%AC3%E7%AB%A0-%E8%B5%A2%E5%BE%97%E5%AE%A2%E6%88%B7.md",
+      "meta": {"role": "FDE", "topic": "利益相关者协作", "source_type": "source_summary", "difficulty": 2}
+    },
+    {
+      "id": "fde-integration",
+      "content": "现场交付中的工程工作通常包含数据接入、接口联调、身份与权限、网络环境、配置和故障排查。FDE 应将这些依赖显式列为清单，给每项设置负责人和验证方法；遇到阻塞时先确定是数据、接口、环境还是业务规则问题，再开展排查。",
+      "source": "范冰《前线部署工程师》v1.0.14，第 4 章：激活部署",
+      "url": "https://github.com/xdash/FDE-the-Guidance-Book-of-Forward-Deployed-Engineer/blob/main/04-%E7%AC%AC4%E7%AB%A0-%E6%BF%80%E6%B4%BB%E9%83%A8%E7%BD%B2.md",
+      "meta": {"role": "FDE", "topic": "系统集成", "source_type": "source_summary", "difficulty": 3}
+    },
+    {
+      "id": "fde-activation",
+      "content": "部署不是把系统装好就结束。FDE 需要帮助真实用户把新方案嵌进实际工作流：确定先用的场景和人群，观察使用过程，处理影响采用的问题，并依据反馈持续调整。交付目标是让业务产生可观察的变化。",
+      "source": "范冰《前线部署工程师》v1.0.14，第 4 章：激活部署",
+      "url": "https://github.com/xdash/FDE-the-Guidance-Book-of-Forward-Deployed-Engineer/blob/main/04-%E7%AC%AC4%E7%AB%A0-%E6%BF%80%E6%B4%BB%E9%83%A8%E7%BD%B2.md",
+      "meta": {"role": "FDE", "topic": "部署激活", "source_type": "source_summary", "difficulty": 2}
+    },
+    {
+      "id": "fde-acceptance",
+      "content": "FDE 的验收应围绕事先约定的业务结果和运行证据。可把验收拆为：功能是否完成、数据和接口是否正确、关键用户能否完成任务、异常情况如何处理、业务指标或案例是否达到目标。验收结果和遗留问题都应可追溯。",
+      "source": "范冰《前线部署工程师》v1.0.14，第 5 章：守住续约",
+      "url": "https://github.com/xdash/FDE-the-Guidance-Book-of-Forward-Deployed-Engineer/blob/main/05-%E7%AC%AC5%E7%AB%A0-%E5%AE%88%E4%BD%8F%E7%BB%AD%E7%BA%A6.md",
+      "meta": {"role": "FDE", "topic": "交付验收", "source_type": "source_summary", "difficulty": 3}
+    },
+    {
+      "id": "fde-product-feedback",
+      "content": "FDE 不只解决单一客户的问题，还应将可复用的场景、配置、故障模式和需求反馈给产品团队。哪些是客户特有的例外、哪些可沉淀为平台能力，需要通过复盘记录和跨客户比较来判断。",
+      "source": "范冰《前线部署工程师》v1.0.14，第 7 章：规模化复制",
+      "url": "https://github.com/xdash/FDE-the-Guidance-Book-of-Forward-Deployed-Engineer/blob/main/07-%E7%AC%AC7%E7%AB%A0-%E8%A7%84%E6%A8%A1%E5%8C%96%E5%A4%8D%E5%88%B6.md",
+      "meta": {"role": "FDE", "topic": "产品反馈", "source_type": "source_summary", "difficulty": 3}
+    },
+    {
+      "id": "fde-ethics",
+      "content": "FDE 处理客户数据、业务流程和部署权限时，应遵守最小必要、授权可核验、敏感信息不外泄和变更可追溯的原则。遇到可能造成伤害、违规或误用的需求，需要及时升级风险并保留决策记录。",
+      "source": "范冰《前线部署工程师》v1.0.14，后记：FDE 的职业道德",
+      "url": "https://github.com/xdash/FDE-the-Guidance-Book-of-Forward-Deployed-Engineer/blob/main/09-%E5%90%8E%E8%AE%B0-FDE%E7%9A%84%E8%81%8C%E4%B8%9A%E9%81%93%E5%BE%B7.md",
+      "meta": {"role": "FDE", "topic": "交付伦理", "source_type": "source_summary", "difficulty": 2}
+    },
+    {
+      "id": "fde-practice-scenario",
+      "content": "【StudyMate 训练场景，非外部事实】某制造企业希望减少人工巡检记录整理时间。作为 FDE 候选人，应先访谈巡检员和班组长，列出表单来源、异常处理和验收口径；再做一个只覆盖单条产线的最小流程，验证记录是否可汇总、异常是否可追踪、用户是否能独立使用；最后写出风险、反馈和下一轮改进项。",
+      "source": "StudyMate FDE 岗位训练切片 v1",
+      "url": "https://github.com/studymate-team/studymate-SoftwareCopyright",
+      "meta": {"role": "FDE", "topic": "最小交付闭环", "source_type": "studymate_training_scenario", "difficulty": 2}
+    }
+  ]
+}

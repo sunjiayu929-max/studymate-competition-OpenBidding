@@ -84,8 +84,8 @@ export function RagDemo() {
       <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
         <PageHeader
           current="rag"
-          title="知识库检索"
-          subtitle={`在《${course?.name || "当前课程"}》资料中定位知识点，查看原始依据、页码与相关片段。`}
+          title="岗位知识库检索"
+          subtitle={`在《${course?.name || "当前训练资料"}》中定位岗位能力与任务依据，查看来源和相关片段。`}
           icon={Database}
           iconColor="text-[#315E83]"
           appearance="paper"
@@ -97,7 +97,7 @@ export function RagDemo() {
           <div className="relative grid items-stretch gap-5 lg:grid-cols-[minmax(0,1fr)_390px] lg:gap-8">
             <div className="min-w-0">
               <span className="inline-flex items-center gap-2 text-[10px] font-bold tracking-[0.14em] text-[#6F8A69]"><Sparkles className="size-3.5 text-[#B1842C]" />有依据的学习检索</span>
-              <h2 className="mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D] sm:text-2xl">从课程资料里，找到可以引用的答案</h2>
+              <h2 className="mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D] sm:text-2xl">从岗位资料里，找到可以引用的答案</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[#66717B]">输入概念、问题或关键词。系统会返回最相关的原文片段，而不是只给出无法核实的结论。</p>
 
               <form onSubmit={(event) => { event.preventDefault(); doSearch(q) }} className="mt-6 flex items-center gap-2 rounded-[20px] border border-[#CFC8B9] bg-[#FFFEFA] p-2 shadow-[0_10px_28px_rgba(24,35,45,.07)] focus-within:border-[#9FB1BC]">
@@ -117,7 +117,7 @@ export function RagDemo() {
             </div>
 
             <div className="overflow-hidden rounded-[20px] border border-[#D7D1C4] bg-[#FFFEFA]/95 shadow-[0_10px_28px_rgba(24,35,45,.055)]">
-              <InfoCard icon={BookOpen} eyebrow="当前检索范围" title={course?.name || "全部课程资料"} description="1000+ 个知识片段可被检索" tone="blue" />
+              <InfoCard icon={BookOpen} eyebrow="当前检索范围" title={course?.name || "全部训练资料"} description={stats ? `${stats.count} 条知识片段可被检索` : "正在读取知识片段数量"} tone="blue" />
               <InfoCard icon={ShieldCheck} eyebrow="结果可信度" title="每条答案都有来源" description="保留文件名、页码、相关度与原文入口，便于验证。" tone="green" />
               <InfoCard icon={Database} eyebrow="检索引擎" title={stats?.engine || "正在连接"} description="先检索相关材料，再把依据交给学习智能体使用。" tone="gold" />
             </div>

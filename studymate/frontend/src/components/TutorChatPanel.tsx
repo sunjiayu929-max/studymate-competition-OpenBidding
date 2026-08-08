@@ -378,7 +378,7 @@ export function TutorChatPanel({
               <motion.div initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.98 }} className="w-full max-w-[390px] rounded-[22px] border border-[#CFC8B9] bg-[#FFFEFA] p-5 shadow-[0_22px_60px_rgba(24,35,45,.22)]">
                 <span className="grid size-10 place-items-center rounded-xl bg-[#F4E8E2] text-[#A05137]"><Trash2 className="size-4" /></span>
                 <h3 id="clear-tutor-title" className="mt-4 text-base font-bold text-[#18232D]">清空当前对话？</h3>
-                <p className="mt-1.5 text-[12px] leading-5 text-[#66717B]">当前课程下的这段对话将被清空。若希望保留，请先点击“新对话”，系统会自动归档到历史记录。</p>
+                <p className="mt-1.5 text-[12px] leading-5 text-[#66717B]">当前岗位下的这段对话将被清空。若希望保留，请先点击“新对话”，系统会自动归档到历史记录。</p>
                 <div className="mt-5 flex justify-end gap-2">
                   <button type="button" onClick={() => setClearConfirmOpen(false)} className="h-9 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-4 text-[11px] font-bold text-[#59636B] hover:bg-[#F1EDE4]">继续保留</button>
                   <button type="button" onClick={() => { tutorHistory.clear(USER_ID, courseId); setClearConfirmOpen(false) }} className="h-9 rounded-xl bg-[#A05137] px-4 text-[11px] font-bold text-white hover:bg-[#873F2A]">确认清空</button>

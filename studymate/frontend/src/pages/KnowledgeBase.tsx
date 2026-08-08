@@ -157,7 +157,7 @@ export function KnowledgeBase() {
         bound_course_id: course?.id ?? null,
       })
       await refresh()
-      setMessage(course ? `已绑定当前课程《${course.name}》` : "已解除课程绑定")
+      setMessage(course ? `已绑定当前岗位《${course.name}》` : "已解除岗位绑定")
     } catch (error) {
       setMessage(String(error))
     } finally {
@@ -285,11 +285,11 @@ export function KnowledgeBase() {
                   <h1 className="truncate text-base font-bold text-[#18232D]">{selected?.name || "创建第一个私有知识库"}</h1>
                   {selected && selectedId === selected.id && <span className="rounded-full bg-[#E9EEE6] px-2 py-1 text-[9px] font-bold text-[#557052]">助教已选用</span>}
                 </div>
-                <p className="mt-1 text-[11px] text-[#66717B]">{selected?.bound_course_id ? `已绑定课程 ID ${selected.bound_course_id}` : "可绑定当前课程，也可在任意助教会话中使用"}</p>
+                <p className="mt-1 text-[11px] text-[#66717B]">{selected?.bound_course_id ? `已绑定岗位 ID ${selected.bound_course_id}` : "可绑定当前岗位，也可在任意助教会话中使用"}</p>
               </div>
               {selected && <div className="flex items-center gap-1.5">
                 <button type="button" onClick={renameLibrary} className="grid size-9 place-items-center rounded-xl border border-[#D7D1C4] text-[#59636B] hover:bg-[#ECE8DE]" aria-label="重命名知识库"><Pencil className="size-3.5" /></button>
-                <button type="button" onClick={bindCourse} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#D7D1C4] px-3 text-[10px] font-bold text-[#315E83] hover:bg-[#E7EDF3]"><BookOpen className="size-3.5" />绑定当前课程</button>
+                <button type="button" onClick={bindCourse} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#D7D1C4] px-3 text-[10px] font-bold text-[#315E83] hover:bg-[#E7EDF3]"><BookOpen className="size-3.5" />绑定当前岗位</button>
                 <button type="button" onClick={deleteLibrary} className="grid size-9 place-items-center rounded-xl border border-[#DFC8BE] text-[#9A4E35] hover:bg-[#F4E8E2]" aria-label="删除知识库"><Trash2 className="size-3.5" /></button>
               </div>}
             </header>
