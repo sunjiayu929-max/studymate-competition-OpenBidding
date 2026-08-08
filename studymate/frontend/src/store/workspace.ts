@@ -11,7 +11,7 @@
 
 import { fetchEventSource } from "@microsoft/fetch-event-source"
 import { useSyncExternalStore } from "react"
-import { sseHeaders } from "@/lib/api"
+import { apiPost, sseHeaders } from "@/lib/api"
 import type { QuizItem } from "@/components/QuizCard"
 import type { ReadingItem } from "@/components/ReadingList"
 import type { CodeOutput } from "@/components/CodeBlock"
@@ -39,8 +39,10 @@ export interface RetrievedChunk {
 }
 
 export interface WorkspaceOutputs {
+  diagnosis?: TrainingDiagnosis
   retriever?: { chunks: RetrievedChunk[] }
   doc?: { type: string; title: string; content: string; citations: Citation[] }
+  guide?: { type: string; title: string; content: string; citations: Citation[]; version?: number }
   mindmap?: { type: string; title: string; content: string }
   quiz?: { type: string; title: string; items: QuizItem[]; count: number }
   path?: { type: string; title: string; nodes: PathNode[]; edges: PathEdge[]; count: number }
@@ -48,8 +50,58 @@ export interface WorkspaceOutputs {
   code?: CodeOutput & { type: string; title: string }
 }
 
-export type StreamMap = { doc: string; mindmap: string; quiz: string; path: string; reading: string; code: string }
+export type StreamMap = { doc: string; guide: string; mindmap: string; quiz: string; path: string; reading: string; code: string }
 export type RunStatus = "idle" | "running" | "done" | "error" | "interrupted"
+
+export interface TrainingDiagnosis {
+  type: "diagnosis"
+  title: string
+  current_level: string
+  target_difficulty: number
+  knowledge_score: number | null
+  evidence_confidence: number
+  knowledge_gaps: string[]
+  training_goal: string
+  training_contract: Record<string, unknown>
+}
+
+export interface ReviewFinding {
+  code?: string
+  severity: "blocker" | "high" | "medium" | string
+  message: string
+  suggestion: string
+  target_agent: "doc" | "guide" | "quiz" | string
+}
+
+export interface TrainingReview {
+  type?: "review"
+  reviewer?: string
+  status: "pass" | "warn" | "fail"
+  score: number
+  findings: ReviewFinding[]
+  metrics?: Record<string, unknown>
+}
+
+export interface TrainingDecision {
+  decision: "publish" | "rework" | "manual_review"
+  summary: string
+  quality_score: number
+  generation_round: number
+  rework_targets: string[]
+  required_fixes: string[]
+  review_scores: Record<string, number>
+  release_gate: { review_count: number; blocker_count: number; all_reviews_present: boolean }
+}
+
+export interface TrainingFeedback {
+  run_id: string
+  accuracy: number | null
+  answered_count: number
+  wrong_items: string[]
+  next_action: string
+  message: string
+  profile_update: { evidence_source: string; suggested_difficulty_delta: number; confidence_delta: number }
+}
 
 export interface QuizAttempt {
   id: string
@@ -67,6 +119,17 @@ export interface WorkspaceState {
   courseId: number | null
   courseName: string
   status: RunStatus
+  runId: string
+  domain: string
+  targetRole: string
+  roleSummary: string
+  coreCompetencies: string[]
+  stage: string
+  generationRound: number
+  diagnosis: TrainingDiagnosis | null
+  reviews: Record<string, TrainingReview>
+  decision: TrainingDecision | null
+  feedback: TrainingFeedback | null
   outputs: WorkspaceOutputs
   stream: StreamMap
   agentStatus: Record<string, string>
@@ -88,7 +151,7 @@ export interface WorkspaceState {
 
 const STORAGE_KEY = "sm:workspace-state"
 
-const EMPTY_STREAM: StreamMap = { doc: "", mindmap: "", quiz: "", path: "", reading: "", code: "" }
+const EMPTY_STREAM: StreamMap = { doc: "", guide: "", mindmap: "", quiz: "", path: "", reading: "", code: "" }
 
 function settleActiveAgents(agents: AgentState[], message: string): AgentState[] {
   return agents.map((agent) => agent.status === "running" || agent.status === "streaming"
@@ -110,6 +173,17 @@ function makeInitialState(): WorkspaceState {
     courseId: null,
     courseName: "",
     status: "idle",
+    runId: "",
+    domain: "",
+    targetRole: "",
+    roleSummary: "",
+    coreCompetencies: [],
+    stage: "idle",
+    generationRound: 1,
+    diagnosis: null,
+    reviews: {},
+    decision: null,
+    feedback: null,
     outputs: {},
     stream: { ...EMPTY_STREAM },
     agentStatus: {},
@@ -151,6 +225,17 @@ function loadFromStorage(): WorkspaceState | null {
       ...parsed,
       courseId: parsed.courseId ?? null,
       courseName: parsed.courseName ?? "",
+      runId: parsed.runId ?? "",
+      domain: parsed.domain ?? "",
+      targetRole: parsed.targetRole ?? "",
+      roleSummary: parsed.roleSummary ?? "",
+      coreCompetencies: parsed.coreCompetencies ?? [],
+      stage: parsed.stage ?? "idle",
+      generationRound: parsed.generationRound ?? 1,
+      diagnosis: parsed.diagnosis ?? null,
+      reviews: parsed.reviews ?? {},
+      decision: parsed.decision ?? null,
+      feedback: parsed.feedback ?? null,
       resourcesConsumed: parsed.resourcesConsumed ?? {},
       quizSessionsRecorded: parsed.quizSessionsRecorded ?? {},
       learningStartedAt: parsed.learningStartedAt ?? 0,
@@ -260,6 +345,17 @@ class WorkspaceStore {
       courseId: courseId ?? null,
       courseName,
       status: "running",
+      runId: "",
+      domain: "",
+      targetRole: "",
+      roleSummary: "",
+      coreCompetencies: [],
+      stage: "diagnosis",
+      generationRound: 1,
+      diagnosis: null,
+      reviews: {},
+      decision: null,
+      feedback: null,
       outputs: {},
       stream: { ...EMPTY_STREAM },
       agentStatus: {},
@@ -317,10 +413,50 @@ class WorkspaceStore {
     const d = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>
     switch (eventName) {
       case "meta": {
-        const data = raw as { agents: AgentMeta[] }
+        const data = raw as {
+          agents: AgentMeta[]; run_id?: string; domain?: string; target_role?: string
+          role_summary?: string; core_competencies?: string[]
+        }
         this.setState({
           agents: data.agents.map((m) => ({ meta: m, status: "pending" as const })),
+          runId: data.run_id ?? "",
+          domain: data.domain ?? "",
+          targetRole: data.target_role ?? "",
+          roleSummary: data.role_summary ?? "",
+          coreCompetencies: data.core_competencies ?? [],
         })
+        break
+      }
+      case "stage": {
+        this.setState({
+          stage: String(d.stage ?? ""),
+          generationRound: Number(d.generation_round ?? 1),
+        })
+        if (d.message) this.appendLog(String(d.message))
+        break
+      }
+      case "diagnosis": {
+        const diagnosis = raw as TrainingDiagnosis
+        this.setState((s) => ({ diagnosis, outputs: { ...s.outputs, diagnosis } }))
+        break
+      }
+      case "review": {
+        const aid = String(d.agent ?? "")
+        this.setState((s) => ({
+          reviews: { ...s.reviews, [aid]: raw as TrainingReview },
+        }))
+        break
+      }
+      case "decision": {
+        this.setState({ decision: raw as TrainingDecision })
+        break
+      }
+      case "rework": {
+        this.setState({
+          stage: "rework",
+          generationRound: Number(d.generation_round ?? 1),
+        })
+        this.appendLog(`裁决退回：${((d.targets as string[]) ?? []).join("、")}`)
         break
       }
       case "agent_status": {
@@ -358,7 +494,23 @@ class WorkspaceStore {
         break
       }
       case "done": {
-        this.setState({ status: "done", finishedAt: Date.now(), lastError: "" })
+        const data = raw as {
+          run_id?: string; stage?: string; generation_round?: number
+          diagnosis?: TrainingDiagnosis; reviews?: Record<string, TrainingReview>; decision?: TrainingDecision
+          outputs?: WorkspaceOutputs
+        }
+        this.setState((s) => ({
+          status: "done",
+          finishedAt: Date.now(),
+          lastError: "",
+          runId: data.run_id ?? s.runId,
+          stage: data.stage ?? s.stage,
+          generationRound: data.generation_round ?? s.generationRound,
+          diagnosis: data.diagnosis ?? s.diagnosis,
+          reviews: data.reviews ?? s.reviews,
+          decision: data.decision ?? s.decision,
+          outputs: data.outputs ?? s.outputs,
+        }))
         this.abort = null
         break
       }
@@ -462,6 +614,23 @@ class WorkspaceStore {
         },
       }
     })
+  }
+
+  async submitTrainingFeedback(satisfaction?: number): Promise<TrainingFeedback> {
+    if (!this.state.runId) throw new Error("没有可反馈的训练记录")
+    const attempts = Object.values(this.state.quizAttempts).map((item) => ({
+      question_id: item.id,
+      correct: item.is_correct,
+      difficulty: item.difficulty,
+    }))
+    const result = await apiPost<TrainingFeedback>("/workspace/feedback", {
+      run_id: this.state.runId,
+      attempts,
+      time_spent_min: Math.round(this.state.learningDurationMs / 60000),
+      satisfaction,
+    })
+    this.setState({ feedback: result, stage: "feedback_updated" })
+    return result
   }
 }
 

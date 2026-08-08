@@ -162,6 +162,26 @@ class LearningPath(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(32), default="active")
 
 
+class TrainingRun(Base, TimestampMixin):
+    """一次可审计的岗位训练闭环运行记录。"""
+    __tablename__ = "training_runs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    course_id: Mapped[int | None] = mapped_column(ForeignKey("courses.id"), nullable=True, index=True)
+    domain: Mapped[str] = mapped_column(String(128), default="")
+    target_role: Mapped[str] = mapped_column(String(128), default="")
+    topic: Mapped[str] = mapped_column(String(256), default="")
+    status: Mapped[str] = mapped_column(String(32), default="running", index=True)
+    stage: Mapped[str] = mapped_column(String(32), default="diagnosis")
+    generation_round: Mapped[int] = mapped_column(Integer, default=1)
+    diagnosis: Mapped[dict] = mapped_column(JSON, default=dict)
+    outputs: Mapped[dict] = mapped_column(JSON, default=dict)
+    reviews: Mapped[dict] = mapped_column(JSON, default=dict)
+    decision: Mapped[dict] = mapped_column(JSON, default=dict)
+    feedback: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class Exercise(Base, TimestampMixin):
     __tablename__ = "exercises"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

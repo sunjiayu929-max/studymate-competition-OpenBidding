@@ -49,10 +49,10 @@ MOCK_QUIZ: list[dict] = [
 class QuizAgent(AgentBase):
     meta = AgentMeta(
         id="quiz",
-        name="题库 Agent",
+        name="分阶测试生成 Agent",
         icon="📝",
         color="emerald",
-        description="生成不同类型的检测题目",
+        description="按岗位能力与学情难度生成分阶检测题",
     )
 
     async def run(self, context: dict, emit: EventEmitter) -> dict:
@@ -60,13 +60,19 @@ class QuizAgent(AgentBase):
         profile = context.get("profile", {})
         course_cfg = context.get("course_cfg")
         course_name = context.get("course_name", "机器学习")
+        target_role = context.get("target_role", "目标岗位")
+        revision_feedback = context.get("revision_feedback", {}).get("quiz", [])
         persona = course_cfg.persona if course_cfg else f"{course_name}课程助教"
 
         if not has_llm_key():
             quiz = await self._stream_mock(emit)
         else:
             try:
-                quiz = await self._gen_real(topic, profile, persona, course_name, emit)
+                quiz = await self._gen_real(
+                    topic, profile, persona, course_name, emit,
+                    target_role=target_role,
+                    revision_feedback=revision_feedback,
+                )
                 if not quiz:
                     raise RuntimeError("empty quiz items")
             except Exception as e:
@@ -75,9 +81,11 @@ class QuizAgent(AgentBase):
 
         return {
             "type": "quiz",
-            "title": f"《{topic}》检测题",
+            "title": f"《{topic}》岗位分阶测试",
             "items": quiz,
             "count": len(quiz),
+            "version": context.get("generation_round", 1),
+            "target_role": target_role,
         }
 
     async def _stream_mock(self, emit) -> list[dict]:
@@ -89,10 +97,21 @@ class QuizAgent(AgentBase):
                 await asyncio.sleep(0.008)
         return quiz
 
-    async def _gen_real(self, topic: str, profile: dict, persona: str, course_name: str, emit) -> list[dict]:
+    async def _gen_real(
+        self,
+        topic: str,
+        profile: dict,
+        persona: str,
+        course_name: str,
+        emit,
+        *,
+        target_role: str,
+        revision_feedback: list[dict],
+    ) -> list[dict]:
         llm = get_llm_client()
         difficulty_hint = self._difficulty_from_profile(profile)
-        sys = f"""你是一位{persona}，同时是{course_name}出题专家。请为《{course_name}》课程下的「{topic}」出 3 道不同类型的题：
+        feedback_text = "；".join(str(item.get("suggestion", item)) for item in revision_feedback) or "无"
+        sys = f"""你是一位{persona}，同时是{course_name}出题专家。请围绕岗位“{target_role}”为「{topic}」出 3 道不同类型、至少覆盖两个难度等级的题：
 1 题选择题（mcq）：4 选项，answer 是 0..3 的索引
 1 题填空题（fill）：answer 是简短答案字符串
 1 题编程题（code）：给 starter 起步代码 + 标答 answer + 说明
@@ -113,6 +132,8 @@ class QuizAgent(AgentBase):
 }}
 
 学生水平参考（综合给定 1-4 难度）：{difficulty_hint}
+审核返工意见：{feedback_text}
+题目必须体现岗位任务情境，并与学生当前难度相邻，避免跨度过大。
 """
         msgs = [{"role": "system", "content": sys}, {"role": "user", "content": topic}]
         raw = await llm.chat_structured(messages=msgs, temperature=0.4)

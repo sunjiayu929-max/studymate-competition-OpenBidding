@@ -16,10 +16,10 @@ from app.llm import get_llm_client, has_llm_key
 class DocAgent(AgentBase):
     meta = AgentMeta(
         id="doc",
-        name="文档 Agent",
+        name="定制讲义生成 Agent",
         icon="📄",
         color="indigo",
-        description="生成带引用的个性化讲解文档",
+        description="生成面向目标岗位、带来源标注的定制讲义",
     )
 
     async def run(self, context: dict, emit: EventEmitter) -> dict:
@@ -28,6 +28,9 @@ class DocAgent(AgentBase):
         chunks = context.get("chunks", [])
         course_cfg = context.get("course_cfg")
         course_name = context.get("course_name", "机器学习")
+        domain = context.get("domain", course_name)
+        target_role = context.get("target_role", f"{course_name}应用工程师")
+        revision_feedback = (context.get("revision_feedback") or {}).get("doc", [])
         persona = course_cfg.persona if course_cfg else f"{course_name}课程助教"
 
         # 构造引用块的简短表示传给 LLM（每条 ≤ 80 字）
@@ -52,7 +55,17 @@ class DocAgent(AgentBase):
             content = await self._stream_mock(topic, course_name, citations, emit)
         else:
             try:
-                content = await self._stream_real(topic, profile, ref_block, persona, course_name, emit)
+                content = await self._stream_real(
+                    topic,
+                    profile,
+                    ref_block,
+                    persona,
+                    course_name,
+                    emit,
+                    domain=domain,
+                    target_role=target_role,
+                    revision_feedback=revision_feedback,
+                )
                 if not content.strip():
                     raise RuntimeError("empty LLM output")
             except Exception as e:
@@ -61,9 +74,11 @@ class DocAgent(AgentBase):
 
         return {
             "type": "doc",
-            "title": f"《{topic}》个性化讲解",
+            "title": f"《{topic}》岗位定制讲义",
             "content": content,
             "citations": citations,
+            "version": int(context.get("generation_round", 1)),
+            "target_role": target_role,
         }
 
     async def _stream_mock(self, topic: str, course_name: str, citations: list, emit) -> str:
@@ -121,9 +136,21 @@ def gradient_descent(x, y, lr=0.01, n_iter=1000):
             await asyncio.sleep(0.02)
         return tmpl
 
-    async def _stream_real(self, topic: str, profile: dict, ref_block: str, persona: str, course_name: str, emit) -> str:
+    async def _stream_real(
+        self,
+        topic: str,
+        profile: dict,
+        ref_block: str,
+        persona: str,
+        course_name: str,
+        emit,
+        *,
+        domain: str = "垂直领域",
+        target_role: str = "领域应用工程师",
+        revision_feedback: list[str] | None = None,
+    ) -> str:
         llm = get_llm_client()
-        sys_prompt = f"""你是一位{persona}，正在为学生生成《{course_name}》课程下「{topic}」的个性化讲解文档。
+        sys_prompt = f"""你是一位{persona}，正在为学习者生成{domain}领域、目标岗位“{target_role}”下「{topic}」的个性化岗位讲义。
 
 【学生画像】
 {json.dumps(profile, ensure_ascii=False)}
@@ -131,8 +158,11 @@ def gradient_descent(x, y, lr=0.01, n_iter=1000):
 【可用的知识库引用】（必须用 [n] 形式引用）
 {ref_block}
 
+【审核返工要求】
+{json.dumps(revision_feedback or [], ensure_ascii=False)}
+
 【输出要求】
-1. Markdown 格式，包含：定义 / 直觉 / 形式化 / 代码 / 误区 / 下一步 等小节
+1. Markdown 格式，包含：岗位任务 / 核心概念 / 实施方法 / 示例 / 风险与误区 / 下一步 等小节
 2. 关键论断后必须用 [n] 引用对应知识源，n 从 1 开始
 3. 数学公式用 $$...$$ 或 $...$（KaTeX 兼容）
 4. 代码块用 ```python ... ```

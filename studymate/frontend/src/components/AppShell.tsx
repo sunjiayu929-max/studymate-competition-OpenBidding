@@ -202,12 +202,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const readyResources = [
     workspace.outputs.doc?.content,
-    workspace.outputs.mindmap?.content,
+    workspace.outputs.guide?.content,
     workspace.outputs.quiz?.items?.length,
-    workspace.outputs.reading?.items?.length,
-    workspace.outputs.code?.code,
-    workspace.outputs.path?.nodes?.length,
-    workspace.topic,
   ].filter(Boolean).length
 
   return (
@@ -273,7 +269,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             trailing={!effectiveCollapsed ? (
               <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-[#F4ECD8] px-1.5 py-0.5 text-[9px] font-extrabold text-[#8E6925]">
                 {workspace.status === "running" && <span className="size-1.5 animate-pulse rounded-full bg-[#B1842C]" />}
-                {workspace.status === "running" ? `${readyResources}/7` : "7 Agents"}
+                {workspace.status === "running" ? `${readyResources}/3` : "8 Agents"}
               </span>
             ) : undefined}
           />

@@ -1,4 +1,4 @@
-# ===== Web 接口 =====
+# ===== Web API =====
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
 pydantic==2.9.2
@@ -10,25 +10,25 @@ email-validator==2.2.0
 aiosmtplib==3.0.2
 pwdlib[argon2]==0.2.1
 
-# ===== 数据库 =====
+# ===== Database =====
 sqlalchemy==2.0.36
 aiosqlite==0.20.0
 greenlet==3.5.0
 
-# ===== 大模型与 Agent =====
+# ===== LLM and Agents =====
 openai==1.54.0
 langgraph==0.2.45
 langchain-core==0.3.15
 httpx==0.27.2
 
 # ===== RAG =====
-# 当前主链路：BM25 + Qwen text-embedding-v3，向量保存在 SQLite JSON 列，
-# 两路结果通过 RRF 融合。Chroma 仅作为 Compose extras 扩展预留。
+# Main pipeline: BM25 + Qwen text-embedding-v3. Vectors are stored in SQLite JSON
+# columns and fused through RRF. Chroma is reserved as an optional Compose extra.
 rank_bm25==0.2.2
-# 如切换到 Chroma，需同时补充迁移、索引构建和部署验证，不能只安装依赖。
+# A Chroma switch also requires migration, index build, and deployment validation.
 # chromadb-client==0.5.18
 
-# ===== 通用工具 =====
+# ===== Utilities =====
 tenacity==9.0.0
 loguru==0.7.2
 pypdf==5.9.0

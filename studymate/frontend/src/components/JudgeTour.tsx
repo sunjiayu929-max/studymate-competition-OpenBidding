@@ -110,9 +110,9 @@ const GUIDE_STEPS: TourStep[] = [
     phase: "生成学习资源",
     label: "学习资源工坊",
     title: "观察七个智能体的真实协作过程",
-    description: "系统先检索课程依据，再并行生成六类内容与可视讲解。生成过程、异常、质量检查和最终七类资源都可见。",
-    check: "发起一次生成，查看 7 个 Agent 状态；完成后进入任一资源，验证下载、笔记与后续学习入口。",
-    evidence: ["7 个 Agent 协作", "先检索后生成", "7 类资源统一归档"],
+    description: "系统先诊断学情，再生成三类岗位资源，由三项独立审核和总裁决决定发布或返工；全过程和最终资源都可见。",
+    check: "发起一次岗位训练，查看 8 个核心 Agent、审核分数和裁决状态；批准发布后进入任一资源验证学习入口。",
+    evidence: ["8 个核心 Agent", "三项交叉审核", "裁决返工与发布门禁"],
     time: "90 秒",
     icon: LayoutDashboard,
     color: "#6F8A69",
@@ -546,7 +546,7 @@ export function JudgeTour() {
                   <div className="mt-3 space-y-2">
                     {[
                       ["01", "选择课程", "确定知识库与学习上下文"],
-                      ["02", "生成一套资源", "让 7 个智能体协作完成学习材料"],
+                      ["02", "运行岗位闭环", "让 8 个核心 Agent 完成诊断、生成、审核与裁决"],
                       ["03", "测验并查看报告", "用结果更新画像与下一步路线"],
                     ].map(([index, title, detail]) => (
                       <div key={index} className="flex items-center gap-3 rounded-xl border border-[#E3DED3] bg-white px-3 py-2.5">

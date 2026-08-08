@@ -5,6 +5,8 @@ import {
   AlertCircle,
   ArrowRight,
   BookOpenCheck,
+  BrainCircuit,
+  BriefcaseBusiness,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -16,6 +18,7 @@ import {
   FileCheck2,
   FileText,
   Film,
+  Gavel,
   Library,
   Loader2,
   Map as RouteIcon,
@@ -29,6 +32,7 @@ import {
   Square,
   Target,
   UserRoundSearch,
+  Wrench,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -43,9 +47,9 @@ import { track } from "@/lib/track"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { fallbackSamplesFor, DEFAULT_SAMPLE_TOPICS, useCourseConfig, useCurrentCourse } from "@/store/course"
 import { useCurrentUser } from "@/store/user"
-import { workspaceStore, useWorkspaceStore, type RunStatus } from "@/store/workspace"
+import { workspaceStore, useWorkspaceStore, type RunStatus, type TrainingDecision, type TrainingDiagnosis, type TrainingReview } from "@/store/workspace"
 
-type AgentKey = "doc" | "mindmap" | "quiz" | "reading" | "code" | "path"
+type AgentKey = "doc" | "guide" | "mindmap" | "quiz" | "reading" | "code" | "path"
 type ResourceKey = AgentKey | "concept"
 type CheckState = "pass" | "working" | "warn" | "idle"
 
@@ -63,12 +67,14 @@ interface ResourceView {
   status: AgentStatus | "ready"
   summary: string
   available: boolean
+  deferred: boolean
 }
 
 const RESOURCE_DEFS: ResourceDefinition[] = [
-  { id: "doc", title: "讲解文档", detail: "带知识库引用的个性化讲解", icon: FileText, color: "#355C8A", wash: "#E7EDF3" },
+  { id: "doc", title: "岗位定制讲义", detail: "带领域来源的个性化岗位讲解", icon: FileText, color: "#355C8A", wash: "#E7EDF3" },
+  { id: "guide", title: "实操指南", detail: "含环境、步骤、验收、异常与安全边界", icon: Wrench, color: "#A05137", wash: "#F4E8E2" },
   { id: "mindmap", title: "思维导图", detail: "结构化梳理概念与关系", icon: MindMapIcon, color: "#B85C3E", wash: "#F4E8E2" },
-  { id: "quiz", title: "检测题", detail: "选择、填空与代码练习", icon: BookOpenCheck, color: "#3E7774", wash: "#E2EEEB" },
+  { id: "quiz", title: "岗位分阶测试", detail: "基础、应用与挑战层级验证", icon: BookOpenCheck, color: "#3E7774", wash: "#E2EEEB" },
   { id: "reading", title: "拓展阅读", detail: "教材、论文、博客与视频", icon: Library, color: "#6F8A69", wash: "#E8EDE5" },
   { id: "code", title: "代码案例", detail: "适配课程场景的可运行示例", icon: Code2, color: "#7E6B83", wash: "#EEE9EF" },
   { id: "path", title: "学习路径", detail: "由画像驱动的阶段化路线", icon: RouteIcon, color: "#B1842C", wash: "#F4ECD8" },
@@ -76,24 +82,34 @@ const RESOURCE_DEFS: ResourceDefinition[] = [
 ]
 
 const AGENT_TONES: Record<string, { icon: LucideIcon; color: string; wash: string }> = {
-  retriever: { icon: Search, color: "#355C8A", wash: "#E7EDF3" },
+  diagnosis: { icon: BrainCircuit, color: "#355C8A", wash: "#E7EDF3" },
   doc: { icon: FileText, color: "#315E83", wash: "#E8ECEE" },
+  guide: { icon: Wrench, color: "#A05137", wash: "#F4E8E2" },
   mindmap: { icon: MindMapIcon, color: "#B85C3E", wash: "#F4E8E2" },
   quiz: { icon: BookOpenCheck, color: "#3E7774", wash: "#E2EEEB" },
   reading: { icon: Library, color: "#6F8A69", wash: "#E8EDE5" },
   code: { icon: Code2, color: "#7E6B83", wash: "#EEE9EF" },
   path: { icon: RouteIcon, color: "#B1842C", wash: "#F4ECD8" },
+  evidence_review: { icon: Search, color: "#4C5F89", wash: "#E7EAF3" },
+  practice_review: { icon: ShieldCheck, color: "#A05137", wash: "#F4E8E2" },
+  difficulty_review: { icon: FileCheck2, color: "#3E7774", wash: "#E2EEEB" },
+  arbiter: { icon: Gavel, color: "#8E6925", wash: "#F4ECD8" },
 }
 
 const STANDBY_AGENTS: AgentState[] = [
-  { meta: { id: "retriever", name: "知识检索", icon: "", color: "sky", description: "从课程知识库检索依据" }, status: "pending" },
-  { meta: { id: "doc", name: "讲解文档", icon: "", color: "indigo", description: "生成带引用的个性化讲解" }, status: "pending" },
-  { meta: { id: "mindmap", name: "思维导图", icon: "", color: "rose", description: "组织概念与知识关系" }, status: "pending" },
-  { meta: { id: "quiz", name: "检测题", icon: "", color: "emerald", description: "生成多类型学习验证" }, status: "pending" },
-  { meta: { id: "reading", name: "拓展阅读", icon: "", color: "sky", description: "推荐教材、论文与视频" }, status: "pending" },
-  { meta: { id: "code", name: "代码案例", icon: "", color: "violet", description: "生成课程适配的示例" }, status: "pending" },
-  { meta: { id: "path", name: "学习路径", icon: "", color: "amber", description: "规划个性化学习阶段" }, status: "pending" },
+  { meta: { id: "diagnosis", name: "学情诊断 Agent", icon: "", color: "sky", description: "定位岗位能力盲区与目标难度" }, status: "pending" },
+  { meta: { id: "doc", name: "定制讲义生成 Agent", icon: "", color: "indigo", description: "生成带领域来源的岗位讲义" }, status: "pending" },
+  { meta: { id: "guide", name: "实操指南生成 Agent", icon: "", color: "rose", description: "生成可执行、可验收的实操指南" }, status: "pending" },
+  { meta: { id: "quiz", name: "分阶测试生成 Agent", icon: "", color: "emerald", description: "生成匹配学情的分阶测试" }, status: "pending" },
+  { meta: { id: "evidence_review", name: "事实与来源审核 Agent", icon: "", color: "indigo", description: "核对专业主张与来源引用" }, status: "pending" },
+  { meta: { id: "practice_review", name: "实操规范审核 Agent", icon: "", color: "rose", description: "检查步骤、异常和安全边界" }, status: "pending" },
+  { meta: { id: "difficulty_review", name: "难度与覆盖审核 Agent", icon: "", color: "emerald", description: "校准难度与核心能力覆盖" }, status: "pending" },
+  { meta: { id: "arbiter", name: "总裁决 Agent", icon: "", color: "amber", description: "决定发布、返工或人工复核" }, status: "pending" },
 ]
+
+const CORE_RESOURCE_IDS: ResourceKey[] = ["doc", "guide", "quiz"]
+
+interface RoleContext { domain: string; target_role: string; role_summary: string; core_competencies: string[] }
 
 function formatDuration(startedAt: number, finishedAt: number) {
   if (!startedAt || !finishedAt || finishedAt <= startedAt) return ""
@@ -111,7 +127,11 @@ export function Workspace() {
   const userId = user?.user_id ?? 0
   const course = useCurrentCourse()
   const courseCfg = useCourseConfig()
-  const { topic, status, agents, logs, outputs, startedAt, finishedAt, lastError } = useWorkspaceStore()
+  const {
+    topic, status, agents, logs, outputs, startedAt, finishedAt, lastError,
+    domain, targetRole, roleSummary, coreCompetencies, stage, generationRound,
+    diagnosis, reviews, decision, feedback, quizAttempts,
+  } = useWorkspaceStore()
   const isRunning = status === "running"
 
   const sampleTopics = courseCfg?.sample_topics?.length
@@ -123,6 +143,7 @@ export function Workspace() {
   const suggestedTopic = searchParams.get("topic")?.trim() || ""
   const [topicInput, setTopicInput] = useState(suggestedTopic || topic || sampleTopics[0] || "梯度下降")
   const [profile, setProfile] = useState<ProfileMiniData | null>(null)
+  const [roleContext, setRoleContext] = useState<RoleContext | null>(null)
 
   useTutorContext({
     page: "workspace",
@@ -145,16 +166,23 @@ export function Workspace() {
     }
   }, [status, userId])
 
+  useEffect(() => {
+    if (!course?.id) {
+      setRoleContext(null)
+      return
+    }
+    let active = true
+    apiGet<RoleContext>(`/workspace/role-context?course_id=${course.id}`)
+      .then((value) => { if (active) setRoleContext(value) })
+      .catch(() => { if (active) setRoleContext(null) })
+    return () => { active = false }
+  }, [course?.id])
+
   const handleGenerate = (nextTopic?: string) => {
     const value = (nextTopic ?? topicInput).trim()
     if (!value || isRunning || !userId || !course) return
     setTopicInput(value)
     track("workspace_start", "topic", value, { course_id: course?.id ?? null, course_name: course?.name ?? null })
-    // 可视讲解仍使用原接口与原结果，只把请求和懒加载代码块提前到显式生成之后。
-    void import("@/components/concepts/ConceptAutoExplain").catch(() => undefined)
-    void import("@/lib/concept")
-      .then(({ prefetchConcept }) => prefetchConcept(value, userId))
-      .catch(() => undefined)
     workspaceStore.start(value, userId, course?.id ?? null, course?.name || "")
   }
 
@@ -171,19 +199,17 @@ export function Workspace() {
     document.getElementById("workspace-resources")?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" })
   }
 
-  const statusOf = (id: AgentKey): AgentStatus => {
+  const statusOf = (id: ResourceKey): AgentStatus => {
     return agents.find((agent) => agent.meta.id === id)?.status || "pending"
   }
 
   const hasOutput = (id: ResourceKey) => {
+    if (!CORE_RESOURCE_IDS.includes(id)) return false
     switch (id) {
       case "doc": return Boolean(outputs.doc?.content)
-      case "mindmap": return Boolean(outputs.mindmap?.content)
+      case "guide": return Boolean(outputs.guide?.content)
       case "quiz": return Boolean(outputs.quiz?.items?.length)
-      case "reading": return Boolean(outputs.reading?.items?.length)
-      case "code": return Boolean(outputs.code?.code)
-      case "path": return Boolean(outputs.path?.nodes?.length)
-      case "concept": return Boolean(topic)
+      default: return false
     }
   }
 
@@ -196,24 +222,17 @@ export function Workspace() {
         const citations = doc.citations?.length || 0
         return citations ? `${characters} 字 · ${citations} 条引用` : `${characters} 字 · 暂无引用`
       }
-      case "mindmap": {
-        const content = outputs.mindmap?.content || ""
-        const branches = content.split("\n").filter((line) => /^##\s/u.test(line)).length
-        return content ? `${branches || "已生成"} ${branches ? "个主分支" : "结构化导图"}` : "等待导图智能体"
+      case "guide": {
+        const guide = outputs.guide
+        if (!guide?.content) return "等待实操指南生成"
+        return `${guide.content.replace(/\s+/g, "").length} 字 · ${guide.citations?.length || 0} 条来源`
       }
       case "quiz": return outputs.quiz ? `${outputs.quiz.count} 道题` : "等待题库智能体"
-      case "reading": return outputs.reading ? `${outputs.reading.count} 个拓展资源` : "等待读取推荐"
-      case "code": {
-        const code = outputs.code
-        return code?.code ? `${code.filename || code.language || "代码"} · ${code.code.split("\n").length} 行` : "等待代码智能体"
-      }
-      case "path": return outputs.path ? `${outputs.path.count} 个学习阶段` : "等待路径智能体"
-      case "concept": return topic ? "动画 / 黑板 / 真人视频" : "生成主题后即可打开"
+      default: return "本轮仅保留入口，暂不生成内容"
     }
   }
 
   const readyResourceCount = RESOURCE_DEFS.filter((resource) => hasOutput(resource.id)).length
-  const citationsCount = outputs.doc?.citations?.length || 0
   const retrievedChunks = outputs.retriever?.chunks || []
   const sourceNames = [...new Set(retrievedChunks.map((chunk) => chunk.source).filter(Boolean))]
   const errorCount = agents.filter((agent) => agent.status === "error").length
@@ -228,34 +247,32 @@ export function Workspace() {
   const courseChunkLabel = course?.name === "机器学习" ? "1000+" : course ? "500+" : ""
 
   const qualityChecks: Array<{ label: string; value: string; state: CheckState }> = [
+    ...[
+      ["事实与来源", reviews.evidence_review],
+      ["实操规范", reviews.practice_review],
+      ["难度与覆盖", reviews.difficulty_review],
+    ].map(([label, review]) => {
+      const item = review as TrainingReview | undefined
+      return {
+        label: label as string,
+        value: item ? `${item.score} 分 · ${item.status === "pass" ? "通过" : item.status === "warn" ? "有建议" : "未通过"}` : isRunning ? "等待审核" : "尚未执行",
+        state: (item ? item.status === "fail" ? "warn" : "pass" : isRunning ? "working" : "idle") as CheckState,
+      }
+    }),
     {
-      label: "知识检索",
-      value: retrievedChunks.length ? `${retrievedChunks.length} 条命中` : isRunning ? "正在检索" : status === "done" ? "未命中知识片段" : status === "error" || status === "interrupted" ? "本轮未完成" : "等待执行",
-      state: retrievedChunks.length ? "pass" : isRunning ? "working" : status === "done" || status === "error" || status === "interrupted" ? "warn" : "idle",
-    },
-    {
-      label: "引用可追溯",
-      value: citationsCount ? `${citationsCount} 条引用` : isRunning ? "文档生成中" : status === "done" ? "文档未返回引用" : status === "error" || status === "interrupted" ? "本轮未完成" : "等待文档生成",
-      state: citationsCount ? "pass" : isRunning ? "working" : status === "done" || status === "error" || status === "interrupted" ? "warn" : "idle",
-    },
-    {
-      label: "资源完整性",
-      value: `${readyResourceCount} / 7 类`,
-      state: readyResourceCount === 7 ? "pass" : isRunning ? "working" : status === "done" || status === "error" || status === "interrupted" ? "warn" : "idle",
-    },
-    {
-      label: "运行异常",
-      value: errorCount ? `${errorCount} 项异常` : status === "error" ? "连接异常" : status === "interrupted" ? "已停止生成" : status === "done" ? "未发现异常" : isRunning ? "持续监测中" : "等待完成",
-      state: errorCount || status === "error" || status === "interrupted" ? "warn" : status === "done" ? "pass" : isRunning ? "working" : "idle",
+      label: "裁决门禁",
+      value: decision ? decision.decision === "publish" ? `批准发布 · ${decision.quality_score} 分` : decision.decision === "rework" ? "已退回返工" : "转人工复核" : "等待裁决",
+      state: decision ? decision.decision === "publish" ? "pass" : "warn" : isRunning ? "working" : "idle",
     },
   ]
 
+  const released = decision ? decision.decision === "publish" : status === "done" && !agents.some((agent) => agent.meta.id === "arbiter")
+
   const resourceItems: ResourceView[] = RESOURCE_DEFS.map((resource) => {
-    const available = hasOutput(resource.id)
-    const resourceStatus: AgentStatus | "ready" = resource.id === "concept"
-      ? available ? "ready" : "pending"
-      : available ? "done" : statusOf(resource.id)
-    return { resource, status: resourceStatus, summary: summaryOf(resource.id), available }
+    const deferred = !CORE_RESOURCE_IDS.includes(resource.id)
+    const available = hasOutput(resource.id) && released
+    const resourceStatus: AgentStatus | "ready" = available ? "done" : deferred ? "pending" : statusOf(resource.id)
+    return { resource, status: resourceStatus, summary: summaryOf(resource.id), available, deferred }
   })
 
   return (
@@ -273,17 +290,17 @@ export function Workspace() {
             <div className="max-w-3xl">
               <div className="mb-2 flex items-center gap-2 text-[11px] font-bold tracking-[0.12em] text-[#315E83]">
                 <span className="size-1.5 rounded-full bg-[#B85C3E]" />
-                核心能力 · 多智能体资源生成
+                赛题 B · 领域知识个性化生成与多智能体协同决策
               </div>
               <h1 className="text-balance text-[28px] font-bold leading-[1.18] tracking-[-0.045em] text-[#18232D] sm:text-[36px]">
-                把一个知识点，<span className="text-[#315E83]">组织成完整学习资源包。</span>
+                围绕一个目标岗位，<span className="text-[#315E83]">跑通可审计的训练闭环。</span>
               </h1>
-              <p className="mt-2 text-sm leading-6 text-[#66717B]">由 7 个学习 Agent 协同完成知识检索、内容生成与路径编排，并把可视讲解一并纳入本次学习资源包。</p>
+              <p className="mt-2 text-sm leading-6 text-[#66717B]">8 个核心 Agent 完成学情诊断、三类资源生成、三项交叉审核与总裁决；不达标自动返工，通过后才发布。</p>
             </div>
 
             <div className="flex flex-wrap gap-2">
               <Link to="/courses" className="inline-flex h-10 items-center gap-2 rounded-full border border-[#C9C2B4] bg-[#FFFEFA] px-4 text-xs font-semibold text-[#244C66] hover:bg-[#F1EDE4]">
-                <Database className="size-4" />{course?.name || "选择课程知识库"}<ChevronRight className="size-3.5" />
+                <Database className="size-4" />{course ? `${course.name} · 岗位领域` : "选择岗位领域"}<ChevronRight className="size-3.5" />
               </Link>
               <Link to="/profile" className="inline-flex h-10 items-center gap-2 rounded-full border border-[#C9C2B4] bg-[#F7F2E7] px-4 text-xs font-semibold text-[#6A5941] hover:bg-[#EEE8DB]">
                 <UserRoundSearch className="size-4" />{profile ? `画像 v${profile.version}` : "建立学习画像"}<ChevronRight className="size-3.5" />
@@ -316,13 +333,13 @@ export function Workspace() {
                 <div className="relative z-10">
                   <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <span className="text-[11px] font-bold tracking-[0.1em] text-[#B85C3E]">01 · 定义生成任务</span>
-                      <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#18232D]">今天要把哪个知识点讲清楚？</h2>
+                      <span className="text-[11px] font-bold tracking-[0.1em] text-[#B85C3E]">01 · 定义岗位训练任务</span>
+                      <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#18232D]">今天要攻克哪个岗位任务或能力点？</h2>
                     </div>
                     <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold text-[#59636B]">
-                      <span className="rounded-full border border-[#D7D1C4] bg-[#F8F6F0] px-2.5 py-1">先检索后生成</span>
-                      <span className="rounded-full border border-[#D7D1C4] bg-[#F8F6F0] px-2.5 py-1">画像参与策略</span>
-                      <span className="rounded-full border border-[#D7D1C4] bg-[#F8F6F0] px-2.5 py-1">七类资源并发输出</span>
+                      <span className="rounded-full border border-[#D7D1C4] bg-[#F8F6F0] px-2.5 py-1">画像诊断</span>
+                      <span className="rounded-full border border-[#D7D1C4] bg-[#F8F6F0] px-2.5 py-1">交叉审核</span>
+                      <span className="rounded-full border border-[#D7D1C4] bg-[#F8F6F0] px-2.5 py-1">裁决后发布</span>
                     </div>
                   </div>
 
@@ -340,7 +357,7 @@ export function Workspace() {
                         value={topicInput}
                         onChange={(event) => setTopicInput(event.target.value)}
                         disabled={isRunning}
-                        placeholder="例如：梯度下降为什么会收敛？"
+                        placeholder="例如：完成工业缺陷分类模型的训练与误检分析"
                         className="h-13 w-full rounded-xl border border-[#CFC8B9] bg-[#FDFBF6] pl-11 pr-4 text-sm text-[#18232D] outline-none transition-shadow placeholder:text-[#929792] focus:border-[#315E83] focus:ring-3 focus:ring-[#315E83]/10 disabled:opacity-60"
                       />
                     </label>
@@ -361,7 +378,7 @@ export function Workspace() {
                         disabled={isRunning || !topicInput.trim() || !course}
                         className="inline-flex h-13 flex-1 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] shadow-[0_9px_20px_rgba(36,76,102,.18)] transition-all hover:-translate-y-0.5 hover:bg-[#193B50] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55 sm:flex-none"
                       >
-                        {isRunning ? <><Loader2 className="size-4 animate-spin" />协作生成中</> : !course ? <><Library className="size-4" />先选课程</> : <><Rocket className="size-4" />启动协同生成</>}
+                        {isRunning ? <><Loader2 className="size-4 animate-spin" />闭环运行中</> : !course ? <><Library className="size-4" />先选领域</> : <><Rocket className="size-4" />启动岗位训练闭环</>}
                       </button>
                     </div>
                   </form>
@@ -407,6 +424,11 @@ export function Workspace() {
                 progress={overallProgress}
                 reduceMotion={Boolean(reduceMotion)}
                 onCancel={handleCancel}
+                stage={stage}
+                generationRound={generationRound}
+                diagnosis={diagnosis}
+                reviews={reviews}
+                decision={decision}
               />
 
               <ResourceShelf
@@ -417,6 +439,13 @@ export function Workspace() {
                 showingPrevious={showingPreviousResults}
                 onOpen={(resourceId) => navigate(`/workspace/r/${resourceId}`)}
                 reduceMotion={Boolean(reduceMotion)}
+                released={released}
+              />
+
+              <FeedbackLoopPanel
+                released={released}
+                feedback={feedback}
+                attemptCount={Object.keys(quizAttempts).length}
               />
             </div>
 
@@ -436,9 +465,10 @@ export function Workspace() {
                 </div>
 
                 <div className="mt-4 space-y-2">
-                  <EvidenceRow icon={Database} label="课程范围" value={course?.name || "尚未选择"} hint={course ? `${courseChunkLabel} 个知识片段可检索` : "选择课程后锁定检索与引用范围"} />
+                  <EvidenceRow icon={Database} label="领域知识库" value={domain || roleContext?.domain || course?.name || "尚未选择"} hint={course ? `${courseChunkLabel} 个知识片段可检索` : "选择领域后锁定检索与引用范围"} />
+                  <EvidenceRow icon={BriefcaseBusiness} label="目标岗位" value={targetRole || roleContext?.target_role || "等待领域映射"} hint={roleSummary || roleContext?.role_summary || "领域确定后自动匹配主岗位"} />
                   <EvidenceRow icon={UserRoundSearch} label="画像依据" value={profile ? `版本 v${profile.version}` : "尚未建立"} hint={profileGoal || "目标、节奏与资源偏好将参与生成"} />
-                  <EvidenceRow icon={Target} label="当前主题" value={topic || "等待启动"} hint={weakTopics.length ? `优先关注：${weakTopics.slice(0, 2).join("、")}` : "完成画像后可匹配薄弱知识点"} />
+                  <EvidenceRow icon={Target} label="当前任务" value={topic || "等待启动"} hint={diagnosis?.knowledge_gaps?.length ? `诊断盲区：${diagnosis.knowledge_gaps.slice(0, 2).join("、")}` : weakTopics.length ? `优先关注：${weakTopics.slice(0, 2).join("、")}` : `核心能力：${(coreCompetencies.length ? coreCompetencies : roleContext?.core_competencies || []).slice(0, 2).join("、") || "等待诊断"}`} />
                 </div>
 
                 {sourceNames.length > 0 && (
@@ -455,7 +485,7 @@ export function Workspace() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <span className="text-[11px] font-bold tracking-[0.1em] text-[#B1842C]">质量与可信度</span>
-                    <h2 className="mt-1 text-lg font-bold tracking-[-0.025em] text-[#18232D]">自动检查</h2>
+                    <h2 className="mt-1 text-lg font-bold tracking-[-0.025em] text-[#18232D]">审核与发布门禁</h2>
                   </div>
                   {generationDuration && <span className="inline-flex items-center gap-1 rounded-full bg-[#F4ECD8] px-2.5 py-1 text-[11px] font-bold text-[#8E6925]"><Clock3 className="size-3" />{generationDuration}</span>}
                 </div>
@@ -466,7 +496,7 @@ export function Workspace() {
 
                 <div className="mt-3 rounded-2xl border border-[#D5D8CF] bg-[#E9EEE6] p-3">
                   <div className="flex items-center gap-2 text-[11px] font-bold text-[#557052]"><ShieldCheck className="size-4" />幻觉防控原则</div>
-                  <p className="mt-1.5 text-[11px] leading-5 text-[#59636B]">只有带知识来源的讲解会标记为“可追溯”。引用可在文档详情中逐条展开；未返回依据时会明确提示，而不是伪装成已验证。</p>
+                  <p className="mt-1.5 text-[11px] leading-5 text-[#59636B]">事实来源、实操规范、难度覆盖分别审核；总裁决只读取结构化审核证据。存在阻断项时资源不会发布，并会留下返工意见与轮次。</p>
                 </div>
               </article>
 
@@ -483,7 +513,7 @@ export function Workspace() {
 
           <footer className="mt-5 flex flex-col gap-2 border-t border-[#CFC8B9] px-1 pt-4 text-[11px] text-[#747C7D] sm:flex-row sm:items-center sm:justify-between">
             <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-[#6F8A69]" />AI 生成内容保留来源、过程与异常状态，便于复核</span>
-            <span>7 Agent 协作 · 七类资源统一归档 · {status === "done" ? "本轮结果已保存" : status === "interrupted" ? "中断前成果已保留" : "生成完成后自动保存"}</span>
+            <span>8 个核心 Agent · 诊断—生成—审核—裁决—发布—反馈 · {status === "done" ? released ? "本轮已裁决发布" : "本轮等待人工复核" : status === "interrupted" ? "中断前证据已保留" : "运行过程自动留痕"}</span>
           </footer>
         </main>
       </div>
@@ -517,8 +547,8 @@ function RunRecoveryNotice({
       ? `本轮已完成，但有 ${errorCount} 个节点生成异常`
       : "本轮生成未完整结束"
   const detail = message || (isPartial
-    ? `目前已有 ${readyCount} / 7 类资源可继续学习；你可以先检查成果，也可以重新生成完整资源包。`
-    : `目前已有 ${readyCount} / 7 类资源被保留，可先查看或重新生成。`)
+    ? `目前已有 ${readyCount} / ${RESOURCE_DEFS.length} 类资源可继续学习；你可以先检查成果，也可以重新生成完整资源包。`
+    : `目前已有 ${readyCount} / ${RESOURCE_DEFS.length} 类资源被保留，可先查看或重新生成。`)
 
   return (
     <motion.section
@@ -556,6 +586,11 @@ function AgentBoard({
   progress,
   reduceMotion,
   onCancel,
+  stage,
+  generationRound,
+  diagnosis,
+  reviews,
+  decision,
 }: {
   agents: AgentState[]
   logs: string[]
@@ -563,15 +598,28 @@ function AgentBoard({
   progress: number
   reduceMotion: boolean
   onCancel: () => void
+  stage: string
+  generationRound: number
+  diagnosis: TrainingDiagnosis | null
+  reviews: Record<string, TrainingReview>
+  decision: TrainingDecision | null
 }) {
   const visibleAgents = agents.length ? agents : STANDBY_AGENTS
-  const retriever = visibleAgents.find((agent) => agent.meta.id === "retriever") || STANDBY_AGENTS[0]
-  const workers = visibleAgents.filter((agent) => agent.meta.id !== "retriever")
+  const diagnosisAgent = visibleAgents.find((agent) => agent.meta.id === "diagnosis") || STANDBY_AGENTS[0]
+  const generators = visibleAgents.filter((agent) => ["doc", "guide", "quiz"].includes(agent.meta.id))
+  const reviewerAgents = visibleAgents.filter((agent) => ["evidence_review", "practice_review", "difficulty_review"].includes(agent.meta.id))
+  const arbiter = visibleAgents.find((agent) => agent.meta.id === "arbiter") || STANDBY_AGENTS[7]
   const activeCount = visibleAgents.filter((agent) => agent.status === "running" || agent.status === "streaming").length
   const doneCount = agents.filter((agent) => agent.status === "done").length
   const errorCount = agents.filter((agent) => agent.status === "error").length
   const settledCount = doneCount + errorCount
   const latestLogs = logs.slice(-3)
+  const stages = [
+    ["diagnosis", "诊断"], ["generation", "生成"], ["review", "审核"],
+    ["decision", "裁决"], ["published", "发布"], ["feedback_updated", "反馈更新"],
+  ] as const
+  const normalizedStage = stage === "retrieval" ? "diagnosis" : stage === "rework" ? "generation" : stage === "publishing" ? "published" : stage === "manual_review" ? "decision" : stage
+  const activeStageIndex = Math.max(0, stages.findIndex(([key]) => key === normalizedStage))
 
   const statusCopy = status === "running"
       ? `${activeCount || 1} 个智能体正在协作`
@@ -592,9 +640,9 @@ function AgentBoard({
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <span className="text-[11px] font-bold tracking-[0.1em] text-[#6F8A69]">02 · 七智能体协作</span>
-          <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#18232D]">先找到依据，再并发生成</h2>
-          <p className="mt-1 text-xs leading-5 text-[#66717B]">7 个学习 Agent 共享同一主题、课程依据与学习画像，按各自职责协同工作。</p>
+          <span className="text-[11px] font-bold tracking-[0.1em] text-[#6F8A69]">02 · 可验证的八智能体闭环</span>
+          <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#18232D]">从诊断到裁决，每一步都有状态和证据</h2>
+          <p className="mt-1 text-xs leading-5 text-[#66717B]">三生成与三审核职责隔离，总裁决可退回指定资源；当前第 {generationRound} 轮。</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-1.5 text-[11px] font-bold text-[#59636B]" aria-live="polite">
@@ -609,21 +657,39 @@ function AgentBoard({
         </div>
       </div>
 
-      <div className="mt-5 grid items-stretch gap-3 lg:grid-cols-[190px_34px_minmax(0,1fr)]">
-        <div className="rounded-2xl border border-[#C9D2D5] bg-[#FFFEFA] p-4">
-          <div className="mb-2 text-[11px] font-bold tracking-[0.1em] text-[#7A817F]">Agent 01 · RAG 检索课程依据</div>
-          <AgentNode agent={retriever} reduceMotion={reduceMotion} prominent />
-        </div>
+      <div className="mt-5 flex items-center gap-1 overflow-x-auto rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] p-2.5">
+        {stages.map(([key, label], index) => {
+          const current = index === activeStageIndex
+          const complete = index < activeStageIndex || (key === "published" && decision?.decision === "publish")
+          return <div key={key} className="flex min-w-0 flex-1 items-center gap-1">
+            <span className={`flex min-w-[74px] flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[10px] font-bold ${current ? "bg-[#244C66] text-white" : complete ? "bg-[#E8EDE5] text-[#557052]" : "bg-[#F3F0E9] text-[#8A8172]"}`}>
+              {complete ? <Check className="size-3" /> : current && status === "running" ? <Loader2 className="size-3 animate-spin" /> : <span className="grid size-4 place-items-center rounded-full border border-current text-[9px]">{index + 1}</span>}{label}
+            </span>
+            {index < stages.length - 1 && <ChevronRight className="size-3 shrink-0 text-[#AAA69C]" />}
+          </div>
+        })}
+      </div>
 
-        <div className="hidden items-center justify-center lg:flex">
-          <div className="relative h-px w-full bg-[#BEB7AA]"><ArrowRight className="absolute -right-1 top-1/2 size-4 -translate-y-1/2 text-[#8B867D]" /></div>
+      <div className="mt-3 space-y-2">
+        <div className="rounded-2xl border border-[#C9D2D5] bg-[#FFFEFA] p-3">
+          <div className="mb-2 text-[10px] font-bold tracking-[0.08em] text-[#7A817F]">01 · 学情诊断</div>
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(220px,.85fr)]">
+            <AgentNode agent={diagnosisAgent} reduceMotion={reduceMotion} prominent />
+            {diagnosis ? <div className="rounded-xl bg-[#E7EDF3] px-3 py-2.5 text-[10px] leading-4 text-[#315E83]"><strong>{diagnosis.current_level}水平 · 目标难度 {diagnosis.target_difficulty}/4</strong><br />知识盲区：{diagnosis.knowledge_gaps.slice(0, 3).join("、") || "待补充证据"}</div> : <div className="rounded-xl bg-[#F3F0E9] px-3 py-2.5 text-[10px] leading-4 text-[#8A8172]">启动后将在这里展示当前水平、目标难度与知识盲区。</div>}
+          </div>
         </div>
-        <div className="flex items-center justify-center lg:hidden"><ChevronDown className="size-5 text-[#8B867D]" /></div>
-
-        <div className="rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] p-3">
-          <div className="mb-2 px-1 text-[11px] font-bold tracking-[0.1em] text-[#7A817F]">Agent 02–07 · 多类学习资源并发生成</div>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {workers.map((agent) => <AgentNode key={agent.meta.id} agent={agent} reduceMotion={reduceMotion} />)}
+        <div className="flex justify-center"><ChevronDown className="size-4 text-[#8B867D]" /></div>
+        <div className="grid items-stretch gap-2 lg:grid-cols-[minmax(0,1fr)_22px_minmax(0,1fr)]">
+          <AgentGroup title="02–04 · 三类资源并行生成" agents={generators} reduceMotion={reduceMotion} />
+          <FlowArrow />
+          <AgentGroup title="05–07 · 三项独立交叉审核" agents={reviewerAgents} reduceMotion={reduceMotion} reviews={reviews} />
+        </div>
+        <div className="flex justify-center"><ChevronDown className="size-4 text-[#8B867D]" /></div>
+        <div className="rounded-2xl border border-[#D8C9A8] bg-[#FFFEFA] p-3">
+          <div className="mb-2 text-[10px] font-bold tracking-[0.08em] text-[#7A817F]">08 · 总裁决</div>
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(220px,.85fr)]">
+            <AgentNode agent={arbiter} reduceMotion={reduceMotion} prominent />
+            {decision ? <div className={`rounded-xl px-3 py-2.5 text-[10px] font-bold leading-4 ${decision.decision === "publish" ? "bg-[#E8EDE5] text-[#557052]" : "bg-[#F4E8E2] text-[#A05137]"}`}>{decision.decision === "publish" ? "批准发布" : decision.decision === "rework" ? "退回返工" : "人工复核"}<br />综合质量 {decision.quality_score} 分 · 第 {decision.generation_round} 轮裁决</div> : <div className="rounded-xl bg-[#F3F0E9] px-3 py-2.5 text-[10px] leading-4 text-[#8A8172]">汇总三项审核证据后，决定发布、返工或人工复核。</div>}
           </div>
         </div>
       </div>
@@ -649,6 +715,34 @@ function AgentBoard({
       </div>
     </motion.article>
   )
+}
+
+function FlowArrow() {
+  return <div className="flex items-center justify-center py-1 xl:py-0"><ChevronDown className="size-4 text-[#8B867D] xl:hidden" /><ArrowRight className="hidden size-4 text-[#8B867D] xl:block" /></div>
+}
+
+function AgentGroup({
+  title,
+  agents,
+  reduceMotion,
+  reviews,
+}: {
+  title: string
+  agents: AgentState[]
+  reduceMotion: boolean
+  reviews?: Record<string, TrainingReview>
+}) {
+  return <div className="rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] p-3">
+    <div className="mb-2 text-[10px] font-bold tracking-[0.08em] text-[#7A817F]">{title}</div>
+    <div className="grid gap-2">
+      {agents.map((agent) => <div key={agent.meta.id}>
+        <AgentNode agent={agent} reduceMotion={reduceMotion} />
+        {reviews?.[agent.meta.id] && <div className="-mt-1 rounded-b-xl border border-t-0 border-[#DDD7CB] bg-[#F8F6F0] px-2.5 pb-1.5 pt-2 text-[10px] text-[#66717B]">
+          <span className="font-bold text-[#18232D]">{reviews[agent.meta.id].score} 分</span> · {reviews[agent.meta.id].findings.length ? `${reviews[agent.meta.id].findings.length} 条纠偏意见` : "无阻断项"}
+        </div>}
+      </div>)}
+    </div>
+  </div>
 }
 
 function AgentNode({ agent, reduceMotion, prominent = false }: { agent: AgentState; reduceMotion: boolean; prominent?: boolean }) {
@@ -721,6 +815,7 @@ function ResourceShelf({
   showingPrevious,
   onOpen,
   reduceMotion,
+  released,
 }: {
   items: ResourceView[]
   generatedCount: number
@@ -729,6 +824,7 @@ function ResourceShelf({
   showingPrevious: boolean
   onOpen: (resourceId: ResourceKey) => void
   reduceMotion: boolean
+  released: boolean
 }) {
   const docReady = items.some((item) => item.resource.id === "doc" && item.available)
   const quizReady = items.some((item) => item.resource.id === "quiz" && item.available)
@@ -748,15 +844,15 @@ function ResourceShelf({
             <span className="rounded-full bg-[#E9EEE6] px-2 py-0.5 text-[10px] font-bold text-[#557052]">AI 生成 · 可复核</span>
           </div>
           <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#18232D]">{showingPrevious ? `上一轮《${topic}》资源包` : "本次学习资源包"}</h2>
-          <p className="mt-1 text-xs text-[#66717B]">{showingPrevious ? "旧成果保持可复核；启动上方新主题后，这里会切换到新一轮生成过程。" : "每种成果都可独立打开、验证，并继续进入笔记、测验或学习报告。"}</p>
+          <p className="mt-1 text-xs text-[#66717B]">{showingPrevious ? "旧成果保持可复核；启动上方新主题后，这里会切换到新一轮生成过程。" : released ? "本轮已发布讲义、实操指南和分阶测试；其余入口暂不生成内容。" : "三项核心资源正在生成或审核中；只有总裁决批准后才会解锁学习入口。"}</p>
         </div>
         <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[#D7D1C4] bg-[#F8F6F0] px-3 py-1.5 text-[11px] font-bold text-[#59636B]">
           <CheckCircle2 className="size-3.5 text-[#6F8A69]" />
-          {generatedCount} / 7 类资源已生成
+          {generatedCount} / {CORE_RESOURCE_IDS.length} 项核心资源{released ? "已发布" : "生成待审核"}
         </span>
       </div>
 
-      {runStatus === "done" && generatedCount > 0 && !showingPrevious && (
+      {runStatus === "done" && generatedCount > 0 && released && !showingPrevious && (
         <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-[#D5D8CF] bg-[#EEF2EB] p-3.5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-2.5">
             <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#FFFEFA] text-[#557052]"><CheckCircle2 className="size-4" /></span>
@@ -774,7 +870,7 @@ function ResourceShelf({
       )}
 
       <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map(({ resource, status, summary, available }, index) => (
+        {items.map(({ resource, status, summary, available, deferred }, index) => (
           <ResourceTile
             key={resource.id}
             index={index + 1}
@@ -782,14 +878,65 @@ function ResourceShelf({
             status={status}
             summary={summary}
             available={available}
+            deferred={deferred}
             runStatus={runStatus}
             onOpen={() => onOpen(resource.id)}
             reduceMotion={reduceMotion}
+            released={released}
           />
         ))}
       </div>
     </motion.section>
   )
+}
+
+function FeedbackLoopPanel({
+  released,
+  feedback,
+  attemptCount,
+}: {
+  released: boolean
+  feedback: ReturnType<typeof useWorkspaceStore>["feedback"]
+  attemptCount: number
+}) {
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState("")
+
+  if (!released) return null
+
+  const submit = async () => {
+    setSubmitting(true)
+    setError("")
+    try {
+      await workspaceStore.submitTrainingFeedback()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "反馈更新失败，请稍后重试")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-[26px] border border-[#CFC8B9] bg-[#F7F2E7] p-5 shadow-[0_12px_30px_rgba(24,35,45,.05)] sm:p-6">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#E2EEEB] text-[#3E7774]"><RotateCcw className="size-[18px]" /></span>
+        <div>
+          <span className="text-[11px] font-bold tracking-[0.1em] text-[#3E7774]">04 · 学习反馈回写</span>
+          <h2 className="mt-1 text-lg font-bold text-[#18232D]">用真实答题结果驱动下一轮画像与难度</h2>
+          <p className="mt-1 text-[11px] leading-5 text-[#66717B]">完成岗位分阶测试后提交反馈，系统会根据正确率选择前置修复、同阶变式或进阶挑战。</p>
+        </div>
+      </div>
+      <button type="button" disabled={submitting} onClick={submit} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#3E7774] px-4 text-[11px] font-bold text-white shadow-[0_7px_16px_rgba(62,119,116,.18)] hover:bg-[#326662] disabled:opacity-55">
+        {submitting ? <Loader2 className="size-4 animate-spin" /> : <RotateCcw className="size-4" />}
+        {attemptCount ? `提交 ${attemptCount} 道答题证据` : "提交学习状态"}
+      </button>
+    </div>
+    {feedback && <div className="mt-3 rounded-2xl border border-[#C9D6D0] bg-[#FFFEFA] p-3 text-[11px] leading-5 text-[#59636B]">
+      <strong className="text-[#263F3D]">闭环已更新：</strong>{feedback.message}
+      <span className="ml-2 rounded-full bg-[#E2EEEB] px-2 py-0.5 font-bold text-[#3E7774]">正确率 {feedback.accuracy === null ? "待采集" : `${feedback.accuracy}%`}</span>
+    </div>}
+    {error && <p role="alert" className="mt-2 text-[11px] font-semibold text-[#A05137]">{error}</p>}
+  </motion.section>
 }
 
 function ResourceTile({
@@ -798,23 +945,28 @@ function ResourceTile({
   status,
   summary,
   available,
+  deferred,
   runStatus,
   onOpen,
   reduceMotion,
+  released,
 }: {
   index: number
   resource: ResourceDefinition
   status: AgentStatus | "ready"
   summary: string
   available: boolean
+  deferred: boolean
   runStatus: RunStatus
   onOpen: () => void
   reduceMotion: boolean
+  released: boolean
 }) {
   const Icon = resource.icon
   const isLoading = status === "running" || status === "streaming"
-  const didNotFinish = !available && status === "pending" && (runStatus === "done" || runStatus === "error" || runStatus === "interrupted")
-  const stateLabel = status === "done" ? "已生成" : status === "ready" ? "可打开" : status === "error" ? "生成异常" : isLoading ? "生成中" : didNotFinish ? "本轮未完成" : "等待任务"
+  const didNotFinish = !deferred && !available && status === "pending" && (runStatus === "done" || runStatus === "error" || runStatus === "interrupted")
+  const waitingDecision = !released && status === "done"
+  const stateLabel = deferred ? "暂不生成" : waitingDecision ? "待裁决" : status === "done" ? "已发布" : status === "ready" ? "可打开" : status === "error" ? "生成异常" : isLoading ? "生成中" : didNotFinish ? "本轮未完成" : "等待任务"
 
   return (
     <motion.button
@@ -834,7 +986,7 @@ function ResourceTile({
           {isLoading && <Loader2 className="size-3 animate-spin" />}{status === "done" && <CheckCircle2 className="size-3" />}{status === "ready" && <ArrowRight className="size-3" />}{stateLabel}
         </span>
       </div>
-      <p className="mt-1 text-[11px] leading-4 text-[#737C80]">{available ? summary : didNotFinish ? "本轮未产出，可通过上方入口重新生成整套资源。" : resource.detail}</p>
+      <p className="mt-1 text-[11px] leading-4 text-[#737C80]">{available ? summary : deferred ? "当前阶段仅保留入口，暂不生成或预取内容。" : waitingDecision ? `${summary} · 裁决通过后解锁` : didNotFinish ? "本轮未产出，可通过上方入口重新生成整套资源。" : resource.detail}</p>
       {available && <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-[#315E83] opacity-0 transition-opacity group-hover:opacity-100">查看与验证 <ArrowRight className="size-3" /></span>}
     </motion.button>
   )

@@ -134,6 +134,198 @@ class Orchestrator:
             raise
 
 
+class TrainingLoopOrchestrator:
+    """岗位训练闭环：诊断 → 生成 → 审核 → 裁决/返工 → 发布。"""
+
+    def __init__(
+        self,
+        diagnosis_agent: AgentBase,
+        generators: list[AgentBase],
+        reviewers: list[AgentBase],
+        arbiter: AgentBase,
+    ):
+        self.diagnosis_agent = diagnosis_agent
+        self.generators = generators
+        self.reviewers = reviewers
+        self.arbiter = arbiter
+
+    def all_metas(self) -> list[dict]:
+        agents = [self.diagnosis_agent, *self.generators, *self.reviewers, self.arbiter]
+        return [
+            {
+                "id": agent.meta.id,
+                "name": agent.meta.name,
+                "icon": agent.meta.icon,
+                "color": agent.meta.color,
+                "description": agent.meta.description,
+            }
+            for agent in agents
+        ]
+
+    async def stream(self, initial_context: dict) -> AsyncIterator[dict]:
+        queue: asyncio.Queue[dict | None] = asyncio.Queue()
+
+        async def emit(event_type: str, data: dict):
+            await queue.put({"event": event_type, "data": data})
+
+        main_task = asyncio.create_task(self._run_pipeline(initial_context, emit, queue))
+        while True:
+            item = await queue.get()
+            if item is None:
+                break
+            yield item
+        await main_task
+
+    async def _run_pipeline(self, ctx: dict, emit, queue):
+        try:
+            await emit("meta", {
+                "agents": self.all_metas(),
+                "topic": ctx.get("topic", ""),
+                "user_id": ctx.get("user_id"),
+                "run_id": ctx.get("run_id"),
+                "domain": ctx.get("domain", ""),
+                "target_role": ctx.get("target_role", ""),
+                "role_summary": ctx.get("role_summary", ""),
+                "core_competencies": ctx.get("core_competencies", []),
+            })
+            for meta in self.all_metas():
+                await emit("agent_status", {"agent": meta["id"], "status": "pending"})
+
+            await self._stage(emit, "diagnosis", "依据画像确定训练目标与资源难度", ctx)
+            diagnosis = await self._wrap_run(self.diagnosis_agent, ctx, emit)
+            ctx["diagnosis"] = diagnosis
+            ctx.setdefault("outputs", {})["diagnosis"] = diagnosis
+
+            await self._stage(emit, "retrieval", "检索岗位领域知识库并建立证据包", ctx)
+            chunks = await get_rag_service().search(
+                ctx.get("topic", "岗位任务"),
+                k=6,
+                course_id=ctx.get("course_id"),
+            )
+            ctx["chunks"] = chunks
+            ctx.setdefault("outputs", {})["retriever"] = {"chunks": chunks}
+            await emit("agent_done", {"agent": "retriever", "output": {"chunks": chunks}})
+            await emit("log", {
+                "message": f"岗位知识检索命中 {len(chunks)} 个可追溯片段",
+                "agent": "diagnosis",
+            })
+
+            await self._run_generation(ctx, emit, self.generators)
+            await self._run_reviews(ctx, emit)
+            decision = await self._run_arbiter(ctx, emit)
+
+            if decision.get("decision") == "rework":
+                targets = set(decision.get("rework_targets") or [])
+                await self._stage(emit, "rework", "裁决退回问题资源，开始定向修订", ctx)
+                await emit("rework", {
+                    "generation_round": ctx.get("generation_round", 1),
+                    "targets": sorted(targets),
+                    "required_fixes": decision.get("required_fixes", []),
+                })
+                ctx["revision_feedback"] = self._feedback_by_target(ctx.get("reviews", {}))
+                ctx["generation_round"] = int(ctx.get("generation_round", 1)) + 1
+                retry_agents = [agent for agent in self.generators if agent.meta.id in targets]
+                await self._run_generation(ctx, emit, retry_agents)
+                await self._run_reviews(ctx, emit)
+                decision = await self._run_arbiter(ctx, emit)
+
+            if decision.get("decision") == "publish":
+                await self._stage(emit, "publishing", "资源已通过裁决，准备发布三项核心岗位资源", ctx)
+                await self._stage(emit, "published", "资源包已发布，可进入学习与反馈", ctx)
+            else:
+                await self._stage(emit, "manual_review", "未越过发布门槛，等待导师人工复核", ctx)
+
+            await emit("done", {
+                "run_id": ctx.get("run_id"),
+                "domain": ctx.get("domain", ""),
+                "target_role": ctx.get("target_role", ""),
+                "stage": ctx.get("stage"),
+                "generation_round": ctx.get("generation_round", 1),
+                "diagnosis": ctx.get("diagnosis", {}),
+                "outputs": ctx.get("outputs", {}),
+                "reviews": ctx.get("reviews", {}),
+                "decision": ctx.get("decision", {}),
+            })
+        except Exception as exc:
+            await emit("error", {"message": str(exc)})
+        finally:
+            await queue.put(None)
+
+    async def _stage(self, emit, stage: str, message: str, ctx: dict):
+        ctx["stage"] = stage
+        await emit("stage", {
+            "stage": stage,
+            "message": message,
+            "generation_round": ctx.get("generation_round", 1),
+        })
+
+    async def _run_generation(self, ctx: dict, emit, agents: list[AgentBase]):
+        await self._stage(emit, "generation", f"第 {ctx.get('generation_round', 1)} 轮岗位资源生成", ctx)
+        results = await asyncio.gather(
+            *(self._wrap_run(agent, ctx, emit) for agent in agents),
+            return_exceptions=True,
+        )
+        for agent, result in zip(agents, results):
+            if isinstance(result, Exception):
+                await emit("log", {
+                    "message": f"{agent.meta.name} 异常：{result}",
+                    "agent": agent.meta.id,
+                    "level": "error",
+                })
+            else:
+                ctx.setdefault("outputs", {})[agent.meta.id] = result
+
+    async def _run_reviews(self, ctx: dict, emit):
+        await self._stage(emit, "review", "三类审核并行交叉验证生成结果", ctx)
+        results = await asyncio.gather(
+            *(self._wrap_run(agent, ctx, emit) for agent in self.reviewers),
+            return_exceptions=True,
+        )
+        reviews: dict[str, dict] = {}
+        for agent, result in zip(self.reviewers, results):
+            if isinstance(result, Exception):
+                reviews[agent.meta.id] = {
+                    "status": "fail",
+                    "score": 0,
+                    "findings": [{
+                        "severity": "blocker",
+                        "message": f"审核执行异常：{result}",
+                        "suggestion": "转入人工复核",
+                        "target_agent": "doc",
+                    }],
+                }
+            else:
+                reviews[agent.meta.id] = result
+        ctx["reviews"] = reviews
+
+    async def _run_arbiter(self, ctx: dict, emit) -> dict:
+        await self._stage(emit, "decision", "总裁决 Agent 汇总证据并执行发布门禁", ctx)
+        result = await self._wrap_run(self.arbiter, ctx, emit)
+        ctx["decision"] = result
+        return result
+
+    async def _wrap_run(self, agent: AgentBase, ctx: dict, emit) -> dict:
+        try:
+            await agent.emit_status(emit, "running")
+            output = await agent.run(ctx, emit)
+            await agent.emit_done(emit, output)
+            await agent.emit_status(emit, "done")
+            return output
+        except Exception as exc:
+            await agent.emit_status(emit, "error", message=str(exc))
+            raise
+
+    @staticmethod
+    def _feedback_by_target(reviews: dict) -> dict[str, list[dict]]:
+        feedback: dict[str, list[dict]] = {"doc": [], "guide": [], "quiz": []}
+        for review in reviews.values():
+            for finding in review.get("findings", []):
+                target = finding.get("target_agent")
+                if target in feedback:
+                    feedback[target].append(finding)
+        return feedback
+
+
 def serialize_event(item: dict) -> dict:
     """把 dict 事件转成 sse-starlette 接受的 {event, data} 形式。"""
     return {"event": item["event"], "data": json.dumps(item["data"], ensure_ascii=False)}

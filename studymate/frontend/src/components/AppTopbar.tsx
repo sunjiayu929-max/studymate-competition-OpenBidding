@@ -41,7 +41,7 @@ export type PageId =
 
 const PAGE_META: Record<PageId, { label: string; group: string; icon: typeof Home }> = {
   home: { label: "今日学习", group: "学习中心", icon: Home },
-  workspace: { label: "学习资源工坊", group: "7 Agents 协作", icon: WandSparkles },
+  workspace: { label: "学习资源工坊", group: "8 个核心 Agent 闭环", icon: WandSparkles },
   tutor: { label: "AI 助教", group: "AI 学习工具", icon: Bot },
   profile: { label: "学习画像", group: "学习中心", icon: GraduationCap },
   rag: { label: "课程知识库", group: "知识与笔记", icon: Database },
