@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { motion } from "framer-motion"
 import {
   ArrowLeft,
@@ -19,6 +19,7 @@ import { careerDomains, type CareerDomain, type CareerRole, type DomainId } from
 import { useTrackPage } from "@/lib/useTrackPage"
 import { setCurrentCourse, type CourseInfo } from "@/store/course"
 import { setTargetRole, useTargetRole } from "@/store/targetRole"
+import { clearWorkspaceState } from "@/store/workspace"
 
 const domainOrder: DomainId[] = ["ai", "software", "industrial"]
 const domainIcons = { ai: Sparkles, software: BriefcaseBusiness, industrial: Network }
@@ -39,6 +40,7 @@ function getOrderedDomains(): CareerDomain[] {
 export function Courses() {
   useTrackPage("target_role_selection")
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const storedRole = useTargetRole()
   const domains = useMemo(getOrderedDomains, [])
   const storedDomain = careerDomains.find((item) => item.roles.some((role) => role.id === storedRole?.id))?.id
@@ -46,12 +48,20 @@ export function Courses() {
   const [activationError, setActivationError] = useState("")
   const [activatingRoleId, setActivatingRoleId] = useState("")
   const domain = domains.find((item) => item.id === domainId) ?? domains[0]
+  const requestedReturnTo = searchParams.get("returnTo")
+  const returnTo = requestedReturnTo?.startsWith("/") && !requestedReturnTo.startsWith("//")
+    ? requestedReturnTo
+    : "/workspace"
+  const returnLabel = returnTo.startsWith("/workspace") ? "返回资源工坊" : "返回上一页"
 
   async function selectRole(role: CareerRole) {
     setActivationError("")
-    setTargetRole({ domainId: domain.id, roleId: role.id })
+    const roleChanged = storedRole?.id !== role.id
     if (role.id !== "fde") {
+      setTargetRole({ domainId: domain.id, roleId: role.id })
       setCurrentCourse(null)
+      if (roleChanged) clearWorkspaceState()
+      navigate(returnTo, { replace: true })
       return
     }
 
@@ -60,8 +70,10 @@ export function Courses() {
       const response = await apiGet<CourseListResponse>("/courses")
       const fdeCourse = response.items.find((course) => course.name === "FDE 岗位知识库")
       if (!fdeCourse) throw new Error("FDE 知识库尚未加载")
+      setTargetRole({ domainId: domain.id, roleId: role.id })
       setCurrentCourse(fdeCourse)
-      navigate("/workspace")
+      if (roleChanged) clearWorkspaceState()
+      navigate(returnTo, { replace: true })
     } catch {
       setActivationError("FDE 知识库暂未连接。请重新登录后刷新页面，再点击进入岗位训练。")
     } finally {
@@ -77,7 +89,7 @@ export function Courses() {
         <section className="mt-4 min-h-[calc(100dvh-120px)] overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)]">
           <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D7D1C4] bg-[#F8F6F0] px-5 py-3.5">
             <div className="flex min-w-0 items-center gap-3">
-              <Link to="/" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]"><ArrowLeft className="size-3.5" /><span className="hidden sm:inline">返回首页</span></Link>
+              <Link to={returnTo} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]"><ArrowLeft className="size-3.5" /><span className="hidden sm:inline">{returnLabel}</span></Link>
               <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Target className="size-4" /></span>
               <div className="min-w-0"><h1 className="text-[15px] font-bold text-[#18232D]">选择你的目标岗位</h1><p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">先选择领域，再选择该领域的目标岗位</p></div>

@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
-import { BookOpen, CircleHelp, Database, ExternalLink, FileSearch, FileText, Hash, Loader2, Search, ShieldCheck, Sparkles } from "lucide-react"
+import { Link } from "react-router-dom"
+import { AlertCircle, BookOpen, CircleHelp, Database, ExternalLink, FileSearch, FileText, Hash, Loader2, Search, ShieldCheck, Sparkles } from "lucide-react"
 
 import { PageHeader } from "@/components/PageHeader"
 import { apiGet } from "@/lib/api"
 import { formatSourceLabel, sourceLink, visibleMetadata } from "@/lib/ragSource"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { DEFAULT_SAMPLE_TOPICS, fallbackSamplesFor, useCourseConfig, useCurrentCourse } from "@/store/course"
+import { useTargetRole } from "@/store/targetRole"
 
 interface SearchResult {
   chunk_id: string
@@ -47,13 +49,16 @@ const RESULT_LIMIT = 8
 export function RagDemo() {
   useTrackPage("rag")
   const course = useCurrentCourse()
+  const targetRole = useTargetRole()
   const courseCfg = useCourseConfig()
-  const sampleQueries: string[] = courseCfg?.sample_topics?.length
-    ? courseCfg.sample_topics
+  const sampleQueries: string[] = targetRole?.sampleTasks?.length
+    ? targetRole.sampleTasks
+    : courseCfg?.sample_topics?.length
+      ? courseCfg.sample_topics
     : course
       ? fallbackSamplesFor(course.name).topics
       : DEFAULT_SAMPLE_TOPICS
-  const [q, setQ] = useState(sampleQueries[0] || "什么是梯度下降")
+  const [q, setQ] = useState(sampleQueries[0] || "如何拆解岗位任务与验收标准")
   const [stats, setStats] = useState<Stats | null>(null)
   const [resp, setResp] = useState<SearchResp | null>(null)
   const [loading, setLoading] = useState(false)
@@ -79,13 +84,34 @@ export function RagDemo() {
     }
   }
 
+  if (!course) {
+    return (
+      <div className="app-page paper-theme">
+        <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
+          <PageHeader current="rag" title="岗位知识库检索" subtitle="岗位知识只在已接入的目标岗位范围内检索，不跨岗位借用无关资料。" icon={Database} iconColor="text-[#315E83]" appearance="paper" />
+          <section className="mt-4 grid min-h-[420px] place-items-center rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] p-7 text-center shadow-[0_16px_42px_rgba(24,35,45,.065)]" role="status">
+            <div className="max-w-md">
+              <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#D8C9A8] bg-[#F4ECD8] text-[#8E6925]"><AlertCircle className="size-5" /></span>
+              <h2 className="mt-4 text-lg font-bold text-[#18232D]">{targetRole ? `${targetRole.name} 的岗位知识库正在建设` : "请先选择目标岗位"}</h2>
+              <p className="mt-2 text-sm leading-6 text-[#66717B]">{targetRole ? "岗位选择已保存。为确保检索结果与岗位内容呼应，专属资料接入前不会回退到其他知识库。" : "目标岗位决定检索边界、引用来源和后续测验归档。"}</p>
+              <div className="mt-5 flex flex-wrap justify-center gap-2">
+                <Link to="/courses?returnTo=%2Frag" className="inline-flex h-10 items-center rounded-xl bg-[#244C66] px-4 text-xs font-bold text-white hover:bg-[#193B50]">{targetRole ? "更换已开放岗位" : "选择目标岗位"}</Link>
+                {targetRole && <Link to="/workspace" className="inline-flex h-10 items-center rounded-xl border border-[#D7D1C4] bg-[#F8F6F0] px-4 text-xs font-bold text-[#59636B] hover:bg-[#EFEAE0]">查看岗位状态</Link>}
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="app-page paper-theme">
       <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
         <PageHeader
           current="rag"
           title="岗位知识库检索"
-          subtitle={`在《${course?.name || "当前训练资料"}》中定位岗位能力与任务依据，查看来源和相关片段。`}
+          subtitle={`在《${targetRole?.name || course?.name || "当前岗位"}》知识库中定位岗位能力与任务依据，查看来源和相关片段。`}
           icon={Database}
           iconColor="text-[#315E83]"
           appearance="paper"
@@ -98,11 +124,11 @@ export function RagDemo() {
             <div className="min-w-0">
               <span className="inline-flex items-center gap-2 text-[10px] font-bold tracking-[0.14em] text-[#6F8A69]"><Sparkles className="size-3.5 text-[#B1842C]" />有依据的学习检索</span>
               <h2 className="mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D] sm:text-2xl">从岗位资料里，找到可以引用的答案</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#66717B]">输入概念、问题或关键词。系统会返回最相关的原文片段，而不是只给出无法核实的结论。</p>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#66717B]">输入岗位任务、能力点或现场问题。系统会返回最相关的原文片段，而不是只给出无法核实的结论。</p>
 
               <form onSubmit={(event) => { event.preventDefault(); doSearch(q) }} className="mt-6 flex items-center gap-2 rounded-[20px] border border-[#CFC8B9] bg-[#FFFEFA] p-2 shadow-[0_10px_28px_rgba(24,35,45,.07)] focus-within:border-[#9FB1BC]">
                 <span className="grid size-10 shrink-0 place-items-center text-[#315E83]"><Search className="size-4.5" /></span>
-                <input value={q} onChange={(event) => setQ(event.target.value)} placeholder="搜索知识点、公式或问题…" className="h-11 min-w-0 flex-1 bg-transparent text-sm text-[#18232D] outline-none placeholder:text-[#929792]" />
+                <input value={q} onChange={(event) => setQ(event.target.value)} placeholder="搜索岗位任务、能力点或现场问题…" className="h-11 min-w-0 flex-1 bg-transparent text-sm text-[#18232D] outline-none placeholder:text-[#929792]" />
                 <button type="submit" disabled={loading || !q.trim()} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] shadow-[0_7px_16px_rgba(36,76,102,.18)] transition-all hover:-translate-y-0.5 hover:bg-[#193B50] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45">
                   {loading ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}{loading ? "检索中" : "开始检索"}
                 </button>
@@ -117,7 +143,7 @@ export function RagDemo() {
             </div>
 
             <div className="overflow-hidden rounded-[20px] border border-[#D7D1C4] bg-[#FFFEFA]/95 shadow-[0_10px_28px_rgba(24,35,45,.055)]">
-              <InfoCard icon={BookOpen} eyebrow="当前检索范围" title={course?.name || "全部训练资料"} description={stats ? `${stats.count} 条知识片段可被检索` : "正在读取知识片段数量"} tone="blue" />
+              <InfoCard icon={BookOpen} eyebrow="当前检索范围" title={targetRole?.name || course?.name || "全部岗位资料"} description={stats ? `${stats.count} 条岗位知识片段可被检索` : "正在读取岗位知识片段数量"} tone="blue" />
               <InfoCard icon={ShieldCheck} eyebrow="结果可信度" title="每条答案都有来源" description="保留文件名、页码、相关度与原文入口，便于验证。" tone="green" />
               <InfoCard icon={Database} eyebrow="检索引擎" title={stats?.engine || "正在连接"} description="先检索相关材料，再把依据交给学习智能体使用。" tone="gold" />
             </div>
@@ -140,7 +166,7 @@ export function RagDemo() {
 
                 <div className="flex items-start gap-2 rounded-2xl border border-[#C7D2D8] bg-[#F3F6F7] px-3.5 py-3 text-[11px] leading-5 text-[#59666E]">
                   <CircleHelp className="mt-0.5 size-3.5 shrink-0 text-[#315E83]" />
-                  <p><strong className="text-[#315E83]">相对匹配度如何计算：</strong>{resp.score_meta?.note || "根据课程资料中的词法与语义排序融合后换算，仅用于区分本次结果先后，不代表答案正确概率。"}</p>
+                  <p><strong className="text-[#315E83]">相对匹配度如何计算：</strong>{resp.score_meta?.note || "根据岗位知识库资料中的词法与语义排序融合后换算，仅用于区分本次结果先后，不代表答案正确概率。"}</p>
                 </div>
 
                 {resp.results.map((result, index) => (
@@ -155,7 +181,7 @@ export function RagDemo() {
                           target={sourceLink(result.chunk_id, result.url).external ? "_blank" : undefined}
                           rel={sourceLink(result.chunk_id, result.url).external ? "noreferrer" : undefined}
                           className="inline-flex items-center gap-1 text-[10px] font-bold text-[#315E83] hover:underline"
-                          title={sourceLink(result.chunk_id, result.url).external ? "打开外部原文" : "查看课程资料原文定位"}
+                          title={sourceLink(result.chunk_id, result.url).external ? "打开外部原文" : "查看岗位知识库原文定位"}
                         >
                           <ExternalLink className="size-3" />查看原文
                         </a>
@@ -178,8 +204,8 @@ export function RagDemo() {
               <section className="grid min-h-[360px] place-items-center rounded-[26px] border border-dashed border-[#C9C2B4] bg-[#F8F6F0] p-8 text-center">
                 <div className="max-w-md">
                   <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83]"><FileSearch className="size-5" /></span>
-                  <h2 className="mt-4 text-lg font-bold text-[#18232D]">输入一个知识点开始检索</h2>
-                  <p className="mt-2 text-sm leading-6 text-[#66717B]">检索结果会保留课程资料中的原始上下文，方便你核对结论并继续深入学习。</p>
+                  <h2 className="mt-4 text-lg font-bold text-[#18232D]">输入一个岗位任务或能力点开始检索</h2>
+                  <p className="mt-2 text-sm leading-6 text-[#66717B]">检索结果会保留岗位知识库中的原始上下文，方便你核对结论并继续完成训练任务。</p>
                 </div>
               </section>
             )}
@@ -208,7 +234,7 @@ function EmptyResults() {
     <div className="rounded-[24px] border border-dashed border-[#C9C2B4] bg-[#F8F6F0] p-10 text-center">
       <FileSearch className="mx-auto size-6 text-[#8A8172]" />
       <h3 className="mt-3 text-sm font-bold text-[#18232D]">没有找到匹配片段</h3>
-      <p className="mt-1 text-xs text-[#66717B]">换一个更具体的知识点，或使用上方的推荐关键词。</p>
+      <p className="mt-1 text-xs text-[#66717B]">换一个更具体的岗位能力点或任务问题，或使用上方的推荐关键词。</p>
     </div>
   )
 }

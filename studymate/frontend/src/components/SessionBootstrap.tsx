@@ -28,7 +28,7 @@ export function SessionBootstrap() {
           <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[#ECE8DE]">
             <div className="h-full w-2/3 animate-pulse rounded-full bg-[#6F8A69]" />
           </div>
-          <p className="mt-3 text-[10px] font-medium text-[#8A8172]">课程、画像与历史记录将在校验完成后恢复</p>
+          <p className="mt-3 text-[10px] font-medium text-[#8A8172]">目标岗位、画像与历史记录将在校验完成后恢复</p>
         </div>
       </div>
     )

@@ -76,8 +76,8 @@ const RESOURCE_DEFS: ResourceDefinition[] = [
   { id: "guide", title: "实操指南", detail: "含环境、步骤、验收、异常与安全边界", icon: Wrench, color: "#A05137", wash: "#F4E8E2" },
   { id: "mindmap", title: "思维导图", detail: "结构化梳理概念与关系", icon: MindMapIcon, color: "#B85C3E", wash: "#F4E8E2" },
   { id: "quiz", title: "岗位分阶测试", detail: "基础、应用与挑战层级验证", icon: BookOpenCheck, color: "#3E7774", wash: "#E2EEEB" },
-  { id: "reading", title: "拓展阅读", detail: "教材、论文、博客与视频", icon: Library, color: "#6F8A69", wash: "#E8EDE5" },
-  { id: "code", title: "代码案例", detail: "适配课程场景的可运行示例", icon: Code2, color: "#7E6B83", wash: "#EEE9EF" },
+  { id: "reading", title: "拓展阅读", detail: "岗位资料、论文、博客与视频", icon: Library, color: "#6F8A69", wash: "#E8EDE5" },
+  { id: "code", title: "代码案例", detail: "适配岗位任务场景的可运行示例", icon: Code2, color: "#7E6B83", wash: "#EEE9EF" },
   { id: "path", title: "学习路径", detail: "由画像驱动的阶段化路线", icon: RouteIcon, color: "#B1842C", wash: "#F4ECD8" },
   { id: "concept", title: "可视讲解", detail: "动画、黑板与真人视频对照", icon: Film, color: "#9B7429", wash: "#F7F0DA" },
 ]
@@ -136,13 +136,17 @@ export function Workspace() {
   } = useWorkspaceStore()
   const isRunning = status === "running"
 
-  const sampleTopics = courseCfg?.sample_topics?.length
-    ? courseCfg.sample_topics
+  const sampleTopics = selectedTargetRole?.sampleTasks?.length
+    ? selectedTargetRole.sampleTasks
+    : courseCfg?.sample_topics?.length
+      ? courseCfg.sample_topics
     : course
       ? fallbackSamplesFor(course.name).topics
       : DEFAULT_SAMPLE_TOPICS
 
   const suggestedTopic = searchParams.get("topic")?.trim() || ""
+  const workspacePath = `/workspace${searchParams.toString() ? `?${searchParams.toString()}` : ""}`
+  const roleSelectionPath = `/courses?returnTo=${encodeURIComponent(workspacePath)}`
   const [topicInput, setTopicInput] = useState(suggestedTopic || topic || sampleTopics[0] || "梯度下降")
   const [profile, setProfile] = useState<ProfileMiniData | null>(null)
   const [roleContext, setRoleContext] = useState<RoleContext | null>(null)
@@ -161,7 +165,7 @@ export function Workspace() {
         if (active) setProfile(value)
       })
       .catch(() => {
-        // 未建立画像时保持空状态，生成仍可使用课程默认配置。
+        // 未建立画像时保持空状态，生成仍可使用岗位知识库默认配置。
       })
     return () => {
       active = false
@@ -246,7 +250,7 @@ export function Workspace() {
   )
   const profileGoal = profile?.dims.goals?.primary?.trim() || ""
   const weakTopics = profile?.dims.weak_points?.topics?.filter(Boolean) || []
-  const trainingTarget = runTargetRole || selectedTargetRole?.name || roleContext?.target_role || course?.name || "目标岗位"
+  const trainingTarget = selectedTargetRole?.name || runTargetRole || roleContext?.target_role || course?.name || "目标岗位"
 
   const qualityChecks: Array<{ label: string; value: string; state: CheckState }> = [
     ...[
@@ -301,8 +305,8 @@ export function Workspace() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Link to={course ? "/rag" : "/courses"} className="inline-flex h-10 items-center gap-2 rounded-full border border-[#C9C2B4] bg-[#FFFEFA] px-4 text-xs font-semibold text-[#244C66] hover:bg-[#F1EDE4]">
-                <Database className="size-4" />{course ? `${course.name} · 岗位知识库` : "选择岗位领域"}<ChevronRight className="size-3.5" />
+              <Link to={course ? "/rag" : roleSelectionPath} className="inline-flex h-10 items-center gap-2 rounded-full border border-[#C9C2B4] bg-[#FFFEFA] px-4 text-xs font-semibold text-[#244C66] hover:bg-[#F1EDE4]">
+                <Database className="size-4" />{course ? `${trainingTarget} · 岗位知识库` : selectedTargetRole ? `${selectedTargetRole.name} · 知识库待接入` : "选择目标岗位"}<ChevronRight className="size-3.5" />
               </Link>
               <Link to="/profile" className="inline-flex h-10 items-center gap-2 rounded-full border border-[#C9C2B4] bg-[#F7F2E7] px-4 text-xs font-semibold text-[#6A5941] hover:bg-[#EEE8DB]">
                 <UserRoundSearch className="size-4" />{profile ? `画像 v${profile.version}` : "建立学习画像"}<ChevronRight className="size-3.5" />
@@ -315,11 +319,11 @@ export function Workspace() {
               <div className="flex items-start gap-3">
                 <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#F4ECD8] text-[#8E6925]"><AlertCircle className="size-4" /></span>
                 <div>
-                  <h2 className="text-sm font-bold text-[#18232D]">生成前需要先确定目标岗位</h2>
-                  <p className="mt-1 text-[11px] leading-5 text-[#66717B]">目标岗位决定 RAG 检索范围、引用来源和后续测验归档。选定后，你刚刚填写的主题仍会保留。</p>
+                  <h2 className="text-sm font-bold text-[#18232D]">{selectedTargetRole ? `${selectedTargetRole.name} 的岗位知识库正在建设` : "生成前需要先确定目标岗位"}</h2>
+                  <p className="mt-1 text-[11px] leading-5 text-[#66717B]">{selectedTargetRole ? "岗位选择已保存并同步到资源工坊；专属知识库接入后即可启动训练闭环，你也可以先更换为已开放岗位。" : "目标岗位决定 RAG 检索范围、引用来源和后续测验归档。选定后，你刚刚填写的任务仍会保留。"}</p>
                 </div>
               </div>
-              <Link to="/courses" className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] hover:bg-[#193B50]">选择岗位 <ArrowRight className="size-3.5" /></Link>
+              <Link to={roleSelectionPath} className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] hover:bg-[#193B50]">{selectedTargetRole ? "更换岗位" : "选择岗位"} <ArrowRight className="size-3.5" /></Link>
             </section>
           )}
 
@@ -393,14 +397,14 @@ export function Workspace() {
                   )}
 
                   <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                    <span className="mr-1 text-[11px] font-semibold text-[#7A817F]">课程示例 · 点击填入</span>
+                    <span className="mr-1 text-[11px] font-semibold text-[#7A817F]">岗位任务示例 · 点击填入</span>
                     {sampleTopics.slice(0, 6).map((sample) => (
                       <button
                         key={sample}
                         type="button"
                         onClick={() => setTopicInput(sample)}
                         disabled={isRunning || !course}
-                        title={!course ? "选择课程后即可填入示例" : `填入主题「${sample}」`}
+                        title={!course ? "选择已开放岗位后即可填入示例" : `填入任务「${sample}」`}
                         className="rounded-full border border-[#D7D1C4] bg-[#F8F6F0] px-3 py-1.5 text-[11px] font-medium text-[#59636B] transition-colors hover:border-[#AFA796] hover:bg-[#EFEAE0] hover:text-[#244C66] disabled:opacity-50"
                       >
                         {sample}
@@ -468,7 +472,7 @@ export function Workspace() {
 
                 <div className="mt-4 space-y-2">
                   <EvidenceRow icon={Database} label="岗位知识库" value={domain || roleContext?.domain || course?.name || "尚未选择"} hint={course ? `${course.chunk_count ?? "已导入"} 条知识片段可检索；点击顶部知识库可查看来源` : "选择领域后锁定检索与引用范围"} />
-                  <EvidenceRow icon={BriefcaseBusiness} label="目标岗位" value={runTargetRole || selectedTargetRole?.name || roleContext?.target_role || "等待领域映射"} hint={roleSummary || roleContext?.role_summary || "领域确定后自动匹配主岗位"} />
+                  <EvidenceRow icon={BriefcaseBusiness} label="目标岗位" value={selectedTargetRole?.name || runTargetRole || roleContext?.target_role || "等待领域映射"} hint={selectedTargetRole?.summary || roleSummary || roleContext?.role_summary || "领域确定后自动匹配主岗位"} />
                   <EvidenceRow icon={UserRoundSearch} label="画像依据" value={profile ? `版本 v${profile.version}` : "尚未建立"} hint={profileGoal || "目标、节奏与资源偏好将参与生成"} />
                   <EvidenceRow icon={Target} label="当前任务" value={topic || "等待启动"} hint={diagnosis?.knowledge_gaps?.length ? `诊断盲区：${diagnosis.knowledge_gaps.slice(0, 2).join("、")}` : weakTopics.length ? `优先关注：${weakTopics.slice(0, 2).join("、")}` : `核心能力：${(coreCompetencies.length ? coreCompetencies : roleContext?.core_competencies || []).slice(0, 2).join("、") || "等待诊断"}`} />
                 </div>

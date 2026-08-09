@@ -62,7 +62,7 @@ async def list_courses(db: AsyncSession = Depends(get_db)):
 
 @router.post("")
 async def create_course(req: CourseIn, db: AsyncSession = Depends(get_db)):
-    raise HTTPException(405, "课程空间已固定为五门预设课程，不支持新增")
+    raise HTTPException(405, "岗位空间由预设岗位知识库驱动，不支持在此接口新增")
 
 
 @router.get("/registry")
@@ -107,4 +107,4 @@ async def get_course_config_endpoint(course_id: int, db: AsyncSession = Depends(
 
 @router.delete("/{course_id}")
 async def delete_course(course_id: int, db: AsyncSession = Depends(get_db)):
-    raise HTTPException(405, "预设课程不支持删除")
+    raise HTTPException(405, "预设岗位知识库不支持删除")

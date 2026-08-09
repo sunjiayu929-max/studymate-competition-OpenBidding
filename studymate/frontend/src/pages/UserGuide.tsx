@@ -40,7 +40,7 @@ interface GuideLink {
 }
 
 const FIRST_ROUTE: GuideLink[] = [
-  { title: "选择一门课程", detail: "确定知识库与学习上下文", to: "/courses", action: "选择课程", icon: Library, tone: "border-[#D8C9A8] bg-[#FBF7ED]", iconTone: "bg-[#F4ECD8] text-[#8E6925]" },
+  { title: "选择目标岗位", detail: "确定领域、岗位知识库与训练上下文", to: "/courses", action: "选择岗位", icon: Library, tone: "border-[#D8C9A8] bg-[#FBF7ED]", iconTone: "bg-[#F4ECD8] text-[#8E6925]" },
   { title: "让系统认识你", detail: "用对话补充目标与薄弱点", to: "/profile", action: "建立画像", icon: GraduationCap, tone: "border-[#C7D2D8] bg-[#F3F7F9]", iconTone: "bg-[#E7EDF3] text-[#315E83]" },
   { title: "运行岗位训练闭环", detail: "8 个核心 Agent 完成诊断、生成、审核、裁决与反馈", to: "/workspace", action: "开始训练", icon: LayoutDashboard, tone: "border-[#CCD7C9] bg-[#F4F7F2]", iconTone: "bg-[#E8EDE5] text-[#5D7658]" },
   { title: "做一次真实测验", detail: "用作答结果检验掌握程度", to: "/quiz", action: "进入测验", icon: BookOpenCheck, tone: "border-[#DFC9BE] bg-[#FBF5F1]", iconTone: "bg-[#F6ECE7] text-[#9A4E35]" },
@@ -48,8 +48,8 @@ const FIRST_ROUTE: GuideLink[] = [
 ]
 
 const GOAL_LINKS: GuideLink[] = [
-  { title: "我想快速弄懂一个知识点", detail: "让岗位助教结合当前岗位与画像连续讲解", to: "/tutor", action: "问岗位助教", icon: MessageCircleMore, tone: "border-[#DFC9BE] bg-[#FFFEFA]", iconTone: "bg-[#F6ECE7] text-[#9A4E35]" },
-  { title: "我想核对内容出处", detail: "搜索教材片段，查看教材、页码和前后文", to: "/rag", action: "检索课程知识", icon: Search, tone: "border-[#C7DAD6] bg-[#FFFEFA]", iconTone: "bg-[#E2EEEB] text-[#3E7774]" },
+  { title: "我想快速攻克一个岗位能力点", detail: "让岗位助教结合当前岗位与画像连续讲解", to: "/tutor", action: "问岗位助教", icon: MessageCircleMore, tone: "border-[#DFC9BE] bg-[#FFFEFA]", iconTone: "bg-[#F6ECE7] text-[#9A4E35]" },
+  { title: "我想核对内容出处", detail: "搜索岗位知识片段，查看资料、页码和前后文", to: "/rag", action: "检索岗位知识", icon: Search, tone: "border-[#C7DAD6] bg-[#FFFEFA]", iconTone: "bg-[#E2EEEB] text-[#3E7774]" },
   { title: "我想整理自己的学习成果", detail: "用 Markdown 笔记沉淀、总结并继续出题", to: "/notes", action: "整理智能笔记", icon: NotebookPen, tone: "border-[#CCD7C9] bg-[#FFFEFA]", iconTone: "bg-[#E8EFE8] text-[#5B7C6A]" },
   { title: "我想看懂抽象过程", detail: "播放动画并调整参数，观察过程如何变化", to: "/concept", action: "打开可视讲解", icon: Clapperboard, tone: "border-[#D7CDD9] bg-[#FFFEFA]", iconTone: "bg-[#EEE9EF] text-[#7E6B83]" },
   { title: "我不知道下一步学什么", detail: "回到今日学习，按系统给出的优先级继续", to: "/", action: "查看今日路线", icon: Route, tone: "border-[#C7D2D8] bg-[#FFFEFA]", iconTone: "bg-[#E7EDF3] text-[#315E83]" },
@@ -59,9 +59,9 @@ const GOAL_LINKS: GuideLink[] = [
 const CAPABILITY_GROUPS = [
   {
     label: "开始学习",
-    description: "先建立课程和个性化依据",
+    description: "先建立岗位和个性化训练依据",
     items: [
-      { label: "课程空间", to: "/courses", icon: Library },
+      { label: "岗位空间", to: "/courses", icon: Library },
       { label: "今日学习", to: "/", icon: Sparkles },
       { label: "学习画像", to: "/profile", icon: GraduationCap },
     ],
@@ -72,7 +72,7 @@ const CAPABILITY_GROUPS = [
     items: [
       { label: "学习资源工坊", to: "/workspace", icon: LayoutDashboard },
       { label: "知识库", to: "/knowledge", icon: Database },
-      { label: "AI 课程助教", to: "/tutor", icon: MessageCircleMore },
+      { label: "AI 岗位助教", to: "/tutor", icon: MessageCircleMore },
       { label: "可视讲解", to: "/concept", icon: Clapperboard },
     ],
   },
@@ -99,7 +99,7 @@ const TIPS = [
   ["目标岗位为什么很重要？", "当前岗位会同时影响检索范围、助教上下文、生成记录、笔记、测验和报告。开始前先确认顶部岗位名称。"],
   ["画像需要一次填完吗？", "不需要。它会随着对话和真实学习结果持续更新，你只需在目标或困难变化时补充信息。"],
   ["生成页面离开后会丢失吗？", "生成记录会保留；学习报告也会在后台继续生成，之后返回页面即可查看结果。"],
-  ["在哪里能随时求助？", "除助教页面外，右下角学习助手会感知当前页面、课程和画像，可直接询问“这个页面怎么用”。"],
+  ["在哪里能随时求助？", "除助教页面外，右下角学习助手会感知当前页面、目标岗位和画像，可直接询问“这个页面怎么用”。"],
 ]
 
 export function UserGuide() {
@@ -133,14 +133,14 @@ export function UserGuide() {
                   不必认识所有功能，<br className="hidden sm:block" />先完成一次学习闭环
                 </h1>
                 <p className="mt-4 max-w-2xl text-[13px] leading-6 text-[#66717B] sm:text-sm">
-                  StudyMate 会把课程知识、个人画像、学习资源、练习结果和报告连在一起。第一次使用建议跟随 3 分钟指引，之后再按当前目标选择功能。
+                  StudyMate 会把目标岗位、岗位知识、个人画像、训练资源、测验证据和报告回写连在一起。第一次使用建议跟随 3 分钟指引，之后再按当前岗位目标选择功能。
                 </p>
                 <div className="mt-6 flex flex-wrap gap-2.5">
                   <button type="button" onClick={openQuickGuide} className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] shadow-[0_10px_24px_rgba(36,76,102,.18)] transition-all hover:-translate-y-px hover:bg-[#193B50]">
                     <Compass className="size-4" /> 开始 3 分钟指引
                   </button>
                   <Link to="/courses" className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#C9C2B4] bg-[#FFFEFA] px-5 text-xs font-bold text-[#315E83] transition-colors hover:bg-[#EEE9DF]">
-                    直接选择课程 <ArrowRight className="size-4" />
+                    直接选择目标岗位 <ArrowRight className="size-4" />
                   </Link>
                 </div>
               </div>
@@ -155,7 +155,7 @@ export function UserGuide() {
                 </div>
                 <div className="mt-4 space-y-2.5">
                   {[
-                    ["01", "先选课程", "所有能力会自动共享这门课的上下文"],
+                    ["01", "先选目标岗位", "所有能力会自动共享该岗位的知识与训练上下文"],
                     ["02", "再做一件学习任务", "生成、提问、记笔记或完成一道题"],
                     ["03", "最后看结果", "在报告和画像中确认学习产生了变化"],
                   ].map(([index, title, detail]) => (
@@ -292,11 +292,11 @@ export function UserGuide() {
               <div className="flex items-start gap-3">
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#E8EDE5] text-[#5D7658]"><CheckCircle2 className="size-[18px]" /></span>
                 <div>
-                  <div className="text-[13px] font-bold text-[#18232D]">准备好了，就从一门课程开始</div>
+                  <div className="text-[13px] font-bold text-[#18232D]">准备好了，就从一个目标岗位开始</div>
                   <p className="mt-1 text-[10px] leading-4 text-[#66717B]">不必一次配置完所有内容，StudyMate 会在真实学习过程中逐步了解你。</p>
                 </div>
               </div>
-              <Link to="/courses" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-[#6F8A69] px-5 text-[11px] font-bold text-white hover:bg-[#5D7658]">选择课程 <ArrowRight className="size-3.5" /></Link>
+              <Link to="/courses" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-[#6F8A69] px-5 text-[11px] font-bold text-white hover:bg-[#5D7658]">选择目标岗位 <ArrowRight className="size-3.5" /></Link>
             </div>
           </div>
         </main>

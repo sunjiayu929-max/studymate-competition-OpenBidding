@@ -9,6 +9,13 @@ from copy import deepcopy
 
 TRAINING_ROLES: list[dict] = [
     {
+        "course_name": "FDE 岗位知识库",
+        "domain": "特定软件开发",
+        "target_role": "前线部署工程师（FDE）",
+        "role_summary": "深入客户现场，把产品能力、数据和业务流程组合成可验证、可交付的解决方案",
+        "core_competencies": ["需求澄清", "Python 与 SQL", "系统集成", "客户沟通", "交付验证"],
+    },
+    {
         "course_name": "机器学习",
         "domain": "人工智能与工业视觉",
         "target_role": "工业视觉质检算法工程师",

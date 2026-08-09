@@ -13,6 +13,7 @@ export interface CareerRole {
   name: string
   summary: string
   skills: string[]
+  sampleTasks: string[]
   baseCourses: string[]
   knowledgeBaseState: "ready" | "planned"
   knowledgeBase?: {
@@ -43,6 +44,7 @@ export const careerDomains: CareerDomain[] = [
         name: "工业视觉质检模型开发与部署工程师",
         summary: "围绕缺陷数据、视觉模型、边缘部署和现场验收完成质量检测闭环。",
         skills: ["机器视觉", "模型训练", "边缘部署", "工业现场调试"],
+        sampleTasks: ["设计缺陷数据采集与标注规范", "完成缺陷分类模型训练与误检分析", "制定边缘设备部署与性能验收方案", "排查现场光照变化导致的漏检问题"],
         baseCourses: ["机器学习", "计算机网络"],
         knowledgeBaseState: "planned",
       },
@@ -51,6 +53,7 @@ export const careerDomains: CareerDomain[] = [
         name: "工业数据工程师",
         summary: "建设设备数据采集、清洗、治理与分析链路。",
         skills: ["数据采集", "时序数据", "ETL", "数据治理"],
+        sampleTasks: ["设计设备时序数据采集链路", "制定异常数据清洗与补全规则", "构建设备主数据治理方案", "定位生产指标波动的数据原因"],
         baseCourses: ["数据结构与算法", "计算机网络"],
         knowledgeBaseState: "planned",
       },
@@ -59,6 +62,7 @@ export const careerDomains: CareerDomain[] = [
         name: "工业互联网实施工程师",
         summary: "将平台能力落到工厂网络、设备接入与业务流程中。",
         skills: ["设备接入", "网络基础", "方案实施", "现场交付"],
+        sampleTasks: ["梳理工厂设备接入与协议适配清单", "制定现场网络联调方案", "完成工业平台部署验收检查", "沉淀现场异常与交付复盘记录"],
         baseCourses: ["计算机网络", "操作系统"],
         knowledgeBaseState: "planned",
       },
@@ -74,6 +78,7 @@ export const careerDomains: CareerDomain[] = [
         name: "前线部署工程师（FDE）",
         summary: "深入客户现场，把产品能力、数据和业务流程组合成可验证、可交付的解决方案。",
         skills: ["需求澄清", "Python 与 SQL", "系统集成", "客户沟通", "交付验证"],
+        sampleTasks: ["澄清客户场景与验收口径", "确认现场部署依赖与权限边界", "完成数据接口联调与异常排查", "设计可验收的最小交付闭环", "将现场问题沉淀为产品改进建议"],
         baseCourses: ["机器学习", "数据结构与算法", "计算机网络"],
         knowledgeBaseState: "ready",
         knowledgeBase: {
@@ -117,6 +122,7 @@ export const careerDomains: CareerDomain[] = [
         name: "企业 RAG 应用实施工程师",
         summary: "将企业资料、检索系统与业务问答流程整合为可使用的内部应用。",
         skills: ["RAG", "知识库构建", "接口集成", "评测与纠偏"],
+        sampleTasks: ["设计企业资料清洗与切片规范", "构建检索召回与重排流程", "制定业务问答评测集", "分析错误回答并完成检索纠偏"],
         baseCourses: ["机器学习", "数据结构与算法"],
         knowledgeBaseState: "planned",
       },
@@ -125,6 +131,7 @@ export const careerDomains: CareerDomain[] = [
         name: "软件质量工程师",
         summary: "通过测试设计、自动化验证与缺陷分析保障软件交付质量。",
         skills: ["测试设计", "自动化测试", "缺陷分析", "质量度量"],
+        sampleTasks: ["为核心业务流程设计分层测试方案", "构建接口自动化回归用例", "完成缺陷根因与影响范围分析", "制定发布质量门禁指标"],
         baseCourses: ["数据结构与算法", "操作系统"],
         knowledgeBaseState: "planned",
       },
@@ -140,6 +147,7 @@ export const careerDomains: CareerDomain[] = [
         name: "AI 应用工程师",
         summary: "将大模型、知识库和工具调用组合成稳定可用的业务应用。",
         skills: ["提示工程", "RAG", "后端开发", "应用评测"],
+        sampleTasks: ["设计带工具调用的业务 Agent", "构建可追溯的 RAG 问答链路", "制定模型输出质量评测集", "排查大模型应用的超时与幻觉问题"],
         baseCourses: ["机器学习", "数据结构与算法"],
         knowledgeBaseState: "planned",
       },
@@ -148,6 +156,7 @@ export const careerDomains: CareerDomain[] = [
         name: "算法工程师",
         summary: "负责数据建模、模型训练、评估和服务化部署。",
         skills: ["Python", "机器学习", "模型评估", "MLOps"],
+        sampleTasks: ["制定训练集与验证集划分方案", "完成模型训练与误差分析", "选择业务指标并设计离线评估", "规划模型服务化与监控方案"],
         baseCourses: ["机器学习", "数据结构与算法"],
         knowledgeBaseState: "planned",
       },
@@ -156,6 +165,7 @@ export const careerDomains: CareerDomain[] = [
         name: "大模型应用开发工程师",
         summary: "为具体业务设计大模型工作流、工具调用和内容安全机制。",
         skills: ["LLM", "Agent", "工具调用", "安全与评测"],
+        sampleTasks: ["设计多步骤大模型业务工作流", "实现安全可控的工具调用", "制定提示注入与内容安全测试", "构建端到端效果与成本评测"],
         baseCourses: ["机器学习", "计算机网络"],
         knowledgeBaseState: "planned",
       },

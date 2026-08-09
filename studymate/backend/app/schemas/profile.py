@@ -7,14 +7,14 @@ from pydantic import BaseModel, Field
 class KnowledgeBase(BaseModel):
     """知识基础：每个子项 0-5 分。默认 3 = 中位估计（对话开始后被实际抽取覆盖）。
 
-    subject_prior 是通用「当前课程领域的先验」分（多课程通用），可被任何课程的画像/评估复用。
+    subject_prior 是通用「当前目标岗位领域的先验」分，可被不同岗位的画像/评估复用。
     保留 ml_prior alias 用于向后兼容旧数据。
     """
     math: int = Field(3, ge=0, le=5, description="数学基础")
     programming: int = Field(3, ge=0, le=5, description="编程基础")
     statistics: int = Field(3, ge=0, le=5, description="统计/概率")
     english: int = Field(3, ge=0, le=5, description="英语阅读")
-    subject_prior: int = Field(3, ge=0, le=5, description="当前课程领域先验")
+    subject_prior: int = Field(3, ge=0, le=5, description="当前岗位领域先验")
 
 
 class CognitiveStyle(BaseModel):
@@ -26,9 +26,9 @@ class CognitiveStyle(BaseModel):
 
 
 class Goals(BaseModel):
-    primary: str = Field("", description="主要目标，如：考研机器学习 / 完成毕业项目 / 兴趣入门")
+    primary: str = Field("", description="主要目标，如：应聘目标岗位 / 完成岗位项目 / 补齐交付能力")
     deadline: str = Field("", description="时间预期，自由文本")
-    target_topics: list[str] = Field(default_factory=list, description="目标知识点列表")
+    target_topics: list[str] = Field(default_factory=list, description="目标岗位能力点列表")
 
 
 class Pace(BaseModel):
@@ -47,7 +47,7 @@ class ResourcePreference(BaseModel):
 
 
 class WeakPoints(BaseModel):
-    topics: list[str] = Field(default_factory=list, description="薄弱知识点")
+    topics: list[str] = Field(default_factory=list, description="薄弱岗位能力点")
     error_types: list[str] = Field(default_factory=list, description="错误类型：概念混淆/公式推导/代码实现/...")
 
 

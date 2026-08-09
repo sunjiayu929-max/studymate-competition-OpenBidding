@@ -31,7 +31,7 @@ const ORBIT_PATHS = [
 const ORBIT_PLANETS = [
   { label: "学习画像", color: "#355C8A", radius: 10, orbit: 0, duration: 20, begin: "0s", staticPosition: [180, 122] },
   { label: "AI 助教", color: "#B85C3E", radius: 13, orbit: 0, duration: 20, begin: "-10s", staticPosition: [460, 122] },
-  { label: "课程空间", color: "#C49A3A", radius: 11, orbit: 1, duration: 32, begin: "0s", staticPosition: [88, 122] },
+  { label: "岗位空间", color: "#C49A3A", radius: 11, orbit: 1, duration: 32, begin: "0s", staticPosition: [88, 122] },
   { label: "智能笔记", color: "#6F8A69", radius: 9, orbit: 1, duration: 32, begin: "-8s", staticPosition: [320, 10] },
   { label: "智能测验", color: "#3E7774", radius: 12, orbit: 1, duration: 32, begin: "-16s", staticPosition: [552, 122] },
   { label: "学习路径", color: "#7E6B83", radius: 14, orbit: 1, duration: 32, begin: "-24s", staticPosition: [320, 234] },
@@ -235,7 +235,7 @@ export function Login() {
                 transition={{ duration: 0.55, delay: 0.18 }}
                 className="mt-5 hidden max-w-[620px] text-[15px] leading-7 text-[#66717B] lg:block xl:text-base"
               >
-                StudyMate 让学习画像、AI 助教与成长路径围绕你协同工作，把分散的课程、笔记和练习连接起来。
+                StudyMate 让学习画像、AI 助教与成长路径围绕目标岗位协同工作，把岗位知识、笔记和练习连接起来。
               </motion.p>
 
                 <div className="hidden sm:block">

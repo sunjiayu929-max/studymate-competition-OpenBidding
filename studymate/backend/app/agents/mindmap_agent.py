@@ -89,10 +89,10 @@ class MindMapAgent(AgentBase):
     )
 
     async def run(self, context: dict, emit: EventEmitter) -> dict:
-        topic = context.get("topic", "机器学习")
+        topic = context.get("topic", "岗位任务")
         course_cfg = context.get("course_cfg")
         course_name = context.get("course_name", "机器学习")
-        persona = course_cfg.persona if course_cfg else f"{course_name}课程助教"
+        persona = course_cfg.persona if course_cfg else f"{course_name}岗位训练助理"
 
         if not has_llm_key():
             md = await self._stream_template(topic, emit)
@@ -126,7 +126,7 @@ class MindMapAgent(AgentBase):
 
     async def _stream_real(self, topic: str, persona: str, course_name: str, emit) -> str:
         llm = get_llm_client()
-        sys = f"""你是一位{persona}，同时也是知识结构梳理专家。请为《{course_name}》课程中的「{topic}」生成一个 Markmap 兼容的思维导图（Markdown 格式）。
+        sys = f"""你是一位{persona}，同时也是岗位能力结构梳理专家。请依据“{course_name}”岗位知识库，为任务或能力点「{topic}」生成一个 Markmap 兼容的思维导图（Markdown 格式）。
 要求：
 - 1 个一级标题（# 主题）
 - 4-6 个二级标题（## 维度）

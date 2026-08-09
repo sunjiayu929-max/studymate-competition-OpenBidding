@@ -105,7 +105,7 @@ export function WorkspaceDetail() {
         if (active) setProfile(value)
       })
       .catch(() => {
-        // 画像不是资源详情的硬依赖，拉取失败时保留课程默认策略说明。
+        // 画像不是资源详情的硬依赖，拉取失败时保留岗位默认策略说明。
       })
     return () => {
       active = false
@@ -565,7 +565,7 @@ const PREFERENCE_LABELS: Record<string, string> = {
 }
 
 const RESOURCE_STRATEGY: Record<AgentKey, string> = {
-  doc: "用课程原文建立概念主线，并针对薄弱点增加解释层次",
+  doc: "用岗位知识库原文建立能力主线，并针对薄弱点增加解释层次",
   guide: "把岗位任务拆成环境、步骤、预期、异常、安全边界与验收清单",
   quiz: "围绕薄弱点与当前主题生成多题型掌握度验证",
 }
@@ -590,7 +590,7 @@ function ResourceEvidenceBar({
   const preference = Object.entries(profile?.dims.preference || {})
     .filter(([, value]) => typeof value === "number")
     .sort((a, b) => b[1] - a[1])[0]?.[0]
-  const preferenceLabel = preference ? PREFERENCE_LABELS[preference] || preference : "课程默认呈现方式"
+  const preferenceLabel = preference ? PREFERENCE_LABELS[preference] || preference : "岗位默认呈现方式"
   const sourceReady = retrievedCount > 0 || citationCount > 0
   const evidenceCount = [Boolean(profile), Boolean(topic), sourceReady].filter(Boolean).length
 
@@ -608,9 +608,9 @@ function ResourceEvidenceBar({
       </div>
 
       <div className="grid gap-px bg-[#DDD7CB] sm:grid-cols-2 xl:grid-cols-4">
-        <EvidenceCell icon={UserRoundSearch} label="画像依据" value={profile ? `画像 v${profile.version}` : "课程默认策略"} hint={primaryGoal} color="#315E83" wash="#E7EDF3" />
+        <EvidenceCell icon={UserRoundSearch} label="画像依据" value={profile ? `画像 v${profile.version}` : "岗位默认策略"} hint={primaryGoal} color="#315E83" wash="#E7EDF3" />
         <EvidenceCell icon={Target} label="学习重点" value={topic || "当前主题"} hint={weakTopics.length ? `优先关注：${weakTopics.slice(0, 2).join("、")}` : `偏好方式：${preferenceLabel}`} color="#B85C3E" wash="#F4E8E2" />
-        <EvidenceCell icon={Database} label="课程与来源" value={courseName} hint={sourceReady ? `${retrievedCount || citationCount} 条课程依据参与生成` : "返回工作台生成后显示检索依据"} color="#3E7774" wash="#E2EEEB" />
+        <EvidenceCell icon={Database} label="岗位与来源" value={courseName} hint={sourceReady ? `${retrievedCount || citationCount} 条岗位依据参与生成` : "返回工作台生成后显示检索依据"} color="#3E7774" wash="#E2EEEB" />
         <EvidenceCell icon={ShieldCheck} label="内容策略" value={preferenceLabel} hint={RESOURCE_STRATEGY[resource]} color="#8E6925" wash="#F4ECD8" />
       </div>
     </article>
@@ -663,7 +663,7 @@ function NoData({ resourceTitle, onBack }: { resourceTitle: string; onBack: () =
 
         <div className="grid gap-2.5 p-4 sm:grid-cols-3 sm:p-5" aria-label="生成资源的三个步骤">
           {[
-            { step: "01", title: "选择课程", detail: "限定知识库与教材范围", icon: Database, color: "#355C8A", wash: "#E7EDF3" },
+            { step: "01", title: "选择目标岗位", detail: "限定岗位知识库与训练范围", icon: Database, color: "#355C8A", wash: "#E7EDF3" },
             { step: "02", title: "定义主题", detail: "画像参与内容生成策略", icon: Target, color: "#B85C3E", wash: "#F4E8E2" },
             { step: "03", title: "核验成果", detail: "逐类打开并继续学习", icon: ShieldCheck, color: "#6F8A69", wash: "#E8EDE5" },
           ].map(({ step, title, detail, icon: StepIcon, color, wash }) => (
@@ -682,7 +682,7 @@ function NoData({ resourceTitle, onBack }: { resourceTitle: string; onBack: () =
 
         <div className="flex flex-col-reverse gap-2 border-t border-[#E0DACE] bg-[#FCFAF5] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <Link to="/courses" className="text-center text-xs font-semibold text-[#66717B] transition-colors hover:text-[#244C66]">
-            还没选课？先选择课程知识库
+            尚未选择岗位？先进入岗位空间
           </Link>
           <Button onClick={onBack} className="bg-[#244C66] text-white hover:bg-[#1D4058]">
             <Sparkles className="size-4" /> 返回工作台开始生成
@@ -761,7 +761,7 @@ function CitationsBlock({ citations }: { citations: Citation[] }) {
                   )}
                   <span className="inline-flex items-center gap-0.5 font-semibold text-[#315E83]">
                     {target.external ? <ExternalLink className="size-2.5" /> : <ArrowRight className="size-2.5" />}
-                    {target.external ? "打开外部原文" : "查看教材原文"}
+                    {target.external ? "打开外部原文" : "查看岗位知识原文"}
                   </span>
                 </div>
                 <div className="mt-0.5 line-clamp-2 text-[var(--muted-foreground)]">{c.snippet}</div>

@@ -10,6 +10,7 @@ import { apiGet } from "@/lib/api"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useTutorContext } from "@/hooks/useTutorContext"
 import { useCurrentCourse } from "@/store/course"
+import { useTargetRole } from "@/store/targetRole"
 import { useCurrentUser } from "@/store/user"
 
 export function TutorChat() {
@@ -17,6 +18,7 @@ export function TutorChat() {
   const user = useCurrentUser()
   const USER_ID = user?.user_id ?? 0
   const course = useCurrentCourse()
+  const targetRole = useTargetRole()
   const [searchParams, setSearchParams] = useSearchParams()
   const captureMode = searchParams.get("capture") === "1"
   const [profile, setProfile] = useState<ProfileMiniData | null>(null)
@@ -39,7 +41,7 @@ export function TutorChat() {
   const goal = profile?.dims.goals.primary?.trim() || "等待画像补充"
   const weakPoints = profile?.dims.weak_points.topics?.filter(Boolean) || []
   const targetTopics = profile?.dims.goals.target_topics?.filter(Boolean) || []
-  const focus = weakPoints.slice(0, 3).join("、") || targetTopics.slice(0, 3).join("、") || "暂未标记薄弱点"
+  const focus = weakPoints.slice(0, 3).join("、") || targetTopics.slice(0, 3).join("、") || "暂未标记薄弱岗位能力点"
   const hours = profile?.dims.pace.hours_per_week
   const radarOptions = profile ? {
     knowledge: { label: "知识基础", data: profile.dims.knowledge_base, color: "#315E83" },
@@ -75,7 +77,7 @@ export function TutorChat() {
                 <TutorFact icon={AlertTriangle} label="优先关注" value={focus} tone="red" />
                 <div className="grid grid-cols-2 gap-2">
                   <TutorFact icon={Clock3} label="学习节奏" value={hours ? `每周 ${hours} 小时` : "等待补充"} tone="gold" compact />
-                  <TutorFact icon={BookOpen} label="当前岗位" value={course?.name || "尚未选择岗位"} tone="green" compact />
+                  <TutorFact icon={BookOpen} label="当前岗位" value={targetRole?.name || course?.name || "尚未选择岗位"} tone="green" compact />
                 </div>
               </div>
             </section>

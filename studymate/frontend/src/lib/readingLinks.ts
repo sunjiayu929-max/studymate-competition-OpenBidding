@@ -93,7 +93,7 @@ function verifiedResolvedUrl(item: ReadingLinkInput): string | null {
 }
 
 export function resolveReadingLinks(item: ReadingLinkInput, selectedTopic: string): ReadingLinkSet {
-  const topic = selectedTopic.trim() || item.title.trim() || "课程主题"
+  const topic = selectedTopic.trim() || item.title.trim() || "岗位能力主题"
   const title = item.title.trim() || topic
   const source = (item.source || "").trim()
   const genericFallback: ReadingResolvedLink = { url: bing(`${topic} ${source || title}`), label: "备用搜索", kind: "search" }

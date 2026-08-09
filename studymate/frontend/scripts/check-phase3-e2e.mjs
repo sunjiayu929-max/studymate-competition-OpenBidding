@@ -40,6 +40,7 @@ const courses = [
   { id: 3, name: "操作系统", description: "进程、内存与文件系统", chunk_count: 360 },
   { id: 4, name: "计算机网络", description: "协议与传输控制", chunk_count: 360 },
   { id: 5, name: "计算机组成原理", description: "处理器与存储系统", chunk_count: 360 },
+  { id: 6, name: "FDE 岗位知识库", description: "前线部署工程师岗位知识", chunk_count: 11 },
 ]
 
 const user = { user_id: 9001, name: "E2E 评委", email: "judge.fixture@example.test", role: "admin", created: false }
@@ -69,17 +70,17 @@ async function installApiMocks(context) {
       return json(route, { ok: true })
     }
     if (path === "/courses") return json(route, { count: courses.length, items: courses })
-    if (/^\/courses\/1\/config$/u.test(path)) {
+    if (/^\/courses\/6\/config$/u.test(path)) {
       return json(route, {
-        id: 1,
-        name: "机器学习",
-        description: "机器学习",
-        persona: "课程助教",
-        code_style: "ml",
+        id: 6,
+        name: "FDE 岗位知识库",
+        description: "前线部署工程师岗位知识",
+        persona: "前线部署工程师岗位训练助理",
+        code_style: "pseudo",
         code_libs: [],
         reading_sources: [],
-        sample_topics: ["梯度下降", "PCA"],
-        sample_questions: ["梯度下降如何工作？"],
+        sample_topics: ["需求澄清", "部署验收"],
+        sample_questions: ["如何定义可验收的最小交付闭环？"],
         syllabus_hint: "",
         from_registry: true,
       })
@@ -89,12 +90,12 @@ async function installApiMocks(context) {
         user_id: 9001,
         version: 3,
         dims: {
-          knowledge_base: { "机器学习": 62 },
+          knowledge_base: { programming: 62, subject_prior: 60 },
           cognitive_style: { visual: 70, verbal: 58 },
           preference: { animation: 75, example: 68 },
           employment_skills: { programming: 60, algorithm: 55 },
-          goals: { primary: "理解机器学习核心算法", target_topics: ["梯度下降"] },
-          weak_points: { topics: ["学习率"] },
+          goals: { primary: "胜任 FDE 现场交付", target_topics: ["部署验收"] },
+          weak_points: { topics: ["需求验收口径"] },
           pace: { hours_per_week: 6, intensity: "steady" },
         },
       })
@@ -103,10 +104,13 @@ async function installApiMocks(context) {
     if (path.startsWith("/notes")) return json(route, { count: 0, items: [] })
     if (path.startsWith("/quiz-sessions")) return json(route, [])
     if (path.startsWith("/eval/history/")) return json(route, { count: 0, items: [] })
-    if (path.startsWith("/rag/stats")) return json(route, { count: 1709, engine: "BM25 + Vector + RRF", course_id: 1 })
+    if (path.startsWith("/rag/stats")) {
+      const selectedId = url.searchParams.get("course_id")
+      return json(route, { count: selectedId === "6" ? 11 : 1709, engine: "BM25 + Vector + RRF", course_id: selectedId ? Number(selectedId) : null })
+    }
     if (path.startsWith("/rag/search")) {
       return json(route, {
-        query: url.searchParams.get("q") || "梯度下降",
+        query: url.searchParams.get("q") || "最小交付闭环",
         k: 8,
         count: 1,
         score_meta: {
@@ -118,11 +122,11 @@ async function installApiMocks(context) {
         },
         results: [{
           chunk_id: "101",
-          content: "梯度下降沿损失函数负梯度方向迭代更新参数，学习率控制每一步的长度。",
-          source: "机器学习课程讲义",
+          content: "最小交付闭环需要明确场景目标、系统依赖、验收口径、异常处理与复盘证据。",
+          source: "FDE 岗位知识库",
           page: 12,
           url: null,
-          meta: { topic: "梯度下降" },
+          meta: { topic: "部署验收" },
           score: 0.031,
           rank: 1,
           relevance_percent: 96,
@@ -133,18 +137,18 @@ async function installApiMocks(context) {
     if (path === "/rag/chunks/101") {
       return json(route, {
         chunk_id: "101",
-        course_id: 1,
-        course_name: "机器学习",
-        source: "机器学习课程讲义",
+        course_id: 6,
+        course_name: "FDE 岗位知识库",
+        source: "FDE 岗位知识库",
         page: 12,
         url: null,
         external_url: null,
-        meta: { topic: "梯度下降" },
+        meta: { topic: "部署验收" },
         context: [{
           chunk_id: "101",
-          content: "梯度下降沿损失函数负梯度方向迭代更新参数。",
+          content: "最小交付闭环需要明确验收口径并保留可复盘证据。",
           page: 12,
-          meta: { topic: "梯度下降" },
+          meta: { topic: "部署验收" },
           is_current: true,
         }],
       })
@@ -153,7 +157,7 @@ async function installApiMocks(context) {
       return json(route, {
         default: "qwen",
         items: [
-          { id: "qwen", label: "Qwen", description: "课程问答与多模态", configured: false, recommended: true },
+          { id: "qwen", label: "Qwen", description: "岗位问答与多模态", configured: false, recommended: true },
           { id: "deepseek", label: "DeepSeek", description: "推理与代码讲解", configured: false, recommended: false },
           { id: "mimo", label: "MiMo", description: "自然对话与总结", configured: false, recommended: false },
         ],
@@ -289,6 +293,8 @@ try {
   await page.getByRole("button", { name: "进入 StudyMate" }).click()
   await page.waitForURL((url) => url.pathname === "/")
 
+  // 该段专门验证保留的旧版指挥舱契约；默认首页现为浅色品牌首页。
+  await page.goto(`${baseUrl}/?legacy-home=1`, { waitUntil: "domcontentloaded" })
   await page.getByRole("heading", { name: "学习宇宙 · 实时指挥舱" }).waitFor()
   await page.getByTestId("beijing-clock").waitFor()
   await page.getByTestId("platform-capabilities").getByText("1,709", { exact: true }).waitFor()
@@ -304,18 +310,19 @@ try {
   assert.ok(await page.locator("#learning-desk").evaluate((element) => element.getBoundingClientRect().top < window.innerHeight), "learning desk did not enter viewport")
 
   await page.goto(`${baseUrl}/courses`)
-  const machineLearningCard = page.locator("article").filter({ has: page.getByRole("heading", { name: "机器学习", exact: true }) })
-  await machineLearningCard.getByRole("button").click()
+  await page.getByRole("button", { name: /特定软件开发/u }).click()
+  const fdeCard = page.locator("article").filter({ hasText: "前线部署工程师（FDE）" })
+  await fdeCard.getByRole("button").click()
   await page.waitForURL((url) => url.pathname === "/" || url.pathname === "/workspace")
 
   await page.goto(`${baseUrl}/rag`)
-  const ragInput = page.getByPlaceholder("搜索知识点、公式或问题…")
-  await ragInput.fill("梯度下降")
+  const ragInput = page.getByPlaceholder("搜索岗位任务、能力点或现场问题…")
+  await ragInput.fill("如何定义可验收的最小交付闭环")
   await page.getByRole("button", { name: "开始检索" }).click()
   await page.getByText("相对匹配 96%").waitFor()
   await page.getByRole("link", { name: "查看原文" }).click()
   await page.waitForURL("**/rag/source/101")
-  await page.getByRole("heading", { name: "机器学习课程讲义" }).waitFor()
+  await page.getByRole("heading", { name: "FDE 岗位知识库" }).waitFor()
 
   await page.goto(`${baseUrl}/profile`)
   const profileInput = page.getByPlaceholder("告诉我你的目标、基础或最近遇到的困难…")
@@ -394,7 +401,7 @@ try {
 
   for (const viewport of [{ width: 1366, height: 768 }, { width: 1440, height: 900 }, { width: 1920, height: 1080 }]) {
     await page.setViewportSize(viewport)
-    await page.goto(`${baseUrl}/`)
+    await page.goto(`${baseUrl}/?legacy-home=1`)
     await page.getByRole("heading", { name: "学习宇宙 · 实时指挥舱" }).waitFor()
     const layout = await page.evaluate(() => {
       const universe = document.querySelector(".learning-universe")

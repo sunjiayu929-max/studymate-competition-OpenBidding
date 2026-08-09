@@ -62,7 +62,7 @@ class QuizAgent(AgentBase):
         course_name = context.get("course_name", "机器学习")
         target_role = context.get("target_role", "目标岗位")
         revision_feedback = context.get("revision_feedback", {}).get("quiz", [])
-        persona = course_cfg.persona if course_cfg else f"{course_name}课程助教"
+        persona = course_cfg.persona if course_cfg else f"{course_name}岗位训练助理"
 
         if not has_llm_key():
             quiz = await self._stream_mock(emit)
@@ -194,7 +194,7 @@ async def generate_quiz_batch(
         if adaptive_hint
         else ""
     )
-    sys = f"""你是一位{persona}，同时是{course_name}出题专家。请为《{course_name}》课程下的「{topic}」生成测验题：
+    sys = f"""你是一位{persona}，同时是岗位能力测评专家。请依据“{course_name}”岗位知识库，为任务或能力点「{topic}」生成测验题：
 - 选择题（mcq）共 {mcq_count} 道：4 选项 options，answer 是 0..3 的整数索引
 - 填空题（fill）共 {fill_count} 道：answer 是简短答案字符串（用 / 分隔多个等价答案）
 - 编程题（code）共 {code_count} 道：starter 起步代码 + answer 标答 + 解析
@@ -216,7 +216,7 @@ async def generate_quiz_batch(
   ]
 }}
 
-严格按数量出齐 {total} 道，先 mcq 后 fill 再 code。题目避免重复、覆盖不同知识点。
+严格按数量出齐 {total} 道，先 mcq 后 fill 再 code。题目避免重复、覆盖不同岗位能力与任务情境。
 {adaptive_section}
 """
     msgs = [{"role": "system", "content": sys}, {"role": "user", "content": topic}]
@@ -267,7 +267,7 @@ async def judge_code_with_llm(
     question: str,
     reference: str,
     user_code: str,
-    persona: str = "课程助教",
+    persona: str = "岗位训练助教",
 ) -> tuple[float, str]:
     """code 题 LLM 判分：返回 (score 0-100, judge_reason)。
     保持简洁，3-5 秒一题。

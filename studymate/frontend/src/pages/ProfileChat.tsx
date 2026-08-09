@@ -14,6 +14,7 @@ import { apiGet, apiPost } from "@/lib/api"
 import { compressImage } from "@/lib/image"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useCurrentCourse } from "@/store/course"
+import { useTargetRole } from "@/store/targetRole"
 import { useCurrentUser } from "@/store/user"
 
 interface Msg {
@@ -45,6 +46,7 @@ export function ProfileChat() {
   const navigate = useNavigate()
   const user = useCurrentUser()
   const course = useCurrentCourse()
+  const targetRole = useTargetRole()
   const USER_ID = user?.user_id ?? 0
   const [profile, setProfile] = useState<ProfileResp | null>(null)
   const [messages, setMessages] = useState<Msg[]>([
@@ -454,10 +456,10 @@ export function ProfileChat() {
             {hasProfileContent && (
               <section className="rounded-[22px] border border-[#C7D2D8] bg-[#E7EDF3] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
                 <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.1em] text-[#315E83]"><Sparkles className="size-3.5" />画像已可参与学习</div>
-                <h3 className="mt-2 text-sm font-bold text-[#18232D]">下一步，让 7 个智能体生成第一套资源</h3>
-                <p className="mt-1 text-[11px] leading-5 text-[#596A75]">{course ? `将结合《${course.name}》知识库和画像 v${profile?.version} 组织内容。` : "还需先选择一门课程，确保知识来源与学习记录不会混淆。"}</p>
-                <Link to={course ? "/workspace" : "/courses"} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] hover:bg-[#193B50]">
-                  {course ? "进入学习资源工坊" : "先选择课程"}<ArrowRight className="size-3.5" />
+                <h3 className="mt-2 text-sm font-bold text-[#18232D]">下一步，让 8 个核心 Agent 完成岗位训练闭环</h3>
+                <p className="mt-1 text-[11px] leading-5 text-[#596A75]">{course ? `将结合“${targetRole?.name || course.name}”岗位知识库和画像 v${profile?.version} 组织内容。` : targetRole ? `“${targetRole.name}”已选定，画像会持续保留；专属岗位知识库接入后即可生成训练资源。` : "还需先选择目标岗位，确保知识来源与训练记录不会混淆。"}</p>
+                <Link to={course || targetRole ? "/workspace" : "/courses?returnTo=%2Fprofile"} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] hover:bg-[#193B50]">
+                  {course ? "进入学习资源工坊" : targetRole ? "查看岗位训练状态" : "先选择目标岗位"}<ArrowRight className="size-3.5" />
                 </Link>
               </section>
             )}

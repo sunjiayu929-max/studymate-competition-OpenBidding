@@ -31,7 +31,7 @@ class DocAgent(AgentBase):
         domain = context.get("domain", course_name)
         target_role = context.get("target_role", f"{course_name}应用工程师")
         revision_feedback = (context.get("revision_feedback") or {}).get("doc", [])
-        persona = course_cfg.persona if course_cfg else f"{course_name}课程助教"
+        persona = course_cfg.persona if course_cfg else f"{course_name}岗位训练助理"
 
         # 构造引用块的简短表示传给 LLM（每条 ≤ 80 字）
         ref_block = "\n".join(

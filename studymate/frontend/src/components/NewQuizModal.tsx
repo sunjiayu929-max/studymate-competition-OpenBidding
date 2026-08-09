@@ -86,7 +86,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "" }: Pr
 
   const handleStart = async () => {
     if (!course) {
-      setError("请先选择课程，再创建测验")
+      setError("请先选择目标岗位，再创建测验")
       return
     }
     if (total <= 0) {
@@ -137,7 +137,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "" }: Pr
             <div className="min-w-0">
               <div id="new-quiz-title" className="text-sm font-bold text-[#18232D]">新建智能测验</div>
               <div className="truncate text-[11px] text-[#6F787A]">
-                {course?.name || "未选课程"} · 提交后入库可查回顾
+                {course?.name || "未选目标岗位"} · 提交后入库可查回顾
               </div>
             </div>
           </div>

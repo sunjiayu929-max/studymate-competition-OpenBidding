@@ -61,8 +61,8 @@ const TARGET_LABEL: Record<string, string> = {
   page: "页面",
   resource: "学习资源",
   quiz: "测验",
-  topic: "学习主题",
-  course: "课程",
+  topic: "岗位训练任务",
+  course: "岗位知识库",
   bilibili_video: "视频资源",
   bilibili_search: "视频搜索",
 }

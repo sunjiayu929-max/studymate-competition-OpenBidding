@@ -32,6 +32,12 @@ class TrainingCatalogTests(unittest.TestCase):
         self.assertEqual(role["target_role"], "工业视觉质检算法工程师")
         self.assertGreaterEqual(len(role["core_competencies"]), 5)
 
+    def test_fde_knowledge_base_maps_to_selected_frontend_role(self):
+        role = resolve_training_role("FDE 岗位知识库")
+        self.assertEqual(role["domain"], "特定软件开发")
+        self.assertEqual(role["target_role"], "前线部署工程师（FDE）")
+        self.assertIn("交付验证", role["core_competencies"])
+
     def test_unknown_course_has_safe_generic_role(self):
         role = resolve_training_role("新领域")
         self.assertEqual(role["domain"], "特定软件开发")

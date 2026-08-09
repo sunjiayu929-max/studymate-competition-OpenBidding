@@ -19,6 +19,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { useCurrentCourse } from "@/store/course"
+import { useTargetRole } from "@/store/targetRole"
 
 export type PageId =
   | "home"
@@ -61,7 +62,7 @@ const PAGE_META: Record<PageId, { label: string; group: string; icon: typeof Hom
 
 const PAGE_ACTIONS: Partial<Record<PageId, Array<{ label: string; to: string }>>> = {
   home: [{ label: "岗位空间", to: "/courses" }, { label: "学习工坊", to: "/workspace" }, { label: "学习画像", to: "/profile" }],
-  workspace: [{ label: "目标岗位", to: "/courses" }, { label: "沉淀笔记", to: "/notes" }, { label: "验证掌握", to: "/quiz" }, { label: "查看报告", to: "/report" }],
+  workspace: [{ label: "目标岗位", to: "/courses?returnTo=%2Fworkspace" }, { label: "沉淀笔记", to: "/notes" }, { label: "验证掌握", to: "/quiz" }, { label: "查看报告", to: "/report" }],
   tutor: [{ label: "实时语音", to: "/tutor/voice" }, { label: "可视讲解", to: "/concept" }, { label: "学习画像", to: "/profile" }],
   profile: [{ label: "选择目标岗位", to: "/courses" }, { label: "开始对话", to: "/tutor" }, { label: "查看报告", to: "/report" }],
   rag: [{ label: "自建知识库", to: "/knowledge" }, { label: "智能笔记", to: "/notes" }, { label: "AI 助教", to: "/tutor" }],
@@ -97,11 +98,13 @@ export function AppTopbar({
   selectionLabel,
 }: AppTopbarProps) {
   const course = useCurrentCourse()
+  const targetRole = useTargetRole()
   const meta = PAGE_META[current]
   const Icon = meta.icon
   const paper = appearance === "paper"
   const label = labelOverride ?? meta.label
   const group = groupOverride ?? meta.group
+  const roleSelectionPath = current === "workspace" ? "/courses?returnTo=%2Fworkspace" : "/courses"
 
   return (
     <header
@@ -126,7 +129,7 @@ export function AppTopbar({
           <h1 className="truncate text-[14px] font-bold tracking-[-.025em] text-[#17233D]">{label}</h1>
         </div>
         <Link
-          to="/courses"
+          to={roleSelectionPath}
           className={cn(
             "hidden h-9 max-w-[240px] items-center gap-2 rounded-xl border px-3 text-[11px] font-semibold text-[#596B87] transition-colors hover:bg-[#EFF5FF] sm:flex",
             current === "courses" ? "border-[#B9CEEE] bg-[#EAF2FF] text-[#245DB9]" : "border-[#DCE5F1] bg-[#F8FBFF]",
@@ -134,7 +137,7 @@ export function AppTopbar({
           title="查看或切换当前目标岗位"
         >
           <Library className="size-3.5 shrink-0 text-[#3477DA]" />
-          <span className="truncate">{selectionLabel ?? course?.name ?? "选择当前岗位"}</span>
+          <span className="truncate">{selectionLabel ?? targetRole?.name ?? course?.name ?? "选择当前岗位"}</span>
         </Link>
         <Link to="/guide" className="app-topbar-help hidden size-9 place-items-center rounded-xl border border-[#DCE5F1] bg-[#F8FBFF] text-[11px] font-extrabold text-[#5272A5] transition-colors hover:bg-[#EFF5FF] sm:grid" aria-label="打开新手指引">?</Link>
       </div>

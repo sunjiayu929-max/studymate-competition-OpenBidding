@@ -35,6 +35,7 @@ import { useTutorContext } from "@/hooks/useTutorContext"
 import { useWorkspaceStore } from "@/store/workspace"
 import { useCurrentUser } from "@/store/user"
 import { useCurrentCourse } from "@/store/course"
+import { useTargetRole } from "@/store/targetRole"
 
 interface EvalScores {
   overall_correct_rate: number
@@ -219,6 +220,7 @@ export function Report() {
   const ws = useWorkspaceStore()
   const user = useCurrentUser()
   const course = useCurrentCourse()
+  const targetRole = useTargetRole()
   const USER_ID = user?.user_id ?? 0
   const reportRef = useRef<HTMLDivElement>(null)
   const noticeTimerRef = useRef<number | null>(null)
@@ -291,7 +293,7 @@ export function Report() {
   ].filter(Boolean))], [quizAttempts, ws.topic])
 
   const evidenceCourseId = ws.courseId ?? course?.id ?? null
-  const evidenceCourseName = ws.courseName || course?.name || null
+  const evidenceCourseName = ws.targetRole || targetRole?.name || ws.courseName || course?.name || null
 
   const timeSpentMin = useMemo(() => {
     if (!resourcesConsumed.length && !quizAttempts.length) return 0
@@ -678,7 +680,7 @@ export function Report() {
               <ReportHistoryLanding items={evalHistory} />
               {trendData.length >= 2 && <TrendLineCard data={trendData} />}
             </div>
-          ) : <EmptyState courseName={course?.name} />
+          ) : <EmptyState courseName={targetRole?.name || course?.name} />
         )}
 
         {canRunEval && !report && !loading && (
@@ -939,8 +941,8 @@ function ReportEvidenceStrip({
     ? evidence.resources_consumed.map((key) => RESOURCE_LABEL[key] || key).slice(0, 3).join("、")
     : "未记录资源"
   const cells = [
-    { label: "课程上下文", value: evidence?.course_name || "旧版报告未记录", icon: BookOpen },
-    { label: "学习主题", value: evidence?.topic || evidence?.topics_studied?.[0] || "历史学习", icon: Target },
+    { label: "目标岗位上下文", value: evidence?.course_name || "旧版报告未记录", icon: BookOpen },
+    { label: "岗位训练任务", value: evidence?.topic || evidence?.topics_studied?.[0] || "历史训练", icon: Target },
     { label: "输入证据", value: evidence ? `${evidence.quiz_count} 题 · ${evidence.resources_consumed.length} 类资源` : "已归档", icon: Layers3 },
     { label: "生成时间", value: formatReportTime(generatedAt), icon: Clock },
   ]
@@ -1078,7 +1080,7 @@ function TopicDifficultyHeatmap({
         <table className="w-full min-w-[680px] border-separate border-spacing-0 text-left">
           <thead>
             <tr className="text-[10px] font-bold text-[#7A817F]">
-              <th className="px-2 py-2">学习主题</th>
+              <th className="px-2 py-2">岗位训练任务</th>
               {difficulties.map((difficulty) => <th key={difficulty} className="px-2 py-2 text-center">难度 {difficulty}</th>)}
               <th className="px-2 py-2 text-center">主题总体</th>
             </tr>
@@ -1175,7 +1177,7 @@ function EmptyState({ courseName }: { courseName?: string }) {
           <span className="relative grid size-12 place-items-center rounded-2xl border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925] shadow-[0_10px_24px_rgba(142,105,37,.12)]"><BarChart3 className="size-5" /></span>
         </div>
         <h2 className="mt-4 text-xl font-bold tracking-[-0.03em] text-[#18232D]">完成一次学习闭环，报告就会在这里生长</h2>
-        <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[#66717B]">学习报告会结合资源学习、测验结果和画像变化，告诉你已经掌握什么、薄弱点在哪里，以及下一步最值得学什么。</p>
+        <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[#66717B]">学习报告会结合资源训练、测验结果和画像变化，告诉你已经掌握哪些岗位能力、薄弱能力在哪里，以及下一步最值得训练什么。</p>
         <div className="mt-6 grid gap-2 text-left sm:grid-cols-3">
           {steps.map(({ step, title, desc, icon: Icon, tone }) => (
             <div key={step} className="paper-lift rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] p-4">
@@ -1190,7 +1192,7 @@ function EmptyState({ courseName }: { courseName?: string }) {
         </div>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Link to={courseName ? "/workspace" : "/courses"} className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] transition-colors hover:bg-[#193B50]">
-            <Sparkles className="size-4" /> {courseName ? "生成第一套学习资源" : "先选择一门课程"}
+            <Sparkles className="size-4" /> {courseName ? "生成第一套岗位训练资源" : "先选择目标岗位"}
           </Link>
           {courseName && (
             <Link to="/quiz" className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[#C9C2B4] bg-[#FFFEFA] px-5 text-xs font-bold text-[#315E83] transition-colors hover:bg-[#EEE9DF]">
@@ -1459,7 +1461,7 @@ function ProfileDeltaCard({
             className={`rounded-xl border bg-[#FFFEFA] p-3 ${wpApplied ? "border-[#6F8A69]" : "border-[#D7D1C4]"}`}
           >
             <div className="text-xs font-semibold mb-1.5 flex items-center gap-1">
-              <span>⚠️ 薄弱点（替换）</span>
+              <span>⚠️ 薄弱能力点（替换）</span>
               {wpApplied && <CheckCircle2 className="size-3 text-[#557052]" />}
             </div>
             {wp?.topics?.length || wp?.error_types?.length ? (

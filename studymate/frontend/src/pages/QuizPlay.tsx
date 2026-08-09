@@ -40,6 +40,7 @@ import { apiPost } from "@/lib/api"
 import { effectiveQuizErrorTags } from "@/lib/quizError"
 import { useCurrentUser } from "@/store/user"
 import { useCourseConfig, useCurrentCourse } from "@/store/course"
+import { useTargetRole } from "@/store/targetRole"
 import { workspaceStore, type QuizAttempt } from "@/store/workspace"
 import {
   getQuizSession,
@@ -88,7 +89,8 @@ export function QuizPlay() {
   const sessionId = Number(id)
   const navigate = useNavigate()
   const course = useCurrentCourse()
-  const courseName = course?.name || ""
+  const targetRole = useTargetRole()
+  const courseName = targetRole?.name || course?.name || ""
   const courseCfg = useCourseConfig()
   const defaultRunLang: RunLang = courseCfg?.code_style === "algorithm" ? "cpp" : "python"
   useTrackPage("quiz_play", { session: sessionId })
@@ -371,12 +373,13 @@ export function QuizPlay() {
             <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[#C9D1CB] bg-[#FFFEFA] text-[#557052]"><CheckCircle2 className="size-4" /></span>
             <div>
               <strong className="block text-sm text-[#24372E]">本次答题已进入学习证据</strong>
-              <p className="mt-0.5 text-[11px] leading-5 text-[#66736A]">{total} 道作答、正确情况与 {fmtDur(session.duration_ms)} 有效用时已同步，可直接生成报告并更新画像。</p>
+              <p className="mt-0.5 text-[11px] leading-5 text-[#66736A]">{total} 道作答、正确情况与 {fmtDur(session.duration_ms)} 有效用时已同步；可先查看报告，再返回资源工坊提交反馈，更新下一轮岗位训练策略。</p>
             </div>
           </div>
-          <Link to="/report" className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#557052] px-4 text-[11px] font-bold text-[#FFFEFA] transition-colors hover:bg-[#465F45]">
-            查看学习报告 <ArrowRight className="size-3.5" />
-          </Link>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Link to="/report" className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#557052] px-4 text-[11px] font-bold text-[#FFFEFA] transition-colors hover:bg-[#465F45]">查看学习报告 <ArrowRight className="size-3.5" /></Link>
+            <Link to="/workspace" className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#BFCABE] bg-[#FFFEFA] px-4 text-[11px] font-bold text-[#557052] hover:bg-[#F5F8F3]">回写训练闭环</Link>
+          </div>
         </section>
       )}
 

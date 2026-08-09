@@ -75,6 +75,7 @@ class PageContext(BaseModel):
 class TutorChatRequest(BaseModel):
     user_id: int = 1
     course_id: int | None = None
+    target_role: str | None = Field(default=None, max_length=128)
     messages: list[TutorMessage] = Field(default_factory=list)
     page_context: PageContext | None = None
     # 文字/语音助教显式传入；笔记总结等内部直接任务省略该字段。
@@ -335,9 +336,11 @@ def _system_prompt(
     course_name: str,
     page_ctx: PageContext | None = None,
     learning_method: Literal["feynman", "socratic"] | None = None,
+    target_role: str | None = None,
 ) -> str:
+    role_context = target_role.strip() if target_role else course_name
     base = (
-        f"你是 StudyMate 学习助手（{persona}），目前正在为《{course_name}》课程的学生答疑。回答风格：\n"
+        f"你是 StudyMate 岗位学习助手（{persona}），当前围绕目标岗位“{role_context}”，为学习者解决岗位能力点与任务问题。回答风格：\n"
         "1. **简洁直接**，不啰嗦；公式用 KaTeX（行内 $..$，独立 $$..$$）；代码用 ```python ... ``` 或对应语言\n"
         "2. 解释概念时先给一句话的直觉，再给精确定义/公式\n"
         "3. 鼓励但不空夸；学生答错时指出错误并补充正确思路\n"
@@ -423,8 +426,8 @@ _PAGE_LABELS = {
     "tests": "测试 case 管理",
     "quiz": "题库测验（用户在答题或回顾题目）",
     "profile": "画像建立 / 对话",
-    "rag": "课程资料原文与知识库检索",
-    "courses": "课程列表",
+    "rag": "岗位知识原文与知识库检索",
+    "courses": "目标岗位列表",
 }
 
 
@@ -504,7 +507,7 @@ async def tutor_models():
     if default not in SUPPORTED_PROVIDERS:
         default = "qwen"
     descriptions = {
-        "qwen": ("Qwen", "课程问答与多模态附件"),
+        "qwen": ("Qwen", "岗位问答与多模态附件"),
         "deepseek": ("DeepSeek", "推理、公式与代码讲解"),
         "spark": ("讯飞星火 4.0 Ultra", "通用问答与学习辅导"),
         "mimo": ("MiMo", "自然对话、提炼与总结"),
@@ -587,14 +590,20 @@ async def tutor_chat(req: TutorChatRequest, user: User = Depends(require_user)):
             return
 
         # 构造 messages：system + 历史
+        assistant_persona = (
+            f"{req.target_role}岗位训练助理"
+            if req.target_role and req.course_id is None
+            else course_cfg.persona
+        )
         sys = {
             "role": "system",
             "content": _system_prompt(
                 profile_dims,
-                course_cfg.persona,
+                assistant_persona,
                 course_cfg.name,
                 req.page_context,
                 req.learning_method,
+                req.target_role,
             ),
         }
         if private_context:

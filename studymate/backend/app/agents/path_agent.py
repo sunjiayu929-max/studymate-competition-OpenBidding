@@ -26,15 +26,15 @@ class PathAgent(AgentBase):
         name="路径 Agent",
         icon="🗺️",
         color="amber",
-        description="规划个性化学习路径节点图",
+        description="规划个性化岗位训练路径节点图",
     )
 
     async def run(self, context: dict, emit: EventEmitter) -> dict:
-        topic = context.get("topic", "机器学习")
+        topic = context.get("topic", "岗位任务")
         profile = context.get("profile", {})
         course_cfg = context.get("course_cfg")
         course_name = context.get("course_name", "机器学习")
-        persona = course_cfg.persona if course_cfg else f"{course_name}课程助教"
+        persona = course_cfg.persona if course_cfg else f"{course_name}岗位训练助理"
 
         if not has_llm_key():
             raw_nodes = self._mock_nodes(topic, course_name)
@@ -59,7 +59,7 @@ class PathAgent(AgentBase):
 
     async def _gen_real(self, topic: str, profile: dict, persona: str, course_name: str, emit) -> list[dict]:
         llm = get_llm_client()
-        sys = f"""你是一位{persona}，同时是{course_name}课程设计专家。为《{course_name}》课程下的「{topic}」规划 5-7 个**渐进式**学习节点的路径。
+        sys = f"""你是一位{persona}，同时是岗位训练设计专家。请依据“{course_name}”岗位知识库，为任务或能力点「{topic}」规划 5-7 个**渐进式**训练节点。
 
 输出**严格 JSON**（不要 Markdown 包裹），结构：
 {{
@@ -106,7 +106,7 @@ class PathAgent(AgentBase):
 
     def _mock_nodes(self, topic: str, course_name: str = "机器学习") -> list[dict]:
         return [
-            {"id": "n1", "title": f"{course_name}前置", "desc": "基础概念 / 必要工具", "deps": []},
+            {"id": "n1", "title": "岗位前置能力", "desc": f"{course_name}基础 / 必要工具", "deps": []},
             {"id": "n2", "title": f"{topic} 概念", "desc": "定义、动机、应用场景", "deps": ["n1"]},
             {"id": "n3", "title": "核心原理", "desc": "公式推导 + 直觉理解", "deps": ["n2"]},
             {"id": "n4", "title": "动手实现", "desc": "从零写一次最小可运行版", "deps": ["n3"]},

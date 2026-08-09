@@ -32,6 +32,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { apiPost } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { useCurrentCourse } from "@/store/course"
+import { useTargetRole } from "@/store/targetRole"
 import { isShowcaseCourse } from "@/store/course"
 import { ShowcaseCourseGuard } from "@/components/ShowcaseCourseGuard"
 import { useWorkspaceStore } from "@/store/workspace"
@@ -131,6 +132,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const user = useCurrentUser()
   const course = useCurrentCourse()
+  const targetRole = useTargetRole()
   const showcaseCourse = isShowcaseCourse(course)
   const workspace = useWorkspaceStore()
   const [collapsed, setCollapsed] = useState(readCollapsed)
@@ -249,14 +251,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="shrink-0 px-3 pt-3">
           <Link
             to="/courses"
-            title={course?.name || "选择当前岗位"}
+            title={targetRole?.name || course?.name || "选择当前岗位"}
             className={cn(
               "flex items-center rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] shadow-[0_5px_14px_rgba(24,35,45,.045)] transition-colors hover:bg-[#F7F2E7]",
               effectiveCollapsed ? "h-11 justify-center" : "gap-2.5 px-3 py-2.5",
             )}
           >
             <span className="app-nav-icon"><Library className="size-3.5" /></span>
-            {!effectiveCollapsed && <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">当前岗位</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{course?.name || "选择目标岗位"}</strong></span>}
+            {!effectiveCollapsed && <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">当前岗位</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{targetRole?.name || course?.name || "选择目标岗位"}</strong></span>}
           </Link>
         </div>
 
@@ -359,7 +361,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <ConfirmDialog
         open={logoutOpen}
         title="确认退出 StudyMate？"
-        description="当前账号会安全退出；待上报行为队列会先停止，已保存的课程、笔记与学习进度不会丢失。"
+        description="当前账号会安全退出；待上报行为队列会先停止，已保存的目标岗位、笔记与训练进度不会丢失。"
         confirmLabel="退出登录"
         busy={logoutBusy}
         onClose={() => setLogoutOpen(false)}

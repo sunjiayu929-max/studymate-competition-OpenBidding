@@ -2,8 +2,8 @@
  * 动画库 · 独立浏览页（/concept/library）
  * ------------------------------------------------------------------
  * 进动画讲解 → 点「动画库」入口 → 进这里慢慢逛。
- * - 按科目分类，每个科目一组卡片。
- * - 顶部搜索框，按标题/科目/关键词过滤（在某科目里找经典模型）。
+ * - 按岗位能力方向分类，每个方向一组卡片。
+ * - 顶部搜索框，按标题/能力方向/关键词过滤。
  * - 点卡片在上方展开播放器，用户自己调控自己看；下方给一句话文字说明（不朗读）。
  */
 import { useMemo, useState } from "react"
@@ -13,42 +13,46 @@ import { AppTopbar } from "@/components/AppTopbar"
 import { Button } from "@/components/ui/button"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { CONCEPT_ANIMS, conceptMatchScore } from "@/components/concepts/registry"
-import { useCurrentCourse } from "@/store/course"
+import { useTargetRole } from "@/store/targetRole"
 
-// 科目展示顺序（与课程一致）
-const COURSE_ORDER = ["机器学习", "数据结构与算法", "操作系统", "计算机网络", "计算机组成原理"]
+const CAPABILITY_DIRECTIONS = ["机器学习", "数据结构与算法", "操作系统", "计算机网络", "计算机组成原理"]
+const DIRECTION_LABELS: Record<string, string> = {
+  机器学习: "模型与数据能力",
+  数据结构与算法: "算法与工程基础",
+  操作系统: "系统与部署基础",
+  计算机网络: "网络与系统集成",
+  计算机组成原理: "计算平台基础",
+}
 
-function courseRank(course: string): number {
-  const i = COURSE_ORDER.indexOf(course)
-  return i === -1 ? COURSE_ORDER.length : i
+function directionRank(direction: string): number {
+  const i = CAPABILITY_DIRECTIONS.indexOf(direction)
+  return i === -1 ? CAPABILITY_DIRECTIONS.length : i
 }
 
 export function ConceptLibrary() {
   useTrackPage("concept")
   const navigate = useNavigate()
-  const currentCourse = useCurrentCourse()
+  const targetRole = useTargetRole()
   const [query, setQuery] = useState("")
-  const [selectedCourse, setSelectedCourse] = useState(() =>
-    currentCourse?.name && COURSE_ORDER.includes(currentCourse.name) ? currentCourse.name : COURSE_ORDER[0],
-  )
+  const [selectedDirection, setSelectedDirection] = useState("all")
 
-  const courseCounts = useMemo(
+  const directionCounts = useMemo(
     () =>
       new Map(
-        COURSE_ORDER.map((course) => [course, CONCEPT_ANIMS.filter((concept) => concept.course === course).length]),
+        CAPABILITY_DIRECTIONS.map((direction) => [direction, CONCEPT_ANIMS.filter((concept) => concept.course === direction).length]),
       ),
     [],
   )
 
-  // 过滤 + 按科目分组
+  // 底层动画仍保留来源分类字段，界面统一呈现为岗位能力方向。
   const groups = useMemo(() => {
     const q = query.trim()
-    const inSelectedCourse =
-      selectedCourse === "all"
+    const inSelectedDirection =
+      selectedDirection === "all"
         ? CONCEPT_ANIMS
-        : CONCEPT_ANIMS.filter((concept) => concept.course === selectedCourse)
+        : CONCEPT_ANIMS.filter((concept) => concept.course === selectedDirection)
     const filtered = q
-      ? inSelectedCourse.map((concept, index) => ({
+      ? inSelectedDirection.map((concept, index) => ({
           concept,
           index,
           score: conceptMatchScore(concept, q, true),
@@ -56,22 +60,20 @@ export function ConceptLibrary() {
           .filter((item) => item.score > 0)
           .sort((a, b) => b.score - a.score || a.index - b.index)
           .map((item) => item.concept)
-      : inSelectedCourse
-    const byCourse = new Map<string, typeof CONCEPT_ANIMS>()
+      : inSelectedDirection
+    const byDirection = new Map<string, typeof CONCEPT_ANIMS>()
     for (const c of filtered) {
-      const arr = byCourse.get(c.course) ?? []
+      const arr = byDirection.get(c.course) ?? []
       arr.push(c)
-      byCourse.set(c.course, arr)
+      byDirection.set(c.course, arr)
     }
-    const grouped = Array.from(byCourse.entries())
-    // 搜索时 Map 的插入顺序就是该科第一个结果的相关度顺序；保留它，避免
-    // “TCP 滑动窗口”被固定科目顺序里的算法滑窗排到前面。空查询仍按课程表排序。
-    return q ? grouped : grouped.sort((a, b) => courseRank(a[0]) - courseRank(b[0]))
-  }, [query, selectedCourse])
+    const grouped = Array.from(byDirection.entries())
+    return q ? grouped : grouped.sort((a, b) => directionRank(a[0]) - directionRank(b[0]))
+  }, [query, selectedDirection])
 
   const total = CONCEPT_ANIMS.length
   const visibleCount = groups.reduce((sum, [, anims]) => sum + anims.length, 0)
-  const selectedCourseLabel = selectedCourse === "all" ? "全部课程" : selectedCourse
+  const selectedDirectionLabel = selectedDirection === "all" ? "全部能力方向" : DIRECTION_LABELS[selectedDirection] || selectedDirection
 
   return (
     <div className="app-page paper-theme">
@@ -88,7 +90,7 @@ export function ConceptLibrary() {
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Library className="size-4" /></span>
               <div className="min-w-0">
                 <h1 className="text-[15px] font-bold text-[#18232D]">StudyMate 动画库</h1>
-                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">{total} 个精品动画 · 按课程检索、自由播放和单步拆解</p>
+                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">{total} 个精品动画 · 围绕{targetRole?.name || "目标岗位"}按能力方向检索、自由播放和单步拆解</p>
               </div>
             </div>
           </header>
@@ -97,9 +99,9 @@ export function ConceptLibrary() {
             <div className="mb-6 rounded-2xl border border-[#D7D1C4] bg-[#FBF8F0] p-3.5 sm:p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <p className="text-xs font-bold text-[#243746]">按课程浏览</p>
+                  <p className="text-xs font-bold text-[#243746]">按岗位能力方向浏览</p>
                   <p className="mt-1 text-[11px] leading-4 text-[#6F787A]">
-                    当前展示 {selectedCourseLabel} · {visibleCount} 个动画，点选后直接进入完整播放页
+                    当前展示 {selectedDirectionLabel} · {visibleCount} 个动画，点选后直接进入完整播放页
                   </p>
                 </div>
                 <div className="relative w-full lg:max-w-[430px]">
@@ -108,7 +110,7 @@ export function ConceptLibrary() {
                     value={query}
                     onChange={(e) => {
                       const nextQuery = e.target.value
-                      if (nextQuery.trim() && !query.trim()) setSelectedCourse("all")
+                      if (nextQuery.trim() && !query.trim()) setSelectedDirection("all")
                       setQuery(nextQuery)
                     }}
                     placeholder="搜索 300 个动画，如红黑树 / 虚拟内存 / HTTP2…"
@@ -128,38 +130,38 @@ export function ConceptLibrary() {
                 </div>
               </div>
 
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-0.5" role="group" aria-label="按课程筛选动画">
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-0.5" role="group" aria-label="按岗位能力方向筛选动画">
                 <button
                   type="button"
-                  aria-pressed={selectedCourse === "all"}
-                  onClick={() => setSelectedCourse("all")}
+                  aria-pressed={selectedDirection === "all"}
+                  onClick={() => setSelectedDirection("all")}
                   className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors ${
-                    selectedCourse === "all"
+                    selectedDirection === "all"
                       ? "border-[#244C66] bg-[#244C66] text-white"
                       : "border-[#D2CABD] bg-[#FFFEFA] text-[#59666E] hover:border-[#9FB1BC] hover:text-[#244C66]"
                   }`}
                 >
-                  全部课程 <span className={selectedCourse === "all" ? "text-white/70" : "text-[#98958D]"}>{total}</span>
+                  全部能力方向 <span className={selectedDirection === "all" ? "text-white/70" : "text-[#98958D]"}>{total}</span>
                 </button>
-                {COURSE_ORDER.map((course) => (
+                {CAPABILITY_DIRECTIONS.map((direction) => (
                   <button
-                    key={course}
+                    key={direction}
                     type="button"
-                    aria-pressed={selectedCourse === course}
-                    onClick={() => setSelectedCourse(course)}
+                    aria-pressed={selectedDirection === direction}
+                    onClick={() => setSelectedDirection(direction)}
                     className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors ${
-                      selectedCourse === course
+                      selectedDirection === direction
                         ? "border-[#244C66] bg-[#244C66] text-white"
                         : "border-[#D2CABD] bg-[#FFFEFA] text-[#59666E] hover:border-[#9FB1BC] hover:text-[#244C66]"
                     }`}
                   >
-                    {course} <span className={selectedCourse === course ? "text-white/70" : "text-[#98958D]"}>{courseCounts.get(course) ?? 0}</span>
+                    {DIRECTION_LABELS[direction]} <span className={selectedDirection === direction ? "text-white/70" : "text-[#98958D]"}>{directionCounts.get(direction) ?? 0}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-        {/* 按科目分组的卡片 */}
+        {/* 按岗位能力方向分组的卡片 */}
         {groups.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-[22px] border border-dashed border-[#CFC8B9] bg-[#FBF8F0] px-5 py-12 text-center">
             <span className="grid size-11 place-items-center rounded-2xl border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Search className="size-4" /></span>
@@ -175,11 +177,11 @@ export function ConceptLibrary() {
           </div>
         ) : (
           <div className="space-y-6">
-            {groups.map(([course, anims]) => (
-              <section key={course}>
+            {groups.map(([direction, anims]) => (
+              <section key={direction}>
                 <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
                   <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
-                    <span className={`rounded-full px-2 py-0.5 text-xs ${anims[0].badgeClass}`}>{course}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs ${anims[0].badgeClass}`}>{DIRECTION_LABELS[direction] || direction}</span>
                     <span className="font-normal text-[var(--muted-foreground)]">{anims.length} 个</span>
                   </h2>
                   {query.trim() ? <span className="text-[11px] text-[#7A817F]">匹配「{query.trim()}」</span> : null}

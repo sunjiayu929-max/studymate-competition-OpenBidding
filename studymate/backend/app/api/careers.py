@@ -190,9 +190,9 @@ async def career_recommendations(
         "historical_courses": history[:5],
         "employment_skills": skills,
         "evidence_note": (
-            "岗位匹配综合就业技能、当前课程、已提交测验课程和学习目标。"
+            "岗位匹配综合就业技能、当前目标岗位、已提交测验证据和岗位目标。"
             if has_skills
-            else "就业技能尚待补充，当前主要依据课程和学习目标推荐。"
+            else "就业技能尚待补充，当前主要依据目标岗位和画像目标推荐。"
         ),
         "items": ranked[:limit],
     }

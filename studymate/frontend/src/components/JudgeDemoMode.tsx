@@ -23,6 +23,7 @@ import {
 
 import { apiGet } from "@/lib/api"
 import { courseStore, setCurrentCourse, type CourseInfo } from "@/store/course"
+import { getTargetRoleSelection, setTargetRole, type TargetRoleSelection } from "@/store/targetRole"
 import { useCurrentUser } from "@/store/user"
 
 export const JUDGE_DEMO_EVENT = "studymate:judge-demo-open"
@@ -33,6 +34,7 @@ interface DemoSession {
   step: number
   originalPath: string
   originalCourse: CourseInfo | null
+  originalTargetRole?: TargetRoleSelection | null
   demoCourse: CourseInfo
   startedAt: number
 }
@@ -59,19 +61,19 @@ const STEPS = [
   },
   {
     path: "/courses",
-    label: "机器学习课程",
-    title: "确认课程级上下文",
-    detail: "演示临时选择《机器学习》。课程、画像、检索、助教和报告共享同一上下文；退出演示会恢复原课程。",
+    label: "FDE 岗位空间",
+    title: "确认领域与岗位级上下文",
+    detail: "演示临时选择“特定软件开发 · 前线部署工程师（FDE）”。岗位知识库、画像、检索、助教和报告共享同一上下文；退出演示会恢复原岗位。",
     action: "确认目标岗位卡片已被选中。",
     time: "20 秒",
     icon: Library,
   },
   {
     path: "/rag",
-    label: "课程 RAG 来源",
+    label: "岗位知识库来源",
     title: "核对回答依据可以追溯",
-    detail: "搜索“梯度下降”，查看相对匹配度、教材来源、页码和原文上下文；百分比不是正确概率。",
-    action: "搜索“梯度下降”并打开一条原文。",
+    detail: "搜索“如何定义可验收的最小交付闭环”，查看相对匹配度、岗位资料来源、页码和原文上下文；百分比不是正确概率。",
+    action: "搜索一个 FDE 岗位任务并打开一条原文。",
     time: "35 秒",
     icon: Database,
   },
@@ -87,8 +89,8 @@ const STEPS = [
   {
     path: "/workspace",
     label: "学习资源工坊",
-    title: "观察 7 Agents 共享依据",
-    detail: "检索先行，讲解、导图、测验、阅读、代码、路径和可视讲解按同一主题协作生成。",
+    title: "观察 8 个核心 Agent 完成闭环",
+    detail: "岗位检索先行，诊断、三类生成、三项审核与总裁决围绕同一岗位任务协作，并在通过后发布。",
     action: "使用已有成果，避免演示时触发外部付费模型。",
     time: "40 秒",
     icon: Sparkles,
@@ -97,7 +99,7 @@ const STEPS = [
     path: "/concept",
     label: "AI 可视讲解",
     title: "验证真实时间轴",
-    detail: "选择梯度下降，演示播放/暂停、seek、逐句高亮和 1.25× 倍速；无 TTS 时仍完整显示文字。",
+    detail: "选择 FDE 系统联调所需的网络基础讲解，演示播放/暂停、seek、逐句高亮和 1.25× 倍速；无 TTS 时仍完整显示文字。",
     action: "播放后拖动时间轴并切换一次倍速。",
     time: "40 秒",
     icon: Clapperboard,
@@ -183,6 +185,7 @@ export function JudgeDemoMode() {
   useEffect(() => {
     if (!session) return
     setCurrentCourse(session.demoCourse)
+    setTargetRole({ domainId: "software", roleId: "fde" })
     void refreshStatuses()
   }, [refreshStatuses, session])
 
@@ -192,18 +195,20 @@ export function JudgeDemoMode() {
     setError("")
     try {
       const courses = await apiGet<{ items: CourseInfo[] }>("/courses")
-      const machineLearning = courses.items.find((course) => course.name === "机器学习")
-      if (!machineLearning) throw new Error("未找到机器学习课程，无法启动真实演示路线")
+      const fdeCourse = courses.items.find((course) => course.name === "FDE 岗位知识库")
+      if (!fdeCourse) throw new Error("未找到 FDE 岗位知识库，无法启动真实演示路线")
       const next: DemoSession = {
         active: true,
         step: 0,
         originalPath: location.pathname + location.search,
         originalCourse: courseStore.get(),
-        demoCourse: machineLearning,
+        originalTargetRole: getTargetRoleSelection(),
+        demoCourse: fdeCourse,
         startedAt: Date.now(),
       }
       writeSession(next)
-      setCurrentCourse(machineLearning)
+      setTargetRole({ domainId: "software", roleId: "fde" })
+      setCurrentCourse(fdeCourse)
       setSession(next)
       setWelcomeOpen(false)
       setMinimized(false)
@@ -227,17 +232,19 @@ export function JudgeDemoMode() {
   const reset = () => {
     if (!session) return
     setCurrentCourse(session.demoCourse)
+    setTargetRole({ domainId: "software", roleId: "fde" })
     setMinimized(false)
     moveTo(0)
   }
 
   const exit = () => {
     if (!session) return
-    const { originalCourse, originalPath } = session
+    const { originalCourse, originalTargetRole, originalPath } = session
     writeSession(null)
     setSession(null)
     setMinimized(false)
     setCurrentCourse(originalCourse)
+    setTargetRole(originalTargetRole ?? null)
     navigate(originalPath || "/", { replace: true })
   }
 
@@ -273,14 +280,14 @@ export function JudgeDemoMode() {
               </div>
               <p className="mt-5 text-[10px] font-bold tracking-[.14em] text-[#8E6925]">独立评委演示 · 3–5 分钟</p>
               <h2 id="judge-demo-title" className="mt-1 text-2xl font-bold tracking-[-.035em] text-[#18232D]">沿真实功能完成一次学习闭环</h2>
-              <p className="mt-3 text-xs leading-6 text-[#66717B]">演示导航临时选择《机器学习》，不创建预置结果、不上传资料，也不调用付费模型或语音服务。退出后自动恢复你进入前的课程和页面。</p>
+              <p className="mt-3 text-xs leading-6 text-[#66717B]">演示导航临时选择“特定软件开发 · 前线部署工程师（FDE）”，不创建预置结果、不上传资料，也不调用付费模型或语音服务。退出后自动恢复你进入前的岗位和页面。</p>
               <div className="mt-5 grid gap-2 sm:grid-cols-3">
                 {["真实数据与来源", "未配置明确降级", "随时退出并恢复"].map((label) => <span key={label} className="rounded-xl border border-[#D7D1C4] bg-[#F8F6F0] px-3 py-2 text-center text-[10px] font-bold text-[#59636B]">{label}</span>)}
               </div>
               {error && <p role="alert" className="mt-4 rounded-xl border border-[#DFC8BE] bg-[#F4E8E2] px-3 py-2 text-[11px] text-[#9A4E35]">{error}</p>}
               <div className="mt-6 flex justify-end gap-2">
                 <button type="button" onClick={() => setWelcomeOpen(false)} className="h-10 rounded-xl border border-[#D7D1C4] px-4 text-xs font-bold text-[#59636B] hover:bg-[#F1EDE4]">暂不演示</button>
-                <button type="button" disabled={starting} onClick={() => void start()} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white hover:bg-[#193B50] disabled:opacity-50">{starting ? <RefreshCw className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}{starting ? "读取真实课程…" : "开始演示"}</button>
+                <button type="button" disabled={starting} onClick={() => void start()} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white hover:bg-[#193B50] disabled:opacity-50">{starting ? <RefreshCw className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}{starting ? "读取岗位知识库…" : "开始演示"}</button>
               </div>
             </motion.section>
           </motion.div>

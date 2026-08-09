@@ -69,8 +69,8 @@ class SlideDraft(BaseModel):
 
 class OutlineRequest(BaseModel):
     topic: str = Field(min_length=1, max_length=240)
-    audience: str = Field(default="高校课程学习者", max_length=120)
-    purpose: str = Field(default="课堂讲解", max_length=80)
+    audience: str = Field(default="岗位训练学习者", max_length=120)
+    purpose: str = Field(default="岗位讲解", max_length=80)
     visual_style: VisualStyle = "paper"
     page_count: int = Field(default=10, ge=7, le=18)
     provider: Provider
@@ -81,8 +81,8 @@ class OutlineRequest(BaseModel):
 
 class RewriteRequest(BaseModel):
     topic: str = Field(min_length=1, max_length=240)
-    audience: str = Field(default="高校课程学习者", max_length=120)
-    purpose: str = Field(default="课堂讲解", max_length=80)
+    audience: str = Field(default="岗位训练学习者", max_length=120)
+    purpose: str = Field(default="岗位讲解", max_length=80)
     visual_style: VisualStyle = "paper"
     provider: Provider
     course_id: int | None = None
@@ -118,7 +118,7 @@ async def _collect_context(
         items.extend(
             {
                 "kind": "course",
-                "source": row.get("source") or "课程知识库",
+                "source": row.get("source") or "岗位知识库",
                 "page": row.get("page"),
                 "chunk_id": str(row.get("chunk_id") or ""),
                 "content": row.get("content") or "",

@@ -248,7 +248,7 @@ try {
     assert.equal(await page.getByText("模拟观测", { exact: false }).count(), 0, "formal universe showed simulated observations")
     assert.equal(await page.getByTestId("universe-empty-state").count(), 1, "empty account did not show a real-data empty state")
     assert.equal(await page.getByText("暂无历史，不绘制虚假曲线", { exact: true }).count(), 1, "empty trend did not explain its real-data boundary")
-    assert.equal(await page.getByTestId("learning-universe-command-center").getByRole("link", { name: "选择课程", exact: true }).count(), 1, "empty account is missing the course CTA")
+    assert.equal(await page.getByTestId("learning-universe-command-center").getByRole("link", { name: "选择目标岗位", exact: true }).count(), 1, "empty account is missing the target-role CTA")
     assert.deepEqual(unexpectedWrites, [], "opening the universe triggered a business write request")
 
     await page.getByTestId("universe-primary-cta").click()

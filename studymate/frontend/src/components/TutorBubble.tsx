@@ -49,7 +49,7 @@ function tutorHintsFor(pathname: string) {
     return ["这一帧没跟上？我换个例子。", general]
   }
   if (pathname.startsWith("/workspace")) {
-    return ["这个知识点想换种讲法吗？我可以继续。", general]
+    return ["这个岗位能力点想换种讲法吗？我可以继续。", general]
   }
   return [general, "有题目没想通？交给我一起拆。"]
 }
