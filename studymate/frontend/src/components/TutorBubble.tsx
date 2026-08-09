@@ -381,7 +381,7 @@ export function TutorBubble() {
                   <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[#D9CFB7] bg-[#244C66] text-[#F2C968] shadow-[0_5px_12px_rgba(36,76,102,.14)]"><Sparkles className="size-4.5" /></span>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[14px] font-bold tracking-[-0.01em] text-[#18232D]">StudyMate 学习助手</div>
-                    <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-[#6F787A]"><span className={`size-1.5 rounded-full ${generating ? "animate-pulse bg-[#B1842C]" : "bg-[#6F8A69]"}`} />《{course?.name || "机器学习"}》· {generating ? "回答在后台继续生成" : "记得当前课程对话"}</div>
+                    <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-[#6F787A]"><span className={`size-1.5 rounded-full ${generating ? "animate-pulse bg-[#B1842C]" : "bg-[#6F8A69]"}`} />《{course?.name || "FDE 岗位知识库"}》· {generating ? "回答在后台继续生成" : "记得当前岗位对话"}</div>
                   </div>
                   <IconButton onClick={() => { setHistoryOpen(false); tutorHistory.startNew(userId, courseId) }} title={generating ? "回答完成后可新建对话" : "新对话"} disabled={generating}><MessageSquarePlus className="size-4" /></IconButton>
                   <IconButton onClick={() => setHistoryOpen((value) => !value)} title={generating ? "回答完成后可切换历史" : "历史会话"} active={historyOpen} disabled={generating}><History className="size-4" /></IconButton>

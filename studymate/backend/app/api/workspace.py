@@ -160,7 +160,8 @@ async def generate(req: GenerateRequest, user: User = Depends(require_user)):
                         ))
                 await db.commit()
 
-    return EventSourceResponse(gen())
+    # 长时间的模型生成可能暂时没有业务事件；更短的心跳能避免开发代理把 SSE 误判为断线。
+    return EventSourceResponse(gen(), ping=5)
 
 
 class TrainingFeedbackRequest(BaseModel):

@@ -129,7 +129,7 @@ export function WorkspaceDetail() {
   const { outputs, stream, topic } = state
   const hasAnyData = state.agents.length > 0 || Object.keys(outputs).length > 0
   const evidenceCourseId = state.courseId ?? course?.id ?? null
-  const evidenceCourseName = state.courseName || course?.name || "当前课程"
+  const evidenceCourseName = state.courseName || course?.name || "当前岗位"
   const quizHref = topic ? `/quiz?create=1&topic=${encodeURIComponent(topic)}` : "/quiz"
   const answeredCount = Object.keys(state.quizAttempts).length
   const released = state.decision ? state.decision.decision === "publish" : state.status === "done" && !state.agents.some((agent) => agent.meta.id === "arbiter")
@@ -586,7 +586,7 @@ function ResourceEvidenceBar({
   citationCount: number
 }) {
   const weakTopics = profile?.dims.weak_points?.topics?.filter(Boolean) || []
-  const primaryGoal = profile?.dims.goals?.primary?.trim() || "按当前课程目标学习"
+  const primaryGoal = profile?.dims.goals?.primary?.trim() || "按当前岗位目标学习"
   const preference = Object.entries(profile?.dims.preference || {})
     .filter(([, value]) => typeof value === "number")
     .sort((a, b) => b[1] - a[1])[0]?.[0]

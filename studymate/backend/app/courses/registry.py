@@ -153,6 +153,22 @@ _COA = CourseConfig(
     syllabus_hint="数据表示 / 运算器 / 存储器 / 指令系统 / CPU / 总线 / I/O",
 )
 
+_FDE = CourseConfig(
+    name="FDE 岗位知识库",
+    persona="前线部署工程师岗位训练助理，优先依据岗位知识库澄清需求、部署约束、验收证据与风险边界",
+    code_style="pseudo",
+    code_libs=["Python", "SQL", "REST API", "部署与验收检查表"],
+    reading_sources=["FDE 岗位知识库（已导入）"],
+    sample_topics=["FDE 是什么", "需求澄清", "系统集成", "部署验收", "产品反馈"],
+    sample_questions=[
+        "FDE 和售前、外包有什么区别？",
+        "客户现场部署前要确认哪些依赖？",
+        "如何定义一个可验收的最小交付闭环？",
+        "现场问题如何沉淀为产品改进？",
+    ],
+    syllabus_hint="岗位边界 / 场景调研 / 系统集成 / 部署激活 / 验收复盘 / 风险与产品反馈",
+)
+
 
 COURSES: dict[str, CourseConfig] = {
     _ML.name: _ML,
@@ -160,6 +176,7 @@ COURSES: dict[str, CourseConfig] = {
     _OS.name: _OS,
     _NET.name: _NET,
     _COA.name: _COA,
+    _FDE.name: _FDE,
 }
 
 DEFAULT_COURSE_NAME = "机器学习"

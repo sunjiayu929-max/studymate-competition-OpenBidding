@@ -259,7 +259,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "" }: Pr
 
         <div className="flex shrink-0 flex-col gap-3 border-t border-[#D7D1C4] bg-[#F8F6F0] px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-[11px] text-[#6F787A]">
-            结合当前课程与学习画像生成
+            结合当前岗位与学习画像生成
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>

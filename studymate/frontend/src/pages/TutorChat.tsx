@@ -75,7 +75,7 @@ export function TutorChat() {
                 <TutorFact icon={AlertTriangle} label="优先关注" value={focus} tone="red" />
                 <div className="grid grid-cols-2 gap-2">
                   <TutorFact icon={Clock3} label="学习节奏" value={hours ? `每周 ${hours} 小时` : "等待补充"} tone="gold" compact />
-                  <TutorFact icon={BookOpen} label="当前课程" value={course?.name || "机器学习"} tone="green" compact />
+                  <TutorFact icon={BookOpen} label="当前岗位" value={course?.name || "尚未选择岗位"} tone="green" compact />
                 </div>
               </div>
             </section>

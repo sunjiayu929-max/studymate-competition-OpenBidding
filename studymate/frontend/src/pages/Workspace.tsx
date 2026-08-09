@@ -46,6 +46,7 @@ import { apiGet } from "@/lib/api"
 import { track } from "@/lib/track"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { fallbackSamplesFor, DEFAULT_SAMPLE_TOPICS, useCourseConfig, useCurrentCourse } from "@/store/course"
+import { useTargetRole } from "@/store/targetRole"
 import { useCurrentUser } from "@/store/user"
 import { workspaceStore, useWorkspaceStore, type RunStatus, type TrainingDecision, type TrainingDiagnosis, type TrainingReview } from "@/store/workspace"
 
@@ -126,10 +127,11 @@ export function Workspace() {
   const user = useCurrentUser()
   const userId = user?.user_id ?? 0
   const course = useCurrentCourse()
+  const selectedTargetRole = useTargetRole()
   const courseCfg = useCourseConfig()
   const {
     topic, status, agents, logs, outputs, startedAt, finishedAt, lastError,
-    domain, targetRole, roleSummary, coreCompetencies, stage, generationRound,
+    domain, targetRole: runTargetRole, roleSummary, coreCompetencies, stage, generationRound,
     diagnosis, reviews, decision, feedback, quizAttempts,
   } = useWorkspaceStore()
   const isRunning = status === "running"
@@ -244,7 +246,7 @@ export function Workspace() {
   )
   const profileGoal = profile?.dims.goals?.primary?.trim() || ""
   const weakTopics = profile?.dims.weak_points?.topics?.filter(Boolean) || []
-  const courseChunkLabel = course?.name === "机器学习" ? "1000+" : course ? "500+" : ""
+  const trainingTarget = runTargetRole || selectedTargetRole?.name || roleContext?.target_role || course?.name || "目标岗位"
 
   const qualityChecks: Array<{ label: string; value: string; state: CheckState }> = [
     ...[
@@ -290,7 +292,7 @@ export function Workspace() {
             <div className="max-w-3xl">
               <div className="mb-2 flex items-center gap-2 text-[11px] font-bold tracking-[0.12em] text-[#315E83]">
                 <span className="size-1.5 rounded-full bg-[#B85C3E]" />
-                赛题 B · 领域知识个性化生成与多智能体协同决策
+                赛题 B · 当前目标岗位：{trainingTarget}
               </div>
               <h1 className="text-balance text-[28px] font-bold leading-[1.18] tracking-[-0.045em] text-[#18232D] sm:text-[36px]">
                 围绕一个目标岗位，<span className="text-[#315E83]">跑通可审计的训练闭环。</span>
@@ -299,8 +301,8 @@ export function Workspace() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Link to="/courses" className="inline-flex h-10 items-center gap-2 rounded-full border border-[#C9C2B4] bg-[#FFFEFA] px-4 text-xs font-semibold text-[#244C66] hover:bg-[#F1EDE4]">
-                <Database className="size-4" />{course ? `${course.name} · 岗位领域` : "选择岗位领域"}<ChevronRight className="size-3.5" />
+              <Link to={course ? "/rag" : "/courses"} className="inline-flex h-10 items-center gap-2 rounded-full border border-[#C9C2B4] bg-[#FFFEFA] px-4 text-xs font-semibold text-[#244C66] hover:bg-[#F1EDE4]">
+                <Database className="size-4" />{course ? `${course.name} · 岗位知识库` : "选择岗位领域"}<ChevronRight className="size-3.5" />
               </Link>
               <Link to="/profile" className="inline-flex h-10 items-center gap-2 rounded-full border border-[#C9C2B4] bg-[#F7F2E7] px-4 text-xs font-semibold text-[#6A5941] hover:bg-[#EEE8DB]">
                 <UserRoundSearch className="size-4" />{profile ? `画像 v${profile.version}` : "建立学习画像"}<ChevronRight className="size-3.5" />
@@ -313,11 +315,11 @@ export function Workspace() {
               <div className="flex items-start gap-3">
                 <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#F4ECD8] text-[#8E6925]"><AlertCircle className="size-4" /></span>
                 <div>
-                  <h2 className="text-sm font-bold text-[#18232D]">生成前需要先确定课程知识库</h2>
-                  <p className="mt-1 text-[11px] leading-5 text-[#66717B]">课程决定 RAG 检索范围、引用来源和后续测验归档。选定后，你刚刚填写的主题仍会保留。</p>
+                  <h2 className="text-sm font-bold text-[#18232D]">生成前需要先确定目标岗位</h2>
+                  <p className="mt-1 text-[11px] leading-5 text-[#66717B]">目标岗位决定 RAG 检索范围、引用来源和后续测验归档。选定后，你刚刚填写的主题仍会保留。</p>
                 </div>
               </div>
-              <Link to="/courses" className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] hover:bg-[#193B50]">选择课程 <ArrowRight className="size-3.5" /></Link>
+              <Link to="/courses" className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] hover:bg-[#193B50]">选择岗位 <ArrowRight className="size-3.5" /></Link>
             </section>
           )}
 
@@ -465,8 +467,8 @@ export function Workspace() {
                 </div>
 
                 <div className="mt-4 space-y-2">
-                  <EvidenceRow icon={Database} label="领域知识库" value={domain || roleContext?.domain || course?.name || "尚未选择"} hint={course ? `${courseChunkLabel} 个知识片段可检索` : "选择领域后锁定检索与引用范围"} />
-                  <EvidenceRow icon={BriefcaseBusiness} label="目标岗位" value={targetRole || roleContext?.target_role || "等待领域映射"} hint={roleSummary || roleContext?.role_summary || "领域确定后自动匹配主岗位"} />
+                  <EvidenceRow icon={Database} label="岗位知识库" value={domain || roleContext?.domain || course?.name || "尚未选择"} hint={course ? `${course.chunk_count ?? "已导入"} 条知识片段可检索；点击顶部知识库可查看来源` : "选择领域后锁定检索与引用范围"} />
+                  <EvidenceRow icon={BriefcaseBusiness} label="目标岗位" value={runTargetRole || selectedTargetRole?.name || roleContext?.target_role || "等待领域映射"} hint={roleSummary || roleContext?.role_summary || "领域确定后自动匹配主岗位"} />
                   <EvidenceRow icon={UserRoundSearch} label="画像依据" value={profile ? `版本 v${profile.version}` : "尚未建立"} hint={profileGoal || "目标、节奏与资源偏好将参与生成"} />
                   <EvidenceRow icon={Target} label="当前任务" value={topic || "等待启动"} hint={diagnosis?.knowledge_gaps?.length ? `诊断盲区：${diagnosis.knowledge_gaps.slice(0, 2).join("、")}` : weakTopics.length ? `优先关注：${weakTopics.slice(0, 2).join("、")}` : `核心能力：${(coreCompetencies.length ? coreCompetencies : roleContext?.core_competencies || []).slice(0, 2).join("、") || "等待诊断"}`} />
                 </div>

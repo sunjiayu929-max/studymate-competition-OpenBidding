@@ -143,7 +143,7 @@ export function PptGenerator() {
     () => knowledgeBaseId
       ? `当前私有知识库 · ${knowledgeBaseName || `资料库 ${knowledgeBaseId}`}${course ? ` · ${course.name}` : ""}`
       : course
-        ? `当前课程 · ${course.name}`
+        ? `当前岗位 · ${course.name}`
         : "用户输入主题",
     [course, knowledgeBaseId, knowledgeBaseName],
   )

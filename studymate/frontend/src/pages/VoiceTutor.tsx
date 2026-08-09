@@ -744,7 +744,7 @@ export function VoiceTutor() {
                   exit={{ opacity: 0 }}
                   className="text-[11px] text-[#66717B]"
                 >
-                  真人讲师视频 · 当前课程《{courseLabel}》
+                  真人讲师视频 · 当前岗位《{courseLabel}》
                 </motion.div>
               )}
             </AnimatePresence>
