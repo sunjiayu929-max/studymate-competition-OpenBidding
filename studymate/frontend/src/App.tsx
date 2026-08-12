@@ -30,6 +30,7 @@ const KnowledgeBase = lazy(() => import("@/pages/KnowledgeBase").then((m) => ({ 
 const PptGenerator = lazy(() => import("@/pages/PptGenerator").then((m) => ({ default: m.PptGenerator })))
 const LearningResources = lazy(() => import("@/pages/LearningResources").then((m) => ({ default: m.LearningResources })))
 const CareerExplorer = lazy(() => import("@/pages/CareerExplorer").then((m) => ({ default: m.CareerExplorer })))
+const CompetencyTraining = lazy(() => import("@/pages/CompetencyTraining").then((m) => ({ default: m.CompetencyTraining })))
 const Login = lazy(() => import("@/pages/Login").then((m) => ({ default: m.Login })))
 const NotFound = lazy(() => import("@/pages/NotFound").then((m) => ({ default: m.NotFound })))
 const TutorBubble = lazy(() => import("@/components/TutorBubble").then((m) => ({ default: m.TutorBubble })))
@@ -155,6 +156,7 @@ export default function App() {
           <Route path="/ppt" element={<ProtectedPage><PptGenerator /></ProtectedPage>} />
           <Route path="/resources" element={<ProtectedPage><LearningResources /></ProtectedPage>} />
           <Route path="/career" element={<ProtectedPage><CareerExplorer /></ProtectedPage>} />
+          <Route path="/competency" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
           <Route path="/workspace" element={<ProtectedPage><Workspace /></ProtectedPage>} />
           <Route path="/workspace/r/:agentId" element={<ProtectedPage><WorkspaceDetail /></ProtectedPage>} />
           <Route path="/tutor" element={<ProtectedPage><TutorChat /></ProtectedPage>} />

@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 2,
+  "project": {
+    "root": "",
+    "route": "",
+    "stack": "",
+    "packageManager": "",
+    "commands": {
+      "development": "",
+      "build": "",
+      "lint": "",
+      "test": ""
+    },
+    "hostingManaged": false
+  },
+  "request": {
+    "goal": "",
+    "audience": "",
+    "primaryAction": "",
+    "contentLanguage": "",
+    "autonomy": "guided|autonomous"
+  },
+  "assetState": "complete|partial|none|weak|mixed",
+  "images": [
+    {
+      "path": "",
+      "sourceOwnership": "user|project|generated|licensed-third-party",
+      "originalPreserved": true,
+      "format": "",
+      "effectiveWidth": null,
+      "effectiveHeight": null,
+      "roleCandidates": [],
+      "confirmedRole": "hero|chapter|supporting|detail|mobile-hero|framed",
+      "desktopFocalPoint": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "mobileFocalPoint": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "textSafeRegion": "",
+      "treatment": "",
+      "motionCompatibility": "",
+      "privacyOrLicenseRisk": "",
+      "generativeEditApproved": false
+    }
+  ],
+  "style": {
+    "primaryProfile": "",
+    "secondaryTrait": "",
+    "routingScores": {
+      "Poetic Immersive": null,
+      "Quiet Luxury": null,
+      "Travel Editorial": null,
+      "Cinematic Story": null,
+      "Clear Lifestyle": null
+    },
+    "evidence": [],
+    "palette": [],
+    "typographyCharacter": "",
+    "density": "low|moderate"
+  },
+  "motion": {
+    "primaryMotif": "",
+    "supportingMotifs": [],
+    "intensity": "subtle|visible|expressive",
+    "typicalLoopSeconds": null,
+    "continuityPlan": "",
+    "toggleRequired": false,
+    "reducedMotionBehavior": ""
+  },
+  "responsive": {
+    "desktopComposition": "",
+    "mobileComposition": "",
+    "compactHeightComposition": "",
+    "dedicatedMobileCropRequired": false,
+    "proofViewports": [
+      "1440x900",
+      "430x932",
+      "390x844",
+      "844x390"
+    ]
+  },
+  "permissions": {
+    "generateNewImages": false,
+    "editUserImages": false,
+    "publishPrivateImages": false,
+    "publishPublicly": false
+  },
+  "verification": {
+    "screenshots": [],
+    "commandsRun": [],
+    "visualScores": {},
+    "automaticBlockers": [],
+    "limitations": []
+  }
+}
+

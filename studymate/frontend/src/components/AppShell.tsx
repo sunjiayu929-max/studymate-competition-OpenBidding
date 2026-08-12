@@ -24,6 +24,7 @@ import {
   Presentation,
   PlayCircle,
   Sparkles,
+  ShieldCheck,
   WandSparkles,
   X,
 } from "lucide-react"
@@ -61,6 +62,7 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
     icon: GraduationCap,
     items: [
       { label: "岗位空间", to: "/courses", icon: Library },
+      { label: "胜任力训练", to: "/competency", icon: ShieldCheck },
       { label: "学习画像", to: "/profile", icon: GraduationCap },
     ],
   },
