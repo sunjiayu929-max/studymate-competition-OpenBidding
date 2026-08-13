@@ -215,7 +215,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         onClick={() => setMobileOpen(true)}
         className={cn(
           "fixed left-3 top-3 z-[72] grid size-10 place-items-center rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] text-[#244C66] shadow-md lg:hidden",
-          shellHidden && !mobileOpen && "pointer-events-none -translate-y-14 opacity-0",
+          shellHidden && "border-white/15 bg-[#101722]/75 text-white backdrop-blur",
         )}
         aria-label="打开应用导航"
       >
@@ -233,17 +233,17 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <aside
         className={cn(
-          "app-shell-navigation fixed bottom-3 left-3 top-3 z-[74] flex flex-col overflow-hidden rounded-[24px] border border-[#D8E2F0] shadow-[0_22px_55px_rgba(41,67,112,.12)] transition-[width,transform,opacity] duration-300",
-          effectiveCollapsed ? "w-[76px]" : "w-[248px]",
-          mobileOpen ? "translate-x-0" : "-translate-x-[calc(100%+1rem)] lg:translate-x-0",
-          shellHidden && !mobileOpen && "lg:pointer-events-none lg:-translate-x-[calc(100%+1rem)] lg:opacity-0",
+          "app-shell-navigation fixed inset-y-0 left-0 z-[74] flex flex-col border-r border-[#D7D1C4]/55 transition-[width,transform,opacity] duration-300",
+          effectiveCollapsed ? "w-[72px]" : "w-[240px]",
+          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+          shellHidden && !mobileOpen && "lg:pointer-events-none lg:-translate-x-full lg:opacity-0",
         )}
         aria-label="StudyMate 应用导航"
       >
-        <div className="flex h-[72px] shrink-0 items-center gap-3 border-b border-[#E1E9F3] px-4">
+        <div className="flex h-[70px] shrink-0 items-center gap-3 border-b border-[#DED8CC] px-4">
           <Link to="/" className="flex min-w-0 flex-1 items-center gap-2.5" aria-label="StudyMate 今日学习">
-            <span className="app-brand-mark grid size-10 shrink-0 -rotate-3 place-items-center rounded-[14px_18px_13px_18px] bg-gradient-to-br from-[#1685F8] via-[#5266EA] to-[#9B5BDD] text-white shadow-[0_10px_22px_rgba(67,92,225,.26)]"><Sparkles className="size-[18px]" /></span>
-            {!effectiveCollapsed && <span className="min-w-0"><strong className="block text-base tracking-[-.04em] text-[#17233D]">StudyMate</strong><small className="block truncate text-[9px] font-bold tracking-[.14em] text-[#8A96AA]">AI LEARNING OS</small></span>}
+            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#244C66] text-[#F0D6A4] shadow-[0_8px_18px_rgba(36,76,102,.18)]"><Sparkles className="size-[18px]" /></span>
+            {!effectiveCollapsed && <span className="min-w-0"><strong className="block text-base tracking-[-.03em] text-[#18232D]">StudyMate</strong><small className="block truncate text-[10px] font-bold tracking-[.12em] text-[#8A8172]">LEARNING OS</small></span>}
           </Link>
           <button type="button" onClick={() => setMobileOpen(false)} className="grid size-8 place-items-center rounded-lg text-[#66717B] hover:bg-[#ECE8DE] lg:hidden" aria-label="关闭导航"><X className="size-4" /></button>
         </div>
@@ -257,7 +257,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               effectiveCollapsed ? "h-11 justify-center" : "gap-2.5 px-3 py-2.5",
             )}
           >
-            <span className="app-nav-icon"><Library className="size-3.5" /></span>
+            <Library className="size-4 shrink-0 text-[#315E83]" />
             {!effectiveCollapsed && <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">当前岗位</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{targetRole?.name || course?.name || "选择目标岗位"}</strong></span>}
           </Link>
         </div>
@@ -295,7 +295,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   title={group.label}
                   aria-expanded={opened}
                 >
-                  <span className="app-nav-icon app-nav-icon-muted"><GroupIcon className="size-3.5" /></span>
+                  <GroupIcon className="size-3.5 shrink-0" />
                   {!effectiveCollapsed && <><span>{group.label}</span><ChevronDown className={cn("ml-auto size-3.5 transition-transform", opened && "rotate-180")} /></>}
                 </button>
                 {!effectiveCollapsed && opened && (
@@ -351,7 +351,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div
         className={cn(
           "app-shell-content min-h-dvh transition-[padding] duration-300",
-          effectiveCollapsed ? "lg:pl-[92px]" : "lg:pl-[268px]",
+          effectiveCollapsed ? "lg:pl-[72px]" : "lg:pl-[240px]",
           shellHidden && "lg:pl-0",
         )}
       >
@@ -396,7 +396,7 @@ function ShellLink({
       )}
     >
       {active && <span className="absolute -left-3 h-5 w-1 rounded-r-full bg-[#315E83]" />}
-      <span className="app-nav-icon"><Icon className="size-3.5" /></span>
+      <Icon className="size-4 shrink-0" />
       {!compact && <span className="truncate">{item.label}</span>}
       {trailing}
       {!compact && !trailing && active && <ChevronRight className="ml-auto size-3.5" />}

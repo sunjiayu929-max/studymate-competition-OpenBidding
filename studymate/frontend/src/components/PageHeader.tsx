@@ -40,7 +40,7 @@ export function PageHeader({
             </Link>
             <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
             {Icon && (
-              <span className="app-header-icon grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#FFFEFA]">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#FFFEFA]">
                 <Icon className={`size-4 ${iconColor}`} />
               </span>
             )}
@@ -66,7 +66,7 @@ export function PageHeader({
           </Link>
           <div className="flex items-start gap-3">
             {Icon && (
-                <span className="app-header-icon surface-card mt-0.5 grid size-11 shrink-0 place-items-center rounded-2xl">
+              <span className="surface-card mt-0.5 grid size-11 shrink-0 place-items-center rounded-2xl">
                 <Icon className={`size-5 ${iconColor}`} />
               </span>
             )}

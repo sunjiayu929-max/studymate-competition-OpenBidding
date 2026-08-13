@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import {
@@ -39,69 +39,6 @@ const ORBIT_PLANETS = [
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
-}
-
-function AnimatedLoginGuide({
-  reduced,
-  isTyping,
-  showPassword,
-  passwordLength,
-}: {
-  reduced: boolean
-  isTyping: boolean
-  showPassword: boolean
-  passwordLength: number
-}) {
-  const rootRef = useRef<HTMLDivElement>(null)
-
-  const updatePointer = (clientX?: number, clientY?: number) => {
-    const root = rootRef.current
-    if (!root || reduced) return
-    if (clientX === undefined || clientY === undefined) {
-      root.style.setProperty("--auth-eye-x", "0px")
-      root.style.setProperty("--auth-eye-y", "0px")
-      root.style.setProperty("--auth-face-x", "0px")
-      root.style.setProperty("--auth-face-y", "0px")
-      return
-    }
-    const rect = root.getBoundingClientRect()
-    const x = Math.max(-1, Math.min(1, ((clientX - rect.left) / rect.width - 0.5) * 2))
-    const y = Math.max(-1, Math.min(1, ((clientY - rect.top) / rect.height - 0.5) * 2))
-    root.style.setProperty("--auth-eye-x", `${x * 7}px`)
-    root.style.setProperty("--auth-eye-y", `${y * 5}px`)
-    root.style.setProperty("--auth-face-x", `${x * 12}px`)
-    root.style.setProperty("--auth-face-y", `${y * 5}px`)
-  }
-
-  return (
-    <div
-      ref={rootRef}
-      className="auth-character-stage"
-      data-typing={isTyping ? "true" : "false"}
-      data-showing={showPassword ? "true" : "false"}
-      data-hiding={passwordLength > 0 && !showPassword ? "true" : "false"}
-      onPointerMove={(event) => updatePointer(event.clientX, event.clientY)}
-      onPointerLeave={() => updatePointer()}
-      aria-label="会观察你学习状态的 StudyMate 角色"
-    >
-      <div className="auth-character-note auth-character-note-top"><Sparkles className="size-3" />{isTyping ? "正在认真听你输入" : "准备好陪你开始学习"}</div>
-      <div className="auth-character-floor" aria-hidden="true" />
-      <div className="auth-character auth-character-purple" aria-hidden="true">
-        <div className="auth-character-face"><span className="auth-eye"><i /></span><span className="auth-eye"><i /></span></div>
-      </div>
-      <div className="auth-character auth-character-black" aria-hidden="true">
-        <div className="auth-character-face"><span className="auth-eye"><i /></span><span className="auth-eye"><i /></span></div>
-      </div>
-      <div className="auth-character auth-character-orange" aria-hidden="true">
-        <div className="auth-character-face"><span className="auth-pupil" /><span className="auth-pupil" /></div>
-      </div>
-      <div className="auth-character auth-character-yellow" aria-hidden="true">
-        <div className="auth-character-face"><span className="auth-pupil" /><span className="auth-pupil" /></div><b />
-      </div>
-      <div className="auth-character-tag auth-character-tag-left"><span className="size-1.5 rounded-full bg-[#FF8B3D]" />AI 助教</div>
-      <div className="auth-character-tag auth-character-tag-right"><span className="size-1.5 rounded-full bg-[#38C98C]" />岗位能力画像</div>
-    </div>
-  )
 }
 
 export function Login() {
@@ -174,12 +111,12 @@ export function Login() {
   }
 
   return (
-    <main className="auth-page relative min-h-[100dvh] overflow-x-hidden bg-[#F3F0E7] text-[#18232D]">
+    <main className="relative min-h-[100dvh] overflow-x-hidden bg-[#F3F0E7] text-[#18232D]">
       <PaperBackdrop />
 
       <header className="relative z-20 mx-auto flex h-[72px] max-w-[1600px] items-center justify-between px-4 sm:h-[84px] sm:px-7 lg:px-9 xl:px-10">
         <div className="flex items-center gap-3">
-          <span className="auth-brand-mark grid size-10 place-items-center rounded-[13px] bg-[#244C66] text-[#F0D6A4] shadow-[0_8px_18px_rgba(24,35,45,.13)] sm:size-11">
+          <span className="grid size-10 place-items-center rounded-[13px] bg-[#244C66] text-[#F0D6A4] shadow-[0_8px_18px_rgba(24,35,45,.13)] sm:size-11">
             <Sparkles className="size-5" strokeWidth={1.8} />
           </span>
           <div>
@@ -187,7 +124,7 @@ export function Login() {
             <div className="hidden text-[9px] font-bold tracking-[0.14em] text-[#777E7B] uppercase sm:block">Intelligent Learning Studio</div>
           </div>
         </div>
-        <div className="auth-status hidden items-center gap-2 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3.5 py-2 text-[11px] font-semibold text-[#59645F] shadow-[0_6px_18px_rgba(24,35,45,.06)] sm:flex">
+        <div className="hidden items-center gap-2 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3.5 py-2 text-[11px] font-semibold text-[#59645F] shadow-[0_6px_18px_rgba(24,35,45,.06)] sm:flex">
           <span className="relative flex size-2">
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#718B6A] opacity-35" />
             <span className="relative inline-flex size-2 rounded-full bg-[#718B6A]" />
@@ -201,13 +138,13 @@ export function Login() {
           initial={reduceMotion ? false : { opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.62, ease: [0.22, 1, 0.36, 1] }}
-          className="auth-shell relative isolate grid overflow-hidden rounded-[24px] border border-[#D7D1C4] bg-[#F8F6F0] shadow-[0_24px_70px_rgba(24,35,45,.10)] sm:rounded-[30px] lg:min-h-[calc(100dvh-116px)] lg:grid-cols-[52%_48%] xl:grid-cols-2"
+          className="relative isolate grid overflow-hidden rounded-[24px] border border-[#D7D1C4] bg-[#F8F6F0] shadow-[0_24px_70px_rgba(24,35,45,.10)] sm:rounded-[30px] lg:min-h-[calc(100dvh-116px)] lg:grid-cols-[52%_48%] xl:grid-cols-2"
         >
-          <div className="auth-shell-base pointer-events-none absolute inset-0 bg-[#F8F6F0]" aria-hidden />
-          <div className="auth-shell-shape auth-shell-shape-left pointer-events-none absolute bottom-0 left-0 h-[48%] w-[61%] bg-[#E7EDE5] opacity-80" style={{ clipPath: "polygon(0 28%, 100% 0, 88% 100%, 0 100%)" }} aria-hidden />
-          <div className="auth-shell-shape auth-shell-shape-right pointer-events-none absolute right-0 top-0 h-[46%] w-[47%] bg-[#E8ECEE] opacity-65" style={{ clipPath: "polygon(18% 0, 100% 0, 100% 100%, 0 72%)" }} aria-hidden />
+          <div className="pointer-events-none absolute inset-0 bg-[#F8F6F0]" aria-hidden />
+          <div className="pointer-events-none absolute bottom-0 left-0 h-[48%] w-[61%] bg-[#E7EDE5] opacity-80" style={{ clipPath: "polygon(0 28%, 100% 0, 88% 100%, 0 100%)" }} aria-hidden />
+          <div className="pointer-events-none absolute right-0 top-0 h-[46%] w-[47%] bg-[#E8ECEE] opacity-65" style={{ clipPath: "polygon(18% 0, 100% 0, 100% 100%, 0 72%)" }} aria-hidden />
 
-          <section className="auth-story relative z-10 flex min-w-0 items-center px-5 pb-4 pt-7 sm:px-9 sm:pb-8 sm:pt-12 lg:px-11 lg:py-12 xl:px-14 2xl:px-16">
+          <section className="relative z-10 flex min-w-0 items-center px-5 pb-4 pt-7 sm:px-9 sm:pb-8 sm:pt-12 lg:px-11 lg:py-12 xl:px-14 2xl:px-16">
             <div className="w-full max-w-[700px] lg:-translate-y-8 xl:-translate-y-12">
               <motion.div
                 initial={reduceMotion ? false : { opacity: 0, y: 10 }}
@@ -238,19 +175,13 @@ export function Login() {
                 StudyMate 让岗位能力画像、多 Agent 决策与训练验收围绕目标岗位协同工作，把岗位标准、资源和成果证据连接起来。
               </motion.p>
 
-                <div className="hidden sm:block">
-                  <AnimatedLoginGuide
-                    reduced={Boolean(reduceMotion)}
-                    isTyping={Boolean(email || password || name || code)}
-                    showPassword={showPassword}
-                    passwordLength={password.length}
-                  />
-                  <div className="auth-legacy-orbit" aria-hidden="true"><OrbitalLearningSystem reduced={Boolean(reduceMotion)} /></div>
-                </div>
+              <div className="hidden sm:block">
+                <OrbitalLearningSystem reduced={Boolean(reduceMotion)} />
+              </div>
             </div>
           </section>
 
-          <section className="auth-form-panel relative z-20 flex items-center px-5 py-5 sm:px-9 sm:py-10 lg:px-10 lg:py-10 xl:px-12">
+          <section className="relative z-20 flex items-center px-5 py-5 sm:px-9 sm:py-10 lg:px-10 lg:py-10 xl:px-12">
             <div className="relative mx-auto w-full max-w-[460px] lg:rounded-[20px] lg:border lg:border-[#D7D1C4] lg:bg-[#FFFEFA] lg:p-8 lg:shadow-[0_18px_48px_rgba(24,35,45,.11)]">
               <div className="mb-5 sm:mb-6">
                 <div className="mb-3 flex items-center justify-between">
@@ -264,10 +195,10 @@ export function Login() {
                 <p className="mt-2 text-sm leading-6 text-[#66717B]">{mode === "login" ? "使用邮箱和密码进入 StudyMate" : "验证邮箱后，即可建立专属岗位能力画像"}</p>
               </div>
 
-              <div className="auth-mode-tabs mb-5 grid grid-cols-2 rounded-xl border border-[#DED8CC] bg-[#ECE8DE] p-1" role="tablist" aria-label="登录或注册">
+              <div className="mb-5 grid grid-cols-2 rounded-xl border border-[#DED8CC] bg-[#ECE8DE] p-1" role="tablist" aria-label="登录或注册">
                 {(["login", "register"] as Mode[]).map((item) => (
                   <button key={item} type="button" role="tab" aria-selected={mode === item} onClick={() => switchMode(item)} className={`relative h-10 rounded-[9px] text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5D4D9] ${mode === item ? "text-[#244C66]" : "text-[#727A78] hover:text-[#3D4B50]"}`}>
-                    {mode === item && <motion.span layoutId="light-auth-tab" className="auth-mode-active absolute inset-0 rounded-[9px] border border-[#D7D1C4] bg-[#FFFEFA] shadow-[0_3px_10px_rgba(24,35,45,.07)]" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
+                    {mode === item && <motion.span layoutId="light-auth-tab" className="absolute inset-0 rounded-[9px] border border-[#D7D1C4] bg-[#FFFEFA] shadow-[0_3px_10px_rgba(24,35,45,.07)]" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
                     <span className="relative z-10">{item === "login" ? "登录" : "注册"}</span>
                   </button>
                 ))}
@@ -315,7 +246,7 @@ export function Login() {
                   {error && <motion.div role="alert" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50/90 px-3 py-2.5 text-xs leading-5 text-rose-700"><AlertCircle className="mt-0.5 size-3.5 shrink-0" />{error}</motion.div>}
                 </AnimatePresence>
 
-                <Button type="submit" size="lg" disabled={loading} className="auth-submit group relative mt-1 w-full overflow-hidden border-0 bg-[#244C66] text-[#FFFEFA] shadow-[0_10px_22px_rgba(36,76,102,.20)] hover:bg-[#193B50]">
+                <Button type="submit" size="lg" disabled={loading} className="group relative mt-1 w-full overflow-hidden border-0 bg-[#244C66] text-[#FFFEFA] shadow-[0_10px_22px_rgba(36,76,102,.20)] hover:bg-[#193B50]">
                   <span className="relative z-10 inline-flex items-center gap-2">
                     {loading ? <Loader2 className="animate-spin" /> : <>{mode === "login" ? "进入 StudyMate" : "验证并创建账号"}<ArrowRight /></>}
                   </span>
@@ -335,10 +266,10 @@ export function Login() {
 
 function PaperBackdrop() {
   return (
-    <div className="auth-backdrop pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      <div className="auth-backdrop-base absolute inset-0 bg-[#F3F0E7]" />
-      <div className="auth-backdrop-orb auth-backdrop-orb-one absolute -left-[8vw] -top-[18vh] h-[48vh] w-[46vw] rotate-[-7deg] bg-[#E9E3D7] opacity-75" />
-      <div className="auth-backdrop-orb auth-backdrop-orb-two absolute -bottom-[18vh] -right-[8vw] h-[52vh] w-[52vw] rotate-[8deg] bg-[#DEE6E2] opacity-70" />
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+      <div className="absolute inset-0 bg-[#F3F0E7]" />
+      <div className="absolute -left-[8vw] -top-[18vh] h-[48vh] w-[46vw] rotate-[-7deg] bg-[#E9E3D7] opacity-75" />
+      <div className="absolute -bottom-[18vh] -right-[8vw] h-[52vh] w-[52vw] rotate-[8deg] bg-[#DEE6E2] opacity-70" />
       <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(rgba(24,35,45,.16) .55px, transparent .55px)", backgroundSize: "7px 7px" }} />
       <div className="absolute inset-0 opacity-35" style={{ backgroundImage: "linear-gradient(rgba(24,35,45,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(24,35,45,.035) 1px, transparent 1px)", backgroundSize: "48px 48px", maskImage: "radial-gradient(circle at 45% 48%, black, transparent 76%)" }} />
     </div>
@@ -427,7 +358,7 @@ function Field({ label, icon, value, onChange, action, ...props }: {
   return (
     <label className="block">
       <span className="mb-1.5 block text-[11px] font-bold text-[#394950]">{label}</span>
-      <span className="auth-field-shell group relative flex h-[50px] items-center rounded-xl border border-[#D7D1C4] bg-white transition-[border-color,box-shadow,background] focus-within:border-[#244C66] focus-within:shadow-[0_0_0_3px_rgba(197,212,217,.7)]">
+      <span className="group relative flex h-[50px] items-center rounded-xl border border-[#D7D1C4] bg-white transition-[border-color,box-shadow,background] focus-within:border-[#244C66] focus-within:shadow-[0_0_0_3px_rgba(197,212,217,.7)]">
         <span className="ml-3.5 grid size-5 shrink-0 place-items-center text-[#8A918F] transition-colors group-focus-within:text-[#244C66] [&_svg]:size-[16px]">{icon}</span>
         <input {...props} required value={value} onChange={(event) => onChange(event.target.value)} className="h-full min-w-0 flex-1 bg-transparent px-3 text-sm text-[#24323A] outline-none placeholder:text-[#9A9F9C]" />
         {action && <span className="mr-2">{action}</span>}
