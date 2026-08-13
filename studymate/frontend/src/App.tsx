@@ -35,7 +35,7 @@ const NotFound = lazy(() => import("@/pages/NotFound").then((m) => ({ default: m
 const TutorBubble = lazy(() => import("@/components/TutorBubble").then((m) => ({ default: m.TutorBubble })))
 
 // 登录、助教自身、沉浸工具与高密度数据页不叠加悬浮人物，避免遮挡关键控件和数据卡。
-const BUBBLE_HIDDEN_PATHS = ["/login", "/tutor", "/tutor/voice", "/concept", "/ppt", "/report", "/tests"]
+const BUBBLE_HIDDEN_PATHS = ["/login", "/tutor", "/tutor/voice", "/concept", "/ppt", "/report", "/tests", "/competency"]
 
 function ScrollToTop() {
   const { pathname } = useLocation()

@@ -309,6 +309,50 @@
   }
 }
 
+@keyframes agent-flow-dash {
+  to {
+    stroke-dashoffset: -30;
+  }
+}
+
+@keyframes agent-flow-node-pulse {
+  0%, 100% {
+    box-shadow: 0 12px 30px rgba(46, 114, 210, .16), 0 0 0 0 rgba(46, 114, 210, .18);
+  }
+  50% {
+    box-shadow: 0 14px 34px rgba(46, 114, 210, .22), 0 0 0 5px rgba(46, 114, 210, 0);
+  }
+}
+
+.agent-flow-grid {
+  background-image: radial-gradient(circle, rgba(75, 105, 139, .18) .75px, transparent .8px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(to bottom, transparent, #000 9%, #000 94%, transparent);
+}
+
+.agent-flow-edge {
+  transition: stroke 260ms ease, stroke-width 260ms ease, opacity 260ms ease;
+}
+
+.agent-flow-edge--active,
+.agent-flow-edge--rework,
+.agent-flow-legend--active {
+  animation: agent-flow-dash .8s linear infinite;
+}
+
+.agent-flow-edge--error {
+  opacity: .86;
+}
+
+.agent-flow-node--active {
+  animation: agent-flow-node-pulse 1.8s ease-in-out infinite;
+}
+
+.agent-flow-scroll {
+  scrollbar-color: rgba(65, 95, 132, .35) transparent;
+  scrollbar-gutter: stable;
+}
+
 .paper-theme > :first-child {
   /* 动画结束后必须释放 transform；否则移动端不支持原生 Fullscreen 时，
      后代的 fixed 全屏兜底会改为相对整张长页面定位，滚动后只剩黑色背景。 */

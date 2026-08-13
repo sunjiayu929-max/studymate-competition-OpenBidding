@@ -32,6 +32,7 @@ import {
 } from "lucide-react"
 
 import { AppTopbar } from "@/components/AppTopbar"
+import { AgentCollaborationFlow } from "@/components/AgentCollaborationFlow"
 import { apiGet } from "@/lib/api"
 import { buildRoleCompetencyMap, type CompetencyLevel, type RoleCompetencyMap, type RoleCompetencyNode } from "@/lib/roleCompetencyMap"
 import { useTrackPage } from "@/lib/useTrackPage"
@@ -325,7 +326,7 @@ export function CompetencyTraining() {
           </section>
         </div>
 
-        <section id="agent-collaboration" className="mt-4 scroll-mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
+        <section id="agent-collaboration" className="mt-4 scroll-mt-24 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <SectionTitle icon={BrainCircuit} eyebrow="协作审计链" title="多 Agent 实时协作与发布门禁" description="训练任务由能力地图与画像共同决定，系统直接展示协作过程、审核分数与裁决依据。" />
             {workspace.status === "running" && <button type="button" onClick={() => workspaceStore.cancel()} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#E1C9C2] bg-[#FFF8F5] px-3 text-[11px] font-bold text-[#A5523A]">停止本轮协作</button>}
@@ -485,74 +486,7 @@ function CapabilityDetail({ node }: { node: CapabilityViewNode }) {
 
 function AgentAudit({ workspace, progress }: { workspace: WorkspaceState; progress: number }) {
   const reviews = Object.entries(workspace.reviews)
-  const displayAgents = workspace.agents.length ? workspace.agents : DEFAULT_TRAINING_AGENTS
-  return <div className="mt-5"><div className="flex items-center justify-between text-[10px] font-bold text-[#63758D]"><span>协作进度 · {stageLabel(workspace.stage)} · 第 {workspace.generationRound} 轮</span><span>{progress}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-[#E8EEF5]"><div className="h-full rounded-full bg-gradient-to-r from-[#3976D0] to-[#20A080] transition-[width] duration-500" style={{ width: `${progress}%` }} /></div><AgentArchitecture agents={displayAgents} stage={workspace.stage} /><WorkflowAnimation workspace={workspace} /><div className="mt-4 grid gap-4 lg:grid-cols-2"><div className="rounded-2xl border border-[#DFE6EF] bg-[#F8FAFD] p-4"><strong className="text-[11px] text-[#334B68]">三项交叉审核</strong>{reviews.length ? <div className="mt-3 space-y-2">{reviews.map(([key, review]) => <div key={key} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-[10px]"><span className="text-[#62748B]">{review.reviewer || key}</span><span className={cn("font-black", review.status === "pass" ? "text-[#1A8067]" : review.status === "fail" ? "text-[#B4523B]" : "text-[#A06C24]")}>{review.score} 分 · {reviewStatusLabel(review.status)}</span></div>)}</div> : <p className="mt-2 text-[10px] leading-5 text-[#7A899D]">等待事实来源、实操规范与难度覆盖审核。</p>}</div><div className={cn("rounded-2xl border p-4", workspace.decision?.decision === "publish" ? "border-[#BFDCCF] bg-[#F3FAF7]" : workspace.decision?.decision === "rework" ? "border-[#E8CDBE] bg-[#FFF7F2]" : "border-[#DFE6EF] bg-[#F8FAFD]")}><strong className="flex items-center gap-2 text-[11px] text-[#334B68]"><ShieldCheck className="size-3.5" />总裁决结论</strong><p className="mt-2 text-[10px] leading-5 text-[#687991]">{workspace.decision?.summary || "等待全部交叉审核完成后决定发布或自动返工。"}</p>{workspace.decision && <span className="mt-2 inline-flex rounded-full bg-white px-2 py-1 text-[9px] font-bold text-[#426384]">{workspace.decision.decision === "publish" ? "批准发布" : "自动返工"} · 质量分 {workspace.decision.quality_score}</span>}</div></div><ReworkTimeline workspace={workspace} />{workspace.logs.length > 0 && <details className="mt-3 rounded-2xl border border-[#E0E7F0] bg-[#FAFCFF] p-3"><summary className="cursor-pointer text-[10px] font-bold text-[#526982]">查看最近协作日志</summary><div className="mt-2 space-y-1.5">{workspace.logs.slice(-8).reverse().map((log, index) => <p key={`${log}-${index}`} className="text-[9px] leading-4 text-[#748399]">{log}</p>)}</div></details>}</div>
-}
-
-type WorkspaceAgent = WorkspaceState["agents"][number]
-
-const DEFAULT_TRAINING_AGENTS: WorkspaceAgent[] = [
-  { meta: { id: "diagnosis", name: "学情诊断 Agent", icon: "🧭", color: "sky", description: "定位岗位能力盲区与训练起点" }, status: "pending" },
-  { meta: { id: "domain_expert", name: "领域专家 Agent", icon: "🧠", color: "indigo", description: "提出专业覆盖与验收要求" }, status: "pending" },
-  { meta: { id: "learning_strategy", name: "教学策略 Agent", icon: "🪜", color: "sky", description: "平衡时间预算、难度与认知负荷" }, status: "pending" },
-  { meta: { id: "plan_arbiter", name: "训练计划仲裁 Agent", icon: "🧩", color: "violet", description: "形成所有生成角色共同遵守的训练合同" }, status: "pending" },
-  { meta: { id: "doc", name: "定制讲义生成 Agent", icon: "📄", color: "indigo", description: "生成带来源标注的岗位讲义" }, status: "pending" },
-  { meta: { id: "guide", name: "实操指南生成 Agent", icon: "🧰", color: "amber", description: "生成可执行、可验收的实操指南" }, status: "pending" },
-  { meta: { id: "quiz", name: "分阶测试生成 Agent", icon: "📝", color: "emerald", description: "生成用于成果验收的分阶测试" }, status: "pending" },
-  { meta: { id: "evidence_review", name: "事实与来源审核 Agent", icon: "🔍", color: "indigo", description: "核对专业主张与知识来源" }, status: "pending" },
-  { meta: { id: "practice_review", name: "实操规范审核 Agent", icon: "🛡️", color: "rose", description: "检查步骤、异常处理与安全边界" }, status: "pending" },
-  { meta: { id: "difficulty_review", name: "难度与覆盖审核 Agent", icon: "📐", color: "emerald", description: "校准难度与岗位能力覆盖" }, status: "pending" },
-  { meta: { id: "arbiter", name: "总裁决 Agent", icon: "⚖️", color: "amber", description: "决定批准发布或定向自动返工" }, status: "pending" },
-]
-
-const AGENT_GROUPS = [
-  { id: "diagnosis", title: "学情诊断类 Agent", detail: "锚定岗位差距与训练起点", ids: ["diagnosis"], tone: "blue" as const },
-  { id: "planning", title: "训练规划类 Agent", detail: "协商专业覆盖、负荷与训练合同", ids: ["domain_expert", "learning_strategy", "plan_arbiter"], tone: "purple" as const },
-  { id: "generation", title: "资源生成类 Agent", detail: "围绕同一岗位任务生成三类资源", ids: ["doc", "guide", "quiz"], tone: "teal" as const },
-  { id: "governance", title: "质量治理类 Agent", detail: "事实、实操与难度独立交叉验证", ids: ["evidence_review", "practice_review", "difficulty_review"], tone: "green" as const },
-] as const
-
-function AgentArchitecture({ agents, stage }: { agents: WorkspaceAgent[]; stage: string }) {
-  const coordinator = agents.find((agent) => agent.meta.id === "arbiter")
-  const activeGroup = stageToGroup(stage)
-  const group = (id: typeof AGENT_GROUPS[number]["id"]) => AGENT_GROUPS.find((item) => item.id === id)!
-  return <div className="relative mt-5 overflow-hidden rounded-[24px] border border-[#D9E5F2] bg-[linear-gradient(135deg,#F8FBFF_0%,#FCFFFE_100%)] p-3 sm:p-5"><div className="pointer-events-none absolute inset-0 opacity-40" style={{ backgroundImage: "linear-gradient(#DCE8F5 1px, transparent 1px), linear-gradient(90deg, #DCE8F5 1px, transparent 1px)", backgroundSize: "28px 28px" }} /><div className="relative grid gap-3 lg:grid-cols-[minmax(0,1fr)_210px_minmax(0,1fr)] lg:grid-rows-2"><AgentGroupPanel group={group("diagnosis")} agents={agents} active={activeGroup === "diagnosis"} /><CoordinatorCard agent={coordinator} active={activeGroup === "decision"} stage={stage} /><AgentGroupPanel group={group("generation")} agents={agents} active={activeGroup === "generation"} /><AgentGroupPanel group={group("planning")} agents={agents} active={activeGroup === "planning"} /><AgentGroupPanel group={group("governance")} agents={agents} active={activeGroup === "governance"} /></div></div>
-}
-
-function AgentGroupPanel({ group, agents, active }: { group: typeof AGENT_GROUPS[number]; agents: WorkspaceAgent[]; active: boolean }) {
-  const members = group.ids.map((id) => agents.find((agent) => agent.meta.id === id)).filter(Boolean) as WorkspaceAgent[]
-  const tone = {
-    blue: { box: "border-[#BFD5F2] bg-[#F3F8FF]", title: "text-[#2865B8]", wash: "bg-[#E5F0FF]" },
-    purple: { box: "border-[#D3C7F2] bg-[#F8F5FF]", title: "text-[#7052B5]", wash: "bg-[#EEE8FF]" },
-    teal: { box: "border-[#BDE4E2] bg-[#F2FBFA]", title: "text-[#16817B]", wash: "bg-[#DFF5F2]" },
-    green: { box: "border-[#BFE3CF] bg-[#F3FBF6]", title: "text-[#218254]", wash: "bg-[#E1F5E9]" },
-  }[group.tone]
-  return <section className={cn("rounded-[22px] border p-3 transition-all sm:p-4", tone.box, active && "ring-2 ring-[#3976D0]/25 shadow-[0_10px_30px_rgba(48,102,174,.12)]", group.id === "planning" && "lg:col-start-1", group.id === "governance" && "lg:col-start-3")}><div className="text-center"><h3 className={cn("text-sm font-extrabold", tone.title)}>{group.title}</h3><p className="mt-1 text-[9px] text-[#708198]">{group.detail}</p></div><div className="mt-3 space-y-2">{members.map((agent) => <AgentNode key={agent.meta.id} agent={agent} wash={tone.wash} />)}</div></section>
-}
-
-function CoordinatorCard({ agent, active, stage }: { agent?: WorkspaceAgent; active: boolean; stage: string }) {
-  return <section className={cn("relative flex min-h-40 flex-col items-center justify-center overflow-hidden rounded-[22px] border-2 border-[#70A0E7] bg-white px-4 py-5 text-center shadow-[0_12px_30px_rgba(50,96,164,.12)] lg:row-span-2 lg:row-start-1", active && "ring-4 ring-[#3976D0]/15")}><span className={cn("absolute left-1/2 top-0 h-1 w-20 -translate-x-1/2 rounded-b-full bg-[#3976D0]", active && "animate-pulse")} /><small className="font-extrabold tracking-[.12em] text-[#3976D0]">核心调度</small><span className="mt-3 text-3xl" aria-hidden>{agent?.meta.icon || "⚖️"}</span><h3 className="mt-2 text-base font-black text-[#1E3150]">{agent?.meta.name || "总裁决 Agent"}</h3><p className="mt-2 text-[9px] leading-4 text-[#708198]">汇总审核证据<br />决定发布或定向返工</p><span className={cn("mt-3 rounded-full px-2.5 py-1 text-[9px] font-bold", agentStatusClasses(agent?.status))}>{agentStatusLabel(agent?.status, stage)}</span></section>
-}
-
-function AgentNode({ agent, wash }: { agent: WorkspaceAgent; wash: string }) {
-  return <div className="flex items-center gap-2 rounded-xl border border-white/90 bg-white/90 px-3 py-2.5 shadow-[0_5px_15px_rgba(60,79,105,.06)]"><span className={cn("grid size-8 shrink-0 place-items-center rounded-lg text-sm", wash)} aria-hidden>{agent.meta.icon}</span><span className="min-w-0 flex-1"><strong className="block truncate text-[10px] text-[#2E405A]">{agent.meta.name}</strong><small className="mt-0.5 block truncate text-[8px] text-[#8190A3]">{agent.message || agent.meta.description}</small></span><span className={cn("size-2 shrink-0 rounded-full", agent.status === "done" ? "bg-[#35A984]" : agent.status === "running" || agent.status === "streaming" ? "animate-pulse bg-[#3976D0]" : agent.status === "error" ? "bg-[#C45D43]" : "bg-[#C7CFDA]")} /></div>
-}
-
-const WORKFLOW_PHASES = [
-  { key: "diagnosis", label: "学情诊断", x: 85 },
-  { key: "planning", label: "训练规划", x: 250 },
-  { key: "generation", label: "资源生成", x: 415 },
-  { key: "governance", label: "交叉审核", x: 580 },
-  { key: "decision", label: "总裁决", x: 745 },
-  { key: "published", label: "批准发布", x: 910 },
-] as const
-
-function WorkflowAnimation({ workspace }: { workspace: WorkspaceState }) {
-  const activeKey = stageToGroup(workspace.stage)
-  const activeIndex = WORKFLOW_PHASES.findIndex((phase) => phase.key === activeKey)
-  const hasRework = workspace.reworkHistory.length > 0 || workspace.generationRound > 1 || workspace.stage === "rework"
-  const reworking = workspace.status === "running" && workspace.generationRound > 1 && ["rework", "generation", "review", "decision"].includes(workspace.stage)
-  return <div className="mt-4 overflow-x-auto rounded-[22px] border border-[#DCE5F0] bg-[#0F2745] p-2"><div className="px-3 pt-2 text-[10px] font-bold tracking-[.1em] text-[#BFD3EC]">实时协作与自动返工流程</div><svg viewBox="0 0 1000 270" role="img" aria-label="多 Agent 实时协作和自动返工流程图" className="min-w-[900px]"><defs><marker id="workflow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7594BA" /></marker><marker id="rework-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#F0A66E" /></marker></defs>{WORKFLOW_PHASES.slice(0, -1).map((phase, index) => { const next = WORKFLOW_PHASES[index + 1]; const completed = activeIndex > index || workspace.stage === "published"; const active = workspace.status === "running" && activeIndex === index + 1; return <path key={phase.key} d={`M ${phase.x + 54} 91 L ${next.x - 54} 91`} stroke={completed ? "#4DC1A0" : active ? "#69A5FF" : "#536D8D"} strokeWidth="4" strokeDasharray={active ? "9 7" : undefined} markerEnd="url(#workflow-arrow)">{active && <animate attributeName="stroke-dashoffset" from="32" to="0" dur=".8s" repeatCount="indefinite" />}</path> })}{hasRework && <><path id="rework-loop" d="M 745 140 C 745 235, 415 235, 415 140" fill="none" stroke="#F0A66E" strokeWidth="4" strokeDasharray="10 8" markerEnd="url(#rework-arrow)"><animate attributeName="stroke-dashoffset" from="36" to="0" dur=".9s" repeatCount="indefinite" /></path><text x="580" y="224" textAnchor="middle" fill="#F5BE91" fontSize="12" fontWeight="700">问题反馈 · 定向返工 · 重新审核</text>{reworking && <circle r="6" fill="#FFD19F"><animateMotion dur="2s" repeatCount="indefinite" path="M 745 140 C 745 235, 415 235, 415 140" /></circle>}</>}{WORKFLOW_PHASES.map((phase, index) => { const active = phase.key === activeKey; const done = activeIndex > index || workspace.stage === "published"; return <g key={phase.key}><rect x={phase.x - 54} y="54" width="108" height="74" rx="18" fill={active ? "#285FAF" : done ? "#174F50" : "#1A3556"} stroke={active ? "#80B2FF" : done ? "#49B99B" : "#536D8D"} strokeWidth={active ? 3 : 2}>{active && <animate attributeName="stroke-opacity" values="1;.35;1" dur="1.2s" repeatCount="indefinite" />}</rect><text x={phase.x} y="83" textAnchor="middle" fill={active || done ? "#FFFFFF" : "#B2C2D6"} fontSize="11" fontWeight="800">{String(index + 1).padStart(2, "0")}</text><text x={phase.x} y="105" textAnchor="middle" fill="#FFFFFF" fontSize="12" fontWeight="700">{phase.label}</text>{active && <circle cx={phase.x} cy="43" r="5" fill="#78AEFF"><animate attributeName="r" values="4;8;4" dur="1s" repeatCount="indefinite" /><animate attributeName="opacity" values="1;.25;1" dur="1s" repeatCount="indefinite" /></circle>}</g> })}<text x="500" y="258" textAnchor="middle" fill="#8FA8C5" fontSize="10">不通过不会发布：自动携带审核意见返回对应生成 Agent，直至审核通过</text></svg></div>
+  return <div className="mt-5"><div className="flex items-center justify-between text-[10px] font-bold text-[#63758D]"><span>协作进度 · {stageLabel(workspace.stage)} · 第 {workspace.generationRound} 轮</span><span>{progress}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-[#E8EEF5]"><div className="h-full rounded-full bg-gradient-to-r from-[#3976D0] to-[#20A080] transition-[width] duration-500" style={{ width: `${progress}%` }} /></div><AgentCollaborationFlow workspace={workspace} /><div className="mt-4 grid gap-4 lg:grid-cols-2"><div className="rounded-2xl border border-[#DFE6EF] bg-[#F8FAFD] p-4"><strong className="text-[11px] text-[#334B68]">三项交叉审核</strong>{reviews.length ? <div className="mt-3 space-y-2">{reviews.map(([key, review]) => <div key={key} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-[10px]"><span className="text-[#62748B]">{review.reviewer || key}</span><span className={cn("font-black", review.status === "pass" ? "text-[#1A8067]" : review.status === "fail" ? "text-[#B4523B]" : "text-[#A06C24]")}>{review.score} 分 · {reviewStatusLabel(review.status)}</span></div>)}</div> : <p className="mt-2 text-[10px] leading-5 text-[#7A899D]">等待事实来源、实操规范与难度覆盖审核。</p>}</div><div className={cn("rounded-2xl border p-4", workspace.decision?.decision === "publish" ? "border-[#BFDCCF] bg-[#F3FAF7]" : workspace.decision?.decision === "rework" ? "border-[#E8CDBE] bg-[#FFF7F2]" : "border-[#DFE6EF] bg-[#F8FAFD]")}><strong className="flex items-center gap-2 text-[11px] text-[#334B68]"><ShieldCheck className="size-3.5" />总裁决结论</strong><p className="mt-2 text-[10px] leading-5 text-[#687991]">{workspace.decision?.summary || "等待全部交叉审核完成后决定发布或自动返工。"}</p>{workspace.decision && <span className="mt-2 inline-flex rounded-full bg-white px-2 py-1 text-[9px] font-bold text-[#426384]">{workspace.decision.decision === "publish" ? "批准发布" : "自动返工"} · 质量分 {workspace.decision.quality_score}</span>}</div></div><ReworkTimeline workspace={workspace} />{workspace.logs.length > 0 && <details className="mt-3 rounded-2xl border border-[#E0E7F0] bg-[#FAFCFF] p-3"><summary className="cursor-pointer text-[10px] font-bold text-[#526982]">查看最近协作日志</summary><div className="mt-2 space-y-1.5">{workspace.logs.slice(-8).reverse().map((log, index) => <p key={`${log}-${index}`} className="text-[9px] leading-4 text-[#748399]">{log}</p>)}</div></details>}</div>
 }
 
 function ReworkTimeline({ workspace }: { workspace: WorkspaceState }) {
@@ -561,36 +495,12 @@ function ReworkTimeline({ workspace }: { workspace: WorkspaceState }) {
   return <div className="mt-3 rounded-2xl border border-[#E7D2C3] bg-[#FFF9F5] p-4"><div className="flex items-center gap-2 text-[11px] font-bold text-[#9A5B35]"><RefreshCw className={cn("size-3.5", workspace.status === "running" && "animate-spin")} />自动返工记录 · 已发生 {workspace.reworkHistory.length} 次</div><div className="mt-3 grid gap-2 md:grid-cols-2">{workspace.reworkHistory.slice(-4).reverse().map((record) => <div key={`${record.generationRound}-${record.createdAt}`} className="rounded-xl border border-[#ECDDD2] bg-white px-3 py-2.5"><div className="flex items-center justify-between text-[9px] font-bold"><span className="text-[#9A5B35]">第 {record.generationRound} 轮退回</span><span className="text-[#7B8797]">{record.targets.map((id) => labels[id] || id).join("、")}</span></div><p className="mt-1.5 line-clamp-2 text-[9px] leading-4 text-[#6F7886]">{record.requiredFixes.join("；") || "依据交叉审核结果重新生成并再次送审"}</p></div>)}</div></div>
 }
 
-function stageToGroup(stage: string) {
-  if (["diagnosis", "retrieval"].includes(stage)) return "diagnosis"
-  if (["planning", "plan_decision"].includes(stage)) return "planning"
-  if (["generation", "rework"].includes(stage)) return "generation"
-  if (stage === "review") return "governance"
-  if (stage === "decision") return "decision"
-  if (["publishing", "published"].includes(stage)) return "published"
-  return "idle"
-}
-
 function stageLabel(stage: string) {
   return ({ idle: "等待启动", diagnosis: "学情诊断", retrieval: "知识检索", planning: "训练规划", plan_decision: "计划仲裁", generation: "资源生成", rework: "自动返工", review: "交叉审核", decision: "总裁决", publishing: "准备发布", published: "已发布" } as Record<string, string>)[stage] || stage
 }
 
 function reviewStatusLabel(status: string) {
   return ({ pass: "通过", warn: "有建议", fail: "未通过" } as Record<string, string>)[status] || status
-}
-
-function agentStatusClasses(status?: WorkspaceAgent["status"]) {
-  if (status === "done") return "bg-[#DDF2E9] text-[#18745E]"
-  if (status === "running" || status === "streaming") return "bg-[#E7F0FF] text-[#2D65B7]"
-  if (status === "error") return "bg-[#F8E5DF] text-[#A34F37]"
-  return "bg-[#EEF2F7] text-[#6F7E92]"
-}
-
-function agentStatusLabel(status: WorkspaceAgent["status"] | undefined, stage: string) {
-  if (status === "done") return "本轮已完成"
-  if (status === "running" || status === "streaming") return `正在${stageLabel(stage)}`
-  if (status === "error") return "执行异常"
-  return "等待调度"
 }
 
 function RoleRequired() {
