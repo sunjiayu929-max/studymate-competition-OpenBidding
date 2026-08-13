@@ -1,448 +1,641 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import {
   ArrowRight,
   BadgeCheck,
+  BookOpenCheck,
+  BrainCircuit,
   BriefcaseBusiness,
-  CalendarDays,
   Check,
   CheckCircle2,
   ChevronRight,
   CircleDashed,
-  ClipboardCheck,
   Clock3,
   FileCheck2,
+  FileText,
+  Flag,
   Gauge,
+  GitCompareArrows,
   Layers3,
-  PencilLine,
-  Play,
+  ListTree,
+  Lock,
+  Loader2,
+  Map as MapIcon,
+  RefreshCw,
+  Route,
+  Rocket,
+  ShieldCheck,
   Sparkles,
   Target,
-  Trophy,
-  X,
+  UserRoundSearch,
+  Wrench,
 } from "lucide-react"
 
 import { AppTopbar } from "@/components/AppTopbar"
-import type { CareerRole } from "@/lib/domainCareerCatalog"
+import { apiGet } from "@/lib/api"
+import { buildRoleCompetencyMap, type CompetencyLevel, type RoleCompetencyMap, type RoleCompetencyNode } from "@/lib/roleCompetencyMap"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { cn } from "@/lib/utils"
+import { useCurrentCourse } from "@/store/course"
 import { useTargetRole } from "@/store/targetRole"
 import { useCurrentUser } from "@/store/user"
+import { workspaceStore, useWorkspaceStore, type PersonalizedTrainingPlan, type WorkspaceState } from "@/store/workspace"
 
-type CompetencyLevel = 0 | 1 | 2 | 3
-type ExperienceLevel = "zero" | "basic" | "project"
-type TaskStatus = "todo" | "in-progress" | "completed"
-
-interface CompetencyItem {
-  id: string
-  name: string
-  description: string
-  task: string
-  standards: [string, string, string]
+interface ProfileDims {
+  knowledge_base: Record<string, number>
+  cognitive_style: Record<string, number>
+  goals: { primary: string; deadline: string; target_topics: string[] }
+  weak_points: { topics: string[]; error_types: string[] }
+  pace: { hours_per_week: number; intensity: string }
+  preference: Record<string, number>
+  employment_skills: Record<string, number>
 }
 
-interface TrainingTask {
-  id: string
-  title: string
-  competencyId: string
-  competencyName: string
-  output: string
-  acceptance: string[]
-  estimatedHours: number
+interface ProfileResponse {
+  user_id: number
+  version: number
+  dims: ProfileDims
+  updated_at: string | null
 }
 
-interface TaskProgress {
-  status: TaskStatus
-  evidence: string
-  completedAt?: string
+const SKILL_LABELS: Record<string, string> = {
+  programming: "编程实现",
+  algorithms: "算法建模",
+  data_ai: "数据与 AI",
+  systems: "系统与网络",
+  engineering: "工程实践",
+  professional: "职业素养",
 }
 
-interface TrainingState {
-  version: 1
-  diagnosedAt: string | null
-  weeks: 4 | 8 | 12
-  weeklyHours: 3 | 5 | 8
-  experience: ExperienceLevel
-  ratings: Record<string, CompetencyLevel>
-  tasks: Record<string, TaskProgress>
+const RESOURCE_META = {
+  doc: { title: "定制讲义", icon: FileText, detail: "建立岗位任务模型与专业边界" },
+  guide: { title: "实操指南", icon: Wrench, detail: "完成可复现、可验收的岗位交付物" },
+  quiz: { title: "分阶测试", icon: BookOpenCheck, detail: "验证理解、场景判断与迁移能力" },
+} as const
+
+type ResourceId = keyof typeof RESOURCE_META
+
+type CapabilityState = "mastered" | "developing" | "current" | "ready" | "locked"
+
+interface CapabilityEvidence {
+  level: CompetencyLevel
+  score: number
+  verifiedAt: string
+  runId: string
 }
 
-const LEVEL_NAMES = ["待建立基线", "理解与跟做", "独立完成", "复杂场景交付"] as const
-const LEVEL_SHORT_NAMES = ["未评估", "L1", "L2", "L3"] as const
-
-function buildFramework(role: CareerRole) {
-  const competencies: CompetencyItem[] = role.skills.map((skill, index) => {
-    const task = role.sampleTasks[index % role.sampleTasks.length]
-    return {
-      id: `${role.id}-competency-${index}`,
-      name: skill,
-      task,
-      description: `能在${role.name}的真实任务中运用${skill}，并对交付结果负责。`,
-      standards: [
-        `能说明${skill}在岗位任务中的作用、输入输出和主要风险`,
-        `能在明确约束下独立完成“${task}”并记录过程`,
-        `能处理异常变化、权衡方案，并沉淀可复用的交付方法`,
-      ],
-    }
-  })
-
-  const tasks: TrainingTask[] = role.sampleTasks.map((title, index) => {
-    const competency = competencies[index % competencies.length]
-    return {
-      id: `${role.id}-task-${index}`,
-      title,
-      competencyId: competency.id,
-      competencyName: competency.name,
-      output: index === role.sampleTasks.length - 1
-        ? `《${role.name}场景复盘与改进报告》`
-        : `《${title}实施与验证记录》`,
-      acceptance: [
-        "目标、约束与验收口径清晰",
-        "关键过程和判断依据可复现",
-        "结果、风险与下一步行动可追溯",
-      ],
-      estimatedHours: index === role.sampleTasks.length - 1 ? 3 : 2,
-    }
-  })
-
-  return { competencies, tasks }
+interface CapabilityViewNode extends RoleCompetencyNode {
+  level: CompetencyLevel
+  state: CapabilityState
+  score?: number
 }
 
-function createInitialState(role: CareerRole): TrainingState {
-  const framework = buildFramework(role)
-  return {
-    version: 1,
-    diagnosedAt: null,
-    weeks: 8,
-    weeklyHours: 5,
-    experience: "zero",
-    ratings: Object.fromEntries(framework.competencies.map((item) => [item.id, 0])) as Record<string, CompetencyLevel>,
-    tasks: Object.fromEntries(framework.tasks.map((task) => [task.id, { status: "todo", evidence: "" }])) as Record<string, TaskProgress>,
-  }
-}
-
-function storageKey(userId: number | undefined, roleId: string) {
-  return `sm:competency-training:${userId ?? "guest"}:${roleId}`
-}
-
-function loadTrainingState(userId: number | undefined, role: CareerRole): TrainingState {
-  const initial = createInitialState(role)
-  try {
-    const raw = localStorage.getItem(storageKey(userId, role.id))
-    if (!raw) return initial
-    const saved = JSON.parse(raw) as Partial<TrainingState>
-    if (saved.version !== 1) return initial
-    return {
-      ...initial,
-      ...saved,
-      ratings: { ...initial.ratings, ...saved.ratings },
-      tasks: { ...initial.tasks, ...saved.tasks },
-    }
-  } catch {
-    return initial
-  }
-}
-
-function persistTrainingState(userId: number | undefined, roleId: string, state: TrainingState) {
-  try {
-    localStorage.setItem(storageKey(userId, roleId), JSON.stringify(state))
-  } catch {
-    /* local persistence is optional */
-  }
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return "尚未完成"
-  return new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit" }).format(new Date(value))
+const CAPABILITY_STATE_META: Record<CapabilityState, { label: string; short: string; badge: string; fill: string; stroke: string }> = {
+  mastered: { label: "已验收 · L3", short: "L3", badge: "bg-[#DDF2E9] text-[#18745E]", fill: "#E6F6EF", stroke: "#2A8A70" },
+  developing: { label: "待补强", short: "补强", badge: "bg-[#FFF0D8] text-[#9A651E]", fill: "#FFF4E2", stroke: "#C6872E" },
+  current: { label: "本轮训练", short: "本轮", badge: "bg-[#E7F0FF] text-[#2D65B7]", fill: "#EAF2FF", stroke: "#3974CA" },
+  ready: { label: "可以开始", short: "可开始", badge: "bg-[#EEF2F7] text-[#5F7087]", fill: "#F4F7FB", stroke: "#8799AF" },
+  locked: { label: "前置未完成", short: "未解锁", badge: "bg-[#F0F1F4] text-[#8993A2]", fill: "#F5F6F8", stroke: "#A8B0BC" },
 }
 
 export function CompetencyTraining() {
   useTrackPage("competency_training")
   const role = useTargetRole()
   const user = useCurrentUser()
+  const course = useCurrentCourse()
+  const workspace = useWorkspaceStore()
+  const [profile, setProfile] = useState<ProfileResponse | null>(null)
+  const [profileLoading, setProfileLoading] = useState(Boolean(user?.user_id))
+  const [profileError, setProfileError] = useState("")
+  const [feedbackBusy, setFeedbackBusy] = useState(false)
+  const [feedbackError, setFeedbackError] = useState("")
+  const [mapMode, setMapMode] = useState<"tree" | "route">("tree")
+  const [selectedCapabilityId, setSelectedCapabilityId] = useState("")
+  const [capabilityEvidence, setCapabilityEvidence] = useState<Record<string, CapabilityEvidence>>({})
+  const capabilityMap = useMemo(() => role ? buildRoleCompetencyMap(role) : null, [role])
 
-  if (!role) return <RoleRequired />
-  return <RoleTraining key={`${user?.user_id ?? "guest"}-${role.id}`} role={role} userId={user?.user_id} />
-}
+  useEffect(() => {
+    if (!user?.user_id) return
+    let active = true
+    setProfileLoading(true)
+    apiGet<ProfileResponse>(`/profile/${user.user_id}`)
+      .then((value) => { if (active) { setProfile(value); setProfileError("") } })
+      .catch(() => { if (active) setProfileError("画像暂时无法读取，请确认后端服务已启动。") })
+      .finally(() => { if (active) setProfileLoading(false) })
+    return () => { active = false }
+  }, [user?.user_id])
 
-function RoleRequired() {
-  return (
-    <main className="app-page paper-theme min-h-dvh">
-      <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <AppTopbar current="courses" appearance="paper" labelOverride="岗位胜任力训练" groupOverride="岗位训练中心" selectionLabel="尚未选择目标岗位" />
-        <section className="mt-4 grid min-h-[62vh] place-items-center rounded-[28px] border border-[#DCE5F1] bg-white px-5 text-center shadow-[0_18px_48px_rgba(41,67,112,.08)]">
-          <div className="max-w-lg py-16">
-            <span className="mx-auto grid size-16 place-items-center rounded-[22px] bg-gradient-to-br from-[#E8F2FF] to-[#F1EAFF] text-[#356FD1]"><BriefcaseBusiness className="size-7" /></span>
-            <p className="mt-5 text-[11px] font-extrabold tracking-[.16em] text-[#6F83A2]">ROLE FIRST</p>
-            <h1 className="mt-2 text-2xl font-bold tracking-[-.04em] text-[#17233D]">先确定目标岗位，再建立胜任力标准</h1>
-            <p className="mt-3 text-sm leading-6 text-[#66758B]">训练方案会根据岗位技能、典型任务与交付标准生成，并按岗位分别保存训练进度。</p>
-            <Link to="/courses?returnTo=%2Fcompetency" className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-[#2468CE] px-5 text-sm font-bold text-white shadow-[0_10px_24px_rgba(36,104,206,.24)] hover:bg-[#1B57AF]">选择目标岗位<ArrowRight className="size-4" /></Link>
-          </div>
-        </section>
-      </div>
-    </main>
-  )
-}
-
-function RoleTraining({ role, userId }: { role: CareerRole; userId?: number }) {
-  const framework = useMemo(() => buildFramework(role), [role])
-  const [state, setState] = useState<TrainingState>(() => loadTrainingState(userId, role))
-  const [diagnosticOpen, setDiagnosticOpen] = useState(!state.diagnosedAt)
-  const [evidenceTaskId, setEvidenceTaskId] = useState<string | null>(null)
-  const [evidenceDraft, setEvidenceDraft] = useState("")
-  const [evidenceError, setEvidenceError] = useState("")
-
-  const updateState = (updater: (current: TrainingState) => TrainingState) => {
-    setState((current) => {
-      const next = updater(current)
-      persistTrainingState(userId, role.id, next)
-      return next
-    })
-  }
-
-  const completedTasks = framework.tasks.filter((task) => state.tasks[task.id]?.status === "completed")
-  const activeTasks = framework.tasks.filter((task) => state.tasks[task.id]?.status === "in-progress")
-  const ratingTotal = framework.competencies.reduce((sum, item) => sum + (state.ratings[item.id] ?? 0), 0)
-  const selfScore = framework.competencies.length ? ratingTotal / (framework.competencies.length * 3) : 0
-  const evidenceScore = framework.tasks.length ? completedTasks.length / framework.tasks.length : 0
-  const readiness = state.diagnosedAt ? Math.round(selfScore * 40 + evidenceScore * 60) : 0
-  const nextTask = framework.tasks.find((task) => state.tasks[task.id]?.status === "in-progress")
-    ?? framework.tasks.find((task) => state.tasks[task.id]?.status !== "completed")
-  const readinessLabel = !state.diagnosedAt ? "等待诊断" : readiness >= 80 ? "达到岗位候选标准" : readiness >= 50 ? "进入综合实战" : "处于专项训练期"
-  const totalHours = state.weeks * state.weeklyHours
-
-  const startTask = (taskId: string) => {
-    updateState((current) => ({
-      ...current,
-      tasks: {
-        ...current.tasks,
-        [taskId]: { ...current.tasks[taskId], status: "in-progress" },
-      },
-    }))
-  }
-
-  const startNextTask = () => {
-    if (!nextTask) return
-    if (state.tasks[nextTask.id]?.status === "todo") startTask(nextTask.id)
-    window.requestAnimationFrame(() => document.getElementById(nextTask.id)?.scrollIntoView({ behavior: "smooth", block: "center" }))
-  }
-
-  const openEvidence = (task: TrainingTask) => {
-    setEvidenceTaskId(task.id)
-    setEvidenceDraft(state.tasks[task.id]?.evidence ?? "")
-    setEvidenceError("")
-  }
-
-  const submitEvidence = () => {
-    if (!evidenceTaskId) return
-    const value = evidenceDraft.trim()
-    if (value.length < 8) {
-      setEvidenceError("请至少用 8 个字说明成果内容、存放位置或验证结论。")
+  useEffect(() => {
+    if (!user?.user_id || !role?.id) {
+      setCapabilityEvidence({})
       return
     }
-    updateState((current) => ({
-      ...current,
-      tasks: {
-        ...current.tasks,
-        [evidenceTaskId]: {
-          status: "completed",
-          evidence: value,
-          completedAt: new Date().toISOString(),
-        },
-      },
-    }))
-    setEvidenceTaskId(null)
-    setEvidenceDraft("")
+    setCapabilityEvidence(readCapabilityEvidence(user.user_id, role.id))
+    setSelectedCapabilityId("")
+  }, [role?.id, user?.user_id])
+
+  useEffect(() => {
+    const feedback = workspace.feedback
+    const trainingPlan = workspace.outputs.training_plan
+    if (!user?.user_id || !role?.id || !capabilityMap || !feedback || feedback.accuracy === null || !workspace.runId || !trainingPlan) return
+
+    const accuracy = feedback.accuracy
+    const level: CompetencyLevel = accuracy >= 85 ? 3 : accuracy >= 60 ? 2 : 1
+    setCapabilityEvidence((current) => {
+      const next = { ...current }
+      let changed = false
+      for (const competencyName of trainingPlan.priority_competencies) {
+        const node = capabilityMap.nodes.find((item) => item.name === competencyName)
+        if (!node || next[node.id]?.runId === workspace.runId) continue
+        const previous = next[node.id]
+        if (!previous || level >= previous.level) {
+          next[node.id] = {
+            level,
+            score: accuracy,
+            verifiedAt: new Date().toISOString(),
+            runId: workspace.runId,
+          }
+          changed = true
+        }
+      }
+      if (!changed) return current
+      writeCapabilityEvidence(user.user_id, role.id, next)
+      return next
+    })
+  }, [capabilityMap, role?.id, user?.user_id, workspace.feedback, workspace.outputs.training_plan, workspace.runId])
+
+  if (!role || !capabilityMap) return <RoleRequired />
+
+  const employmentEvidence = Object.entries(profile?.dims.employment_skills ?? {}).filter(([, score]) => score > 0)
+  const profileScore = profile ? Math.min(100,
+    20
+    + (profile.dims.goals.primary.trim() ? 20 : 0)
+    + (profile.dims.pace.hours_per_week > 0 ? 15 : 0)
+    + (profile.dims.goals.target_topics.length || profile.dims.weak_points.topics.length ? 15 : 0)
+    + (employmentEvidence.length ? 20 : 0)
+    + (profile.version > 1 ? 10 : 0)
+  ) : 0
+  const profileReady = profileScore >= 60
+  const plan = workspace.outputs.training_plan
+  const released = workspace.decision?.decision === "publish"
+  const attempts = Object.values(workspace.quizAttempts)
+  const correctCount = attempts.filter((item) => item.is_correct).length
+  const resourceCount = (["doc", "guide", "quiz"] as ResourceId[]).filter((id) => Boolean(workspace.outputs[id])).length
+  const completedSteps = [Boolean(role), profileReady, Boolean(plan), released, Boolean(workspace.feedback)].filter(Boolean).length
+  const agentDone = workspace.agents.filter((agent) => agent.status === "done").length
+  const agentProgress = workspace.agents.length ? Math.round(agentDone / workspace.agents.length * 100) : 0
+  const cycle = plan?.cycle ?? workspace.diagnosis?.training_cycle ?? 1
+  const nextTopicIndex = workspace.feedback ? cycle % role.sampleTasks.length : (cycle - 1) % role.sampleTasks.length
+  const nextTopic = role.sampleTasks[nextTopicIndex] ?? role.sampleTasks[0]
+  const capabilityNodes = resolveCapabilityNodes(capabilityMap, capabilityEvidence, plan)
+  const verifiedCapabilityCount = capabilityNodes.filter((node) => node.level === 3).length
+  const capabilityProgress = capabilityNodes.length
+    ? Math.round(capabilityNodes.reduce((sum, node) => sum + node.level, 0) / (capabilityNodes.length * 3) * 100)
+    : 0
+  const selectedCapability = capabilityNodes.find((node) => node.id === selectedCapabilityId)
+    ?? capabilityNodes.find((node) => node.state === "current")
+    ?? capabilityNodes.find((node) => node.state === "ready")
+    ?? capabilityNodes[0]
+
+  const startRound = () => {
+    if (!user?.user_id || !course || workspace.status === "running") return
+    void workspaceStore.start(nextTopic, user.user_id, course.id, course.name)
   }
 
-  const submitDiagnostic = () => {
-    updateState((current) => ({ ...current, diagnosedAt: new Date().toISOString() }))
-    setDiagnosticOpen(false)
+  const submitFeedback = async () => {
+    setFeedbackBusy(true)
+    setFeedbackError("")
+    try {
+      await workspaceStore.submitTrainingFeedback()
+    } catch (error) {
+      setFeedbackError(error instanceof Error ? error.message : "验收结果回写失败，请稍后重试。")
+    } finally {
+      setFeedbackBusy(false)
+    }
   }
 
   return (
     <main className="app-page paper-theme min-h-dvh pb-12">
       <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <AppTopbar current="courses" appearance="paper" labelOverride="岗位胜任力训练" groupOverride="岗位训练中心" selectionLabel={role.name} />
+        <AppTopbar current="courses" appearance="paper" labelOverride="岗位训练中心" groupOverride="岗位胜任力闭环" selectionLabel={role.name} />
 
         <section className="relative mt-4 overflow-hidden rounded-[30px] border border-[#C9D9ED] bg-[#122C4D] px-5 py-6 text-white shadow-[0_24px_64px_rgba(32,73,130,.18)] sm:px-7 sm:py-8 lg:px-10">
-          <div className="pointer-events-none absolute -right-16 -top-24 size-72 rounded-full bg-[#8056E8]/25 blur-2xl" />
-          <div className="pointer-events-none absolute bottom-[-9rem] left-[28%] size-80 rounded-full bg-[#16A6A1]/20 blur-3xl" />
-          <div className="relative grid gap-7 xl:grid-cols-[minmax(0,1fr)_410px] xl:items-center">
+          <div className="pointer-events-none absolute -right-20 -top-28 size-80 rounded-full bg-[#7654DC]/25 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-32 left-1/3 size-80 rounded-full bg-[#16A6A1]/20 blur-3xl" />
+          <div className="relative grid gap-7 xl:grid-cols-[minmax(0,1fr)_430px] xl:items-center">
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold tracking-[.12em] text-[#CFE2FF]"><Sparkles className="size-3.5 text-[#F1D47D]" />岗位胜任力训练系统</span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#C9F3E7]/12 px-3 py-1.5 text-[10px] font-bold text-[#BFECDD]"><span className="size-1.5 rounded-full bg-[#5ED5B5]" />训练进度已按岗位保存</span>
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold tracking-[.12em] text-[#CFE2FF]"><Sparkles className="size-3.5 text-[#F1D47D]" />第 {cycle} 轮岗位胜任力训练</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#C9F3E7]/12 px-3 py-1.5 text-[10px] font-bold text-[#BFECDD]"><span className="size-1.5 rounded-full bg-[#5ED5B5]" />选择—诊断—协商—训练—验收—迭代</span>
               </div>
-              <h1 className="mt-4 max-w-4xl text-2xl font-bold leading-tight tracking-[-.045em] sm:text-3xl lg:text-[38px]">从“知道知识”走向“能够完成岗位任务”</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#C2D2E6] sm:text-[15px]">目标岗位：<strong className="text-white">{role.name}</strong>。系统依据能力标准识别差距，用真实任务组织训练，并以可追溯成果作为胜任证据。</p>
+              <h1 className="mt-4 max-w-4xl text-2xl font-bold leading-tight tracking-[-.045em] sm:text-3xl lg:text-[38px]">把“想学这个岗位”变成<br className="hidden sm:block" />一条可解释、可验证的胜任路径</h1>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#C2D2E6]">当前目标：<strong className="text-white">{role.name}</strong>。画像决定起点，岗位标准决定终点，多 Agent 负责协商路径，测试结果决定下一轮。</p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <button type="button" onClick={state.diagnosedAt ? startNextTask : () => setDiagnosticOpen(true)} className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69] shadow-[0_10px_26px_rgba(0,0,0,.15)] transition hover:-translate-y-0.5 hover:bg-[#F2F7FF]">
-                  {state.diagnosedAt ? <Play className="size-4 fill-current" /> : <Gauge className="size-4" />}
-                  {state.diagnosedAt ? nextTask ? "继续下一项训练" : "查看岗位验收结果" : "开始能力诊断"}
-                </button>
-                <Link to="/courses?returnTo=%2Fcompetency" className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/20 bg-white/8 px-4 text-sm font-bold text-white transition hover:bg-white/14">切换目标岗位<ChevronRight className="size-4" /></Link>
+                {!profileReady ? (
+                  <Link to="/profile" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69] shadow-[0_10px_26px_rgba(0,0,0,.15)] hover:bg-[#F2F7FF]"><UserRoundSearch className="size-4" />完善岗位画像<ArrowRight className="size-4" /></Link>
+                ) : workspace.status === "running" ? (
+                  <a href="#agent-collaboration" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69]"><Loader2 className="size-4 animate-spin" />查看 Agent 实时协作</a>
+                ) : workspace.feedback ? (
+                  <button type="button" onClick={startRound} disabled={!course} className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69] disabled:opacity-50"><RefreshCw className="size-4" />启动第 {cycle + 1} 轮训练</button>
+                ) : workspace.decision?.decision === "rework" ? (
+                  <button type="button" onClick={startRound} disabled={!course} className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69] disabled:opacity-50"><RefreshCw className="size-4" />重新启动自动返工闭环</button>
+                ) : !plan ? (
+                  <button type="button" onClick={startRound} disabled={!course} className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69] shadow-[0_10px_26px_rgba(0,0,0,.15)] disabled:cursor-not-allowed disabled:opacity-50"><Rocket className="size-4" />启动多 Agent 协同决策</button>
+                ) : released ? (
+                  <Link to="/workspace/r/doc" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69]"><FileText className="size-4" />开始本轮训练<ArrowRight className="size-4" /></Link>
+                ) : (
+                  <a href="#agent-collaboration" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69]"><ShieldCheck className="size-4" />查看裁决结果</a>
+                )}
+                <Link to="/courses?returnTo=%2Fcompetency" className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/20 bg-white/8 px-4 text-sm font-bold text-white hover:bg-white/14">切换目标岗位<ChevronRight className="size-4" /></Link>
               </div>
+              {!course && <p className="mt-3 text-[11px] text-[#F5D9A0]">该岗位专属知识库尚未接入，当前可先完成画像；资源生成需选择已开放的 FDE 岗位。</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <MetricCard value={`${readiness}%`} label="当前准备度（估算）" detail={readinessLabel} accent />
-              <MetricCard value={`${completedTasks.length}/${framework.tasks.length}`} label="岗位成果证据" detail={activeTasks.length ? `${activeTasks.length} 项进行中` : "尚无进行中任务"} />
-              <MetricCard value={`${state.weeks} 周`} label="目标训练周期" detail={`每周 ${state.weeklyHours} 小时`} />
-              <MetricCard value={`${totalHours}h`} label="计划总投入" detail="可随诊断重新调整" />
+              <Metric value={`${completedSteps}/5`} label="闭环阶段" detail="每一步均保留证据" accent />
+              <Metric value={`${profileScore}%`} label="画像完整度" detail={profileReady ? `画像 v${profile?.version ?? 1} 已参与决策` : "还需补充目标与实践证据"} />
+              <Metric value={workspace.agents.length ? `${agentDone}/${workspace.agents.length}` : "11"} label="协同 Agent" detail={workspace.status === "running" ? `协作进度 ${agentProgress}%` : "分工、交叉审核与仲裁"} />
+              <Metric value={`${resourceCount}/3`} label="核心训练资源" detail={released ? "已越过发布门禁" : "裁决通过后开放"} />
             </div>
           </div>
         </section>
 
-        <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white shadow-[0_12px_34px_rgba(41,67,112,.07)]" aria-labelledby="diagnostic-heading">
-          <button type="button" onClick={() => setDiagnosticOpen((value) => !value)} className="flex w-full items-center gap-3 px-5 py-4 text-left sm:px-6">
-            <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", state.diagnosedAt ? "bg-[#E5F6F0] text-[#168268]" : "bg-[#EAF2FF] text-[#286CCB]")}>{state.diagnosedAt ? <CheckCircle2 className="size-5" /> : <ClipboardCheck className="size-5" />}</span>
-            <span className="min-w-0 flex-1"><span className="block text-[10px] font-extrabold tracking-[.12em] text-[#7486A1]">STEP 01 · 能力基线</span><strong id="diagnostic-heading" className="mt-0.5 block text-sm text-[#17233D]">{state.diagnosedAt ? `已于 ${formatDate(state.diagnosedAt)} 完成诊断，可随时校准` : "完成 3 分钟诊断，生成你的岗位差距"}</strong></span>
-            <span className="hidden items-center gap-1 text-xs font-bold text-[#346DC2] sm:inline-flex">{diagnosticOpen ? "收起" : state.diagnosedAt ? "重新诊断" : "开始诊断"}<ChevronRight className={cn("size-4 transition-transform", diagnosticOpen && "rotate-90")} /></span>
-          </button>
-          {diagnosticOpen && (
-            <div className="border-t border-[#E7EDF5] px-5 py-5 sm:px-6">
-              <div className="grid gap-6 lg:grid-cols-[330px_minmax(0,1fr)]">
-                <div>
-                  <h2 className="text-sm font-bold text-[#17233D]">训练约束</h2>
-                  <p className="mt-1 text-xs leading-5 text-[#718096]">用于控制任务密度和训练节奏，不影响岗位能力标准。</p>
-                  <FieldLabel label="相关经验">
-                    <SegmentedOptions value={state.experience} options={[{ value: "zero", label: "零基础" }, { value: "basic", label: "有基础" }, { value: "project", label: "有项目" }]} onChange={(experience) => updateState((current) => ({ ...current, experience }))} />
-                  </FieldLabel>
-                  <FieldLabel label="目标周期">
-                    <SegmentedOptions value={String(state.weeks)} options={[{ value: "4", label: "4 周" }, { value: "8", label: "8 周" }, { value: "12", label: "12 周" }]} onChange={(value) => updateState((current) => ({ ...current, weeks: Number(value) as 4 | 8 | 12 }))} />
-                  </FieldLabel>
-                  <FieldLabel label="每周可投入">
-                    <SegmentedOptions value={String(state.weeklyHours)} options={[{ value: "3", label: "3 小时" }, { value: "5", label: "5 小时" }, { value: "8", label: "8 小时" }]} onChange={(value) => updateState((current) => ({ ...current, weeklyHours: Number(value) as 3 | 5 | 8 }))} />
-                  </FieldLabel>
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-end justify-between gap-2"><div><h2 className="text-sm font-bold text-[#17233D]">逐项判断当前能力</h2><p className="mt-1 text-xs text-[#718096]">请选择你能稳定做到的最高等级；不确定时选择较低等级。</p></div><span className="text-[10px] font-bold text-[#7A8CA6]">目标标准均为 L3</span></div>
-                  <div className="mt-3 space-y-2.5">
-                    {framework.competencies.map((item) => (
-                      <div key={item.id} className="rounded-2xl border border-[#E2E9F2] bg-[#FAFCFF] p-3.5">
-                        <div className="flex flex-wrap items-start justify-between gap-2"><div><strong className="text-xs text-[#17233D]">{item.name}</strong><p className="mt-1 text-[11px] leading-4 text-[#718096]">{item.description}</p></div><span className="rounded-full bg-[#EDF3FC] px-2 py-1 text-[10px] font-bold text-[#49688E]">{LEVEL_NAMES[state.ratings[item.id] ?? 0]}</span></div>
-                        <div className="mt-3 grid grid-cols-4 gap-1.5">
-                          {([0, 1, 2, 3] as CompetencyLevel[]).map((level) => <button key={level} type="button" onClick={() => updateState((current) => ({ ...current, ratings: { ...current.ratings, [item.id]: level } }))} className={cn("h-8 rounded-lg border text-[10px] font-bold transition", state.ratings[item.id] === level ? "border-[#3376D4] bg-[#3376D4] text-white shadow-sm" : "border-[#DDE6F1] bg-white text-[#6F7F96] hover:border-[#9DB8DA] hover:bg-[#F1F6FD]")}>{LEVEL_SHORT_NAMES[level]}</button>)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#E7EDF5] pt-4"><p className="text-[11px] leading-5 text-[#718096]">准备度为训练辅助估算：能力基线占 40%，已提交的岗位成果证据占 60%。</p><button type="button" onClick={submitDiagnostic} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#2468CE] px-5 text-xs font-bold text-white hover:bg-[#1D58AD]"><Sparkles className="size-4" />生成训练方案</button></div>
-            </div>
-          )}
+        <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-4 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-5">
+          <div className="grid gap-2 md:grid-cols-5">
+            <FlowStep index="01" label="选择岗位" detail={role.name} status="done" />
+            <FlowStep index="02" label="画像诊断" detail={profileReady ? `完整度 ${profileScore}%` : "等待补充证据"} status={profileReady ? "done" : "active"} />
+            <FlowStep index="03" label="协同决策" detail={plan ? `第 ${plan.cycle} 轮计划已形成` : workspace.status === "running" ? "Agent 协商中" : "等待启动"} status={plan ? "done" : profileReady ? "active" : "idle"} />
+            <FlowStep index="04" label="资源训练" detail={released ? "3 类资源已发布" : "等待质量门禁"} status={released ? "done" : plan ? "active" : "idle"} />
+            <FlowStep index="05" label="成果验收" detail={workspace.feedback ? "结果已进入下一轮" : attempts.length ? `已完成 ${attempts.length} 项验证` : "等待测试证据"} status={workspace.feedback ? "done" : released ? "active" : "idle"} last />
+          </div>
         </section>
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,.75fr)]">
-          <section className="rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6" aria-labelledby="matrix-heading">
-            <SectionHeading eyebrow="STEP 02 · 差距分析" title="岗位能力矩阵" description="每项能力都对应可观察的岗位行为与交付标准。" icon={<Target className="size-4" />} />
-            <div className="mt-5 space-y-3">
-              {framework.competencies.map((item) => {
-                const level = state.ratings[item.id] ?? 0
-                return (
-                  <article key={item.id} className="rounded-2xl border border-[#E1E8F1] bg-[#FBFCFE] p-4">
-                    <div className="flex items-start gap-3">
-                      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#EAF2FF] text-xs font-extrabold text-[#2D6CC7]">{LEVEL_SHORT_NAMES[level]}</span>
-                      <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-bold text-[#17233D]">{item.name}</h3><span className="text-[10px] font-bold text-[#A05D38]">距目标 {3 - level} 级</span></div><p className="mt-1 text-[11px] leading-5 text-[#718096]">下一等级标准：{item.standards[Math.min(level, 2)]}</p></div>
-                    </div>
-                    <div className="mt-3 grid grid-cols-3 gap-1.5" aria-label={`${item.name}能力等级`}>
-                      {[1, 2, 3].map((step) => <span key={step} className={cn("h-1.5 rounded-full", step <= level ? "bg-[#3376D4]" : "bg-[#E3EAF3]")} />)}
-                    </div>
-                  </article>
-                )
-              })}
+        <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <SectionTitle icon={MapIcon} eyebrow="岗位全景 · 两种可视化对比" title={`${role.name}要学什么、学多少、学到哪里`} description="能力树强调岗位范围与层级，训练路径地图强调先后依赖与当前位置；切换视图不会改变训练数据。" />
+            <div className="inline-flex w-fit rounded-xl border border-[#D8E2EE] bg-[#F3F6FA] p-1">
+              <button type="button" aria-pressed={mapMode === "tree"} onClick={() => setMapMode("tree")} className={cn("inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[11px] font-bold transition", mapMode === "tree" ? "bg-white text-[#285FAF] shadow-sm" : "text-[#718097]")}><ListTree className="size-3.5" />视图 A · 能力树</button>
+              <button type="button" aria-pressed={mapMode === "route"} onClick={() => setMapMode("route")} className={cn("inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[11px] font-bold transition", mapMode === "route" ? "bg-white text-[#285FAF] shadow-sm" : "text-[#718097]")}><Route className="size-3.5" />视图 B · 路径地图</button>
             </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <ResultMetric label="岗位必修范围" value={`${capabilityNodes.length} 项`} detail="范围由当前目标岗位决定" />
+            <ResultMetric label="已独立胜任" value={`${verifiedCapabilityCount}/${capabilityNodes.length}`} detail="仅 L3 验收节点计为完成" />
+            <ResultMetric label="当前能力进度" value={`${capabilityProgress}%`} detail="由真实分阶测试结果回写" />
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#E8EEF5]" aria-label={`当前能力进度 ${capabilityProgress}%`}><div className="h-full rounded-full bg-gradient-to-r from-[#2E6EC8] to-[#22A38A] transition-[width] duration-500" style={{ width: `${capabilityProgress}%` }} /></div>
+          <p className="mt-2 text-[10px] leading-5 text-[#718096]">进度规则：完成测试并提交本轮验收后才更新能力等级；浏览讲义或实操指南不会自动增加进度。</p>
+
+          <div className="mt-5">
+            {mapMode === "tree"
+              ? <CompetencyTree map={capabilityMap} nodes={capabilityNodes} selectedId={selectedCapability?.id} onSelect={setSelectedCapabilityId} />
+              : <TrainingRouteMap map={capabilityMap} nodes={capabilityNodes} selectedId={selectedCapability?.id} onSelect={setSelectedCapabilityId} />}
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+            {selectedCapability && <CapabilityDetail node={selectedCapability} />}
+            <div className="rounded-2xl border border-[#DCE4EE] bg-[#F8FAFD] p-4">
+              <div className="flex items-center gap-2 text-xs font-bold text-[#294A73]"><Flag className="size-4 text-[#7A5BC0]" />什么才算学完</div>
+              <ul className="mt-3 space-y-2">
+                {capabilityMap.completionCriteria.map((criterion, index) => <li key={criterion} className="flex gap-2 text-[10px] leading-5 text-[#62738A]"><span className={cn("mt-1 grid size-4 shrink-0 place-items-center rounded-full text-[8px] font-bold", index === 0 && verifiedCapabilityCount === capabilityNodes.length ? "bg-[#DDF2E9] text-[#18745E]" : "bg-white text-[#75849A]")}>{index + 1}</span>{criterion}</li>)}
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(380px,.95fr)]">
+          <section className="rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
+            <SectionTitle icon={UserRoundSearch} eyebrow="01 · 岗位画像" title="系统如何判断你的训练起点" description="画像区分学习意愿与已有能力：只有明确项目、实习或作品经历才计入就业技能证据。" />
+            {profileLoading ? <LoadingBlock text="正在读取画像证据…" /> : profileError ? <Notice text={profileError} tone="error" /> : profile ? (
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <EvidenceCard icon={Target} label="岗位目标" value={profile.dims.goals.primary || role.name} detail={profile.dims.goals.target_topics.join("、") || "等待补充具体能力目标"} />
+                <EvidenceCard icon={Clock3} label="训练约束" value={profile.dims.pace.hours_per_week ? `每周 ${profile.dims.pace.hours_per_week} 小时` : "时间预算未确认"} detail={profile.dims.goals.deadline || "完成期限未确认"} />
+                <EvidenceCard icon={Gauge} label="优先差距" value={profile.dims.weak_points.topics.slice(0, 2).join("、") || "等待场景追问"} detail={workspace.diagnosis ? `${workspace.diagnosis.current_level} · 置信度 ${Math.round(workspace.diagnosis.evidence_confidence * 100)}%` : "生成训练计划时由诊断 Agent 复核"} />
+                <EvidenceCard icon={BadgeCheck} label="实践证据" value={employmentEvidence.length ? employmentEvidence.slice(0, 2).map(([key, score]) => `${SKILL_LABELS[key] ?? key} L${score}`).join("、") : "尚无可信实践证据"} detail={employmentEvidence.length ? `共 ${employmentEvidence.length} 个能力维度有证据` : "不等于能力为零，需要通过岗位任务验证"} />
+              </div>
+            ) : null}
+            <div className="mt-4 flex justify-end"><Link to="/profile" className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#D8E3EF] px-3 text-[11px] font-bold text-[#3368B4] hover:bg-[#F1F6FD]">通过动态追问校准画像<ArrowRight className="size-3.5" /></Link></div>
           </section>
 
-          <section className="rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6" aria-labelledby="plan-heading">
-            <SectionHeading eyebrow="STEP 03 · 训练路径" title={`${state.weeks} 周岗位训练计划`} description={`按每周 ${state.weeklyHours} 小时安排，共 ${totalHours} 小时。`} icon={<CalendarDays className="size-4" />} />
-            <div className="relative mt-5 space-y-0 pl-4 before:absolute before:bottom-5 before:left-[27px] before:top-5 before:w-px before:bg-[#DCE5F1]">
-              <PlanStage number="01" range="第 1 周" title="能力基线与岗位标准" detail={`完成 ${framework.competencies.length} 项能力诊断，明确证据要求`} active={!state.diagnosedAt} done={Boolean(state.diagnosedAt)} />
-              <PlanStage number="02" range={`第 2–${Math.max(2, state.weeks - 2)} 周`} title="专项任务跟练" detail={`围绕 ${framework.competencies.map((item) => item.name).slice(0, 3).join("、")} 补齐能力差距`} active={Boolean(state.diagnosedAt && completedTasks.length < Math.ceil(framework.tasks.length / 2))} done={completedTasks.length >= Math.ceil(framework.tasks.length / 2)} />
-              <PlanStage number="03" range={`第 ${Math.max(3, state.weeks - 1)} 周`} title="综合场景实战" detail={`串联“${(role.knowledgeBase?.workflow ?? ["目标拆解", "方案实施", "成果验证"]).join(" → ")}”`} active={completedTasks.length >= Math.ceil(framework.tasks.length / 2) && completedTasks.length < framework.tasks.length} done={completedTasks.length === framework.tasks.length} />
-              <PlanStage number="04" range={`第 ${state.weeks} 周`} title="成果验收与复盘" detail="核对交付物、验证结论与改进行动，形成岗位证据包" active={completedTasks.length === framework.tasks.length} done={readiness >= 80} />
-            </div>
-            <div className="mt-4 rounded-2xl border border-[#D8E5F5] bg-[#F2F7FD] p-4"><div className="flex items-center gap-2 text-xs font-bold text-[#254F86]"><Clock3 className="size-4" />动态节奏建议</div><p className="mt-2 text-[11px] leading-5 text-[#5F7390]">{state.experience === "zero" ? "前两周优先理解工作流并跟做样例，再进入独立任务。" : state.experience === "basic" ? "用短周期任务快速暴露差距，重点补齐过程记录和验收意识。" : "直接从综合场景入手，用证据反推薄弱能力并专项补强。"}</p></div>
+          <section className="rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
+            <SectionTitle icon={GitCompareArrows} eyebrow="02 · 多 Agent 协同决策" title="不是投票，而是带约束的提案与仲裁" description="领域专家负责专业覆盖，教学策略负责时间与认知负荷，计划仲裁负责解释最终取舍。" />
+            {plan ? <DebatePanel plan={plan} /> : workspace.status === "running" ? <LoadingBlock text={`正在执行：${workspace.logs.at(-1) || "画像诊断与岗位知识检索"}`} /> : (
+              <div className="mt-5 rounded-2xl border border-dashed border-[#CBD8E8] bg-[#F8FBFF] p-5 text-center"><BrainCircuit className="mx-auto size-6 text-[#5D7FAA]" /><p className="mt-3 text-xs font-bold text-[#334B69]">等待画像完成后启动协同决策</p><p className="mt-1 text-[10px] leading-5 text-[#718096]">启动后会展示双方立场、冲突点、仲裁结果和训练依据。</p></div>
+            )}
           </section>
         </div>
 
-        <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6" aria-labelledby="tasks-heading">
-          <div className="flex flex-wrap items-end justify-between gap-3"><SectionHeading eyebrow="STEP 04 · 任务实践" title="岗位任务训练场" description="每项任务必须形成交付物，并通过统一标准完成自验收。" icon={<Layers3 className="size-4" />} /><div className="rounded-full bg-[#EFF4FA] px-3 py-1.5 text-[10px] font-bold text-[#5F7390]">{completedTasks.length} 项已验收 · {framework.tasks.length - completedTasks.length} 项待完成</div></div>
-          <div className="mt-5 grid gap-3 lg:grid-cols-2">
-            {framework.tasks.map((task, index) => {
-              const progress = state.tasks[task.id] ?? { status: "todo", evidence: "" }
-              const completed = progress.status === "completed"
-              const inProgress = progress.status === "in-progress"
-              return (
-                <article id={task.id} key={task.id} className={cn("scroll-mt-8 rounded-[20px] border p-4 transition", completed ? "border-[#BFDCCF] bg-[#F5FBF8]" : inProgress ? "border-[#AFC9EA] bg-[#F7FAFF] shadow-[0_8px_24px_rgba(45,108,199,.08)]" : "border-[#E0E7F0] bg-[#FBFCFE]")}>
-                  <div className="flex items-start gap-3"><span className={cn("grid size-9 shrink-0 place-items-center rounded-xl text-xs font-extrabold", completed ? "bg-[#DDF2E9] text-[#18745E]" : inProgress ? "bg-[#DDEBFF] text-[#2468CE]" : "bg-[#EDF1F6] text-[#718096]")}>{completed ? <Check className="size-4" /> : String(index + 1).padStart(2, "0")}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-white px-2 py-1 text-[9px] font-bold text-[#677A95] shadow-sm">{task.competencyName}</span><span className="text-[9px] font-bold text-[#8795A9]">预计 {task.estimatedHours} 小时</span></div><h3 className="mt-2 text-sm font-bold leading-5 text-[#17233D]">{task.title}</h3></div></div>
-                  <div className="mt-4 rounded-xl border border-[#E2E9F2] bg-white/80 p-3"><p className="flex items-center gap-1.5 text-[10px] font-bold text-[#547096]"><FileCheck2 className="size-3.5" />应交付成果</p><p className="mt-1 text-xs font-semibold text-[#273A54]">{task.output}</p><div className="mt-2 flex flex-wrap gap-1.5">{task.acceptance.map((item) => <span key={item} className="rounded-md bg-[#F0F4F8] px-2 py-1 text-[9px] font-medium text-[#66758B]">{item}</span>)}</div></div>
-                  {completed && <div className="mt-3 rounded-xl bg-[#EAF6F1] px-3 py-2.5"><div className="flex items-center justify-between gap-2 text-[10px] font-bold text-[#27725F]"><span className="inline-flex items-center gap-1"><BadgeCheck className="size-3.5" />成果已留痕</span><span>{formatDate(progress.completedAt)}</span></div><p className="mt-1 line-clamp-2 text-[10px] leading-4 text-[#52776B]">{progress.evidence}</p></div>}
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    {progress.status === "todo" && <button type="button" onClick={() => startTask(task.id)} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#2468CE] px-3 text-[11px] font-bold text-white hover:bg-[#1D58AD]"><Play className="size-3.5 fill-current" />开始任务</button>}
-                    {inProgress && <button type="button" onClick={() => openEvidence(task)} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#2468CE] px-3 text-[11px] font-bold text-white hover:bg-[#1D58AD]"><FileCheck2 className="size-3.5" />提交成果</button>}
-                    {completed && <button type="button" onClick={() => openEvidence(task)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#BDD9CD] bg-white px-3 text-[11px] font-bold text-[#27725F] hover:bg-[#F0F9F5]"><PencilLine className="size-3.5" />更新成果</button>}
-                    {!completed && <Link to={`/workspace?topic=${encodeURIComponent(task.title)}`} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#DCE5F1] bg-white px-3 text-[11px] font-bold text-[#58708F] hover:bg-[#F1F6FD]">进入资源工坊<ArrowRight className="size-3.5" /></Link>}
-                  </div>
-                </article>
-              )
-            })}
+        <section id="agent-collaboration" className="mt-4 scroll-mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <SectionTitle icon={BrainCircuit} eyebrow="协作审计链" title="多 Agent 实时协作与发布门禁" description="训练任务由能力地图与画像共同决定，系统直接展示协作过程、审核分数与裁决依据。" />
+            {workspace.status === "running" && <button type="button" onClick={() => workspaceStore.cancel()} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#E1C9C2] bg-[#FFF8F5] px-3 text-[11px] font-bold text-[#A5523A]">停止本轮协作</button>}
+          </div>
+          <AgentAudit workspace={workspace} progress={agentProgress} />
+        </section>
+
+        <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3"><SectionTitle icon={Layers3} eyebrow="03 · 个性化资源" title="三类资源围绕同一个岗位任务呼应" description={plan?.rationale || `本轮候选任务：${nextTopic}`} /><span className={cn("rounded-full px-3 py-1.5 text-[10px] font-bold", released ? "bg-[#E5F6F0] text-[#18745E]" : "bg-[#EEF3FA] text-[#61738D]")}>{released ? `质量门禁通过 · ${workspace.decision?.quality_score ?? 0} 分` : workspace.status === "running" ? "生成与审核进行中" : "等待协同计划"}</span></div>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {(["doc", "guide", "quiz"] as ResourceId[]).map((id, index) => <ResourceCard key={id} id={id} index={index} plan={plan} ready={Boolean(workspace.outputs[id])} released={released} reviewScore={id === "doc" ? workspace.reviews.evidence_review?.score : id === "guide" ? workspace.reviews.practice_review?.score : workspace.reviews.difficulty_review?.score} />)}
           </div>
         </section>
 
-        <section className="mt-4 overflow-hidden rounded-[24px] border border-[#D7E3EF] bg-gradient-to-r from-[#F7FAFE] to-[#F3F0FC] p-5 shadow-[0_12px_34px_rgba(41,67,112,.06)] sm:p-6" aria-labelledby="result-heading">
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <div className="flex items-start gap-4"><span className={cn("grid size-12 shrink-0 place-items-center rounded-2xl", readiness >= 80 ? "bg-[#DDF2E9] text-[#18745E]" : "bg-[#E8EEFA] text-[#496DA7]")}><Trophy className="size-5" /></span><div><span className="text-[10px] font-extrabold tracking-[.12em] text-[#7286A2]">STEP 05 · 岗位验收</span><h2 id="result-heading" className="mt-1 text-lg font-bold text-[#17233D]">{readiness >= 80 ? "已形成岗位候选能力证据包" : "完成训练任务，形成可验证的岗位成果"}</h2><p className="mt-1 max-w-3xl text-xs leading-5 text-[#65758C]">达标条件：准备度达到 80%，且每项核心任务均有成果留痕。当前已完成 {completedTasks.length}/{framework.tasks.length} 项，能力基线平均为 {ratingTotal}/{framework.competencies.length * 3}。</p></div></div>
-            <div className="flex items-center gap-3 rounded-2xl border border-white bg-white/80 px-5 py-3 shadow-sm"><span className="text-3xl font-black tracking-[-.05em] text-[#245FBA]">{readiness}</span><span className="text-[10px] font-bold leading-4 text-[#718096]">岗位准备度<br />满分 100</span></div>
+        <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start">
+            <div>
+              <SectionTitle icon={FileCheck2} eyebrow="04 · 成果验收与下一轮" title="测试结果不是终点，而是下一轮的评判标准" description="本轮答题证据会写回训练记录；下一次诊断将据此降阶补强、保持难度或进入更复杂岗位场景。" />
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <ResultMetric label="已验证题目" value={`${attempts.length}`} detail="来自本轮分阶测试" />
+                <ResultMetric label="当前正确率" value={attempts.length ? `${Math.round(correctCount / attempts.length * 100)}%` : "—"} detail={attempts.length ? `${correctCount} 对 / ${attempts.length - correctCount} 错` : "等待真实作答"} />
+                <ResultMetric label="闭环状态" value={workspace.feedback ? "已回写" : "待回写"} detail={workspace.feedback ? "下一轮将读取本次结果" : "完成测试后提交验收"} />
+              </div>
+            </div>
+            <div className={cn("rounded-2xl border p-4", workspace.feedback ? "border-[#BFDCCF] bg-[#F3FAF7]" : "border-[#D9E3EF] bg-[#F8FBFF]")}>
+              <div className="flex items-center gap-2 text-xs font-bold text-[#294A73]">{workspace.feedback ? <CheckCircle2 className="size-4 text-[#1A8067]" /> : <CircleDashed className="size-4" />}{workspace.feedback ? "下一轮决策已生成" : "等待验收证据"}</div>
+              <p className="mt-2 text-[11px] leading-5 text-[#65758C]">{workspace.feedback?.message || (released ? attempts.length ? "已有真实作答证据，可以提交本轮验收并生成下一轮策略。" : "先进入分阶测试完成真实作答，系统不会用自填说明替代能力证据。" : "资源通过审核并发布后，才能进入测试验收。")}</p>
+              {workspace.feedback && <div className="mt-3 rounded-xl bg-white px-3 py-2 text-[10px] text-[#557567]">决策：{workspace.feedback.next_action} · 画像置信度调整 +{Math.round(workspace.feedback.profile_update.confidence_delta * 100)}%</div>}
+              <div className="mt-4 flex flex-wrap gap-2">
+                {released && !attempts.length && <Link to="/workspace/r/quiz" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#2468CE] px-3 text-[11px] font-bold text-white">进入分阶测试<ArrowRight className="size-3.5" /></Link>}
+                {released && attempts.length > 0 && !workspace.feedback && <button type="button" onClick={() => void submitFeedback()} disabled={feedbackBusy} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#2468CE] px-3 text-[11px] font-bold text-white disabled:opacity-50">{feedbackBusy ? <Loader2 className="size-3.5 animate-spin" /> : <FileCheck2 className="size-3.5" />}提交本轮验收</button>}
+                {workspace.feedback && <button type="button" onClick={startRound} disabled={!course || workspace.status === "running"} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#2468CE] px-3 text-[11px] font-bold text-white disabled:opacity-50"><RefreshCw className="size-3.5" />启动下一轮</button>}
+                <a href="#agent-collaboration" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D4DFEB] bg-white px-3 text-[11px] font-bold text-[#5D718D]">查看完整审计链</a>
+              </div>
+              {feedbackError && <p role="alert" className="mt-2 text-[10px] text-[#A85138]">{feedbackError}</p>}
+            </div>
           </div>
         </section>
       </div>
-
-      {evidenceTaskId && (
-        <EvidenceDialog
-          task={framework.tasks.find((item) => item.id === evidenceTaskId)!}
-          value={evidenceDraft}
-          error={evidenceError}
-          onChange={(value) => { setEvidenceDraft(value); setEvidenceError("") }}
-          onClose={() => setEvidenceTaskId(null)}
-          onSubmit={submitEvidence}
-        />
-      )}
     </main>
   )
 }
 
-function MetricCard({ value, label, detail, accent = false }: { value: string; label: string; detail: string; accent?: boolean }) {
+function capabilityStorageKey(userId: number, roleId: string) {
+  return `sm:role-capability-evidence:${userId}:${roleId}`
+}
+
+function readCapabilityEvidence(userId: number, roleId: string): Record<string, CapabilityEvidence> {
+  try {
+    const raw = window.localStorage.getItem(capabilityStorageKey(userId, roleId))
+    return raw ? JSON.parse(raw) as Record<string, CapabilityEvidence> : {}
+  } catch {
+    return {}
+  }
+}
+
+function writeCapabilityEvidence(userId: number, roleId: string, evidence: Record<string, CapabilityEvidence>) {
+  try {
+    window.localStorage.setItem(capabilityStorageKey(userId, roleId), JSON.stringify(evidence))
+  } catch {
+    // 隐私模式或存储空间不可用时，本次会话内仍能正常展示。
+  }
+}
+
+function resolveCapabilityNodes(map: RoleCompetencyMap, evidence: Record<string, CapabilityEvidence>, plan?: PersonalizedTrainingPlan): CapabilityViewNode[] {
+  const currentNames = new Set(plan?.priority_competencies ?? [])
+  return map.nodes.map((node) => {
+    const record = evidence[node.id]
+    const level = record?.level ?? 0
+    let state: CapabilityState
+    if (level === 3) state = "mastered"
+    else if (level > 0) state = "developing"
+    else if (currentNames.has(node.name)) state = "current"
+    else if (node.prerequisites.every((id) => evidence[id]?.level === 3)) state = "ready"
+    else state = "locked"
+    return { ...node, level, state, score: record?.score }
+  })
+}
+
+function CompetencyTree({ map, nodes, selectedId, onSelect }: { map: RoleCompetencyMap; nodes: CapabilityViewNode[]; selectedId?: string; onSelect: (id: string) => void }) {
+  const finalReady = nodes.every((node) => node.level === 3)
+  return (
+    <div className="overflow-hidden rounded-[22px] border border-[#DCE5F0] bg-[linear-gradient(180deg,#F8FBFF_0%,#FFFFFF_100%)] p-4 sm:p-6">
+      <div className="mx-auto max-w-6xl">
+        <div className="mx-auto w-fit rounded-2xl border border-[#BFD4ED] bg-[#EAF3FF] px-5 py-3 text-center shadow-sm">
+          <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#234E84]"><BriefcaseBusiness className="size-4" />{map.roleName}</div>
+          <p className="mt-1 text-[9px] text-[#66809F]">岗位目标 · {nodes.length} 项必修能力</p>
+        </div>
+        <div className="mx-auto h-6 w-px bg-[#B9CAE0]" />
+        <div className="relative grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="pointer-events-none absolute left-[10%] right-[10%] top-0 hidden h-px bg-[#B9CAE0] xl:block" />
+          {nodes.map((node) => {
+            const meta = CAPABILITY_STATE_META[node.state]
+            return <div key={node.id} className="relative pt-0 xl:pt-5"><span className="pointer-events-none absolute left-1/2 top-0 hidden h-5 w-px -translate-x-1/2 bg-[#B9CAE0] xl:block" /><button type="button" onClick={() => onSelect(node.id)} className={cn("h-full w-full rounded-2xl border bg-white p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md", selectedId === node.id ? "border-[#4E84CE] ring-2 ring-[#4E84CE]/15" : "border-[#DBE4EF]")}><div className="flex items-start justify-between gap-2"><span className="grid size-8 place-items-center rounded-xl text-[11px] font-black" style={{ backgroundColor: meta.fill, color: meta.stroke }}>L{node.level}</span><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", meta.badge)}>{meta.label}</span></div><strong className="mt-3 block text-xs text-[#233A57]">{node.name}</strong><p className="mt-1 line-clamp-2 text-[9px] leading-4 text-[#75859A]">{node.description}</p></button></div>
+          })}
+        </div>
+        <div className="mx-auto h-6 w-px bg-[#B9CAE0]" />
+        <div className={cn("mx-auto max-w-sm rounded-2xl border px-5 py-3 text-center", finalReady ? "border-[#A8D6C6] bg-[#EAF8F3]" : "border-[#D9DDE5] bg-[#F5F6F8]")}>
+          <div className={cn("flex items-center justify-center gap-2 text-xs font-bold", finalReady ? "text-[#1D745E]" : "text-[#6F7988]")}>{finalReady ? <Flag className="size-4" /> : <Lock className="size-4" />}{map.finalAssessment.name}</div>
+          <p className="mt-1 text-[9px] text-[#7B8797]">{finalReady ? "全部前置能力已达 L3，可以进入最终验收" : `还需 ${nodes.filter((node) => node.level < 3).length} 项能力达到 L3`}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const ROUTE_COORDINATES = [
+  { x: 130, y: 130 },
+  { x: 130, y: 390 },
+  { x: 430, y: 260 },
+  { x: 700, y: 130 },
+  { x: 700, y: 390 },
+]
+
+function TrainingRouteMap({ map, nodes, selectedId, onSelect }: { map: RoleCompetencyMap; nodes: CapabilityViewNode[]; selectedId?: string; onSelect: (id: string) => void }) {
+  const coordinates = nodes.map((_, index) => ROUTE_COORDINATES[index] ?? { x: 700, y: 130 + index * 70 })
+  const finalPoint = { x: 930, y: 260 }
+  const nodeById = new Map(nodes.map((node, index) => [node.id, { node, point: coordinates[index] }]))
+  const finalReady = nodes.every((node) => node.level === 3)
+  return (
+    <div className="overflow-x-auto rounded-[22px] border border-[#DCE5F0] bg-[#F8FBFF]">
+      <svg viewBox="0 0 1040 520" role="img" aria-label={`${map.roleName}训练路径地图`} className="min-w-[900px]">
+        <defs>
+          <pattern id="route-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none" stroke="#DDE7F2" strokeWidth="1" opacity=".45" /></pattern>
+          <marker id="route-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9AAFC7" /></marker>
+        </defs>
+        <rect width="1040" height="520" fill="url(#route-grid)" />
+        {nodes.flatMap((node, targetIndex) => node.prerequisites.map((sourceId) => {
+          const source = nodeById.get(sourceId)
+          const target = coordinates[targetIndex]
+          if (!source) return null
+          const midX = (source.point.x + target.x) / 2
+          return <path key={`${sourceId}-${node.id}`} d={`M ${source.point.x + 86} ${source.point.y} C ${midX} ${source.point.y}, ${midX} ${target.y}, ${target.x - 91} ${target.y}`} fill="none" stroke="#9AAFC7" strokeWidth="3" strokeDasharray={node.state === "locked" ? "7 7" : undefined} markerEnd="url(#route-arrow)" />
+        }))}
+        {map.finalAssessment.prerequisites.map((sourceId) => {
+          const source = nodeById.get(sourceId)
+          if (!source) return null
+          const midX = (source.point.x + finalPoint.x) / 2
+          return <path key={`${sourceId}-final`} d={`M ${source.point.x + 86} ${source.point.y} C ${midX} ${source.point.y}, ${midX} ${finalPoint.y}, ${finalPoint.x - 91} ${finalPoint.y}`} fill="none" stroke="#9AAFC7" strokeWidth="3" strokeDasharray={finalReady ? undefined : "7 7"} markerEnd="url(#route-arrow)" />
+        })}
+        {nodes.map((node, index) => {
+          const point = coordinates[index]
+          const meta = CAPABILITY_STATE_META[node.state]
+          return <foreignObject key={node.id} x={point.x - 86} y={point.y - 50} width="172" height="100"><button type="button" onClick={() => onSelect(node.id)} className="h-full w-full rounded-2xl border-2 px-3 py-2 text-left shadow-[0_8px_20px_rgba(50,77,110,.10)] transition hover:-translate-y-0.5" style={{ backgroundColor: meta.fill, borderColor: selectedId === node.id ? "#7654DC" : meta.stroke }}><span className="block text-[9px] font-black" style={{ color: meta.stroke }}>{meta.short} · L{node.level}/L3</span><strong className="mt-1 block truncate text-[12px] text-[#233A57]">{node.name}</strong><small className="mt-1 block truncate text-[9px] text-[#718096]">{node.task}</small></button></foreignObject>
+        })}
+        <foreignObject x={finalPoint.x - 86} y={finalPoint.y - 50} width="172" height="100"><div className={cn("grid h-full place-items-center rounded-2xl border-2 px-3 text-center shadow-[0_8px_20px_rgba(50,77,110,.10)]", finalReady ? "border-[#2A8A70] bg-[#E6F6EF]" : "border-[#A8B0BC] bg-[#F5F6F8]")}><div>{finalReady ? <Flag className="mx-auto size-4 text-[#2A8A70]" /> : <Lock className="mx-auto size-4 text-[#8A95A4]" />}<strong className="mt-1 block text-[11px] text-[#33475F]">岗位综合验收</strong><small className="mt-1 block text-[8px] text-[#758399]">{finalReady ? "可以挑战" : "完成全部前置节点"}</small></div></div></foreignObject>
+      </svg>
+      <div className="border-t border-[#DFE7F0] bg-white px-4 py-3 text-[9px] leading-4 text-[#718096]">实线表示已解锁的前置关系，虚线表示尚待完成；地图可横向滚动查看完整终点。</div>
+    </div>
+  )
+}
+
+function CapabilityDetail({ node }: { node: CapabilityViewNode }) {
+  const meta = CAPABILITY_STATE_META[node.state]
+  return <article className="rounded-2xl border border-[#DCE4EE] bg-white p-4"><div className="flex flex-wrap items-start justify-between gap-2"><div><span className="text-[9px] font-extrabold tracking-[.12em] text-[#7185A1]">当前选中能力</span><h3 className="mt-1 text-base font-bold text-[#213550]">{node.name}</h3></div><span className={cn("rounded-full px-2.5 py-1 text-[9px] font-bold", meta.badge)}>{meta.label}</span></div><p className="mt-3 text-[11px] leading-5 text-[#66778E]">{node.description}</p><div className="mt-3 grid gap-2 sm:grid-cols-2"><div className="rounded-xl bg-[#F5F8FC] px-3 py-2.5"><span className="text-[9px] font-bold text-[#71839A]">训练任务</span><p className="mt-1 text-[10px] leading-4 text-[#40546E]">{node.task}</p></div><div className="rounded-xl bg-[#F5F8FC] px-3 py-2.5"><span className="text-[9px] font-bold text-[#71839A]">验收成果</span><p className="mt-1 text-[10px] leading-4 text-[#40546E]">{node.deliverable}</p></div></div><div className="mt-3 flex items-center justify-between text-[10px] text-[#708198]"><span>当前 L{node.level} / 目标 L3</span><span>{node.score === undefined ? "尚无测试证据" : `最近验收 ${node.score} 分`}</span></div></article>
+}
+
+function AgentAudit({ workspace, progress }: { workspace: WorkspaceState; progress: number }) {
+  const reviews = Object.entries(workspace.reviews)
+  const displayAgents = workspace.agents.length ? workspace.agents : DEFAULT_TRAINING_AGENTS
+  return <div className="mt-5"><div className="flex items-center justify-between text-[10px] font-bold text-[#63758D]"><span>协作进度 · {stageLabel(workspace.stage)} · 第 {workspace.generationRound} 轮</span><span>{progress}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-[#E8EEF5]"><div className="h-full rounded-full bg-gradient-to-r from-[#3976D0] to-[#20A080] transition-[width] duration-500" style={{ width: `${progress}%` }} /></div><AgentArchitecture agents={displayAgents} stage={workspace.stage} /><WorkflowAnimation workspace={workspace} /><div className="mt-4 grid gap-4 lg:grid-cols-2"><div className="rounded-2xl border border-[#DFE6EF] bg-[#F8FAFD] p-4"><strong className="text-[11px] text-[#334B68]">三项交叉审核</strong>{reviews.length ? <div className="mt-3 space-y-2">{reviews.map(([key, review]) => <div key={key} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-[10px]"><span className="text-[#62748B]">{review.reviewer || key}</span><span className={cn("font-black", review.status === "pass" ? "text-[#1A8067]" : review.status === "fail" ? "text-[#B4523B]" : "text-[#A06C24]")}>{review.score} 分 · {reviewStatusLabel(review.status)}</span></div>)}</div> : <p className="mt-2 text-[10px] leading-5 text-[#7A899D]">等待事实来源、实操规范与难度覆盖审核。</p>}</div><div className={cn("rounded-2xl border p-4", workspace.decision?.decision === "publish" ? "border-[#BFDCCF] bg-[#F3FAF7]" : workspace.decision?.decision === "rework" ? "border-[#E8CDBE] bg-[#FFF7F2]" : "border-[#DFE6EF] bg-[#F8FAFD]")}><strong className="flex items-center gap-2 text-[11px] text-[#334B68]"><ShieldCheck className="size-3.5" />总裁决结论</strong><p className="mt-2 text-[10px] leading-5 text-[#687991]">{workspace.decision?.summary || "等待全部交叉审核完成后决定发布或自动返工。"}</p>{workspace.decision && <span className="mt-2 inline-flex rounded-full bg-white px-2 py-1 text-[9px] font-bold text-[#426384]">{workspace.decision.decision === "publish" ? "批准发布" : "自动返工"} · 质量分 {workspace.decision.quality_score}</span>}</div></div><ReworkTimeline workspace={workspace} />{workspace.logs.length > 0 && <details className="mt-3 rounded-2xl border border-[#E0E7F0] bg-[#FAFCFF] p-3"><summary className="cursor-pointer text-[10px] font-bold text-[#526982]">查看最近协作日志</summary><div className="mt-2 space-y-1.5">{workspace.logs.slice(-8).reverse().map((log, index) => <p key={`${log}-${index}`} className="text-[9px] leading-4 text-[#748399]">{log}</p>)}</div></details>}</div>
+}
+
+type WorkspaceAgent = WorkspaceState["agents"][number]
+
+const DEFAULT_TRAINING_AGENTS: WorkspaceAgent[] = [
+  { meta: { id: "diagnosis", name: "学情诊断 Agent", icon: "🧭", color: "sky", description: "定位岗位能力盲区与训练起点" }, status: "pending" },
+  { meta: { id: "domain_expert", name: "领域专家 Agent", icon: "🧠", color: "indigo", description: "提出专业覆盖与验收要求" }, status: "pending" },
+  { meta: { id: "learning_strategy", name: "教学策略 Agent", icon: "🪜", color: "sky", description: "平衡时间预算、难度与认知负荷" }, status: "pending" },
+  { meta: { id: "plan_arbiter", name: "训练计划仲裁 Agent", icon: "🧩", color: "violet", description: "形成所有生成角色共同遵守的训练合同" }, status: "pending" },
+  { meta: { id: "doc", name: "定制讲义生成 Agent", icon: "📄", color: "indigo", description: "生成带来源标注的岗位讲义" }, status: "pending" },
+  { meta: { id: "guide", name: "实操指南生成 Agent", icon: "🧰", color: "amber", description: "生成可执行、可验收的实操指南" }, status: "pending" },
+  { meta: { id: "quiz", name: "分阶测试生成 Agent", icon: "📝", color: "emerald", description: "生成用于成果验收的分阶测试" }, status: "pending" },
+  { meta: { id: "evidence_review", name: "事实与来源审核 Agent", icon: "🔍", color: "indigo", description: "核对专业主张与知识来源" }, status: "pending" },
+  { meta: { id: "practice_review", name: "实操规范审核 Agent", icon: "🛡️", color: "rose", description: "检查步骤、异常处理与安全边界" }, status: "pending" },
+  { meta: { id: "difficulty_review", name: "难度与覆盖审核 Agent", icon: "📐", color: "emerald", description: "校准难度与岗位能力覆盖" }, status: "pending" },
+  { meta: { id: "arbiter", name: "总裁决 Agent", icon: "⚖️", color: "amber", description: "决定批准发布或定向自动返工" }, status: "pending" },
+]
+
+const AGENT_GROUPS = [
+  { id: "diagnosis", title: "学情诊断类 Agent", detail: "锚定岗位差距与训练起点", ids: ["diagnosis"], tone: "blue" as const },
+  { id: "planning", title: "训练规划类 Agent", detail: "协商专业覆盖、负荷与训练合同", ids: ["domain_expert", "learning_strategy", "plan_arbiter"], tone: "purple" as const },
+  { id: "generation", title: "资源生成类 Agent", detail: "围绕同一岗位任务生成三类资源", ids: ["doc", "guide", "quiz"], tone: "teal" as const },
+  { id: "governance", title: "质量治理类 Agent", detail: "事实、实操与难度独立交叉验证", ids: ["evidence_review", "practice_review", "difficulty_review"], tone: "green" as const },
+] as const
+
+function AgentArchitecture({ agents, stage }: { agents: WorkspaceAgent[]; stage: string }) {
+  const coordinator = agents.find((agent) => agent.meta.id === "arbiter")
+  const activeGroup = stageToGroup(stage)
+  const group = (id: typeof AGENT_GROUPS[number]["id"]) => AGENT_GROUPS.find((item) => item.id === id)!
+  return <div className="relative mt-5 overflow-hidden rounded-[24px] border border-[#D9E5F2] bg-[linear-gradient(135deg,#F8FBFF_0%,#FCFFFE_100%)] p-3 sm:p-5"><div className="pointer-events-none absolute inset-0 opacity-40" style={{ backgroundImage: "linear-gradient(#DCE8F5 1px, transparent 1px), linear-gradient(90deg, #DCE8F5 1px, transparent 1px)", backgroundSize: "28px 28px" }} /><div className="relative grid gap-3 lg:grid-cols-[minmax(0,1fr)_210px_minmax(0,1fr)] lg:grid-rows-2"><AgentGroupPanel group={group("diagnosis")} agents={agents} active={activeGroup === "diagnosis"} /><CoordinatorCard agent={coordinator} active={activeGroup === "decision"} stage={stage} /><AgentGroupPanel group={group("generation")} agents={agents} active={activeGroup === "generation"} /><AgentGroupPanel group={group("planning")} agents={agents} active={activeGroup === "planning"} /><AgentGroupPanel group={group("governance")} agents={agents} active={activeGroup === "governance"} /></div></div>
+}
+
+function AgentGroupPanel({ group, agents, active }: { group: typeof AGENT_GROUPS[number]; agents: WorkspaceAgent[]; active: boolean }) {
+  const members = group.ids.map((id) => agents.find((agent) => agent.meta.id === id)).filter(Boolean) as WorkspaceAgent[]
+  const tone = {
+    blue: { box: "border-[#BFD5F2] bg-[#F3F8FF]", title: "text-[#2865B8]", wash: "bg-[#E5F0FF]" },
+    purple: { box: "border-[#D3C7F2] bg-[#F8F5FF]", title: "text-[#7052B5]", wash: "bg-[#EEE8FF]" },
+    teal: { box: "border-[#BDE4E2] bg-[#F2FBFA]", title: "text-[#16817B]", wash: "bg-[#DFF5F2]" },
+    green: { box: "border-[#BFE3CF] bg-[#F3FBF6]", title: "text-[#218254]", wash: "bg-[#E1F5E9]" },
+  }[group.tone]
+  return <section className={cn("rounded-[22px] border p-3 transition-all sm:p-4", tone.box, active && "ring-2 ring-[#3976D0]/25 shadow-[0_10px_30px_rgba(48,102,174,.12)]", group.id === "planning" && "lg:col-start-1", group.id === "governance" && "lg:col-start-3")}><div className="text-center"><h3 className={cn("text-sm font-extrabold", tone.title)}>{group.title}</h3><p className="mt-1 text-[9px] text-[#708198]">{group.detail}</p></div><div className="mt-3 space-y-2">{members.map((agent) => <AgentNode key={agent.meta.id} agent={agent} wash={tone.wash} />)}</div></section>
+}
+
+function CoordinatorCard({ agent, active, stage }: { agent?: WorkspaceAgent; active: boolean; stage: string }) {
+  return <section className={cn("relative flex min-h-40 flex-col items-center justify-center overflow-hidden rounded-[22px] border-2 border-[#70A0E7] bg-white px-4 py-5 text-center shadow-[0_12px_30px_rgba(50,96,164,.12)] lg:row-span-2 lg:row-start-1", active && "ring-4 ring-[#3976D0]/15")}><span className={cn("absolute left-1/2 top-0 h-1 w-20 -translate-x-1/2 rounded-b-full bg-[#3976D0]", active && "animate-pulse")} /><small className="font-extrabold tracking-[.12em] text-[#3976D0]">核心调度</small><span className="mt-3 text-3xl" aria-hidden>{agent?.meta.icon || "⚖️"}</span><h3 className="mt-2 text-base font-black text-[#1E3150]">{agent?.meta.name || "总裁决 Agent"}</h3><p className="mt-2 text-[9px] leading-4 text-[#708198]">汇总审核证据<br />决定发布或定向返工</p><span className={cn("mt-3 rounded-full px-2.5 py-1 text-[9px] font-bold", agentStatusClasses(agent?.status))}>{agentStatusLabel(agent?.status, stage)}</span></section>
+}
+
+function AgentNode({ agent, wash }: { agent: WorkspaceAgent; wash: string }) {
+  return <div className="flex items-center gap-2 rounded-xl border border-white/90 bg-white/90 px-3 py-2.5 shadow-[0_5px_15px_rgba(60,79,105,.06)]"><span className={cn("grid size-8 shrink-0 place-items-center rounded-lg text-sm", wash)} aria-hidden>{agent.meta.icon}</span><span className="min-w-0 flex-1"><strong className="block truncate text-[10px] text-[#2E405A]">{agent.meta.name}</strong><small className="mt-0.5 block truncate text-[8px] text-[#8190A3]">{agent.message || agent.meta.description}</small></span><span className={cn("size-2 shrink-0 rounded-full", agent.status === "done" ? "bg-[#35A984]" : agent.status === "running" || agent.status === "streaming" ? "animate-pulse bg-[#3976D0]" : agent.status === "error" ? "bg-[#C45D43]" : "bg-[#C7CFDA]")} /></div>
+}
+
+const WORKFLOW_PHASES = [
+  { key: "diagnosis", label: "学情诊断", x: 85 },
+  { key: "planning", label: "训练规划", x: 250 },
+  { key: "generation", label: "资源生成", x: 415 },
+  { key: "governance", label: "交叉审核", x: 580 },
+  { key: "decision", label: "总裁决", x: 745 },
+  { key: "published", label: "批准发布", x: 910 },
+] as const
+
+function WorkflowAnimation({ workspace }: { workspace: WorkspaceState }) {
+  const activeKey = stageToGroup(workspace.stage)
+  const activeIndex = WORKFLOW_PHASES.findIndex((phase) => phase.key === activeKey)
+  const hasRework = workspace.reworkHistory.length > 0 || workspace.generationRound > 1 || workspace.stage === "rework"
+  const reworking = workspace.status === "running" && workspace.generationRound > 1 && ["rework", "generation", "review", "decision"].includes(workspace.stage)
+  return <div className="mt-4 overflow-x-auto rounded-[22px] border border-[#DCE5F0] bg-[#0F2745] p-2"><div className="px-3 pt-2 text-[10px] font-bold tracking-[.1em] text-[#BFD3EC]">实时协作与自动返工流程</div><svg viewBox="0 0 1000 270" role="img" aria-label="多 Agent 实时协作和自动返工流程图" className="min-w-[900px]"><defs><marker id="workflow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7594BA" /></marker><marker id="rework-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#F0A66E" /></marker></defs>{WORKFLOW_PHASES.slice(0, -1).map((phase, index) => { const next = WORKFLOW_PHASES[index + 1]; const completed = activeIndex > index || workspace.stage === "published"; const active = workspace.status === "running" && activeIndex === index + 1; return <path key={phase.key} d={`M ${phase.x + 54} 91 L ${next.x - 54} 91`} stroke={completed ? "#4DC1A0" : active ? "#69A5FF" : "#536D8D"} strokeWidth="4" strokeDasharray={active ? "9 7" : undefined} markerEnd="url(#workflow-arrow)">{active && <animate attributeName="stroke-dashoffset" from="32" to="0" dur=".8s" repeatCount="indefinite" />}</path> })}{hasRework && <><path id="rework-loop" d="M 745 140 C 745 235, 415 235, 415 140" fill="none" stroke="#F0A66E" strokeWidth="4" strokeDasharray="10 8" markerEnd="url(#rework-arrow)"><animate attributeName="stroke-dashoffset" from="36" to="0" dur=".9s" repeatCount="indefinite" /></path><text x="580" y="224" textAnchor="middle" fill="#F5BE91" fontSize="12" fontWeight="700">问题反馈 · 定向返工 · 重新审核</text>{reworking && <circle r="6" fill="#FFD19F"><animateMotion dur="2s" repeatCount="indefinite" path="M 745 140 C 745 235, 415 235, 415 140" /></circle>}</>}{WORKFLOW_PHASES.map((phase, index) => { const active = phase.key === activeKey; const done = activeIndex > index || workspace.stage === "published"; return <g key={phase.key}><rect x={phase.x - 54} y="54" width="108" height="74" rx="18" fill={active ? "#285FAF" : done ? "#174F50" : "#1A3556"} stroke={active ? "#80B2FF" : done ? "#49B99B" : "#536D8D"} strokeWidth={active ? 3 : 2}>{active && <animate attributeName="stroke-opacity" values="1;.35;1" dur="1.2s" repeatCount="indefinite" />}</rect><text x={phase.x} y="83" textAnchor="middle" fill={active || done ? "#FFFFFF" : "#B2C2D6"} fontSize="11" fontWeight="800">{String(index + 1).padStart(2, "0")}</text><text x={phase.x} y="105" textAnchor="middle" fill="#FFFFFF" fontSize="12" fontWeight="700">{phase.label}</text>{active && <circle cx={phase.x} cy="43" r="5" fill="#78AEFF"><animate attributeName="r" values="4;8;4" dur="1s" repeatCount="indefinite" /><animate attributeName="opacity" values="1;.25;1" dur="1s" repeatCount="indefinite" /></circle>}</g> })}<text x="500" y="258" textAnchor="middle" fill="#8FA8C5" fontSize="10">不通过不会发布：自动携带审核意见返回对应生成 Agent，直至审核通过</text></svg></div>
+}
+
+function ReworkTimeline({ workspace }: { workspace: WorkspaceState }) {
+  if (!workspace.reworkHistory.length) return <div className="mt-3 rounded-2xl border border-dashed border-[#D8E2ED] bg-[#FBFCFE] px-4 py-3 text-[10px] text-[#748399]">当前尚未发生返工。若审核发现问题，这里会按轮次展示返工目标与修改要求。</div>
+  const labels: Record<string, string> = { doc: "定制讲义", guide: "实操指南", quiz: "分阶测试" }
+  return <div className="mt-3 rounded-2xl border border-[#E7D2C3] bg-[#FFF9F5] p-4"><div className="flex items-center gap-2 text-[11px] font-bold text-[#9A5B35]"><RefreshCw className={cn("size-3.5", workspace.status === "running" && "animate-spin")} />自动返工记录 · 已发生 {workspace.reworkHistory.length} 次</div><div className="mt-3 grid gap-2 md:grid-cols-2">{workspace.reworkHistory.slice(-4).reverse().map((record) => <div key={`${record.generationRound}-${record.createdAt}`} className="rounded-xl border border-[#ECDDD2] bg-white px-3 py-2.5"><div className="flex items-center justify-between text-[9px] font-bold"><span className="text-[#9A5B35]">第 {record.generationRound} 轮退回</span><span className="text-[#7B8797]">{record.targets.map((id) => labels[id] || id).join("、")}</span></div><p className="mt-1.5 line-clamp-2 text-[9px] leading-4 text-[#6F7886]">{record.requiredFixes.join("；") || "依据交叉审核结果重新生成并再次送审"}</p></div>)}</div></div>
+}
+
+function stageToGroup(stage: string) {
+  if (["diagnosis", "retrieval"].includes(stage)) return "diagnosis"
+  if (["planning", "plan_decision"].includes(stage)) return "planning"
+  if (["generation", "rework"].includes(stage)) return "generation"
+  if (stage === "review") return "governance"
+  if (stage === "decision") return "decision"
+  if (["publishing", "published"].includes(stage)) return "published"
+  return "idle"
+}
+
+function stageLabel(stage: string) {
+  return ({ idle: "等待启动", diagnosis: "学情诊断", retrieval: "知识检索", planning: "训练规划", plan_decision: "计划仲裁", generation: "资源生成", rework: "自动返工", review: "交叉审核", decision: "总裁决", publishing: "准备发布", published: "已发布" } as Record<string, string>)[stage] || stage
+}
+
+function reviewStatusLabel(status: string) {
+  return ({ pass: "通过", warn: "有建议", fail: "未通过" } as Record<string, string>)[status] || status
+}
+
+function agentStatusClasses(status?: WorkspaceAgent["status"]) {
+  if (status === "done") return "bg-[#DDF2E9] text-[#18745E]"
+  if (status === "running" || status === "streaming") return "bg-[#E7F0FF] text-[#2D65B7]"
+  if (status === "error") return "bg-[#F8E5DF] text-[#A34F37]"
+  return "bg-[#EEF2F7] text-[#6F7E92]"
+}
+
+function agentStatusLabel(status: WorkspaceAgent["status"] | undefined, stage: string) {
+  if (status === "done") return "本轮已完成"
+  if (status === "running" || status === "streaming") return `正在${stageLabel(stage)}`
+  if (status === "error") return "执行异常"
+  return "等待调度"
+}
+
+function RoleRequired() {
+  return <main className="app-page paper-theme min-h-dvh"><div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7"><AppTopbar current="courses" appearance="paper" labelOverride="岗位训练中心" groupOverride="岗位胜任力闭环" selectionLabel="尚未选择目标岗位" /><section className="mt-4 grid min-h-[64vh] place-items-center rounded-[28px] border border-[#DCE5F1] bg-white px-5 text-center shadow-[0_18px_48px_rgba(41,67,112,.08)]"><div className="max-w-lg py-16"><span className="mx-auto grid size-16 place-items-center rounded-[22px] bg-gradient-to-br from-[#E8F2FF] to-[#F1EAFF] text-[#356FD1]"><BriefcaseBusiness className="size-7" /></span><p className="mt-5 text-[11px] font-extrabold tracking-[.16em] text-[#6F83A2]">ROLE FIRST</p><h1 className="mt-2 text-2xl font-bold tracking-[-.04em] text-[#17233D]">先选择领域岗位，再建立岗位画像</h1><p className="mt-3 text-sm leading-6 text-[#66758B]">岗位标准决定训练终点，画像证据决定训练起点。</p><Link to="/courses?returnTo=%2Fprofile" className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-[#2468CE] px-5 text-sm font-bold text-white">选择领域岗位<ArrowRight className="size-4" /></Link></div></section></div></main>
+}
+
+function Metric({ value, label, detail, accent = false }: { value: string; label: string; detail: string; accent?: boolean }) {
   return <div className={cn("rounded-2xl border p-4 backdrop-blur", accent ? "border-[#76A8E5]/35 bg-[#5D91D6]/18" : "border-white/12 bg-white/[.07]")}><strong className="block text-2xl font-black tracking-[-.04em] text-white">{value}</strong><span className="mt-1 block text-[10px] font-bold text-[#D8E5F5]">{label}</span><small className="mt-1 block truncate text-[9px] text-[#9FB5D0]">{detail}</small></div>
 }
 
-function FieldLabel({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="mt-4"><span className="mb-2 block text-[10px] font-bold text-[#65758C]">{label}</span>{children}</div>
+function FlowStep({ index, label, detail, status, last = false }: { index: string; label: string; detail: string; status: "done" | "active" | "idle"; last?: boolean }) {
+  return <div className="relative flex items-center gap-2 rounded-2xl bg-[#F8FAFD] p-3"><span className={cn("grid size-8 shrink-0 place-items-center rounded-xl text-[10px] font-extrabold", status === "done" ? "bg-[#DDF2E9] text-[#18745E]" : status === "active" ? "bg-[#3376D4] text-white" : "bg-[#E9EEF5] text-[#7C8A9D]")}>{status === "done" ? <Check className="size-4" /> : index}</span><span className="min-w-0"><strong className="block text-[11px] text-[#253750]">{label}</strong><small className="mt-0.5 block truncate text-[9px] text-[#7A899D]">{detail}</small></span>{!last && <ChevronRight className="absolute -right-3 z-10 hidden size-4 text-[#9AABBE] md:block" />}</div>
 }
 
-function SegmentedOptions<T extends string>({ value, options, onChange }: { value: T; options: Array<{ value: T; label: string }>; onChange: (value: T) => void }) {
-  return <span className="grid grid-cols-3 gap-1.5 rounded-xl bg-[#F0F4F8] p-1">{options.map((option) => <button key={option.value} type="button" onClick={() => onChange(option.value)} className={cn("h-8 rounded-lg text-[10px] font-bold transition", value === option.value ? "bg-white text-[#286CCB] shadow-sm" : "text-[#718096] hover:bg-white/60")}>{option.label}</button>)}</span>
+function SectionTitle({ icon: Icon, eyebrow, title, description }: { icon: typeof Target; eyebrow: string; title: string; description: string }) {
+  return <div><div className="flex items-center gap-1.5 text-[10px] font-extrabold tracking-[.12em] text-[#6E83A2]"><Icon className="size-4" />{eyebrow}</div><h2 className="mt-1.5 text-lg font-bold tracking-[-.025em] text-[#17233D]">{title}</h2><p className="mt-1 max-w-3xl text-xs leading-5 text-[#718096]">{description}</p></div>
 }
 
-function SectionHeading({ eyebrow, title, description, icon }: { eyebrow: string; title: string; description: string; icon: React.ReactNode }) {
-  return <div><div className="flex items-center gap-1.5 text-[10px] font-extrabold tracking-[.12em] text-[#6E83A2]">{icon}{eyebrow}</div><h2 className="mt-1.5 text-lg font-bold tracking-[-.025em] text-[#17233D]">{title}</h2><p className="mt-1 text-xs leading-5 text-[#718096]">{description}</p></div>
+function EvidenceCard({ icon: Icon, label, value, detail }: { icon: typeof Target; label: string; value: string; detail: string }) {
+  return <article className="rounded-2xl border border-[#E1E8F1] bg-[#FBFCFE] p-4"><div className="flex items-center gap-2 text-[10px] font-bold text-[#6D82A0]"><Icon className="size-3.5" />{label}</div><strong className="mt-2 block text-sm leading-5 text-[#213550]">{value}</strong><p className="mt-1 text-[10px] leading-4 text-[#7A899D]">{detail}</p></article>
 }
 
-function PlanStage({ number, range, title, detail, active, done }: { number: string; range: string; title: string; detail: string; active: boolean; done: boolean }) {
-  return <div className="relative flex gap-3 pb-5"><span className={cn("relative z-10 grid size-7 shrink-0 place-items-center rounded-full border text-[9px] font-extrabold", done ? "border-[#77B59F] bg-[#DDF2E9] text-[#18745E]" : active ? "border-[#3376D4] bg-[#3376D4] text-white shadow-[0_0_0_5px_#EAF2FF]" : "border-[#D7E0EA] bg-white text-[#8391A4]")}>{done ? <Check className="size-3.5" /> : number}</span><div className="min-w-0 flex-1 pt-0.5"><div className="flex flex-wrap items-center justify-between gap-1"><h3 className="text-xs font-bold text-[#24364E]">{title}</h3><span className="text-[9px] font-bold text-[#8290A4]">{range}</span></div><p className="mt-1 text-[10px] leading-4 text-[#718096]">{detail}</p>{active && <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#EAF2FF] px-2 py-1 text-[9px] font-bold text-[#286CCB]"><CircleDashed className="size-3" />当前阶段</span>}</div></div>
+function DebatePanel({ plan }: { plan: PersonalizedTrainingPlan }) {
+  return <div className="mt-5 space-y-2.5"><Position label="领域专家立场" text={plan.debate.expert_position} tone="blue" /><Position label="教学策略立场" text={plan.debate.strategy_position} tone="teal" /><div className="rounded-2xl border border-[#E4D9F2] bg-[#F7F3FC] p-4"><div className="flex items-center gap-2 text-[10px] font-extrabold text-[#74549E]"><GitCompareArrows className="size-3.5" />冲突与仲裁</div><p className="mt-2 text-[11px] leading-5 text-[#5F5270]">{plan.debate.conflict}</p><div className="mt-3 rounded-xl bg-white px-3 py-2.5 text-[11px] font-semibold leading-5 text-[#493B5B]">{plan.debate.resolution}</div></div><div className="flex flex-wrap gap-1.5">{plan.priority_competencies.map((item) => <span key={item} className="rounded-full bg-[#EAF2FF] px-2.5 py-1 text-[10px] font-bold text-[#3169B9]">本轮 · {item}</span>)}{plan.deferred_competencies.map((item) => <span key={item} className="rounded-full bg-[#F0F2F5] px-2.5 py-1 text-[10px] font-bold text-[#788598]">后续 · {item}</span>)}</div></div>
 }
 
-function EvidenceDialog({ task, value, error, onChange, onClose, onSubmit }: { task: TrainingTask; value: string; error: string; onChange: (value: string) => void; onClose: () => void; onSubmit: () => void }) {
-  return (
-    <div className="fixed inset-0 z-[90] grid place-items-center bg-[#10233E]/45 px-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-      <section role="dialog" aria-modal="true" aria-labelledby="evidence-title" className="w-full max-w-xl rounded-[24px] border border-[#D9E3EF] bg-white p-5 shadow-[0_28px_80px_rgba(18,44,77,.25)] sm:p-6">
-        <div className="flex items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#E7F2FF] text-[#286CCB]"><FileCheck2 className="size-5" /></span><div className="min-w-0 flex-1"><span className="text-[10px] font-extrabold tracking-[.12em] text-[#7186A5]">成果留痕</span><h2 id="evidence-title" className="mt-1 text-lg font-bold text-[#17233D]">提交岗位任务成果</h2></div><button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-xl text-[#718096] hover:bg-[#EFF3F8]" aria-label="关闭"><X className="size-4" /></button></div>
-        <div className="mt-4 rounded-xl border border-[#E0E8F2] bg-[#F7FAFE] p-3"><p className="text-xs font-bold text-[#273A54]">{task.title}</p><p className="mt-1 text-[10px] text-[#718096]">应交付：{task.output}</p></div>
-        <label className="mt-4 block"><span className="text-xs font-bold text-[#394D68]">成果说明或存放位置</span><textarea autoFocus value={value} onChange={(event) => onChange(event.target.value)} rows={5} placeholder="例如：已完成实施记录，包含需求口径、关键步骤、测试截图和复盘结论；文件保存在……" className="mt-2 w-full resize-y rounded-xl border border-[#D5E0EC] bg-white px-3 py-3 text-xs leading-5 text-[#273A54] outline-none transition placeholder:text-[#A0ACBA] focus:border-[#4B86D8] focus:ring-4 focus:ring-[#DCEAFF]" /></label>
-        {error && <p role="alert" className="mt-2 text-[11px] font-semibold text-[#B05B3C]">{error}</p>}
-        <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={onClose} className="h-10 rounded-xl border border-[#DCE5F1] px-4 text-xs font-bold text-[#66758B] hover:bg-[#F3F6FA]">暂不提交</button><button type="button" onClick={onSubmit} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#2468CE] px-5 text-xs font-bold text-white hover:bg-[#1D58AD]"><BadgeCheck className="size-4" />确认成果并完成任务</button></div>
-      </section>
-    </div>
-  )
+function Position({ label, text, tone }: { label: string; text: string; tone: "blue" | "teal" }) {
+  return <div className={cn("rounded-2xl border p-3.5", tone === "blue" ? "border-[#D4E2F4] bg-[#F4F8FE]" : "border-[#CFE8E4] bg-[#F3FAF8]")}><strong className={cn("text-[10px]", tone === "blue" ? "text-[#376CA9]" : "text-[#237768]")}>{label}</strong><p className="mt-1 text-[11px] leading-5 text-[#5F7087]">{text}</p></div>
+}
+
+function ResourceCard({ id, index, plan, ready, released, reviewScore }: { id: ResourceId; index: number; plan?: PersonalizedTrainingPlan; ready: boolean; released: boolean; reviewScore?: number }) {
+  const meta = RESOURCE_META[id]
+  const Icon = meta.icon
+  const stage = plan?.stages[index]
+  return <article className={cn("rounded-[20px] border p-4", released && ready ? "border-[#BFDCCF] bg-[#F7FCFA]" : ready ? "border-[#C8D9ED] bg-[#F8FBFF]" : "border-[#E0E7F0] bg-[#FBFCFE]")}><div className="flex items-start justify-between gap-3"><span className="grid size-10 place-items-center rounded-xl bg-white text-[#3369B4] shadow-sm"><Icon className="size-4.5" /></span><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", released && ready ? "bg-[#DDF2E9] text-[#18745E]" : ready ? "bg-[#E6F0FD] text-[#3568A9]" : "bg-[#EDF1F6] text-[#7B899B]")}>{released && ready ? `审核 ${reviewScore ?? "—"} 分` : ready ? "等待发布门禁" : "等待生成"}</span></div><h3 className="mt-3 text-sm font-bold text-[#20344E]">{meta.title}</h3><p className="mt-1 text-[10px] leading-4 text-[#738298]">{stage?.goal || meta.detail}</p><div className="mt-3 rounded-xl bg-white/90 px-3 py-2 text-[9px] leading-4 text-[#63758D]">成果证据：{stage?.evidence || "由训练计划确定"}</div>{released && ready ? <Link to={`/workspace/r/${id}`} className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#2864BA]">打开资源<ArrowRight className="size-3" /></Link> : <span className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#8794A5]"><ShieldCheck className="size-3" />裁决通过后开放</span>}</article>
+}
+
+function ResultMetric({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return <div className="rounded-2xl border border-[#E0E7F0] bg-[#FAFCFF] p-4"><span className="text-[10px] font-bold text-[#70829C]">{label}</span><strong className="mt-1 block text-xl font-black text-[#265EA9]">{value}</strong><small className="mt-1 block text-[9px] text-[#8390A1]">{detail}</small></div>
+}
+
+function LoadingBlock({ text }: { text: string }) {
+  return <div className="mt-5 flex min-h-32 items-center justify-center gap-2 rounded-2xl border border-[#D9E4F1] bg-[#F7FAFE] text-xs font-bold text-[#5E7594]"><Loader2 className="size-4 animate-spin" />{text}</div>
+}
+
+function Notice({ text, tone }: { text: string; tone: "error" }) {
+  return <div role="alert" className={cn("mt-5 rounded-2xl border p-4 text-xs", tone === "error" && "border-[#E3C7BE] bg-[#FBF2EE] text-[#A05037]")}>{text}</div>
 }

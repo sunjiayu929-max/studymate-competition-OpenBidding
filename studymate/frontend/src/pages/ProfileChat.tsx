@@ -52,7 +52,7 @@ export function ProfileChat() {
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "assistant",
-      content: "你好！我是 StudyMate 学习画像助手。聊几句让我了解你的背景，我就能为你定制学习内容了。先来：**你的专业、年级、想学的方向是什么？**",
+      content: "你好！我是 StudyMate 岗位能力画像助手。我会结合目标岗位，通过动态追问区分学习意愿与真实能力证据。先告诉我：**你的专业、实践经历和目标岗位是什么？**",
     },
   ])
   const [input, setInput] = useState("")
@@ -252,6 +252,8 @@ export function ProfileChat() {
       // 只发送本轮之前的纯文字历史；当前消息由 message 字段单独传递。
       history: messages.slice(-10).map((m) => ({ role: m.role, content: m.content })),
       images: images.length ? images : undefined,
+      target_role: targetRole?.name,
+      core_competencies: targetRole?.skills ?? [],
     })
   }
 
@@ -274,11 +276,14 @@ export function ProfileChat() {
     || targetTopics.length
     || hoursPerWeek,
   )
-  const quickPrompts = [
-    "介绍我的专业、年级和学习方向",
-    "补充最近遇到的学习困难",
-    "更新我的目标和每周学习时间",
-    "补充我的项目经历、技术栈和求职方向",
+  const quickPrompts = targetRole ? [
+    `我的目标是${targetRole.name}，目前还没有相关项目经验。`,
+    `我每周能投入 6 小时，希望重点训练${targetRole.skills.slice(0, 2).join("和")}。`,
+    "我做过相关项目，主要负责实现与调试，希望用岗位场景验证真实水平。",
+  ] : [
+    "我还没有确定目标岗位，希望先梳理自己的专业与实践经历。",
+    "我更喜欢边看案例边动手实践，每周能投入 6 小时。",
+    "我做过一些项目，希望判断自己更适合哪个岗位方向。",
   ]
   const isFreshConversation = messages.length === 1 && !streaming
   return (
@@ -296,8 +301,8 @@ export function ProfileChat() {
                 <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
                 <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83]"><Bot className="size-4" /></span>
                 <div className="min-w-0 flex-1">
-                  <h2 className="truncate text-[15px] font-bold text-[#18232D]">StudyMate 画像助手</h2>
-                  <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">聊天过程中持续提取并更新你的学习画像</p>
+                  <h2 className="truncate text-[15px] font-bold text-[#18232D]">StudyMate 岗位画像助手</h2>
+                  <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">通过动态追问持续校准岗位能力证据</p>
                 </div>
               </div>
               <div className="nav-scroll flex w-full items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto sm:shrink-0 sm:overflow-visible sm:pb-0">
@@ -322,9 +327,9 @@ export function ProfileChat() {
                     <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83] shadow-[0_8px_20px_rgba(36,76,102,.08)]">
                       <Bot className="size-5" />
                     </span>
-                    <h3 className="mt-4 text-xl font-bold tracking-[-0.03em] text-[#18232D]">一起完善你的学习画像</h3>
+                    <h3 className="mt-4 text-xl font-bold tracking-[-0.03em] text-[#18232D]">一起建立你的岗位能力画像</h3>
                     <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#66717B]">
-                      告诉我你的专业、目标或最近遇到的困难。我会在对话中提取关键信息，让后续的讲解、测验与学习路径更适合你。
+                      告诉我你的专业、实践经历和目标岗位。我会针对证据不足或相互矛盾的信息动态追问，让后续训练计划真正适合你。
                     </p>
                     <div className="mt-6 grid gap-2 text-left sm:grid-cols-3">
                       {quickPrompts.map((prompt, index) => (
@@ -456,10 +461,10 @@ export function ProfileChat() {
             {hasProfileContent && (
               <section className="rounded-[22px] border border-[#C7D2D8] bg-[#E7EDF3] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
                 <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.1em] text-[#315E83]"><Sparkles className="size-3.5" />画像已可参与学习</div>
-                <h3 className="mt-2 text-sm font-bold text-[#18232D]">下一步，让 8 个核心 Agent 完成岗位训练闭环</h3>
+                <h3 className="mt-2 text-sm font-bold text-[#18232D]">下一步，让多 Agent 协商个性化训练方案</h3>
                 <p className="mt-1 text-[11px] leading-5 text-[#596A75]">{course ? `将结合“${targetRole?.name || course.name}”岗位知识库和画像 v${profile?.version} 组织内容。` : targetRole ? `“${targetRole.name}”已选定，画像会持续保留；专属岗位知识库接入后即可生成训练资源。` : "还需先选择目标岗位，确保知识来源与训练记录不会混淆。"}</p>
-                <Link to={course || targetRole ? "/workspace" : "/courses?returnTo=%2Fprofile"} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] hover:bg-[#193B50]">
-                  {course ? "进入学习资源工坊" : targetRole ? "查看岗位训练状态" : "先选择目标岗位"}<ArrowRight className="size-3.5" />
+                <Link to={course || targetRole ? "/competency" : "/courses?returnTo=%2Fprofile"} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] hover:bg-[#193B50]">
+                  {course || targetRole ? "进入胜任力训练驾驶舱" : "先选择目标岗位"}<ArrowRight className="size-3.5" />
                 </Link>
               </section>
             )}

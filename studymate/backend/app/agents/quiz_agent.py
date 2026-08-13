@@ -61,23 +61,26 @@ class QuizAgent(AgentBase):
         course_cfg = context.get("course_cfg")
         course_name = context.get("course_name", "机器学习")
         target_role = context.get("target_role", "目标岗位")
+        training_plan = context.get("training_plan") or {}
+        target_difficulty = int((context.get("diagnosis") or {}).get("target_difficulty") or 2)
         revision_feedback = context.get("revision_feedback", {}).get("quiz", [])
         persona = course_cfg.persona if course_cfg else f"{course_name}岗位训练助理"
 
         if not has_llm_key():
-            quiz = await self._stream_mock(emit)
+            quiz = await self._stream_mock(emit, target_difficulty)
         else:
             try:
                 quiz = await self._gen_real(
                     topic, profile, persona, course_name, emit,
                     target_role=target_role,
+                    training_plan=training_plan,
                     revision_feedback=revision_feedback,
                 )
                 if not quiz:
                     raise RuntimeError("empty quiz items")
             except Exception as e:
                 await self.emit_delta(emit, f"\n[LLM 失败，降级到题库模板：{type(e).__name__}]\n", kind="text")
-                quiz = await self._stream_mock(emit)
+                quiz = await self._stream_mock(emit, target_difficulty)
 
         return {
             "type": "quiz",
@@ -88,8 +91,12 @@ class QuizAgent(AgentBase):
             "target_role": target_role,
         }
 
-    async def _stream_mock(self, emit) -> list[dict]:
-        quiz = MOCK_QUIZ
+    async def _stream_mock(self, emit, target_difficulty: int = 2) -> list[dict]:
+        target = max(1, min(4, target_difficulty))
+        levels = [max(1, target - 1), target, min(4, target + 1)]
+        if len(set(levels)) < 2:
+            levels = [1, 1, 2] if target == 1 else [3, 4, 4]
+        quiz = [{**item, "difficulty": levels[index]} for index, item in enumerate(MOCK_QUIZ)]
         for q in quiz:
             msg = f"生成题目 [{q['type']}] {q['question'][:30]}...\n"
             for ch in msg:
@@ -106,6 +113,7 @@ class QuizAgent(AgentBase):
         emit,
         *,
         target_role: str,
+        training_plan: dict,
         revision_feedback: list[dict],
     ) -> list[dict]:
         llm = get_llm_client()
@@ -132,8 +140,9 @@ class QuizAgent(AgentBase):
 }}
 
 学生水平参考（综合给定 1-4 难度）：{difficulty_hint}
+多 Agent 仲裁训练计划：{json.dumps(training_plan, ensure_ascii=False)}
 审核返工意见：{feedback_text}
-题目必须体现岗位任务情境，并与学生当前难度相邻，避免跨度过大。
+题目必须体现岗位任务情境，并与学生当前难度相邻，避免跨度过大；三题应分别承担基础理解、场景应用、迁移挑战，并可用于下一轮升降阶判断。
 """
         msgs = [{"role": "system", "content": sys}, {"role": "user", "content": topic}]
         raw = await llm.chat_structured(messages=msgs, temperature=0.4)

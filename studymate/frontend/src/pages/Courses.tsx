@@ -51,8 +51,8 @@ export function Courses() {
   const requestedReturnTo = searchParams.get("returnTo")
   const returnTo = requestedReturnTo?.startsWith("/") && !requestedReturnTo.startsWith("//")
     ? requestedReturnTo
-    : "/workspace"
-  const returnLabel = returnTo.startsWith("/workspace") ? "返回资源工坊" : "返回上一页"
+    : "/profile"
+  const returnLabel = returnTo.startsWith("/workspace") ? "返回资源工坊" : returnTo.startsWith("/competency") ? "返回训练驾驶舱" : "进入画像诊断"
 
   async function selectRole(role: CareerRole) {
     setActivationError("")

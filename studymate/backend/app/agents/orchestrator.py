@@ -140,17 +140,21 @@ class TrainingLoopOrchestrator:
     def __init__(
         self,
         diagnosis_agent: AgentBase,
+        planning_agents: list[AgentBase],
+        plan_arbiter: AgentBase,
         generators: list[AgentBase],
         reviewers: list[AgentBase],
         arbiter: AgentBase,
     ):
         self.diagnosis_agent = diagnosis_agent
+        self.planning_agents = planning_agents
+        self.plan_arbiter = plan_arbiter
         self.generators = generators
         self.reviewers = reviewers
         self.arbiter = arbiter
 
     def all_metas(self) -> list[dict]:
-        agents = [self.diagnosis_agent, *self.generators, *self.reviewers, self.arbiter]
+        agents = [self.diagnosis_agent, *self.planning_agents, self.plan_arbiter, *self.generators, *self.reviewers, self.arbiter]
         return [
             {
                 "id": agent.meta.id,
@@ -210,13 +214,44 @@ class TrainingLoopOrchestrator:
                 "agent": "diagnosis",
             })
 
+            await self._stage(emit, "planning", "领域专家与教学策略 Agent 独立提案并协商训练范围", ctx)
+            planning_results = await asyncio.gather(
+                *(self._wrap_run(agent, ctx, emit) for agent in self.planning_agents),
+                return_exceptions=True,
+            )
+            proposals: dict[str, dict] = {}
+            for agent, result in zip(self.planning_agents, planning_results):
+                if isinstance(result, Exception):
+                    raise RuntimeError(f"{agent.meta.name} 提案失败：{result}") from result
+                proposals[agent.meta.id] = result
+                ctx.setdefault("outputs", {})[agent.meta.id] = result
+            ctx["planning_proposals"] = proposals
+            await self._stage(emit, "plan_decision", "训练计划仲裁 Agent 正在解决覆盖度与时间预算冲突", ctx)
+            training_plan = await self._wrap_run(self.plan_arbiter, ctx, emit)
+            ctx["training_plan"] = training_plan
+            ctx.setdefault("outputs", {})["training_plan"] = training_plan
+
             await self._run_generation(ctx, emit, self.generators)
             await self._run_reviews(ctx, emit)
             decision = await self._run_arbiter(ctx, emit)
 
-            if decision.get("decision") == "rework":
+            previous_issue_signature = ""
+            unchanged_issue_rounds = 0
+            while decision.get("decision") == "rework":
                 targets = set(decision.get("rework_targets") or [])
-                await self._stage(emit, "rework", "裁决退回问题资源，开始定向修订", ctx)
+                if not targets:
+                    targets = {agent.meta.id for agent in self.generators}
+                issue_signature = json.dumps({
+                    "targets": sorted(targets),
+                    "fixes": sorted(str(item) for item in decision.get("required_fixes") or []),
+                    "scores": decision.get("review_scores") or {},
+                }, ensure_ascii=False, sort_keys=True)
+                unchanged_issue_rounds = unchanged_issue_rounds + 1 if issue_signature == previous_issue_signature else 1
+                previous_issue_signature = issue_signature
+                if unchanged_issue_rounds >= 3:
+                    raise RuntimeError("自动返工连续 3 轮没有改善，任务已安全终止且不会发布；请检查知识库、模型服务或审核规则")
+
+                await self._stage(emit, "rework", f"第 {ctx.get('generation_round', 1)} 轮未通过，开始定向返工", ctx)
                 await emit("rework", {
                     "generation_round": ctx.get("generation_round", 1),
                     "targets": sorted(targets),
@@ -229,11 +264,8 @@ class TrainingLoopOrchestrator:
                 await self._run_reviews(ctx, emit)
                 decision = await self._run_arbiter(ctx, emit)
 
-            if decision.get("decision") == "publish":
-                await self._stage(emit, "publishing", "资源已通过裁决，准备发布三项核心岗位资源", ctx)
-                await self._stage(emit, "published", "资源包已发布，可进入学习与反馈", ctx)
-            else:
-                await self._stage(emit, "manual_review", "未越过发布门槛，等待导师人工复核", ctx)
+            await self._stage(emit, "publishing", "资源已通过裁决，准备发布三项核心岗位资源", ctx)
+            await self._stage(emit, "published", "资源包已发布，可进入学习与反馈", ctx)
 
             await emit("done", {
                 "run_id": ctx.get("run_id"),
@@ -290,8 +322,8 @@ class TrainingLoopOrchestrator:
                     "findings": [{
                         "severity": "blocker",
                         "message": f"审核执行异常：{result}",
-                        "suggestion": "转入人工复核",
-                        "target_agent": "doc",
+                        "suggestion": "重新执行对应资源生成与交叉审核",
+                        "target_agent": self._review_target(agent.meta.id),
                     }],
                 }
             else:
@@ -324,6 +356,14 @@ class TrainingLoopOrchestrator:
                 if target in feedback:
                     feedback[target].append(finding)
         return feedback
+
+    @staticmethod
+    def _review_target(reviewer_id: str) -> str:
+        return {
+            "evidence_review": "doc",
+            "practice_review": "guide",
+            "difficulty_review": "quiz",
+        }.get(reviewer_id, "doc")
 
 
 def serialize_event(item: dict) -> dict:

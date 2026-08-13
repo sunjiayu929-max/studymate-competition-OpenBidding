@@ -378,7 +378,7 @@ export function QuizPlay() {
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
             <Link to="/report" className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#557052] px-4 text-[11px] font-bold text-[#FFFEFA] transition-colors hover:bg-[#465F45]">查看学习报告 <ArrowRight className="size-3.5" /></Link>
-            <Link to="/workspace" className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#BFCABE] bg-[#FFFEFA] px-4 text-[11px] font-bold text-[#557052] hover:bg-[#F5F8F3]">回写训练闭环</Link>
+            <Link to="/competency" className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#BFCABE] bg-[#FFFEFA] px-4 text-[11px] font-bold text-[#557052] hover:bg-[#F5F8F3]">回写训练闭环</Link>
           </div>
         </section>
       )}

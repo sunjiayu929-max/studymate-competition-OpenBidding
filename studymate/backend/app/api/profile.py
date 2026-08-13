@@ -136,6 +136,8 @@ async def profile_chat(req: ProfileChatRequest):
                     history=history,
                     current_profile=current_dims,
                     images=req.images,
+                    target_role=req.target_role,
+                    core_competencies=req.core_competencies,
                 ):
                     if ev_type == "delta":
                         yield {"event": "delta", "data": data}

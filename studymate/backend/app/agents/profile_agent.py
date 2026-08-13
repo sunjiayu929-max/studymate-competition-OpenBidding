@@ -106,6 +106,12 @@ SYSTEM_PROMPT = """你是一位耐心的领域岗位训练顾问，正在通过�
 
 【当前已有画像】
 {current_profile}
+
+【当前目标岗位】
+{role_context}
+
+后续追问必须优先补齐与当前目标岗位有关且证据不足的信息。遇到自评与项目证据矛盾时，
+用一个具体岗位场景继续追问；不得把学习意愿直接当成已具备能力。
 """
 
 
@@ -146,6 +152,8 @@ async def profile_chat_stream(
     history: list[dict],
     current_profile: ProfileDims,
     images: list[str] | None = None,
+    target_role: str | None = None,
+    core_competencies: list[str] | None = None,
 ) -> AsyncIterator[Tuple[str, str]]:
     """
     yield (event_type, data) 元组：
@@ -161,7 +169,13 @@ async def profile_chat_stream(
     sys = SYSTEM_PROMPT.replace(
         "{completion_guidance}",
         build_profile_completion_guidance(current_profile),
-    ).replace("{current_profile}", current_profile.model_dump_json())
+    ).replace("{current_profile}", current_profile.model_dump_json()).replace(
+        "{role_context}",
+        json.dumps({
+            "target_role": target_role or "尚未选择",
+            "core_competencies": core_competencies or [],
+        }, ensure_ascii=False),
+    )
 
     msgs = [{"role": "system", "content": sys}]
     for h in history[-10:]:

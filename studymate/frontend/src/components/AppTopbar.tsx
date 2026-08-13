@@ -42,9 +42,9 @@ export type PageId =
 
 const PAGE_META: Record<PageId, { label: string; group: string; icon: typeof Home }> = {
   home: { label: "今日学习", group: "学习中心", icon: Home },
-  workspace: { label: "学习资源工坊", group: "8 个核心 Agent 闭环", icon: WandSparkles },
+  workspace: { label: "训练资源", group: "岗位训练中心", icon: WandSparkles },
   tutor: { label: "AI 助教", group: "AI 学习工具", icon: Bot },
-  profile: { label: "学习画像", group: "学习中心", icon: GraduationCap },
+  profile: { label: "岗位能力画像", group: "学习中心", icon: GraduationCap },
   rag: { label: "岗位知识库", group: "知识与笔记", icon: Database },
   knowledge: { label: "自建知识库", group: "知识与笔记", icon: Database },
   ppt: { label: "PPT 生成", group: "AI 学习工具", icon: Presentation },
@@ -61,22 +61,22 @@ const PAGE_META: Record<PageId, { label: string; group: string; icon: typeof Hom
 }
 
 const PAGE_ACTIONS: Partial<Record<PageId, Array<{ label: string; to: string }>>> = {
-  home: [{ label: "岗位空间", to: "/courses" }, { label: "学习工坊", to: "/workspace" }, { label: "学习画像", to: "/profile" }],
+  home: [{ label: "岗位空间", to: "/courses" }, { label: "胜任力训练", to: "/competency" }, { label: "岗位能力画像", to: "/profile" }],
   workspace: [{ label: "目标岗位", to: "/courses?returnTo=%2Fworkspace" }, { label: "沉淀笔记", to: "/notes" }, { label: "验证掌握", to: "/quiz" }, { label: "查看报告", to: "/report" }],
-  tutor: [{ label: "实时语音", to: "/tutor/voice" }, { label: "可视讲解", to: "/concept" }, { label: "学习画像", to: "/profile" }],
-  profile: [{ label: "选择目标岗位", to: "/courses" }, { label: "开始对话", to: "/tutor" }, { label: "查看报告", to: "/report" }],
+  tutor: [{ label: "实时语音", to: "/tutor/voice" }, { label: "可视讲解", to: "/concept" }, { label: "岗位能力画像", to: "/profile" }],
+  profile: [{ label: "选择目标岗位", to: "/courses" }, { label: "胜任力训练", to: "/competency" }, { label: "查看报告", to: "/report" }],
   rag: [{ label: "自建知识库", to: "/knowledge" }, { label: "智能笔记", to: "/notes" }, { label: "AI 助教", to: "/tutor" }],
   knowledge: [{ label: "岗位知识库", to: "/rag" }, { label: "上传资料", to: "/knowledge" }, { label: "检索结果", to: "/rag" }],
-  ppt: [{ label: "学习工坊", to: "/workspace" }, { label: "岗位知识库", to: "/rag" }, { label: "保存笔记", to: "/notes" }],
+  ppt: [{ label: "岗位训练中心", to: "/competency" }, { label: "岗位知识库", to: "/rag" }, { label: "保存笔记", to: "/notes" }],
   resources: [{ label: "职业探索", to: "/career" }, { label: "岗位空间", to: "/courses" }, { label: "学习报告", to: "/report" }],
-  career: [{ label: "学习画像", to: "/profile" }, { label: "学习报告", to: "/report" }, { label: "岗位空间", to: "/courses" }],
-  report: [{ label: "继续学习", to: "/workspace" }, { label: "智能测验", to: "/quiz" }, { label: "更新画像", to: "/profile" }],
-  courses: [{ label: "建立画像", to: "/profile" }, { label: "生成资源", to: "/workspace" }, { label: "新手指引", to: "/guide" }],
+  career: [{ label: "岗位能力画像", to: "/profile" }, { label: "胜任力训练", to: "/competency" }, { label: "岗位空间", to: "/courses" }],
+  report: [{ label: "继续岗位训练", to: "/competency" }, { label: "智能测验", to: "/quiz" }, { label: "更新画像", to: "/profile" }],
+  courses: [{ label: "建立岗位画像", to: "/profile" }, { label: "胜任力训练", to: "/competency" }, { label: "新手指引", to: "/guide" }],
   notes: [{ label: "AI 助教", to: "/tutor" }, { label: "智能测验", to: "/quiz" }, { label: "学习报告", to: "/report" }],
   quiz: [{ label: "岗位空间", to: "/courses" }, { label: "智能笔记", to: "/notes" }, { label: "查看报告", to: "/report" }],
-  concept: [{ label: "AI 助教", to: "/tutor" }, { label: "概念库", to: "/concept/library" }, { label: "学习工坊", to: "/workspace" }],
+  concept: [{ label: "AI 助教", to: "/tutor" }, { label: "概念库", to: "/concept/library" }, { label: "岗位训练中心", to: "/competency" }],
   feedback: [{ label: "新手指引", to: "/guide" }, { label: "返回首页", to: "/" }],
-  guide: [{ label: "选择目标岗位", to: "/courses" }, { label: "学习工坊", to: "/workspace" }, { label: "反馈中心", to: "/feedback" }],
+  guide: [{ label: "选择目标岗位", to: "/courses" }, { label: "岗位训练中心", to: "/competency" }, { label: "反馈中心", to: "/feedback" }],
   tests: [{ label: "今日学习", to: "/" }, { label: "反馈中心", to: "/feedback" }],
 }
 

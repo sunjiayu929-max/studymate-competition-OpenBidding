@@ -105,7 +105,7 @@ export function ResourceModal({ open, onClose, title, subtitle, icon: Icon, tone
 
             {/* Footer hint */}
             <div className="flex shrink-0 flex-wrap justify-between gap-2 border-t border-[#DED8CC] bg-[#FAF7F0] px-4 py-2.5 text-[10px] font-medium text-[#7A817E] sm:px-6">
-              <span>学习资源工坊内容 · 关键结论建议结合岗位知识库原文复核</span>
+              <span>岗位训练资源 · 关键结论建议结合岗位知识库原文复核</span>
               <span>Esc 或点击外部关闭</span>
             </div>
           </motion.div>

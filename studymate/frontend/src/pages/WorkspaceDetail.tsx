@@ -245,8 +245,8 @@ export function WorkspaceDetail() {
           <PageHeader
             current="workspace"
             title="未知资源"
-            backTo="/workspace"
-            backLabel="返回工作台"
+            backTo="/competency"
+            backLabel="返回岗位训练中心"
             icon={Sparkles}
             appearance="paper"
           />
@@ -266,7 +266,7 @@ export function WorkspaceDetail() {
               </div>
               <div className="flex flex-col-reverse gap-2 border-t border-[#E0DACE] bg-[#FCFAF5] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-xs font-semibold text-[#8A8172]">其他资源入口将在后续阶段开放</span>
-                <Link to="/workspace" className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white transition-colors hover:bg-[#1D4058]"><Sparkles className="size-4" />返回学习资源工坊</Link>
+                <Link to="/competency" className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white transition-colors hover:bg-[#1D4058]"><Sparkles className="size-4" />返回岗位训练中心</Link>
               </div>
             </section>
           </div>
@@ -329,8 +329,8 @@ export function WorkspaceDetail() {
           subtitle={topic ? `主题：${topic}` : "未选择主题"}
           icon={meta.icon}
           iconColor={meta.color}
-          backTo="/workspace"
-          backLabel="返回工作台"
+          backTo="/competency"
+          backLabel="返回岗位训练中心"
           appearance="paper"
           rightExtra={
             <div className="nav-scroll flex max-w-full items-center gap-1 overflow-x-auto">
@@ -367,7 +367,7 @@ export function WorkspaceDetail() {
         )}
 
         {!hasAnyData && (
-          <NoData resourceTitle={meta.title} onBack={() => navigate("/workspace")} />
+          <NoData resourceTitle={meta.title} onBack={() => navigate("/competency")} />
         )}
 
         {hasAnyData && (
@@ -610,7 +610,7 @@ function ResourceEvidenceBar({
       <div className="grid gap-px bg-[#DDD7CB] sm:grid-cols-2 xl:grid-cols-4">
         <EvidenceCell icon={UserRoundSearch} label="画像依据" value={profile ? `画像 v${profile.version}` : "岗位默认策略"} hint={primaryGoal} color="#315E83" wash="#E7EDF3" />
         <EvidenceCell icon={Target} label="学习重点" value={topic || "当前主题"} hint={weakTopics.length ? `优先关注：${weakTopics.slice(0, 2).join("、")}` : `偏好方式：${preferenceLabel}`} color="#B85C3E" wash="#F4E8E2" />
-        <EvidenceCell icon={Database} label="岗位与来源" value={courseName} hint={sourceReady ? `${retrievedCount || citationCount} 条岗位依据参与生成` : "返回工作台生成后显示检索依据"} color="#3E7774" wash="#E2EEEB" />
+        <EvidenceCell icon={Database} label="岗位与来源" value={courseName} hint={sourceReady ? `${retrievedCount || citationCount} 条岗位依据参与生成` : "启动岗位训练后显示检索依据"} color="#3E7774" wash="#E2EEEB" />
         <EvidenceCell icon={ShieldCheck} label="内容策略" value={preferenceLabel} hint={RESOURCE_STRATEGY[resource]} color="#8E6925" wash="#F4ECD8" />
       </div>
     </article>
@@ -657,14 +657,14 @@ function NoData({ resourceTitle, onBack }: { resourceTitle: string; onBack: () =
           <p className="mt-3 text-[11px] font-bold tracking-[0.12em] text-[#8E6925]">等待生成 · 操作可继续</p>
           <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#18232D]">这份{resourceTitle}还未生成</h2>
           <p className="mx-auto mt-2 max-w-[560px] text-xs leading-5 text-[#6F787A]">
-            返回工作台输入岗位任务后，8 个核心 Agent 会依次完成诊断、生成、审核与裁决；批准发布后可在这里核对内容并进入笔记、测验或报告。
+            返回岗位训练中心启动本轮任务后，11 个核心 Agent 会依次完成诊断、计划协商、生成、审核与裁决；批准发布后可在这里核对内容并进入笔记、测验或报告。
           </p>
         </div>
 
         <div className="grid gap-2.5 p-4 sm:grid-cols-3 sm:p-5" aria-label="生成资源的三个步骤">
           {[
             { step: "01", title: "选择目标岗位", detail: "限定岗位知识库与训练范围", icon: Database, color: "#355C8A", wash: "#E7EDF3" },
-            { step: "02", title: "定义主题", detail: "画像参与内容生成策略", icon: Target, color: "#B85C3E", wash: "#F4E8E2" },
+            { step: "02", title: "定位能力", detail: "能力地图与画像共同确定本轮任务", icon: Target, color: "#B85C3E", wash: "#F4E8E2" },
             { step: "03", title: "核验成果", detail: "逐类打开并继续学习", icon: ShieldCheck, color: "#6F8A69", wash: "#E8EDE5" },
           ].map(({ step, title, detail, icon: StepIcon, color, wash }) => (
             <div key={step} className="flex items-center gap-3 rounded-2xl border border-[#DDD7CB] bg-[#FBF9F4] p-3 text-left">
@@ -685,7 +685,7 @@ function NoData({ resourceTitle, onBack }: { resourceTitle: string; onBack: () =
             尚未选择岗位？先进入岗位空间
           </Link>
           <Button onClick={onBack} className="bg-[#244C66] text-white hover:bg-[#1D4058]">
-            <Sparkles className="size-4" /> 返回工作台开始生成
+            <Sparkles className="size-4" /> 返回岗位训练中心
           </Button>
         </div>
       </section>

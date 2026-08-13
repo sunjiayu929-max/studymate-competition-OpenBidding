@@ -22,6 +22,7 @@ class PracticeGuideAgent(AgentBase):
         domain = context.get("domain", "垂直领域")
         target_role = context.get("target_role", "领域应用工程师")
         diagnosis = context.get("diagnosis") or {}
+        training_plan = context.get("training_plan") or {}
         chunks = context.get("chunks") or []
         revision_feedback = (context.get("revision_feedback") or {}).get("guide", [])
         version = int(context.get("generation_round", 1))
@@ -44,6 +45,7 @@ class PracticeGuideAgent(AgentBase):
                     domain=domain,
                     target_role=target_role,
                     diagnosis=diagnosis,
+                    training_plan=training_plan,
                     chunks=chunks,
                     revision_feedback=revision_feedback,
                     emit=emit,
@@ -117,7 +119,7 @@ class PracticeGuideAgent(AgentBase):
 
 - 本指南默认用于教学仿真，不代表真实生产环境操作授权。
 - 不执行未经过审核的高风险命令，不上传含个人或企业敏感信息的数据。
-- 领域知识库没有覆盖的结论必须转人工复核。
+- 领域知识库没有覆盖的结论必须标记证据不足，并触发自动补证返工。
 
 ## 7. 验收清单
 
@@ -125,7 +127,7 @@ class PracticeGuideAgent(AgentBase):
 - [ ] 核心步骤均有预期结果
 - [ ] 至少验证一个正常场景和一个异常场景
 - [ ] 专业结论可以追溯到知识来源
-- [ ] 失败时有停止、回退或人工复核路径
+- [ ] 失败时有停止、回退或自动纠偏路径
 """
         if revision:
             content += f"\n## 8. 本轮审核修订\n\n{revision}\n"
@@ -141,6 +143,7 @@ class PracticeGuideAgent(AgentBase):
         domain: str,
         target_role: str,
         diagnosis: dict,
+        training_plan: dict,
         chunks: list[dict],
         revision_feedback: list[str],
         emit: EventEmitter,
@@ -152,14 +155,15 @@ class PracticeGuideAgent(AgentBase):
         system = f"""你是{domain}领域的{target_role}实训专家。请严格依据知识库生成《{topic}》岗位实操指南。
 
 学情诊断：{json.dumps(diagnosis, ensure_ascii=False)}
+多 Agent 仲裁训练计划：{json.dumps(training_plan, ensure_ascii=False)}
 知识库依据：
 {references}
 审核返工要求：{json.dumps(revision_feedback, ensure_ascii=False)}
 
 必须使用 Markdown，并完整包含以下标题：
 任务目标与验收标准、环境与前置条件、操作步骤、预期结果、异常处理、安全边界、验收清单。
-每个专业结论使用 [n] 引用；没有依据时明确写“证据不足，需人工复核”，不得编造。
-操作步骤必须包含输入、操作、预期结果和失败处理，默认使用教学仿真环境。
+每个专业结论使用 [n] 引用；没有依据时明确写“证据不足，触发自动补证返工”，不得编造。
+操作步骤必须包含输入、操作、预期结果和失败处理，默认使用教学仿真环境；验收清单必须呼应训练计划的成果证据与验收标准。
 """
         buffer = ""
         async for token in get_llm_client().chat_stream(

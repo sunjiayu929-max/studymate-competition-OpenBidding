@@ -29,7 +29,7 @@ const ORBIT_PATHS = [
 ]
 
 const ORBIT_PLANETS = [
-  { label: "学习画像", color: "#355C8A", radius: 10, orbit: 0, duration: 20, begin: "0s", staticPosition: [180, 122] },
+  { label: "岗位能力画像", color: "#355C8A", radius: 10, orbit: 0, duration: 20, begin: "0s", staticPosition: [180, 122] },
   { label: "AI 助教", color: "#B85C3E", radius: 13, orbit: 0, duration: 20, begin: "-10s", staticPosition: [460, 122] },
   { label: "岗位空间", color: "#C49A3A", radius: 11, orbit: 1, duration: 32, begin: "0s", staticPosition: [88, 122] },
   { label: "智能笔记", color: "#6F8A69", radius: 9, orbit: 1, duration: 32, begin: "-8s", staticPosition: [320, 10] },
@@ -99,7 +99,7 @@ function AnimatedLoginGuide({
         <div className="auth-character-face"><span className="auth-pupil" /><span className="auth-pupil" /></div><b />
       </div>
       <div className="auth-character-tag auth-character-tag-left"><span className="size-1.5 rounded-full bg-[#FF8B3D]" />AI 助教</div>
-      <div className="auth-character-tag auth-character-tag-right"><span className="size-1.5 rounded-full bg-[#38C98C]" />学习画像</div>
+      <div className="auth-character-tag auth-character-tag-right"><span className="size-1.5 rounded-full bg-[#38C98C]" />岗位能力画像</div>
     </div>
   )
 }
@@ -235,7 +235,7 @@ export function Login() {
                 transition={{ duration: 0.55, delay: 0.18 }}
                 className="mt-5 hidden max-w-[620px] text-[15px] leading-7 text-[#66717B] lg:block xl:text-base"
               >
-                StudyMate 让学习画像、AI 助教与成长路径围绕目标岗位协同工作，把岗位知识、笔记和练习连接起来。
+                StudyMate 让岗位能力画像、多 Agent 决策与训练验收围绕目标岗位协同工作，把岗位标准、资源和成果证据连接起来。
               </motion.p>
 
                 <div className="hidden sm:block">
@@ -261,7 +261,7 @@ export function Login() {
                   <span className="grid size-8 place-items-center rounded-lg border border-[#DED8CC] bg-[#F1EDE4] text-[#315E83]"><Sparkles className="size-4" /></span>
                 </div>
                 <h2 className="text-[27px] font-extrabold tracking-[-0.045em] text-[#18232D] sm:text-[30px]">{mode === "login" ? "继续你的学习旅程" : "创建你的学习星图"}</h2>
-                <p className="mt-2 text-sm leading-6 text-[#66717B]">{mode === "login" ? "使用邮箱和密码进入 StudyMate" : "验证邮箱后，即可建立专属学习画像"}</p>
+                <p className="mt-2 text-sm leading-6 text-[#66717B]">{mode === "login" ? "使用邮箱和密码进入 StudyMate" : "验证邮箱后，即可建立专属岗位能力画像"}</p>
               </div>
 
               <div className="auth-mode-tabs mb-5 grid grid-cols-2 rounded-xl border border-[#DED8CC] bg-[#ECE8DE] p-1" role="tablist" aria-label="登录或注册">

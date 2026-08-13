@@ -79,6 +79,8 @@ class ProfileChatRequest(BaseModel):
     # 看图建画像：本轮消息可附图片（base64 data URL，前端已压缩）。
     # 带图 → 切 qwen-vl 视觉模型读图（如上传成绩单截图自动抽知识基础）。
     images: list[str] | None = None
+    target_role: str | None = None
+    core_competencies: list[str] = Field(default_factory=list)
 
 
 class ProfilePatch(BaseModel):

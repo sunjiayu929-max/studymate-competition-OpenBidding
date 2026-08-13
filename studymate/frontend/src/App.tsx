@@ -1,5 +1,5 @@
 import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react"
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
+import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-router-dom"
 import { RequireAuth, RequireAdmin } from "@/components/guards"
 import { JudgeTour } from "@/components/JudgeTour"
 import { JudgeDemoMode } from "@/components/JudgeDemoMode"
@@ -12,7 +12,6 @@ const Home = lazy(() => import("@/pages/Home").then((m) => ({ default: m.Home })
 const ProfileChat = lazy(() => import("@/pages/ProfileChat").then((m) => ({ default: m.ProfileChat })))
 const RagDemo = lazy(() => import("@/pages/RagDemo").then((m) => ({ default: m.RagDemo })))
 const RagSource = lazy(() => import("@/pages/RagSource").then((m) => ({ default: m.RagSource })))
-const Workspace = lazy(() => import("@/pages/Workspace").then((m) => ({ default: m.Workspace })))
 const WorkspaceDetail = lazy(() => import("@/pages/WorkspaceDetail").then((m) => ({ default: m.WorkspaceDetail })))
 const TutorChat = lazy(() => import("@/pages/TutorChat").then((m) => ({ default: m.TutorChat })))
 const VoiceTutor = lazy(() => import("@/pages/VoiceTutor").then((m) => ({ default: m.VoiceTutor })))
@@ -157,7 +156,7 @@ export default function App() {
           <Route path="/resources" element={<ProtectedPage><LearningResources /></ProtectedPage>} />
           <Route path="/career" element={<ProtectedPage><CareerExplorer /></ProtectedPage>} />
           <Route path="/competency" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
-          <Route path="/workspace" element={<ProtectedPage><Workspace /></ProtectedPage>} />
+          <Route path="/workspace" element={<Navigate to="/competency" replace />} />
           <Route path="/workspace/r/:agentId" element={<ProtectedPage><WorkspaceDetail /></ProtectedPage>} />
           <Route path="/tutor" element={<ProtectedPage><TutorChat /></ProtectedPage>} />
           <Route path="/tutor/voice" element={<ProtectedPage><VoiceTutor /></ProtectedPage>} />

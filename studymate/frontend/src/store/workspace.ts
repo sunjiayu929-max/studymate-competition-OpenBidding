@@ -41,6 +41,9 @@ export interface RetrievedChunk {
 export interface WorkspaceOutputs {
   diagnosis?: TrainingDiagnosis
   retriever?: { chunks: RetrievedChunk[] }
+  domain_expert?: TrainingProposal
+  learning_strategy?: TrainingProposal
+  training_plan?: PersonalizedTrainingPlan
   doc?: { type: string; title: string; content: string; citations: Citation[] }
   guide?: { type: string; title: string; content: string; citations: Citation[]; version?: number }
   mindmap?: { type: string; title: string; content: string }
@@ -48,6 +51,39 @@ export interface WorkspaceOutputs {
   path?: { type: string; title: string; nodes: PathNode[]; edges: PathEdge[]; count: number }
   reading?: { type: string; title: string; items: ReadingItem[]; count: number }
   code?: CodeOutput & { type: string; title: string }
+}
+
+export interface TrainingProposal {
+  type: "expert_proposal" | "strategy_proposal"
+  role: string
+  position: string
+  risk: string
+  priority_competencies?: string[]
+  weekly_hours?: number
+  capacity?: number
+  preferred_mode?: string
+}
+
+export interface PersonalizedTrainingPlan {
+  type: "training_plan"
+  title: string
+  cycle: number
+  rationale: string
+  priority_competencies: string[]
+  deferred_competencies: string[]
+  weekly_hours: number
+  target_difficulty: number
+  preferred_mode: string
+  stages: Array<{ id: string; resource: string; goal: string; evidence: string }>
+  acceptance_criteria: string[]
+  debate: {
+    expert_position: string
+    strategy_position: string
+    conflict: string
+    resolution: string
+  }
+  release_gate: string
+  next_round_rule: string
 }
 
 export type StreamMap = { doc: string; guide: string; mindmap: string; quiz: string; path: string; reading: string; code: string }
@@ -60,6 +96,8 @@ export interface TrainingDiagnosis {
   target_difficulty: number
   knowledge_score: number | null
   evidence_confidence: number
+  training_cycle?: number
+  adaptation_reason?: string
   knowledge_gaps: string[]
   training_goal: string
   training_contract: Record<string, unknown>
@@ -83,7 +121,7 @@ export interface TrainingReview {
 }
 
 export interface TrainingDecision {
-  decision: "publish" | "rework" | "manual_review"
+  decision: "publish" | "rework"
   summary: string
   quality_score: number
   generation_round: number
@@ -114,6 +152,13 @@ export interface QuizAttempt {
   difficulty: number
 }
 
+export interface ReworkRecord {
+  generationRound: number
+  targets: string[]
+  requiredFixes: string[]
+  createdAt: number
+}
+
 export interface WorkspaceState {
   topic: string
   courseId: number | null
@@ -126,6 +171,7 @@ export interface WorkspaceState {
   coreCompetencies: string[]
   stage: string
   generationRound: number
+  reworkHistory: ReworkRecord[]
   diagnosis: TrainingDiagnosis | null
   reviews: Record<string, TrainingReview>
   decision: TrainingDecision | null
@@ -180,6 +226,7 @@ function makeInitialState(): WorkspaceState {
     coreCompetencies: [],
     stage: "idle",
     generationRound: 1,
+    reworkHistory: [],
     diagnosis: null,
     reviews: {},
     decision: null,
@@ -206,6 +253,30 @@ function loadFromStorage(): WorkspaceState | null {
     const raw = sessionStorage.getItem(STORAGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as WorkspaceState
+    const legacyDecision = parsed.decision as (Omit<TrainingDecision, "decision"> & { decision?: string }) | null
+    const hadLegacyManualReview = parsed.stage === "manual_review" || legacyDecision?.decision === "manual_review"
+    if (hadLegacyManualReview) {
+      const normalizedFixes = (legacyDecision?.required_fixes ?? []).map((item) =>
+        item.replace(/导师人工复核|人工复核|人工审核|转人工/g, "自动返工")
+      )
+      parsed.stage = "rework"
+      parsed.status = "interrupted"
+      parsed.lastError = "旧版待处理状态已取消；请重新启动本轮训练，系统会自动返工并重新审核。"
+      parsed.decision = legacyDecision ? {
+        ...legacyDecision,
+        decision: "rework",
+        summary: "旧版未通过裁决的资源不会发布；重新启动后将进入自动返工闭环。",
+        rework_targets: legacyDecision.rework_targets?.length ? legacyDecision.rework_targets : ["doc", "guide", "quiz"],
+        required_fixes: normalizedFixes,
+      } : null
+      parsed.reworkHistory = [...(parsed.reworkHistory ?? []), {
+        generationRound: parsed.generationRound ?? 1,
+        targets: parsed.decision?.rework_targets ?? ["doc", "guide", "quiz"],
+        requiredFixes: parsed.decision?.required_fixes ?? [],
+        createdAt: Date.now(),
+      }].slice(-8)
+      parsed.logs = [...(parsed.logs ?? []), "旧版待处理状态已迁移为自动返工待重启"].slice(-40)
+    }
     // 浏览器刷新会中断 SSE，但已经生成的成果仍然有效；明确标记为中断，避免静默伪装成空闲。
     if (parsed.status === "running") {
       const activeAgents = parsed.agents ?? []
@@ -232,6 +303,7 @@ function loadFromStorage(): WorkspaceState | null {
       coreCompetencies: parsed.coreCompetencies ?? [],
       stage: parsed.stage ?? "idle",
       generationRound: parsed.generationRound ?? 1,
+      reworkHistory: parsed.reworkHistory ?? [],
       diagnosis: parsed.diagnosis ?? null,
       reviews: parsed.reviews ?? {},
       decision: parsed.decision ?? null,
@@ -352,6 +424,7 @@ class WorkspaceStore {
       coreCompetencies: [],
       stage: "diagnosis",
       generationRound: 1,
+      reworkHistory: [],
       diagnosis: null,
       reviews: {},
       decision: null,
@@ -440,6 +513,21 @@ class WorkspaceStore {
         this.setState((s) => ({ diagnosis, outputs: { ...s.outputs, diagnosis } }))
         break
       }
+      case "proposal": {
+        const aid = String(d.agent ?? "")
+        if (aid === "domain_expert" || aid === "learning_strategy") {
+          this.setState((s) => ({
+            outputs: { ...s.outputs, [aid]: raw as TrainingProposal },
+          }))
+        }
+        break
+      }
+      case "plan": {
+        this.setState((s) => ({
+          outputs: { ...s.outputs, training_plan: raw as PersonalizedTrainingPlan },
+        }))
+        break
+      }
       case "review": {
         const aid = String(d.agent ?? "")
         this.setState((s) => ({
@@ -452,10 +540,16 @@ class WorkspaceStore {
         break
       }
       case "rework": {
-        this.setState({
+        this.setState((s) => ({
           stage: "rework",
           generationRound: Number(d.generation_round ?? 1),
-        })
+          reworkHistory: [...s.reworkHistory, {
+            generationRound: Number(d.generation_round ?? 1),
+            targets: (d.targets as string[]) ?? [],
+            requiredFixes: (d.required_fixes as string[]) ?? [],
+            createdAt: Date.now(),
+          }].slice(-8),
+        }))
         this.appendLog(`裁决退回：${((d.targets as string[]) ?? []).join("、")}`)
         break
       }

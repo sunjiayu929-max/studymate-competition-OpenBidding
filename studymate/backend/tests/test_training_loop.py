@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.agents.arbiter_agent import ArbiterAgent
 from app.agents.diagnosis_agent import DiagnosisAgent
 from app.agents.review_agents import EvidenceReviewAgent, PracticeReviewAgent, DifficultyReviewAgent
+from app.agents.planning_agents import DomainExpertAgent, LearningStrategyAgent, PlanArbiterAgent
 from app.training import resolve_training_role
 from app.api.workspace import TrainingFeedbackRequest, _build_orchestrator, submit_training_feedback
 from app.db.session import Base
@@ -25,6 +26,10 @@ class TrainingCatalogTests(unittest.TestCase):
         self.assertEqual(
             [agent.meta.id for agent in orchestrator.generators],
             ["doc", "guide", "quiz"],
+        )
+        self.assertEqual(
+            [agent.meta.id for agent in orchestrator.planning_agents],
+            ["domain_expert", "learning_strategy"],
         )
 
     def test_machine_learning_maps_to_primary_competition_role(self):
@@ -45,6 +50,48 @@ class TrainingCatalogTests(unittest.TestCase):
 
 
 class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
+    async def test_planning_agents_debate_and_respect_time_budget(self):
+        context = {
+            "topic": "客户接口联调",
+            "target_role": "前线部署工程师（FDE）",
+            "core_competencies": ["需求澄清", "Python 与 SQL", "系统集成"],
+            "profile": {
+                "pace": {"hours_per_week": 3},
+                "preference": {"document": 2, "code": 5},
+            },
+            "diagnosis": {
+                "target_difficulty": 2,
+                "knowledge_gaps": ["需求澄清", "Python 与 SQL", "系统集成"],
+            },
+            "chunks": [{"chunk_id": "1"}],
+        }
+        expert = await DomainExpertAgent().run(context, _ignore_event)
+        strategy = await LearningStrategyAgent().run(context, _ignore_event)
+        context["planning_proposals"] = {
+            "domain_expert": expert,
+            "learning_strategy": strategy,
+        }
+        plan = await PlanArbiterAgent().run(context, _ignore_event)
+        self.assertEqual(plan["priority_competencies"], ["需求澄清"])
+        self.assertIn("领域专家建议", plan["debate"]["conflict"])
+        self.assertEqual([stage["resource"] for stage in plan["stages"]], ["定制讲义", "实操指南", "分阶测试"])
+
+    async def test_previous_feedback_changes_next_diagnosis_difficulty(self):
+        result = await DiagnosisAgent().run({
+            "topic": "接口异常排查",
+            "target_role": "前线部署工程师（FDE）",
+            "core_competencies": ["系统集成"],
+            "profile": {"knowledge_base": {"programming": 2}},
+            "training_cycle": 2,
+            "previous_feedback": {
+                "message": "本轮表现良好，进入复杂岗位场景",
+                "profile_update": {"suggested_difficulty_delta": 1, "confidence_delta": 0.08},
+            },
+        }, _ignore_event)
+        self.assertEqual(result["target_difficulty"], 3)
+        self.assertEqual(result["training_cycle"], 2)
+        self.assertIn("复杂岗位场景", result["adaptation_reason"])
+
     async def test_diagnosis_produces_training_contract(self):
         result = await DiagnosisAgent().run({
             "topic": "缺陷分类",
@@ -102,7 +149,6 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
     async def test_arbiter_returns_blocked_resource_for_rework(self):
         decision = await ArbiterAgent().run({
             "generation_round": 1,
-            "max_rework_rounds": 1,
             "reviews": {
                 "evidence_review": {
                     "status": "fail",
@@ -122,8 +168,29 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_arbiter_never_publishes_with_missing_reviews(self):
         decision = await ArbiterAgent().run({"reviews": {}, "generation_round": 1}, _ignore_event)
-        self.assertEqual(decision["decision"], "manual_review")
+        self.assertEqual(decision["decision"], "rework")
+        self.assertEqual(decision["rework_targets"], ["doc", "guide", "quiz"])
         self.assertFalse(decision["release_gate"]["all_reviews_present"])
+
+    async def test_arbiter_reworks_warning_until_no_findings_remain(self):
+        decision = await ArbiterAgent().run({
+            "generation_round": 2,
+            "reviews": {
+                "evidence_review": {
+                    "status": "warn",
+                    "score": 90,
+                    "findings": [{
+                        "severity": "medium",
+                        "target_agent": "doc",
+                        "suggestion": "补充岗位边界说明",
+                    }],
+                },
+                "practice_review": {"status": "pass", "score": 95, "findings": []},
+                "difficulty_review": {"status": "pass", "score": 90, "findings": []},
+            },
+        }, _ignore_event)
+        self.assertEqual(decision["decision"], "rework")
+        self.assertEqual(decision["rework_targets"], ["doc"])
 
     async def test_feedback_endpoint_updates_owned_published_run(self):
         with TemporaryDirectory() as temp_dir:

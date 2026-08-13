@@ -114,12 +114,12 @@ const EMPTY_HOME_DATA: HomeData = {
 }
 
 const MODULES = [
-  { to: "/profile", label: "学习画像", short: "画像", detail: "理解你的目标与节奏", icon: UserRoundSearch, color: "#355C8A", wash: "#E7EDF3" },
+  { to: "/profile", label: "岗位能力画像", short: "画像", detail: "识别岗位能力证据与差距", icon: UserRoundSearch, color: "#355C8A", wash: "#E7EDF3" },
   { to: "/tutor", label: "AI 助教", short: "助教", detail: "围绕难点继续追问", icon: MessageCircleMore, color: "#B85C3E", wash: "#F4E8E2" },
   { to: "/courses", label: "岗位空间", short: "岗位", detail: "选择领域与目标岗位", icon: Library, color: "#B1842C", wash: "#F4ECD8" },
   { to: "/notes", label: "智能笔记", short: "笔记", detail: "沉淀讲解与思考", icon: NotebookPen, color: "#6F8A69", wash: "#E8EDE5" },
   { to: "/quiz", label: "智能测验", short: "测验", detail: "用练习确认真正掌握", icon: BookOpenCheck, color: "#3E7774", wash: "#E2EEEB" },
-  { to: "/workspace", label: "学习路径", short: "路径", detail: "组织今天的学习步骤", icon: Route, color: "#7E6B83", wash: "#EEE9EF" },
+  { to: "/competency", label: "岗位训练中心", short: "训练", detail: "查看能力范围与当前进度", icon: Route, color: "#7E6B83", wash: "#EEE9EF" },
   { to: "/report", label: "学习报告", short: "报告", detail: "查看成长变化与阶段反馈", icon: BarChart3, color: "#6D748B", wash: "#EAEBF0" },
 ] as const
 
@@ -184,11 +184,11 @@ interface LearningUniverseProps {
 }
 
 const UNIVERSE_PLANETS = [
-  { id: "profile", to: "/profile", label: "学习画像", position: "planet-profile", orbit: "inner", size: "lg", icon: UserRoundSearch, tone: "#6EC8ED" },
+  { id: "profile", to: "/profile", label: "岗位能力画像", position: "planet-profile", orbit: "inner", size: "lg", icon: UserRoundSearch, tone: "#6EC8ED" },
   { id: "knowledge", to: "/knowledge", label: "知识库", position: "planet-knowledge", orbit: "middle", size: "md", icon: Library, tone: "#62C6B6" },
   { id: "quiz", to: "/quiz", label: "智能测验", position: "planet-quiz", orbit: "outer", size: "lg", icon: BookOpenCheck, tone: "#E2BC66" },
   { id: "notes", to: "/notes", label: "智能笔记", position: "planet-notes", orbit: "inner", size: "sm", icon: NotebookPen, tone: "#78BE8B" },
-  { id: "workspace", to: "/workspace", label: "Agent 成果", position: "planet-workspace", orbit: "middle", size: "xl", icon: Sparkles, tone: "#DE9564" },
+  { id: "workspace", to: "/competency", label: "Agent 成果", position: "planet-workspace", orbit: "middle", size: "xl", icon: Sparkles, tone: "#DE9564" },
   { id: "report", to: "/report", label: "学习报告", position: "planet-report", orbit: "outer", size: "md", icon: BarChart3, tone: "#A99BE0" },
   { id: "course", to: "/courses", label: "岗位路径", position: "planet-course", orbit: "outer", size: "sm", icon: Route, tone: "#79AEE8" },
 ] as const
@@ -247,7 +247,7 @@ interface LightHomeHeroProps {
 
 const HERO_NAV = [
   { to: "/courses", label: "岗位" },
-  { to: "/workspace", label: "学习工坊" },
+  { to: "/competency", label: "岗位训练" },
   { to: "/tutor", label: "AI 助教" },
   { to: "/report", label: "学习报告" },
 ] as const
@@ -367,7 +367,7 @@ function LightHomeHero({
 
           <div className="sm-hero-nav-actions">
             <Link to="/profile" className="sm-hero-text-action">{learnerName}</Link>
-            <Link to="/workspace" className="sm-hero-nav-cta">开始学习 <ArrowRight className="size-3.5" /></Link>
+            <Link to="/competency" className="sm-hero-nav-cta">开始岗位训练 <ArrowRight className="size-3.5" /></Link>
             <button type="button" className="sm-hero-menu-button" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen} aria-label="切换首页导航">
               {menuOpen ? <span aria-hidden="true">×</span> : <span aria-hidden="true">☰</span>}
             </button>
@@ -842,7 +842,7 @@ function LearningUniverse(props: LearningUniverseProps) {
                 const state = agentStatusCopy(agent.status, workspace.status)
                 const live = agent.status === "running" || agent.status === "streaming"
                 return (
-                  <Link key={agent.id} to="/workspace" className={`universe-agent-row status-${agent.status}`}>
+                  <Link key={agent.id} to="/competency" className={`universe-agent-row status-${agent.status}`}>
                     <span className="universe-agent-index">{String(index + 1).padStart(2, "0")}</span>
                     <span className="min-w-0 flex-1">
                       <strong>{agent.name}</strong>
@@ -1030,8 +1030,8 @@ function OrbitMap({ learnerName }: { learnerName: string }) {
       <div className="absolute inset-[25%] rounded-full border border-dashed border-[#D7D1C4]" />
       <Link
         to="/profile"
-        aria-label="打开学习画像对话"
-        title="继续通过对话完善学习画像"
+        aria-label="打开岗位能力画像对话"
+        title="继续通过对话完善岗位能力画像"
         className="group absolute left-1/2 top-1/2 z-20 size-[43%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#B7B0A2] bg-[#F7F2E7] p-[7%] shadow-[0_12px_26px_rgba(24,35,45,.12)] transition-transform duration-300 hover:scale-[1.045] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#315E83]"
       >
         <span className="pointer-events-none absolute -inset-2 rounded-full border border-[#315E83]/25 opacity-0 transition-all duration-300 group-hover:scale-105 group-hover:opacity-100 group-focus-visible:opacity-100" />
@@ -1182,7 +1182,7 @@ export function Home() {
     : readyQuiz
     ? { to: `/quiz/${readyQuiz.id}`, label: "继续这份测验" }
     : hasTargetRole
-      ? { to: "/workspace", label: "生成今日岗位训练" }
+      ? { to: "/competency", label: "开始今日岗位训练" }
       : { to: "/courses", label: "先选择目标岗位" }
 
   const focusReason = showcaseCourse
@@ -1231,7 +1231,7 @@ export function Home() {
       number: "04",
       label: "调整",
       title: "更新下一步",
-      hint: course ? "完成后回写当前学习画像" : latestSuggestion || "依据学习表现修正路线",
+      hint: course ? "完成后回写当前岗位能力画像" : latestSuggestion || "依据训练表现修正路线",
       to: "/report",
       icon: BarChart3,
       color: "#7E6B83",
@@ -1375,8 +1375,8 @@ export function Home() {
     if (workspaceTimestamp > 0 && workspace.topic) {
       rows.push({
         key: `pulse-workspace-${workspaceTimestamp}`,
-        to: "/workspace",
-        title: workspace.status === "running" ? "7 Agents 正在协作" : workspace.status === "done" ? "Agent 资源包已完成" : workspace.status === "error" || workspace.status === "interrupted" ? "Agent 任务需要关注" : "Agent 工作台已更新",
+        to: "/competency",
+        title: workspace.status === "running" ? "11 Agents 正在协作" : workspace.status === "done" ? "Agent 训练资源已完成" : workspace.status === "error" || workspace.status === "interrupted" ? "Agent 任务需要关注" : "岗位训练中心已更新",
         detail: compactTopic(workspace.logs.at(-1) || workspace.topic, 26),
         timestamp: workspaceTimestamp,
         tone: workspace.status === "error" || workspace.status === "interrupted" ? "#B97B65" : "#91A98C",
@@ -1614,7 +1614,7 @@ export function Home() {
                     <strong className="text-sm text-[#18232D]">画像正在参与今日路线</strong>
                     {data.profile && <span className="rounded-full bg-[#DCE7DD] px-2 py-0.5 text-[10px] font-bold text-[#557052]">画像 v{data.profile.version} · 持续更新</span>}
                   </div>
-                  <p className="mt-1 truncate text-[11px] leading-5 text-[#66717B]">{loading ? "正在读取你的学习画像…" : profileSummary}</p>
+                  <p className="mt-1 truncate text-[11px] leading-5 text-[#66717B]">{loading ? "正在读取你的岗位能力画像…" : profileSummary}</p>
                 </div>
                 <Link to="/profile" className="group mt-3 inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#BBC8BC] bg-[#FFFEFA] px-4 text-[11px] font-bold text-[#315E83] transition-colors hover:bg-[#F5F7F2] sm:mt-0">
                   <MessageCircleMore className="size-3.5" />{data.profile ? "继续完善画像" : "开始建立画像"}<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -1649,7 +1649,7 @@ export function Home() {
                 ))}
               </div>
 
-              <Link to="/workspace" className="group mt-3 flex h-10 items-center justify-between rounded-xl border border-[#C9C2B4] bg-[#FFFEFA] px-4 text-xs font-bold text-[#244C66] transition-colors hover:bg-[#F1EDE4]">
+              <Link to="/competency" className="group mt-3 flex h-10 items-center justify-between rounded-xl border border-[#C9C2B4] bg-[#FFFEFA] px-4 text-xs font-bold text-[#244C66] transition-colors hover:bg-[#F1EDE4]">
                 让智能体生成一次完整学习内容
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
@@ -1728,10 +1728,10 @@ export function Home() {
             <article className="rounded-[24px] border border-[#CFC8B9] bg-[#F8F6F0] p-5 shadow-[0_9px_24px_rgba(24,35,45,.05)] sm:p-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <span className="text-[11px] font-bold tracking-[0.12em] text-[#6F8A69]">学习画像</span>
-                  <h2 className="mt-1 text-lg font-bold tracking-[-0.025em] text-[#18232D]">学习画像速记</h2>
+                  <span className="text-[11px] font-bold tracking-[0.12em] text-[#6F8A69]">岗位能力画像</span>
+                  <h2 className="mt-1 text-lg font-bold tracking-[-0.025em] text-[#18232D]">岗位能力画像速记</h2>
                 </div>
-                <Link to="/profile" className="grid size-9 place-items-center rounded-full border border-[#D7D1C4] bg-[#FFFEFA] text-[#244C66] transition-colors hover:bg-[#ECE8DE]" aria-label="打开学习画像"><UserRoundSearch className="size-4" /></Link>
+                <Link to="/profile" className="grid size-9 place-items-center rounded-full border border-[#D7D1C4] bg-[#FFFEFA] text-[#244C66] transition-colors hover:bg-[#ECE8DE]" aria-label="打开岗位能力画像"><UserRoundSearch className="size-4" /></Link>
               </div>
 
               {loading ? (
@@ -1797,7 +1797,7 @@ function LearningLoopPanel({
   const steps = [
     {
       number: "01",
-      title: "学习画像",
+      title: "岗位能力画像",
       detail: profileVersion ? `画像 v${profileVersion} 已参与决策` : "等待建立画像",
       to: "/profile",
       icon: UserRoundSearch,
@@ -1809,11 +1809,11 @@ function LearningLoopPanel({
       number: "02",
       title: "资源生成",
       detail: workspaceStatus === "running"
-        ? "七智能体正在协作"
+        ? "11 个核心 Agent 正在协作"
         : generationNeedsAttention
           ? generatedResourceCount ? `生成已中断 · 保留 ${generatedResourceCount} 类资源` : "生成中断，点击继续处理"
-          : generatedResourceCount ? `${generatedResourceCount} / 7 类资源已就绪` : "等待生成学习资源",
-      to: "/workspace",
+          : generatedResourceCount ? `${Math.min(generatedResourceCount, 3)} / 3 类核心训练资源已就绪` : "等待生成训练资源",
+      to: "/competency",
       icon: Sparkles,
       color: "#6F8A69",
       wash: "#E8EDE5",

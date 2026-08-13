@@ -94,7 +94,7 @@ export function TutorChat() {
               </section>
             ) : (
               <div className="rounded-[22px] border border-dashed border-[#C9C2B4] bg-[#F8F6F0] p-6 text-center text-xs leading-6 text-[#66717B] xl:flex-1">
-                建立学习画像后，这里会显示助教本轮回答所依据的目标、基础与偏好。
+                建立岗位能力画像后，这里会显示助教本轮回答所依据的目标、能力证据与偏好。
               </div>
             )}
           </aside>

@@ -13,6 +13,7 @@ from app.agents.doc_agent import DocAgent
 from app.agents.practice_guide_agent import PracticeGuideAgent
 from app.agents.quiz_agent import QuizAgent, generate_quiz_batch
 from app.agents.orchestrator import TrainingLoopOrchestrator, serialize_event
+from app.agents.planning_agents import DomainExpertAgent, LearningStrategyAgent, PlanArbiterAgent
 from app.agents.review_agents import EvidenceReviewAgent, PracticeReviewAgent, DifficultyReviewAgent
 from app.courses import get_course_by_id
 from app.db import async_session_maker
@@ -33,6 +34,8 @@ class GenerateRequest(BaseModel):
 def _build_orchestrator() -> TrainingLoopOrchestrator:
     return TrainingLoopOrchestrator(
         diagnosis_agent=DiagnosisAgent(),
+        planning_agents=[DomainExpertAgent(), LearningStrategyAgent()],
+        plan_arbiter=PlanArbiterAgent(),
         generators=[DocAgent(), PracticeGuideAgent(), QuizAgent()],
         reviewers=[EvidenceReviewAgent(), PracticeReviewAgent(), DifficultyReviewAgent()],
         arbiter=ArbiterAgent(),
@@ -54,11 +57,23 @@ async def generate(req: GenerateRequest, user: User = Depends(require_user)):
 
     # 加载画像
     profile_dims: dict = {}
+    previous_feedback: dict = {}
+    training_cycle = 1
     async with async_session_maker() as db:
         q = await db.execute(select(Profile).where(Profile.user_id == user.id))
         profile = q.scalar_one_or_none()
         if profile:
             profile_dims = profile.dims or {}
+        previous_runs = (await db.scalars(
+            select(TrainingRun)
+            .where(TrainingRun.user_id == user.id, TrainingRun.course_id == req.course_id)
+            .order_by(TrainingRun.updated_at.desc())
+            .limit(8)
+        )).all()
+        previous = next((item for item in previous_runs if item.feedback), None)
+        if previous:
+            previous_feedback = previous.feedback or {}
+            training_cycle = 1 + sum(1 for item in previous_runs if item.feedback)
 
     # 拉课程配置（registry 兜底默认机器学习）
     course_cfg = await get_course_by_id(req.course_id)
@@ -85,18 +100,22 @@ async def generate(req: GenerateRequest, user: User = Depends(require_user)):
         "course_name": course_cfg.name,
         "course_cfg": course_cfg,
         "profile": profile_dims,
+        "previous_feedback": previous_feedback,
+        "training_cycle": training_cycle,
         **role,
         "generation_round": 1,
-        "max_rework_rounds": 1,
     }
 
     async def gen():
         outputs: dict = {}
         result_data: dict = {}
+        failure_message = ""
         async for event in orchestrator.stream(initial_ctx):
             if event["event"] == "done":
                 result_data = event["data"]
                 outputs = result_data.get("outputs", {})
+            elif event["event"] == "error":
+                failure_message = str(event["data"].get("message") or "自动训练闭环执行失败")
             yield serialize_event(event)
 
         # 完成后保存完整审计记录；仅裁决发布的资源进入正式资源表。
@@ -104,8 +123,8 @@ async def generate(req: GenerateRequest, user: User = Depends(require_user)):
             async with async_session_maker() as db:
                 run = await db.get(TrainingRun, run_id)
                 if run:
-                    run.stage = result_data.get("stage", "manual_review")
-                    run.status = "published" if result_data.get("decision", {}).get("decision") == "publish" else "manual_review"
+                    run.stage = result_data.get("stage", "failed")
+                    run.status = "published" if result_data.get("decision", {}).get("decision") == "publish" else "failed"
                     run.generation_round = int(result_data.get("generation_round", 1))
                     run.diagnosis = result_data.get("diagnosis", {})
                     run.outputs = outputs
@@ -158,6 +177,19 @@ async def generate(req: GenerateRequest, user: User = Depends(require_user)):
                             agent_id=agent_id,
                             ai_generated=True,
                         ))
+                await db.commit()
+        elif failure_message:
+            async with async_session_maker() as db:
+                run = await db.get(TrainingRun, run_id)
+                if run:
+                    run.stage = "failed"
+                    run.status = "failed"
+                    run.generation_round = int(initial_ctx.get("generation_round", 1))
+                    run.decision = {
+                        "decision": "failed",
+                        "summary": failure_message,
+                        "published": False,
+                    }
                 await db.commit()
 
     # 长时间的模型生成可能暂时没有业务事件；更短的心跳能避免开发代理把 SSE 误判为断线。

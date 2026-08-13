@@ -84,6 +84,9 @@ const RESOURCE_DEFS: ResourceDefinition[] = [
 
 const AGENT_TONES: Record<string, { icon: LucideIcon; color: string; wash: string }> = {
   diagnosis: { icon: BrainCircuit, color: "#355C8A", wash: "#E7EDF3" },
+  domain_expert: { icon: Database, color: "#4C5F89", wash: "#E7EAF3" },
+  learning_strategy: { icon: UserRoundSearch, color: "#287F8D", wash: "#E2F0F1" },
+  plan_arbiter: { icon: Target, color: "#7555A5", wash: "#EEE8F6" },
   doc: { icon: FileText, color: "#315E83", wash: "#E8ECEE" },
   guide: { icon: Wrench, color: "#A05137", wash: "#F4E8E2" },
   mindmap: { icon: MindMapIcon, color: "#B85C3E", wash: "#F4E8E2" },
@@ -99,13 +102,16 @@ const AGENT_TONES: Record<string, { icon: LucideIcon; color: string; wash: strin
 
 const STANDBY_AGENTS: AgentState[] = [
   { meta: { id: "diagnosis", name: "学情诊断 Agent", icon: "", color: "sky", description: "定位岗位能力盲区与目标难度" }, status: "pending" },
+  { meta: { id: "domain_expert", name: "领域专家 Agent", icon: "", color: "indigo", description: "提出岗位专业覆盖与验收要求" }, status: "pending" },
+  { meta: { id: "learning_strategy", name: "教学策略 Agent", icon: "", color: "sky", description: "依据画像与时间预算控制训练负荷" }, status: "pending" },
+  { meta: { id: "plan_arbiter", name: "训练计划仲裁 Agent", icon: "", color: "violet", description: "解决分歧并形成个性化训练合同" }, status: "pending" },
   { meta: { id: "doc", name: "定制讲义生成 Agent", icon: "", color: "indigo", description: "生成带领域来源的岗位讲义" }, status: "pending" },
   { meta: { id: "guide", name: "实操指南生成 Agent", icon: "", color: "rose", description: "生成可执行、可验收的实操指南" }, status: "pending" },
   { meta: { id: "quiz", name: "分阶测试生成 Agent", icon: "", color: "emerald", description: "生成匹配学情的分阶测试" }, status: "pending" },
   { meta: { id: "evidence_review", name: "事实与来源审核 Agent", icon: "", color: "indigo", description: "核对专业主张与来源引用" }, status: "pending" },
   { meta: { id: "practice_review", name: "实操规范审核 Agent", icon: "", color: "rose", description: "检查步骤、异常和安全边界" }, status: "pending" },
   { meta: { id: "difficulty_review", name: "难度与覆盖审核 Agent", icon: "", color: "emerald", description: "校准难度与核心能力覆盖" }, status: "pending" },
-  { meta: { id: "arbiter", name: "总裁决 Agent", icon: "", color: "amber", description: "决定发布、返工或人工复核" }, status: "pending" },
+  { meta: { id: "arbiter", name: "总裁决 Agent", icon: "", color: "amber", description: "决定发布或定向返工" }, status: "pending" },
 ]
 
 const CORE_RESOURCE_IDS: ResourceKey[] = ["doc", "guide", "quiz"]
@@ -267,7 +273,7 @@ export function Workspace() {
     }),
     {
       label: "裁决门禁",
-      value: decision ? decision.decision === "publish" ? `批准发布 · ${decision.quality_score} 分` : decision.decision === "rework" ? "已退回返工" : "转人工复核" : "等待裁决",
+      value: decision ? decision.decision === "publish" ? `批准发布 · ${decision.quality_score} 分` : "已退回自动返工" : "等待裁决",
       state: decision ? decision.decision === "publish" ? "pass" : "warn" : isRunning ? "working" : "idle",
     },
   ]
@@ -301,7 +307,7 @@ export function Workspace() {
               <h1 className="text-balance text-[28px] font-bold leading-[1.18] tracking-[-0.045em] text-[#18232D] sm:text-[36px]">
                 围绕一个目标岗位，<span className="text-[#315E83]">跑通可审计的训练闭环。</span>
               </h1>
-              <p className="mt-2 text-sm leading-6 text-[#66717B]">8 个核心 Agent 完成学情诊断、三类资源生成、三项交叉审核与总裁决；不达标自动返工，通过后才发布。</p>
+              <p className="mt-2 text-sm leading-6 text-[#66717B]">11 个核心 Agent 完成画像诊断、训练计划协商、三类资源生成、三项交叉审核与总裁决；不达标自动返工，通过后才发布。</p>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -309,7 +315,7 @@ export function Workspace() {
                 <Database className="size-4" />{course ? `${trainingTarget} · 岗位知识库` : selectedTargetRole ? `${selectedTargetRole.name} · 知识库待接入` : "选择目标岗位"}<ChevronRight className="size-3.5" />
               </Link>
               <Link to="/profile" className="inline-flex h-10 items-center gap-2 rounded-full border border-[#C9C2B4] bg-[#F7F2E7] px-4 text-xs font-semibold text-[#6A5941] hover:bg-[#EEE8DB]">
-                <UserRoundSearch className="size-4" />{profile ? `画像 v${profile.version}` : "建立学习画像"}<ChevronRight className="size-3.5" />
+                <UserRoundSearch className="size-4" />{profile ? `岗位画像 v${profile.version}` : "建立岗位能力画像"}<ChevronRight className="size-3.5" />
               </Link>
             </div>
           </motion.header>
@@ -519,7 +525,7 @@ export function Workspace() {
 
           <footer className="mt-5 flex flex-col gap-2 border-t border-[#CFC8B9] px-1 pt-4 text-[11px] text-[#747C7D] sm:flex-row sm:items-center sm:justify-between">
             <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-[#6F8A69]" />AI 生成内容保留来源、过程与异常状态，便于复核</span>
-            <span>8 个核心 Agent · 诊断—生成—审核—裁决—发布—反馈 · {status === "done" ? released ? "本轮已裁决发布" : "本轮等待人工复核" : status === "interrupted" ? "中断前证据已保留" : "运行过程自动留痕"}</span>
+            <span>11 个核心 Agent · 诊断—协商—生成—审核—裁决—反馈 · {status === "done" ? released ? "本轮已裁决发布" : "本轮自动返工未完成" : status === "interrupted" ? "中断前证据已保留" : "运行过程自动留痕"}</span>
           </footer>
         </main>
       </div>
@@ -612,19 +618,20 @@ function AgentBoard({
 }) {
   const visibleAgents = agents.length ? agents : STANDBY_AGENTS
   const diagnosisAgent = visibleAgents.find((agent) => agent.meta.id === "diagnosis") || STANDBY_AGENTS[0]
+  const planningAgents = visibleAgents.filter((agent) => ["domain_expert", "learning_strategy", "plan_arbiter"].includes(agent.meta.id))
   const generators = visibleAgents.filter((agent) => ["doc", "guide", "quiz"].includes(agent.meta.id))
   const reviewerAgents = visibleAgents.filter((agent) => ["evidence_review", "practice_review", "difficulty_review"].includes(agent.meta.id))
-  const arbiter = visibleAgents.find((agent) => agent.meta.id === "arbiter") || STANDBY_AGENTS[7]
+  const arbiter = visibleAgents.find((agent) => agent.meta.id === "arbiter") || STANDBY_AGENTS[10]
   const activeCount = visibleAgents.filter((agent) => agent.status === "running" || agent.status === "streaming").length
   const doneCount = agents.filter((agent) => agent.status === "done").length
   const errorCount = agents.filter((agent) => agent.status === "error").length
   const settledCount = doneCount + errorCount
   const latestLogs = logs.slice(-3)
   const stages = [
-    ["diagnosis", "诊断"], ["generation", "生成"], ["review", "审核"],
+    ["diagnosis", "诊断"], ["planning", "协商"], ["generation", "生成"], ["review", "审核"],
     ["decision", "裁决"], ["published", "发布"], ["feedback_updated", "反馈更新"],
   ] as const
-  const normalizedStage = stage === "retrieval" ? "diagnosis" : stage === "rework" ? "generation" : stage === "publishing" ? "published" : stage === "manual_review" ? "decision" : stage
+  const normalizedStage = stage === "retrieval" ? "diagnosis" : stage === "plan_decision" ? "planning" : stage === "rework" ? "generation" : stage === "publishing" ? "published" : stage
   const activeStageIndex = Math.max(0, stages.findIndex(([key]) => key === normalizedStage))
 
   const statusCopy = status === "running"
@@ -646,9 +653,9 @@ function AgentBoard({
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <span className="text-[11px] font-bold tracking-[0.1em] text-[#6F8A69]">02 · 可验证的八智能体闭环</span>
+          <span className="text-[11px] font-bold tracking-[0.1em] text-[#6F8A69]">02 · 可验证的多智能体协同闭环</span>
           <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#18232D]">从诊断到裁决，每一步都有状态和证据</h2>
-          <p className="mt-1 text-xs leading-5 text-[#66717B]">三生成与三审核职责隔离，总裁决可退回指定资源；当前第 {generationRound} 轮。</p>
+          <p className="mt-1 text-xs leading-5 text-[#66717B]">专业覆盖与学习负荷先协商，生成与审核职责隔离，总裁决可退回指定资源；当前第 {generationRound} 轮。</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-1.5 text-[11px] font-bold text-[#59636B]" aria-live="polite">
@@ -685,17 +692,19 @@ function AgentBoard({
           </div>
         </div>
         <div className="flex justify-center"><ChevronDown className="size-4 text-[#8B867D]" /></div>
+        <AgentGroup title="02–04 · 训练计划提案、博弈与仲裁" agents={planningAgents} reduceMotion={reduceMotion} />
+        <div className="flex justify-center"><ChevronDown className="size-4 text-[#8B867D]" /></div>
         <div className="grid items-stretch gap-2 lg:grid-cols-[minmax(0,1fr)_22px_minmax(0,1fr)]">
-          <AgentGroup title="02–04 · 三类资源并行生成" agents={generators} reduceMotion={reduceMotion} />
+          <AgentGroup title="05–07 · 三类资源并行生成" agents={generators} reduceMotion={reduceMotion} />
           <FlowArrow />
-          <AgentGroup title="05–07 · 三项独立交叉审核" agents={reviewerAgents} reduceMotion={reduceMotion} reviews={reviews} />
+          <AgentGroup title="08–10 · 三项独立交叉审核" agents={reviewerAgents} reduceMotion={reduceMotion} reviews={reviews} />
         </div>
         <div className="flex justify-center"><ChevronDown className="size-4 text-[#8B867D]" /></div>
         <div className="rounded-2xl border border-[#D8C9A8] bg-[#FFFEFA] p-3">
-          <div className="mb-2 text-[10px] font-bold tracking-[0.08em] text-[#7A817F]">08 · 总裁决</div>
+          <div className="mb-2 text-[10px] font-bold tracking-[0.08em] text-[#7A817F]">11 · 资源发布总裁决</div>
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(220px,.85fr)]">
             <AgentNode agent={arbiter} reduceMotion={reduceMotion} prominent />
-            {decision ? <div className={`rounded-xl px-3 py-2.5 text-[10px] font-bold leading-4 ${decision.decision === "publish" ? "bg-[#E8EDE5] text-[#557052]" : "bg-[#F4E8E2] text-[#A05137]"}`}>{decision.decision === "publish" ? "批准发布" : decision.decision === "rework" ? "退回返工" : "人工复核"}<br />综合质量 {decision.quality_score} 分 · 第 {decision.generation_round} 轮裁决</div> : <div className="rounded-xl bg-[#F3F0E9] px-3 py-2.5 text-[10px] leading-4 text-[#8A8172]">汇总三项审核证据后，决定发布、返工或人工复核。</div>}
+            {decision ? <div className={`rounded-xl px-3 py-2.5 text-[10px] font-bold leading-4 ${decision.decision === "publish" ? "bg-[#E8EDE5] text-[#557052]" : "bg-[#F4E8E2] text-[#A05137]"}`}>{decision.decision === "publish" ? "批准发布" : "退回自动返工"}<br />综合质量 {decision.quality_score} 分 · 第 {decision.generation_round} 轮裁决</div> : <div className="rounded-xl bg-[#F3F0E9] px-3 py-2.5 text-[10px] leading-4 text-[#8A8172]">汇总三项审核证据后，决定发布或定向返工。</div>}
           </div>
         </div>
       </div>

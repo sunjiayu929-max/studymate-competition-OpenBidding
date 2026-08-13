@@ -25,7 +25,6 @@ import {
   PlayCircle,
   Sparkles,
   ShieldCheck,
-  WandSparkles,
   X,
 } from "lucide-react"
 
@@ -44,7 +43,7 @@ import { JUDGE_DEMO_EVENT } from "@/components/JudgeDemoMode"
 const SIDEBAR_KEY = "sm:app-shell:collapsed"
 const GROUP_KEY = "sm:app-shell:groups"
 const SHOWCASE_BLOCKED_PATHS = [
-  "/workspace", "/tutor", "/rag", "/knowledge", "/ppt",
+  "/workspace", "/competency", "/tutor", "/rag", "/knowledge", "/ppt",
   "/resources", "/report", "/quiz", "/concept", "/career", "/notes",
 ]
 
@@ -62,8 +61,7 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
     icon: GraduationCap,
     items: [
       { label: "岗位空间", to: "/courses", icon: Library },
-      { label: "胜任力训练", to: "/competency", icon: ShieldCheck },
-      { label: "学习画像", to: "/profile", icon: GraduationCap },
+      { label: "岗位能力画像", to: "/profile", icon: GraduationCap },
     ],
   },
   {
@@ -267,13 +265,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         <nav className="nav-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3" aria-label="主功能">
           <ShellLink item={{ label: "今日学习", to: "/", icon: Home, exact: true }} compact={effectiveCollapsed} pathname={pathname} />
           <ShellLink
-            item={{ label: "学习资源工坊", to: "/workspace", icon: WandSparkles, exact: true }}
+            item={{ label: "岗位训练中心", to: "/competency", icon: ShieldCheck, exact: true }}
             compact={effectiveCollapsed}
             pathname={pathname}
             trailing={!effectiveCollapsed ? (
               <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-[#F4ECD8] px-1.5 py-0.5 text-[9px] font-extrabold text-[#8E6925]">
                 {workspace.status === "running" && <span className="size-1.5 animate-pulse rounded-full bg-[#B1842C]" />}
-                {workspace.status === "running" ? `${readyResources}/3` : "8 Agents"}
+                {workspace.status === "running" ? `${readyResources}/3` : "11 Agents"}
               </span>
             ) : undefined}
           />

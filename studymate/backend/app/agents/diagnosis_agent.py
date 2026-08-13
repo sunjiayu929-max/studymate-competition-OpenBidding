@@ -53,6 +53,11 @@ class DiagnosisAgent(AgentBase):
         target_role = context.get("target_role", "领域应用工程师")
         topic = context.get("topic", "岗位核心任务")
         primary_goal = str(goals.get("primary") or "").strip()
+        previous_feedback = context.get("previous_feedback") or {}
+        difficulty_delta = int((previous_feedback.get("profile_update") or {}).get("suggested_difficulty_delta") or 0)
+        if difficulty_delta:
+            target_difficulty = max(1, min(4, target_difficulty + difficulty_delta))
+            evidence_confidence = min(0.98, evidence_confidence + float((previous_feedback.get("profile_update") or {}).get("confidence_delta") or 0))
 
         output = {
             "type": "diagnosis",
@@ -61,6 +66,8 @@ class DiagnosisAgent(AgentBase):
             "target_difficulty": target_difficulty,
             "knowledge_score": average,
             "evidence_confidence": evidence_confidence,
+            "training_cycle": int(context.get("training_cycle") or 1),
+            "adaptation_reason": previous_feedback.get("message") or "首轮依据画像建立能力基线",
             "knowledge_gaps": knowledge_gaps,
             "training_goal": primary_goal or f"围绕“{topic}”形成可验证的岗位任务能力",
             "training_contract": {

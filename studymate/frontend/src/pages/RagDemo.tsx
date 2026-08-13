@@ -96,7 +96,7 @@ export function RagDemo() {
               <p className="mt-2 text-sm leading-6 text-[#66717B]">{targetRole ? "岗位选择已保存。为确保检索结果与岗位内容呼应，专属资料接入前不会回退到其他知识库。" : "目标岗位决定检索边界、引用来源和后续测验归档。"}</p>
               <div className="mt-5 flex flex-wrap justify-center gap-2">
                 <Link to="/courses?returnTo=%2Frag" className="inline-flex h-10 items-center rounded-xl bg-[#244C66] px-4 text-xs font-bold text-white hover:bg-[#193B50]">{targetRole ? "更换已开放岗位" : "选择目标岗位"}</Link>
-                {targetRole && <Link to="/workspace" className="inline-flex h-10 items-center rounded-xl border border-[#D7D1C4] bg-[#F8F6F0] px-4 text-xs font-bold text-[#59636B] hover:bg-[#EFEAE0]">查看岗位状态</Link>}
+                {targetRole && <Link to="/competency" className="inline-flex h-10 items-center rounded-xl border border-[#D7D1C4] bg-[#F8F6F0] px-4 text-xs font-bold text-[#59636B] hover:bg-[#EFEAE0]">查看岗位训练状态</Link>}
               </div>
             </div>
           </section>

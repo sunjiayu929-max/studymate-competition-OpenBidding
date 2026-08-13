@@ -87,9 +87,9 @@ const STEPS = [
     icon: ShieldCheck,
   },
   {
-    path: "/workspace",
-    label: "学习资源工坊",
-    title: "观察 8 个核心 Agent 完成闭环",
+    path: "/competency",
+    label: "岗位训练中心",
+    title: "观察 11 个核心 Agent 协同完成闭环",
     detail: "岗位检索先行，诊断、三类生成、三项审核与总裁决围绕同一岗位任务协作，并在通过后发布。",
     action: "使用已有成果，避免演示时触发外部付费模型。",
     time: "40 秒",
