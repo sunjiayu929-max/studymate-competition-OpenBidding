@@ -31,12 +31,15 @@ interface ProfileDims {
   goals: { primary?: string; deadline?: string; target_topics?: string[] }
   weak_points: { topics?: string[]; error_types?: string[] }
   pace: { hours_per_week?: number; intensity?: string }
+  learner_background: { education?: string; major?: string; practice_status?: "unknown" | "none" | "has" }
 }
 
 interface ProfileResp {
   user_id: number
   version: number
   dims: ProfileDims
+  intake_complete: boolean
+  missing_fields: string[]
 }
 
 type ProfileNotice = { tone: "success" | "info" | "warning" | "error"; message: string }
@@ -49,12 +52,10 @@ export function ProfileChat() {
   const targetRole = useTargetRole()
   const USER_ID = user?.user_id ?? 0
   const [profile, setProfile] = useState<ProfileResp | null>(null)
-  const [messages, setMessages] = useState<Msg[]>([
-    {
-      role: "assistant",
-      content: "你好！我是 StudyMate 岗位能力画像助手。我会结合目标岗位，通过动态追问区分学习意愿与真实能力证据。先告诉我：**你的专业、实践经历和目标岗位是什么？**",
-    },
-  ])
+  const [messages, setMessages] = useState<Msg[]>(() => [{
+    role: "assistant",
+    content: buildOpeningMessage(targetRole?.name),
+  }])
   const [input, setInput] = useState("")
   const [streaming, setStreaming] = useState("")
   const streamingRef = useRef("")  // 镜像 streaming，避开 StrictMode 在 setState updater 里 double-invoke 副作用
@@ -156,12 +157,17 @@ export function ProfileChat() {
     if (!USER_ID) return
     let active = true
     apiGet<ProfileResp>(`/profile/${USER_ID}`).then((value) => {
-      if (active) setProfile(value)
+      if (active) {
+        setProfile(value)
+        setMessages((current) => current.length === 1
+          ? [{ role: "assistant", content: buildOpeningMessage(targetRole?.name, value.missing_fields) }]
+          : current)
+      }
     })
     return () => {
       active = false
     }
-  }, [USER_ID])
+  }, [USER_ID, targetRole?.name])
 
   useEffect(() => {
     const scroller = scrollRef.current
@@ -189,9 +195,17 @@ export function ProfileChat() {
             changed?: boolean
             changed_fields?: string[]
             warning?: string | null
+            intake_complete?: boolean
+            missing_fields?: string[]
           }
           if (data.dims) {
-            setProfile((p) => (p ? { ...p, version: data.version ?? p.version, dims: data.dims! } : p))
+            setProfile((p) => (p ? {
+              ...p,
+              version: data.version ?? p.version,
+              dims: data.dims!,
+              intake_complete: data.intake_complete ?? p.intake_complete,
+              missing_fields: data.missing_fields ?? p.missing_fields,
+            } : p))
           }
           if (data.patch?.reasoning) {
             setLastReasoning(data.patch.reasoning)
@@ -253,13 +267,15 @@ export function ProfileChat() {
       history: messages.slice(-10).map((m) => ({ role: m.role, content: m.content })),
       images: images.length ? images : undefined,
       target_role: targetRole?.name,
+      target_role_id: targetRole?.id,
+      course_id: course?.id,
       core_competencies: targetRole?.skills ?? [],
     })
   }
 
   const handleReset = async () => {
     await apiPost(`/profile/${USER_ID}/reset`)
-    setMessages([messages[0]])
+    setMessages([{ role: "assistant", content: buildOpeningMessage(targetRole?.name) }])
     setStreaming("")
     setLastReasoning("")
     setProfileNotice(null)
@@ -270,16 +286,11 @@ export function ProfileChat() {
   const weakTopics = profile?.dims.weak_points.topics?.filter(Boolean) || []
   const targetTopics = profile?.dims.goals.target_topics?.filter(Boolean) || []
   const hoursPerWeek = profile?.dims.pace.hours_per_week || 0
-  const hasProfileContent = Boolean(
-    profile?.dims.goals.primary?.trim()
-    || weakTopics.length
-    || targetTopics.length
-    || hoursPerWeek,
-  )
+  const hasProfileContent = Boolean(profile?.intake_complete)
   const quickPrompts = targetRole ? [
-    `我的目标是${targetRole.name}，目前还没有相关项目经验。`,
-    `我每周能投入 6 小时，希望重点训练${targetRole.skills.slice(0, 2).join("和")}。`,
-    "我做过相关项目，主要负责实现与调试，希望用岗位场景验证真实水平。",
+    "我是计算机专业本科生，编程基础较好，数学和岗位领域知识一般。",
+    "我更容易通过图示和动手实践理解，希望多提供文档、代码实操和小测。",
+    `我目前没有相关实习，每周能投入 6 小时，希望重点训练${targetRole.skills.slice(0, 2).join("和")}。`,
   ] : [
     "我还没有确定目标岗位，希望先梳理自己的专业与实践经历。",
     "我更喜欢边看案例边动手实践，每周能投入 6 小时。",
@@ -476,6 +487,44 @@ export function ProfileChat() {
       </div>
     </div>
   )
+}
+
+function buildOpeningMessage(roleName?: string, missingFields?: string[]): string {
+  const remaining = (missingFields ?? [
+    "学历与专业背景",
+    "知识基础与薄弱点",
+    "认知风格",
+    "资源偏好",
+    "就业技能与实践经历",
+    "学习目标与时间安排",
+  ])
+    .filter((field) => !(roleName && field === "目标岗位"))
+  if (!remaining.length) {
+    return `你的${roleName ? `“${roleName}”` : "岗位"}画像已完整覆盖知识、认知、资源与就业能力，可以进入岗位训练中心。`
+  }
+  const roleText = roleName ? `目标岗位已确定为 **${roleName}**。` : ""
+  const pending = new Set(remaining)
+  let question = "请先说明你的目标岗位。"
+  if (pending.has("学历与专业背景") || pending.has("知识基础与薄弱点")) {
+    question = pending.has("学历与专业背景") && pending.has("知识基础与薄弱点")
+      ? "先介绍一下你的学历和专业，以及与岗位相关的课程或技术基础：哪些比较熟悉，哪些较薄弱？"
+      : pending.has("学历与专业背景")
+        ? "请补充你的学历、年级或专业背景。"
+        : "你与岗位相关的课程或技术基础怎样？请说说比较熟悉和较薄弱的内容。"
+  } else if (pending.has("认知风格") || pending.has("资源偏好")) {
+    question = pending.has("认知风格") && pending.has("资源偏好")
+      ? "学习新内容时，你更容易通过图示、阅读、讲解还是动手实践理解？希望训练中多提供文档、思维导图、视频、代码实操还是小测？"
+      : pending.has("认知风格")
+        ? "学习新内容时，你更容易通过图示、阅读、讲解还是动手实践理解？"
+        : "训练资源方面，你更希望多提供文档、思维导图、视频、代码实操还是小测？"
+  } else if (pending.has("就业技能与实践经历") || pending.has("学习目标与时间安排")) {
+    question = pending.has("就业技能与实践经历") && pending.has("学习目标与时间安排")
+      ? "最后说说相关项目或实习中用过的技术、负责内容和成果（没有也可说明），以及每周可投入的时间和期望完成时间。"
+      : pending.has("就业技能与实践经历")
+        ? "请说说相关项目或实习中用过的技术、负责内容和成果；没有也可以直接说明。"
+        : "你每周可以投入多少学习时间？如果有期望完成时间也可以一起说明。"
+  }
+  return `${roleText}${question}画像会分成少量主题完成，不会重复询问。`
 }
 
 function ProfileFact({ icon: Icon, label, value, tone, compact = false }: { icon: LucideIcon; label: string; value: string; tone: "blue" | "red" | "gold"; compact?: boolean }) {

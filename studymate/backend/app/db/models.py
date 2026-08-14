@@ -333,6 +333,27 @@ class QuizSessionItem(Base, TimestampMixin):
     error_tags: Mapped[list] = mapped_column(JSON, default=list)  # 错题能力标签，供展示与后续自适应出题
 
 
+class TheoryAssessment(Base, TimestampMixin):
+    """用户在进入新目标岗位训练中心时完成的一次理论基线测评。
+
+    记录按 user_id + role_id 隔离；items 保留知识库来源和标准答案，接口在提交前会隐藏答案。
+    status: ready（待作答）/ submitted（已提交）/ error（组卷失败）。
+    """
+    __tablename__ = "theory_assessments"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    role_id: Mapped[str] = mapped_column(String(128), index=True)
+    role_name: Mapped[str] = mapped_column(String(128))
+    course_id: Mapped[int | None] = mapped_column(ForeignKey("courses.id"), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(16), default="ready", index=True)
+    items: Mapped[list] = mapped_column(JSON, default=list)
+    answers: Mapped[dict] = mapped_column(JSON, default=dict)
+    score: Mapped[float] = mapped_column(Float, default=0.0)
+    result: Mapped[dict] = mapped_column(JSON, default=dict)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class TestCase(Base, TimestampMixin):
     """挑战杯交付物：典型测试 case + 准确性论证。
 

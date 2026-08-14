@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 
 import { AppTopbar } from "@/components/AppTopbar"
-import { apiGet } from "@/lib/api"
+import { apiGet, apiPost } from "@/lib/api"
 import { careerDomains, type CareerDomain, type CareerRole, type DomainId } from "@/lib/domainCareerCatalog"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { setCurrentCourse, type CourseInfo } from "@/store/course"
@@ -72,6 +72,12 @@ export function Courses() {
       if (!fdeCourse) throw new Error("FDE 知识库尚未加载")
       setTargetRole({ domainId: domain.id, roleId: role.id })
       setCurrentCourse(fdeCourse)
+      void apiPost("/theory-assessments/prepare", {
+        role_id: role.id,
+        role_name: role.name,
+        course_id: fdeCourse.id,
+        competencies: role.skills,
+      }).catch(() => undefined)
       if (roleChanged) clearWorkspaceState()
       navigate(returnTo, { replace: true })
     } catch {

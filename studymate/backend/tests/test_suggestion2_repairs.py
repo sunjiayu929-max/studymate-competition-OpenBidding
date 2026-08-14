@@ -28,6 +28,9 @@ from app.agents.eval_agent import apply_profile_delta, sanitize_profile_delta
 from app.agents.profile_agent import (
     build_profile_completion_guidance,
     build_profile_evidence_text,
+    next_profile_question,
+    predicted_profile_missing_fields,
+    profile_missing_fields,
     extract_profile_patch,
     merge_patch,
     sanitize_profile_patch,
@@ -108,15 +111,74 @@ class ProfilePatchTests(unittest.TestCase):
         self.assertEqual(patch["employment_skills"]["engineering"], 3)
         self.assertIsNone(warning)
 
-    def test_completion_guidance_distinguishes_unassessed_employment(self):
+    def test_completion_guidance_requires_all_descriptive_dimensions(self):
         missing = build_profile_completion_guidance(ProfileDims())
-        self.assertIn("尚无可信实践证据", missing)
-        self.assertIn("只追问一个", missing)
+        self.assertIn("学历与专业背景", missing)
+        self.assertIn("知识基础与薄弱点", missing)
+        self.assertIn("认知风格", missing)
+        self.assertIn("资源偏好", missing)
+        self.assertIn("就业技能与实践经历", missing)
+        self.assertIn("学习目标与时间安排", missing)
 
-        with_evidence = ProfileDims()
-        with_evidence.employment_skills.programming = 2
-        ready = build_profile_completion_guidance(with_evidence)
-        self.assertIn("至少一项可信实践证据", ready)
+        ready_profile = ProfileDims()
+        ready_profile.goals.primary = "应聘 FDE"
+        ready_profile.learner_background.education = "本科大三"
+        ready_profile.learner_background.practice_status = "none"
+        ready_profile.pace.hours_per_week = 6
+        ready_profile.profile_coverage.knowledge_base = True
+        ready_profile.profile_coverage.cognitive_style = True
+        ready_profile.profile_coverage.resource_preference = True
+        ready_profile.profile_coverage.employment_skills = True
+        self.assertEqual(profile_missing_fields(ready_profile), [])
+        ready = build_profile_completion_guidance(ready_profile)
+        self.assertIn("禁止继续提问", ready)
+
+    def test_one_comprehensive_answer_can_cover_all_remaining_dimensions(self):
+        missing = predicted_profile_missing_fields(
+            ProfileDims(),
+            [{"role": "assistant", "content": "请完整介绍你的学习背景和偏好？"}],
+            (
+                "我是计算机专业本科生，Python 比较熟悉，数学基础一般；学习时更喜欢图示和动手实践理解，"
+                "希望多提供文档、代码实操和小测。目前没有相关项目经历，每周可以投入 6 小时。"
+            ),
+            "前线部署工程师（FDE）",
+        )
+        self.assertEqual(missing, [])
+
+    def test_questions_are_grouped_into_three_topics_instead_of_listing_every_field(self):
+        first = next_profile_question(profile_missing_fields(ProfileDims(), "FDE"))
+        self.assertIn("学历", first)
+        self.assertIn("技术基础", first)
+        self.assertNotIn("资源", first)
+        self.assertNotIn("实习", first)
+
+        profile = ProfileDims()
+        profile.learner_background.education = "本科"
+        profile.profile_coverage.knowledge_base = True
+        second = next_profile_question(profile_missing_fields(profile, "FDE"))
+        self.assertIn("图示", second)
+        self.assertIn("文档", second)
+        self.assertNotIn("项目", second)
+
+    def test_sanitizer_persists_neutral_dimension_coverage(self):
+        patch, warning = sanitize_profile_patch(
+            {
+                "knowledge_base": {"programming": 3},
+                "cognitive_style": {"visual": 3, "hands_on": 3},
+                "preference": {"document": 3, "quiz": 3},
+                "profile_coverage": {
+                    "knowledge_base": True,
+                    "cognitive_style": True,
+                    "resource_preference": True,
+                },
+            },
+            ProfileDims(),
+            "我的编程基础一般，各种理解方式都可以，资源形式也都可以。",
+        )
+        self.assertIsNone(warning)
+        self.assertTrue(patch["profile_coverage"]["knowledge_base"])
+        self.assertTrue(patch["profile_coverage"]["cognitive_style"])
+        self.assertTrue(patch["profile_coverage"]["resource_preference"])
 
 
 class EvalDeltaTests(unittest.TestCase):

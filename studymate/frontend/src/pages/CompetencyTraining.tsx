@@ -33,6 +33,7 @@ import {
 
 import { AppTopbar } from "@/components/AppTopbar"
 import { AgentCollaborationFlow } from "@/components/AgentCollaborationFlow"
+import { TheoryAssessmentModal, type TheoryAssessment, type TheoryGateState } from "@/components/TheoryAssessmentModal"
 import { apiGet } from "@/lib/api"
 import { buildRoleCompetencyMap, type CompetencyLevel, type RoleCompetencyMap, type RoleCompetencyNode } from "@/lib/roleCompetencyMap"
 import { useTrackPage } from "@/lib/useTrackPage"
@@ -50,6 +51,16 @@ interface ProfileDims {
   pace: { hours_per_week: number; intensity: string }
   preference: Record<string, number>
   employment_skills: Record<string, number>
+  theory_assessments: Record<string, {
+    assessment_id: number
+    role_id: string
+    role_name: string
+    score: number
+    knowledge_level: string
+    competency_scores: Record<string, number>
+    weak_topics: string[]
+    completed_at: string
+  }>
 }
 
 interface ProfileResponse {
@@ -57,6 +68,8 @@ interface ProfileResponse {
   version: number
   dims: ProfileDims
   updated_at: string | null
+  intake_complete: boolean
+  missing_fields: string[]
 }
 
 const SKILL_LABELS: Record<string, string> = {
@@ -113,6 +126,8 @@ export function CompetencyTraining() {
   const [mapMode, setMapMode] = useState<"tree" | "route">("tree")
   const [selectedCapabilityId, setSelectedCapabilityId] = useState("")
   const [capabilityEvidence, setCapabilityEvidence] = useState<Record<string, CapabilityEvidence>>({})
+  const [theoryGate, setTheoryGate] = useState<TheoryGateState>({ loading: false, completed: false, required: false, assessment: null, error: "" })
+  const [theoryPromptSignal, setTheoryPromptSignal] = useState(0)
   const capabilityMap = useMemo(() => role ? buildRoleCompetencyMap(role) : null, [role])
 
   useEffect(() => {
@@ -176,13 +191,16 @@ export function CompetencyTraining() {
     + (employmentEvidence.length ? 20 : 0)
     + (profile.version > 1 ? 10 : 0)
   ) : 0
-  const profileReady = profileScore >= 60
+  const profileReady = Boolean(profile?.intake_complete)
+  const theoryCompleted = theoryGate.completed && theoryGate.assessment?.role_id === role.id
+  const diagnosisReady = profileReady && theoryCompleted
+  const theoryEvidence = profile?.dims.theory_assessments?.[role.id]
   const plan = workspace.outputs.training_plan
   const released = workspace.decision?.decision === "publish"
   const attempts = Object.values(workspace.quizAttempts)
   const correctCount = attempts.filter((item) => item.is_correct).length
   const resourceCount = (["doc", "guide", "quiz"] as ResourceId[]).filter((id) => Boolean(workspace.outputs[id])).length
-  const completedSteps = [Boolean(role), profileReady, Boolean(plan), released, Boolean(workspace.feedback)].filter(Boolean).length
+  const completedSteps = [Boolean(role), diagnosisReady, Boolean(plan), released, Boolean(workspace.feedback)].filter(Boolean).length
   const agentDone = workspace.agents.filter((agent) => agent.status === "done").length
   const agentProgress = workspace.agents.length ? Math.round(agentDone / workspace.agents.length * 100) : 0
   const cycle = plan?.cycle ?? workspace.diagnosis?.training_cycle ?? 1
@@ -200,6 +218,10 @@ export function CompetencyTraining() {
 
   const startRound = () => {
     if (!user?.user_id || !course || workspace.status === "running") return
+    if (!theoryCompleted) {
+      setTheoryPromptSignal((value) => value + 1)
+      return
+    }
     void workspaceStore.start(nextTopic, user.user_id, course.id, course.name)
   }
 
@@ -220,6 +242,21 @@ export function CompetencyTraining() {
       <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
         <AppTopbar current="courses" appearance="paper" labelOverride="岗位训练中心" groupOverride="岗位胜任力闭环" selectionLabel={role.name} />
 
+        {user?.user_id && course && <TheoryAssessmentModal
+          enabled={profileReady}
+          userId={user.user_id}
+          roleId={role.id}
+          roleName={role.name}
+          courseId={course.id}
+          competencies={capabilityMap.nodes.map((node) => node.name)}
+          reopenSignal={theoryPromptSignal}
+          onGateChange={setTheoryGate}
+          onCompleted={(assessment: TheoryAssessment) => {
+            setTheoryGate({ loading: false, completed: true, required: false, assessment, error: "" })
+            void apiGet<ProfileResponse>(`/profile/${user.user_id}`).then(setProfile).catch(() => undefined)
+          }}
+        />}
+
         <section className="relative mt-4 overflow-hidden rounded-[30px] border border-[#C9D9ED] bg-[#122C4D] px-5 py-6 text-white shadow-[0_24px_64px_rgba(32,73,130,.18)] sm:px-7 sm:py-8 lg:px-10">
           <div className="pointer-events-none absolute -right-20 -top-28 size-80 rounded-full bg-[#7654DC]/25 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-32 left-1/3 size-80 rounded-full bg-[#16A6A1]/20 blur-3xl" />
@@ -234,6 +271,8 @@ export function CompetencyTraining() {
               <div className="mt-6 flex flex-wrap gap-3">
                 {!profileReady ? (
                   <Link to="/profile" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69] shadow-[0_10px_26px_rgba(0,0,0,.15)] hover:bg-[#F2F7FF]"><UserRoundSearch className="size-4" />完善岗位画像<ArrowRight className="size-4" /></Link>
+                ) : !theoryCompleted ? (
+                  <button type="button" onClick={() => setTheoryPromptSignal((value) => value + 1)} disabled={!course || theoryGate.loading} className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69] shadow-[0_10px_26px_rgba(0,0,0,.15)] disabled:cursor-not-allowed disabled:opacity-50">{theoryGate.loading ? <Loader2 className="size-4 animate-spin" /> : <BookOpenCheck className="size-4" />}{theoryGate.loading ? "正在组织岗位试卷" : "完成理论基线测评"}</button>
                 ) : workspace.status === "running" ? (
                   <a href="#agent-collaboration" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69]"><Loader2 className="size-4 animate-spin" />查看 Agent 实时协作</a>
                 ) : workspace.feedback ? (
@@ -263,8 +302,8 @@ export function CompetencyTraining() {
         <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-4 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-5">
           <div className="grid gap-2 md:grid-cols-5">
             <FlowStep index="01" label="选择岗位" detail={role.name} status="done" />
-            <FlowStep index="02" label="画像诊断" detail={profileReady ? `完整度 ${profileScore}%` : "等待补充证据"} status={profileReady ? "done" : "active"} />
-            <FlowStep index="03" label="协同决策" detail={plan ? `第 ${plan.cycle} 轮计划已形成` : workspace.status === "running" ? "Agent 协商中" : "等待启动"} status={plan ? "done" : profileReady ? "active" : "idle"} />
+            <FlowStep index="02" label="画像诊断" detail={!profileReady ? "等待补充画像证据" : theoryCompleted ? `理论基线 ${theoryGate.assessment?.score ?? theoryEvidence?.score ?? "—"} 分` : "等待首次理论测评"} status={diagnosisReady ? "done" : "active"} />
+            <FlowStep index="03" label="协同决策" detail={plan ? `第 ${plan.cycle} 轮计划已形成` : workspace.status === "running" ? "Agent 协商中" : "等待启动"} status={plan ? "done" : diagnosisReady ? "active" : "idle"} />
             <FlowStep index="04" label="资源训练" detail={released ? "3 类资源已发布" : "等待质量门禁"} status={released ? "done" : plan ? "active" : "idle"} />
             <FlowStep index="05" label="成果验收" detail={workspace.feedback ? "结果已进入下一轮" : attempts.length ? `已完成 ${attempts.length} 项验证` : "等待测试证据"} status={workspace.feedback ? "done" : released ? "active" : "idle"} last />
           </div>
@@ -313,6 +352,7 @@ export function CompetencyTraining() {
                 <EvidenceCard icon={Clock3} label="训练约束" value={profile.dims.pace.hours_per_week ? `每周 ${profile.dims.pace.hours_per_week} 小时` : "时间预算未确认"} detail={profile.dims.goals.deadline || "完成期限未确认"} />
                 <EvidenceCard icon={Gauge} label="优先差距" value={profile.dims.weak_points.topics.slice(0, 2).join("、") || "等待场景追问"} detail={workspace.diagnosis ? `${workspace.diagnosis.current_level} · 置信度 ${Math.round(workspace.diagnosis.evidence_confidence * 100)}%` : "生成训练计划时由诊断 Agent 复核"} />
                 <EvidenceCard icon={BadgeCheck} label="实践证据" value={employmentEvidence.length ? employmentEvidence.slice(0, 2).map(([key, score]) => `${SKILL_LABELS[key] ?? key} L${score}`).join("、") : "尚无可信实践证据"} detail={employmentEvidence.length ? `共 ${employmentEvidence.length} 个能力维度有证据` : "不等于能力为零，需要通过岗位任务验证"} />
+                <EvidenceCard icon={BookOpenCheck} label="理论测试结果" value={theoryEvidence ? `${theoryEvidence.score} 分 · ${theoryEvidence.knowledge_level}` : theoryGate.loading ? "正在从岗位知识库组卷" : "等待完成首次测评"} detail={theoryEvidence ? (theoryEvidence.weak_topics.length ? `待补强：${theoryEvidence.weak_topics.slice(0, 2).join("、")}` : "理论基础已达到岗位训练起点") : "提交后自动写入学情诊断证据"} />
               </div>
             ) : null}
             <div className="mt-4 flex justify-end"><Link to="/profile" className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#D8E3EF] px-3 text-[11px] font-bold text-[#3368B4] hover:bg-[#F1F6FD]">通过动态追问校准画像<ArrowRight className="size-3.5" /></Link></div>

@@ -1,6 +1,8 @@
 """学生画像 schema。
 设计原则：每个维度都可视化（雷达图 / 标签云 / 文字标签），便于演示。
 """
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -61,6 +63,35 @@ class EmploymentSkills(BaseModel):
     professional: int = Field(0, ge=0, le=5, description="职业素养")
 
 
+class LearnerBackground(BaseModel):
+    """学习者背景；用于避免把“已确认没有经历”当成“尚未询问”。"""
+    education: str = Field("", max_length=120, description="学历/年级背景")
+    major: str = Field("", max_length=120, description="专业背景")
+    practice_status: Literal["unknown", "none", "has"] = "unknown"
+
+
+class ProfileCoverage(BaseModel):
+    """记录哪些画像维度已被用户明确描述，区分“中性值”与“尚未询问”。"""
+    knowledge_base: bool = False
+    cognitive_style: bool = False
+    resource_preference: bool = False
+    employment_skills: bool = False
+
+
+class TheoryAssessmentEvidence(BaseModel):
+    """某一目标岗位最新一次理论基线测评的画像证据。"""
+    assessment_id: int
+    role_id: str
+    role_name: str
+    course_id: int | None = None
+    score: float = Field(ge=0, le=100)
+    knowledge_level: str
+    competency_scores: dict[str, float] = Field(default_factory=dict)
+    weak_topics: list[str] = Field(default_factory=list)
+    source_count: int = 0
+    completed_at: str
+
+
 class ProfileDims(BaseModel):
     """完整画像。和 db.models.Profile.dims 一一对应。"""
     knowledge_base: KnowledgeBase = Field(default_factory=KnowledgeBase)
@@ -70,6 +101,12 @@ class ProfileDims(BaseModel):
     pace: Pace = Field(default_factory=Pace)
     preference: ResourcePreference = Field(default_factory=ResourcePreference)
     employment_skills: EmploymentSkills = Field(default_factory=EmploymentSkills)
+    learner_background: LearnerBackground = Field(default_factory=LearnerBackground)
+    profile_coverage: ProfileCoverage = Field(default_factory=ProfileCoverage)
+    theory_assessments: dict[str, TheoryAssessmentEvidence] = Field(
+        default_factory=dict,
+        description="按目标岗位 role_id 保存的理论基线证据",
+    )
 
 
 class ProfileChatRequest(BaseModel):
@@ -80,6 +117,8 @@ class ProfileChatRequest(BaseModel):
     # 带图 → 切 qwen-vl 视觉模型读图（如上传成绩单截图自动抽知识基础）。
     images: list[str] | None = None
     target_role: str | None = None
+    target_role_id: str | None = None
+    course_id: int | None = None
     core_competencies: list[str] = Field(default_factory=list)
 
 
@@ -92,6 +131,7 @@ class ProfilePatch(BaseModel):
     pace: dict | None = None
     preference: dict | None = None
     employment_skills: dict | None = None
+    learner_background: dict | None = None
     reasoning: str = ""  # 模型自陈：基于哪句话更新了哪个维度
 
 

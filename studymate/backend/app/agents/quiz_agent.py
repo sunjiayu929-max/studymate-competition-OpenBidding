@@ -181,6 +181,9 @@ async def generate_quiz_batch(
     fill_count: int,
     code_count: int,
     focus_tags: list[str] | None = None,
+    target_role: str = "目标岗位",
+    competencies: list[str] | None = None,
+    reference_materials: list[dict] | None = None,
 ) -> list[dict]:
     """按指定数量批量出题：mcq * mcq_count + fill * fill_count + code * code_count。
 
@@ -191,11 +194,34 @@ async def generate_quiz_batch(
     if total <= 0:
         return []
     if not has_llm_key():
+        if reference_materials:
+            return _grounded_mock_fill(
+                mcq_count,
+                fill_count,
+                code_count,
+                reference_materials=reference_materials,
+                competencies=competencies or [],
+                difficulty=difficulty,
+            )
         return _mock_fill(mcq_count, fill_count, code_count)
 
     llm = get_llm_client()
     diff = max(1, min(4, difficulty))
     adaptive_hint = "、".join(focus_tags or [])
+    competency_hint = "、".join(competencies or []) or topic
+    reference_text = "\n".join(
+        f"[资料{index + 1}｜{str(item.get('source') or '岗位知识库')}] {str(item.get('content') or '')[:900]}"
+        for index, item in enumerate((reference_materials or [])[:10])
+        if str(item.get("content") or "").strip()
+    )
+    grounding_section = (
+        "\n**岗位知识库检索材料（命题事实必须以此为依据）**：\n"
+        f"{reference_text}\n"
+        "每题必须返回 competency（对应能力名称）和 source（引用资料标题）；"
+        "不得编造材料之外的制度、数字或结论。source 只写在结构化字段中；"
+        "题干 question 严禁出现书名、作者、版本号、资料名称、章节号或‘根据/依据某资料’等出处信息。"
+        if reference_text else ""
+    )
     adaptive_section = (
         f"\n**自适应加练要求**：学生近期高频错误类型是「{adaptive_hint}」。"
         "至少一半题目应通过新情境或变式重点检测这些能力；不要照抄旧题，也不要在题干中直接暴露错误标签。"
@@ -203,7 +229,7 @@ async def generate_quiz_batch(
         if adaptive_hint
         else ""
     )
-    sys = f"""你是一位{persona}，同时是岗位能力测评专家。请依据“{course_name}”岗位知识库，为任务或能力点「{topic}」生成测验题：
+    sys = f"""你是一位{persona}，同时是岗位能力测评专家。请依据“{course_name}”岗位知识库，为“{target_role}”的任务或能力点「{topic}」生成测验题：
 - 选择题（mcq）共 {mcq_count} 道：4 选项 options，answer 是 0..3 的整数索引
 - 填空题（fill）共 {fill_count} 道：answer 是简短答案字符串（用 / 分隔多个等价答案）
 - 编程题（code）共 {code_count} 道：starter 起步代码 + answer 标答 + 解析
@@ -219,14 +245,15 @@ async def generate_quiz_batch(
 输出**严格 JSON**（不要 Markdown 包裹），结构：
 {{
   "items": [
-    {{"type":"mcq","question":"...","options":["a","b","c","d"],"answer":0,"explanation":"...","difficulty":{diff}}},
-    {{"type":"fill","question":"...","answer":"...","explanation":"...","difficulty":{diff}}},
-    {{"type":"code","question":"...","starter":"...","answer":"...","explanation":"...","difficulty":{diff}}}
+    {{"type":"mcq","question":"...","options":["a","b","c","d"],"answer":0,"explanation":"...","difficulty":{diff},"competency":"...","source":"..."}},
+    {{"type":"fill","question":"...","answer":"...","explanation":"...","difficulty":{diff},"competency":"...","source":"..."}},
+    {{"type":"code","question":"...","starter":"...","answer":"...","explanation":"...","difficulty":{diff},"competency":"...","source":"..."}}
   ]
 }}
 
-严格按数量出齐 {total} 道，先 mcq 后 fill 再 code。题目避免重复、覆盖不同岗位能力与任务情境。
+严格按数量出齐 {total} 道，先 mcq 后 fill 再 code。优先覆盖这些岗位能力：{competency_hint}。题目避免重复、覆盖不同岗位能力与任务情境。
 {adaptive_section}
+{grounding_section}
 """
     msgs = [{"role": "system", "content": sys}, {"role": "user", "content": topic}]
     try:
@@ -242,12 +269,28 @@ async def generate_quiz_batch(
         t = it.get("type")
         if t in by_type:
             by_type[t].append(it)
+    grounded_fallback = _grounded_mock_fill(
+        mcq_count,
+        fill_count,
+        code_count,
+        reference_materials=reference_materials or [],
+        competencies=competencies or [],
+        difficulty=diff,
+    ) if reference_materials else []
+    grounded_by_type = {
+        key: [item for item in grounded_fallback if item.get("type") == key]
+        for key in ("mcq", "fill", "code")
+    }
     mock_by_type = {q["type"]: q for q in MOCK_QUIZ}
 
     def fill_short(t: str, need: int) -> list[dict]:
         cur = by_type[t]
         while len(cur) < need:
-            cur.append({**mock_by_type[t], "id": f"mock_{t}_{len(cur)}"})
+            fallback_index = len(cur)
+            if fallback_index < len(grounded_by_type[t]):
+                cur.append(dict(grounded_by_type[t][fallback_index]))
+            else:
+                cur.append({**mock_by_type[t], "id": f"mock_{t}_{fallback_index}"})
         return cur[:need]
 
     final = (
@@ -260,6 +303,50 @@ async def generate_quiz_batch(
         it.setdefault("difficulty", diff)
         it.setdefault("explanation", "")
     return final
+
+
+def _grounded_mock_fill(
+    mcq: int,
+    fill: int,
+    code: int,
+    *,
+    reference_materials: list[dict],
+    competencies: list[str],
+    difficulty: int,
+) -> list[dict]:
+    """无模型时用已检索知识片段构造可审计的基础卷。"""
+    usable = [item for item in reference_materials if str(item.get("content") or "").strip()]
+    if not usable:
+        return _mock_fill(mcq, fill, code)
+    result: list[dict] = []
+    diff = max(1, min(4, difficulty))
+    distractors = [
+        "只需记忆术语，无需结合岗位任务验证",
+        "该能力仅影响界面展示，不影响交付质量",
+        "所有场景都应直接套用同一结论，无需检查前提",
+    ]
+    for index in range(mcq):
+        material = usable[index % len(usable)]
+        fact = " ".join(str(material.get("content") or "").split())[:120]
+        competency = competencies[index % len(competencies)] if competencies else "岗位领域知识"
+        correct_index = index % 4
+        options = list(distractors)
+        options.insert(correct_index, fact)
+        result.append({
+            "id": f"grounded_mcq_{index}",
+            "type": "mcq",
+            "question": f"根据岗位知识库，关于“{competency}”的哪项表述最准确？",
+            "options": options,
+            "answer": correct_index,
+            "explanation": f"该结论来自岗位知识库资料《{material.get('source') or '岗位知识库'}》。",
+            "difficulty": diff,
+            "competency": competency,
+            "source": str(material.get("source") or "岗位知识库"),
+        })
+    # 理论基线默认只使用选择题；保留其他类型的兼容兜底。
+    if fill or code:
+        result.extend(_mock_fill(0, fill, code))
+    return result
 
 
 def _mock_fill(mcq: int, fill: int, code: int) -> list[dict]:
