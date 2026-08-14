@@ -45,16 +45,20 @@ export function QuizLibrary() {
   const [error, setError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalTopic, setModalTopic] = useState("")
+  const [challengePreset, setChallengePreset] = useState(false)
 
   useEffect(() => {
     if (!course || searchParams.get("create") !== "1") return
     const requestedTopic = searchParams.get("topic")?.trim() || ""
+    const requestedChallenge = searchParams.get("challenge") === "1"
     const frame = window.requestAnimationFrame(() => {
       setModalTopic(requestedTopic)
+      setChallengePreset(requestedChallenge)
       setModalOpen(true)
       const next = new URLSearchParams(searchParams)
       next.delete("create")
       next.delete("topic")
+      next.delete("challenge")
       setSearchParams(next, { replace: true })
     })
     return () => window.cancelAnimationFrame(frame)
@@ -119,7 +123,7 @@ export function QuizLibrary() {
               </div>
             </div>
             {course ? (
-              <button type="button" onClick={() => { setModalTopic(""); setModalOpen(true) }} className="inline-flex h-9 w-fit shrink-0 items-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] shadow-[0_7px_16px_rgba(36,76,102,.18)] transition-all hover:-translate-y-0.5 hover:bg-[#193B50]">
+              <button type="button" onClick={() => { setModalTopic(""); setChallengePreset(false); setModalOpen(true) }} className="inline-flex h-9 w-fit shrink-0 items-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] shadow-[0_7px_16px_rgba(36,76,102,.18)] transition-all hover:-translate-y-0.5 hover:bg-[#193B50]">
                 <Plus className="size-3.5" />新建测验
               </button>
             ) : (
@@ -153,7 +157,7 @@ export function QuizLibrary() {
             <Loader2 className="size-5 animate-spin mr-2" /> 加载中...
           </div>
         ) : sessions.length === 0 ? (
-          <EmptyHint onCreate={() => { setModalTopic(""); setModalOpen(true) }} />
+          <EmptyHint onCreate={() => { setModalTopic(""); setChallengePreset(false); setModalOpen(true) }} />
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {sessions.map((s, i) => (
@@ -176,6 +180,7 @@ export function QuizLibrary() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         initialTopic={modalTopic}
+        challengePreset={challengePreset}
         onCreated={(s) => {
           setModalOpen(false)
           navigate(`/quiz/${s.id}`)

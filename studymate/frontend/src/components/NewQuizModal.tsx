@@ -21,9 +21,11 @@ interface Props {
   onCreated: (s: QuizSession) => void
   /** 从资源详情或笔记页带入的学习主题。 */
   initialTopic?: string
+  /** 岗位训练验收达标后进入的进阶挑战预设。 */
+  challengePreset?: boolean
 }
 
-export function NewQuizModal({ open, onClose, onCreated, initialTopic = "" }: Props) {
+export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", challengePreset = false }: Props) {
   const user = useCurrentUser()
   const USER_ID = user?.user_id ?? 0
   const course = useCurrentCourse()
@@ -50,10 +52,11 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "" }: Pr
     if (!open) return
     const frame = window.requestAnimationFrame(() => {
       setTopic(initialTopic.trim() || "综合复习")
+      setDifficulty(challengePreset ? 3 : 2)
       setError(null)
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [open, initialTopic])
+  }, [challengePreset, open, initialTopic])
 
   useEffect(() => {
     if (!open || !USER_ID || !course) {
@@ -135,7 +138,10 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "" }: Pr
               <BookOpen className="size-4" />
             </div>
             <div className="min-w-0">
-              <div id="new-quiz-title" className="text-sm font-bold text-[#18232D]">新建智能测验</div>
+              <div className="flex items-center gap-2">
+                <div id="new-quiz-title" className="text-sm font-bold text-[#18232D]">新建智能测验</div>
+                {challengePreset && <span className="rounded-full bg-[#EDE8FA] px-2 py-0.5 text-[9px] font-bold text-[#674CB5]">进阶挑战</span>}
+              </div>
               <div className="truncate text-[11px] text-[#6F787A]">
                 {course?.name || "未选目标岗位"} · 提交后入库可查回顾
               </div>
@@ -259,7 +265,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "" }: Pr
 
         <div className="flex shrink-0 flex-col gap-3 border-t border-[#D7D1C4] bg-[#F8F6F0] px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-[11px] text-[#6F787A]">
-            结合当前岗位与能力画像生成
+            {challengePreset ? "已按本轮任务点预填，并将难度设为进阶" : "结合当前岗位与能力画像生成"}
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>

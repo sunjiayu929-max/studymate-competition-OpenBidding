@@ -88,6 +88,8 @@ const RESOURCE_META = {
   quiz: { title: "分阶测试", icon: BookOpenCheck, detail: "验证理解、场景判断与迁移能力" },
 } as const
 
+const ADVANCED_CHALLENGE_THRESHOLD = 0.666
+
 type ResourceId = keyof typeof RESOURCE_META
 
 type CapabilityState = "mastered" | "developing" | "current" | "ready" | "locked"
@@ -208,6 +210,12 @@ export function CompetencyTraining() {
   const released = workspace.decision?.decision === "publish"
   const attempts = Object.values(workspace.quizAttempts)
   const correctCount = attempts.filter((item) => item.is_correct).length
+  const accuracyRate = attempts.length ? correctCount / attempts.length : null
+  const accuracyPercent = accuracyRate === null ? null : Math.round(accuracyRate * 100)
+  const submittedAccuracyRate = workspace.feedback?.answered_count
+    ? (workspace.feedback.answered_count - workspace.feedback.wrong_items.length) / workspace.feedback.answered_count
+    : null
+  const advancedChallengeAvailable = submittedAccuracyRate !== null && submittedAccuracyRate >= ADVANCED_CHALLENGE_THRESHOLD
   const resourceCount = (["doc", "guide", "quiz"] as ResourceId[]).filter((id) => Boolean(workspace.outputs[id])).length
   const completedSteps = [Boolean(role), diagnosisReady, Boolean(plan), released, reportGenerated, Boolean(workspace.feedback)].filter(Boolean).length
   const agentDone = workspace.agents.filter((agent) => agent.status === "done").length
@@ -215,6 +223,8 @@ export function CompetencyTraining() {
   const cycle = plan?.cycle ?? workspace.diagnosis?.training_cycle ?? 1
   const nextTopicIndex = workspace.feedback ? cycle % role.sampleTasks.length : (cycle - 1) % role.sampleTasks.length
   const nextTopic = role.sampleTasks[nextTopicIndex] ?? role.sampleTasks[0]
+  const challengeTopic = workspace.topic.trim() || nextTopic
+  const challengeHref = `/quiz?create=1&challenge=1&topic=${encodeURIComponent(challengeTopic)}`
   const capabilityNodes = resolveCapabilityNodes(capabilityMap, capabilityEvidence, plan)
   const verifiedCapabilityCount = capabilityNodes.filter((node) => node.level === 3).length
   const capabilityProgress = capabilityNodes.length
@@ -429,18 +439,19 @@ export function CompetencyTraining() {
               <SectionTitle icon={FileCheck2} eyebrow="05 · 成果验收与下一轮" title="测试结果不是终点，而是下一轮的评判标准" description="本轮答题证据会写回训练记录；下一次诊断将据此降阶补强、保持难度或进入更复杂岗位场景。" />
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
                 <ResultMetric label="已验证题目" value={`${attempts.length}`} detail="来自本轮分阶测试" />
-                <ResultMetric label="当前正确率" value={attempts.length ? `${Math.round(correctCount / attempts.length * 100)}%` : "—"} detail={attempts.length ? `${correctCount} 对 / ${attempts.length - correctCount} 错` : "等待真实作答"} />
+                <ResultMetric label="当前正确率" value={accuracyPercent === null ? "—" : `${accuracyPercent}%`} detail={attempts.length ? `${correctCount} 对 / ${attempts.length - correctCount} 错` : "等待真实作答"} />
                 <ResultMetric label="闭环状态" value={workspace.feedback ? "已回写" : "待回写"} detail={workspace.feedback ? "下一轮将读取本次结果" : "完成测试后提交验收"} />
               </div>
             </div>
             <div className={cn("rounded-2xl border p-4", workspace.feedback ? "border-[#BFDCCF] bg-[#F3FAF7]" : "border-[#D9E3EF] bg-[#F8FBFF]")}>
               <div className="flex items-center gap-2 text-xs font-bold text-[#294A73]">{workspace.feedback ? <CheckCircle2 className="size-4 text-[#1A8067]" /> : <CircleDashed className="size-4" />}{workspace.feedback ? "下一轮决策已生成" : "等待验收证据"}</div>
-              <p className="mt-2 text-[11px] leading-5 text-[#65758C]">{workspace.feedback?.message || (released ? attempts.length ? "已有真实作答证据，可以提交本轮验收并生成下一轮策略。" : "先进入分阶测试完成真实作答，系统不会用自填说明替代能力证据。" : "资源通过审核并发布后，才能进入测试验收。")}</p>
-              {workspace.feedback && <div className="mt-3 rounded-xl bg-white px-3 py-2 text-[10px] text-[#557567]">决策：{workspace.feedback.next_action} · 画像置信度调整 +{Math.round(workspace.feedback.profile_update.confidence_delta * 100)}%</div>}
+              <p className="mt-2 text-[11px] leading-5 text-[#65758C]">{advancedChallengeAvailable ? `本轮正确率达到进阶门槛（≥ 66.6%）。你可以围绕当前任务点“${challengeTopic}”继续接受进阶挑战，也可以直接进入下一轮岗位任务。` : workspace.feedback?.message || (released ? attempts.length ? "已有真实作答证据，可以提交本轮验收并生成下一轮策略。" : "先进入分阶测试完成真实作答，系统不会用自填说明替代能力证据。" : "资源通过审核并发布后，才能进入测试验收。")}</p>
+              {workspace.feedback && <div className="mt-3 rounded-xl bg-white px-3 py-2 text-[10px] text-[#557567]">{advancedChallengeAvailable ? "协同决策：开放进阶挑战 · 保留下一轮训练选择" : `决策：${workspace.feedback.next_action}`} · 画像置信度调整 +{Math.round(workspace.feedback.profile_update.confidence_delta * 100)}%</div>}
               <div className="mt-4 flex flex-wrap gap-2">
                 {released && !attempts.length && <Link to="/workspace/r/quiz" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#2468CE] px-3 text-[11px] font-bold text-white">进入分阶测试<ArrowRight className="size-3.5" /></Link>}
                 {released && attempts.length > 0 && !workspace.feedback && <button type="button" onClick={() => void submitFeedback()} disabled={feedbackBusy} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#2468CE] px-3 text-[11px] font-bold text-white disabled:opacity-50">{feedbackBusy ? <Loader2 className="size-3.5 animate-spin" /> : <FileCheck2 className="size-3.5" />}提交本轮验收</button>}
-                {workspace.feedback && <button type="button" onClick={startRound} disabled={!course || workspace.status === "running"} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#2468CE] px-3 text-[11px] font-bold text-white disabled:opacity-50"><RefreshCw className="size-3.5" />启动下一轮</button>}
+                {advancedChallengeAvailable && <Link to={challengeHref} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#6D50C7] px-3 text-[11px] font-bold text-white shadow-[0_7px_16px_rgba(109,80,199,.18)] hover:bg-[#5940AD]"><Rocket className="size-3.5" />进阶挑战任务<ArrowRight className="size-3.5" /></Link>}
+                {workspace.feedback && <button type="button" onClick={startRound} disabled={!course || workspace.status === "running"} className={cn("inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[11px] font-bold disabled:opacity-50", advancedChallengeAvailable ? "border border-[#C9D9ED] bg-white text-[#315E83] hover:bg-[#F1F6FC]" : "bg-[#2468CE] text-white")}><RefreshCw className="size-3.5" />启动下一轮</button>}
                 <a href="#agent-collaboration" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D4DFEB] bg-white px-3 text-[11px] font-bold text-[#5D718D]">查看完整审计链</a>
               </div>
               {feedbackError && <p role="alert" className="mt-2 text-[10px] text-[#A85138]">{feedbackError}</p>}
