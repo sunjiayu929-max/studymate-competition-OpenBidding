@@ -324,6 +324,22 @@
   }
 }
 
+@keyframes debate-zone-pulse {
+  0%, 100% {
+    border-color: rgba(104, 158, 216, .55);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .7), 0 8px 24px rgba(66, 125, 187, .08);
+  }
+  50% {
+    border-color: rgba(45, 116, 191, .9);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .85), 0 10px 30px rgba(66, 125, 187, .18);
+  }
+}
+
+@keyframes debate-bubble-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(46, 114, 210, .18); }
+  50% { box-shadow: 0 0 0 5px rgba(46, 114, 210, 0); }
+}
+
 .agent-flow-grid {
   background-image: radial-gradient(circle, rgba(75, 105, 139, .18) .75px, transparent .8px);
   background-size: 18px 18px;
@@ -346,6 +362,21 @@
 
 .agent-flow-node--active {
   animation: agent-flow-node-pulse 1.8s ease-in-out infinite;
+}
+
+.agent-debate-zone {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .68), 0 8px 24px rgba(66, 125, 187, .07);
+  transition: border-color 260ms ease, box-shadow 260ms ease, background-color 260ms ease;
+}
+
+.agent-debate-zone--active {
+  background-color: rgba(222, 239, 255, .88);
+  animation: debate-zone-pulse 1.8s ease-in-out infinite;
+}
+
+.debate-step--active,
+.debate-bubble--active {
+  animation: debate-bubble-pulse 1.45s ease-in-out infinite;
 }
 
 .agent-flow-scroll {

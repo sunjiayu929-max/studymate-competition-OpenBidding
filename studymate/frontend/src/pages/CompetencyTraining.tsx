@@ -402,7 +402,7 @@ export function CompetencyTraining() {
 
         <section id="agent-collaboration" className="mt-4 scroll-mt-24 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
           <div className="flex flex-wrap items-end justify-between gap-3">
-            <SectionTitle icon={BrainCircuit} eyebrow="协作审计链" title="多 Agent 实时协作与发布门禁" description="训练任务由能力地图与画像共同决定，系统直接展示协作过程、审核分数与裁决依据。" />
+            <SectionTitle icon={BrainCircuit} eyebrow="协作审计链" title="多 Agent 辩论、交叉验证与发布门禁" description="训练任务由能力地图与画像共同决定，系统直接展示观点、质疑、回应、审核与裁决全过程。" />
             {workspace.status === "running" && <button type="button" onClick={() => workspaceStore.cancel()} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#E1C9C2] bg-[#FFF8F5] px-3 text-[11px] font-bold text-[#A5523A]">停止本轮协作</button>}
           </div>
           <AgentAudit workspace={workspace} progress={agentProgress} />

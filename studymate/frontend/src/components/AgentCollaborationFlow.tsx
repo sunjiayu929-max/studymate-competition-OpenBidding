@@ -53,26 +53,26 @@ const CANVAS_HEIGHT = 600
 const FLOW_COLUMNS = [
   { x: 18, width: 125, step: "输入", title: "训练任务", detail: "岗位目标与画像" },
   { x: 170, width: NODE_WIDTH, step: "01", title: "画像诊断", detail: "确认起点与差距" },
-  { x: 365, width: NODE_WIDTH, step: "02", title: "独立提案", detail: "专业与学习约束" },
-  { x: 560, width: NODE_WIDTH, step: "03", title: "计划仲裁", detail: "形成训练合同" },
-  { x: 755, width: NODE_WIDTH, step: "04", title: "并行生成", detail: "三类训练资源" },
-  { x: 950, width: NODE_WIDTH, step: "05", title: "交叉审核", detail: "三项独立验证" },
+  { x: 365, width: NODE_WIDTH, step: "02", title: "提出观点", detail: "专业主张与学习约束" },
+  { x: 560, width: NODE_WIDTH, step: "03", title: "质疑与仲裁", detail: "回应分歧并形成合同" },
+  { x: 755, width: NODE_WIDTH, step: "04", title: "生成方陈述", detail: "三类训练资源" },
+  { x: 950, width: NODE_WIDTH, step: "05", title: "审核方质询", detail: "三组交叉验证" },
   { x: 1145, width: NODE_WIDTH, step: "06", title: "总裁决", detail: "汇总全部证据" },
   { x: 1315, width: 120, step: "门禁", title: "发布结果", detail: "通过或定向返工" },
 ] as const
 
 const FLOW_NODES: FlowNodeDefinition[] = [
   { id: "diagnosis", x: 170, y: 248, width: NODE_WIDTH, height: NODE_HEIGHT, group: "画像诊断", icon: BrainCircuit, fallbackName: "学情诊断 Agent", fallbackDescription: "定位岗位能力盲区与训练起点" },
-  { id: "domain_expert", x: 365, y: 132, width: NODE_WIDTH, height: NODE_HEIGHT, group: "专业覆盖", icon: BriefcaseBusiness, fallbackName: "领域专家 Agent", fallbackDescription: "提出专业覆盖与验收要求" },
-  { id: "learning_strategy", x: 365, y: 366, width: NODE_WIDTH, height: NODE_HEIGHT, group: "学习策略", icon: Gauge, fallbackName: "教学策略 Agent", fallbackDescription: "平衡时间预算、难度与认知负荷" },
-  { id: "plan_arbiter", x: 560, y: 248, width: NODE_WIDTH, height: NODE_HEIGHT, group: "计划仲裁", icon: GitCompareArrows, fallbackName: "训练计划仲裁 Agent", fallbackDescription: "解决分歧并形成个性化训练合同" },
-  { id: "doc", x: 755, y: 85, width: NODE_WIDTH, height: NODE_HEIGHT, group: "资源生成", icon: FileText, fallbackName: "定制讲义生成 Agent", fallbackDescription: "生成带领域来源的岗位讲义" },
-  { id: "guide", x: 755, y: 248, width: NODE_WIDTH, height: NODE_HEIGHT, group: "资源生成", icon: Wrench, fallbackName: "实操指南生成 Agent", fallbackDescription: "生成可执行、可验收的实操指南" },
-  { id: "quiz", x: 755, y: 411, width: NODE_WIDTH, height: NODE_HEIGHT, group: "资源生成", icon: BookOpenCheck, fallbackName: "分阶测试生成 Agent", fallbackDescription: "生成匹配学情的分阶测试" },
-  { id: "evidence_review", x: 950, y: 85, width: NODE_WIDTH, height: NODE_HEIGHT, group: "事实审核", icon: SearchCheck, fallbackName: "事实与来源审核 Agent", fallbackDescription: "交叉核对专业主张与知识来源" },
-  { id: "practice_review", x: 950, y: 248, width: NODE_WIDTH, height: NODE_HEIGHT, group: "规范审核", icon: ShieldCheck, fallbackName: "实操规范审核 Agent", fallbackDescription: "交叉检查步骤、异常与安全边界" },
-  { id: "difficulty_review", x: 950, y: 411, width: NODE_WIDTH, height: NODE_HEIGHT, group: "难度审核", icon: FileCheck2, fallbackName: "难度与覆盖审核 Agent", fallbackDescription: "交叉校准难度与岗位能力覆盖" },
-  { id: "arbiter", x: 1145, y: 248, width: NODE_WIDTH, height: NODE_HEIGHT, group: "发布裁决", icon: BadgeCheck, fallbackName: "总裁决 Agent", fallbackDescription: "汇总审核证据，决定发布或定向返工" },
+  { id: "domain_expert", x: 365, y: 120, width: NODE_WIDTH, height: NODE_HEIGHT, group: "提出专业观点", icon: BriefcaseBusiness, fallbackName: "领域专家 Agent", fallbackDescription: "提出专业覆盖与验收要求" },
+  { id: "learning_strategy", x: 365, y: 410, width: NODE_WIDTH, height: NODE_HEIGHT, group: "提出约束质疑", icon: Gauge, fallbackName: "教学策略 Agent", fallbackDescription: "平衡时间预算、难度与认知负荷" },
+  { id: "plan_arbiter", x: 560, y: 265, width: NODE_WIDTH, height: NODE_HEIGHT, group: "回应与仲裁", icon: GitCompareArrows, fallbackName: "训练计划仲裁 Agent", fallbackDescription: "解决分歧并形成个性化训练合同" },
+  { id: "doc", x: 755, y: 120, width: NODE_WIDTH, height: NODE_HEIGHT, group: "生成方陈述", icon: FileText, fallbackName: "定制讲义生成 Agent", fallbackDescription: "生成带领域来源的岗位讲义" },
+  { id: "guide", x: 755, y: 265, width: NODE_WIDTH, height: NODE_HEIGHT, group: "生成方陈述", icon: Wrench, fallbackName: "实操指南生成 Agent", fallbackDescription: "生成可执行、可验收的实操指南" },
+  { id: "quiz", x: 755, y: 410, width: NODE_WIDTH, height: NODE_HEIGHT, group: "生成方陈述", icon: BookOpenCheck, fallbackName: "分阶测试生成 Agent", fallbackDescription: "生成匹配学情的分阶测试" },
+  { id: "evidence_review", x: 950, y: 120, width: NODE_WIDTH, height: NODE_HEIGHT, group: "审核方质询", icon: SearchCheck, fallbackName: "事实与来源审核 Agent", fallbackDescription: "交叉核对专业主张与知识来源" },
+  { id: "practice_review", x: 950, y: 265, width: NODE_WIDTH, height: NODE_HEIGHT, group: "审核方质询", icon: ShieldCheck, fallbackName: "实操规范审核 Agent", fallbackDescription: "交叉检查步骤、异常与安全边界" },
+  { id: "difficulty_review", x: 950, y: 410, width: NODE_WIDTH, height: NODE_HEIGHT, group: "审核方质询", icon: FileCheck2, fallbackName: "难度与覆盖审核 Agent", fallbackDescription: "交叉校准难度与岗位能力覆盖" },
+  { id: "arbiter", x: 1145, y: 265, width: NODE_WIDTH, height: NODE_HEIGHT, group: "发布裁决", icon: BadgeCheck, fallbackName: "总裁决 Agent", fallbackDescription: "汇总审核证据，决定发布或定向返工" },
 ]
 
 const FLOW_EDGES: FlowEdgeDefinition[] = [
@@ -94,8 +94,8 @@ const FLOW_EDGES: FlowEdgeDefinition[] = [
 ]
 
 const VIRTUAL_NODES = {
-  task: { x: 18, y: 264, width: 125, height: 92 },
-  publish: { x: 1315, y: 264, width: 120, height: 92 },
+  task: { x: 18, y: 281, width: 125, height: 92 },
+  publish: { x: 1315, y: 281, width: 120, height: 92 },
 } as const
 
 const EDGE_STYLES: Record<EdgeState, { color: string; width: number; dash?: string; marker: string }> = {
@@ -180,6 +180,8 @@ export function AgentCollaborationFlow({ workspace }: { workspace: WorkspaceStat
         : "pending"
   const reworkTargets = new Set(workspace.reworkHistory.at(-1)?.targets ?? workspace.decision?.rework_targets ?? [])
   const showRework = workspace.reworkHistory.length > 0 || workspace.generationRound > 1 || workspace.stage === "rework" || workspace.decision?.decision === "rework"
+  const planningDebateActive = workspace.stage === "planning" || workspace.stage === "plan_decision"
+  const resourceDebateActive = workspace.stage === "generation" || workspace.stage === "review" || workspace.stage === "rework"
 
   const statusOf = (id: string): AgentStatus => {
     if (id === "task") return taskStatus
@@ -191,8 +193,8 @@ export function AgentCollaborationFlow({ workspace }: { workspace: WorkspaceStat
     <div className="mt-5 overflow-hidden rounded-[24px] border border-[#D7E2EF] bg-[#F9FBFE] shadow-[inset_0_1px_0_rgba(255,255,255,.9)]">
       <div className="flex flex-col gap-3 border-b border-[#DFE7F1] bg-white/90 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="text-[11px] font-extrabold text-[#294B73]">实时协作画布</div>
-          <p className="mt-0.5 text-[9px] text-[#75859A]">连线随执行状态推进；橙色回路表示携带审核意见定向返工。</p>
+          <div className="text-[11px] font-extrabold text-[#294B73]">多 Agent 辩论协作画布</div>
+          <p className="mt-0.5 text-[9px] text-[#75859A]">淡蓝色区域为两轮辩论；动态连线表示观点、质疑、回应与裁决正在传递。</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[9px] font-semibold text-[#6F7F93]" aria-label="流程状态图例">
@@ -212,15 +214,18 @@ export function AgentCollaborationFlow({ workspace }: { workspace: WorkspaceStat
         <div className="relative" style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}>
           <div className="agent-flow-grid pointer-events-none absolute inset-0" />
 
+          <DebateZone x={348} width={392} label="第1轮辩论" detail="专业观点 × 教学约束 × 计划仲裁" active={planningDebateActive} />
+          <DebateZone x={738} width={390} label="第2轮辩论" detail="三组资源陈述 × 审核质询" active={resourceDebateActive} />
+
           {FLOW_COLUMNS.map((column) => (
-            <div key={column.title} className="absolute top-5 text-center" style={{ left: column.x, width: column.width }}>
+            <div key={column.title} className="absolute top-5 z-[3] text-center" style={{ left: column.x, width: column.width }}>
               <div className="text-[9px] font-black tracking-[.12em] text-[#7D91AA]">{column.step}</div>
               <div className="mt-0.5 text-[11px] font-extrabold text-[#304760]">{column.title}</div>
               <div className="mt-0.5 text-[8px] text-[#8B99AA]">{column.detail}</div>
             </div>
           ))}
 
-          <svg className="pointer-events-none absolute inset-0" width={CANVAS_WIDTH} height={CANVAS_HEIGHT} viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`} aria-hidden="true">
+          <svg className="pointer-events-none absolute inset-0 z-[2]" width={CANVAS_WIDTH} height={CANVAS_HEIGHT} viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`} aria-hidden="true">
             <defs>
               <marker id="agent-flow-arrow-pending" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#AEBCCE" /></marker>
               <marker id="agent-flow-arrow-active" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2E72D2" /></marker>
@@ -334,6 +339,22 @@ function scrollFlow(container: HTMLDivElement | null, left: number) {
 
 function FlowLegend({ color, label, dashed = false, active = false }: { color: string; label: string; dashed?: boolean; active?: boolean }) {
   return <span className="inline-flex items-center gap-1.5"><i className={cn("block h-0 w-7 border-t-2", dashed && "border-dashed", active && "agent-flow-legend--active")} style={{ borderColor: color }} />{label}</span>
+}
+
+function DebateZone({ x, width, label, detail, active }: { x: number; width: number; label: string; detail: string; active: boolean }) {
+  return (
+    <div
+      className={cn("agent-debate-zone pointer-events-none absolute top-[72px] z-[1] h-[482px] rounded-[24px] border border-[#BFD7F1] bg-[#EAF4FF]/70", active && "agent-debate-zone--active")}
+      style={{ left: x, width }}
+      aria-hidden="true"
+    >
+      <div className="absolute left-3 top-2 flex items-center gap-2 rounded-full border border-[#B5D1EE] bg-[#F7FBFF] px-3 py-1 shadow-sm">
+        <GitCompareArrows className="size-3 text-[#3372B8]" />
+        <strong className="text-[9px] text-[#245C99]">{label}</strong>
+        <span className="text-[8px] text-[#6D87A5]">{detail}</span>
+      </div>
+    </div>
+  )
 }
 
 function AgentFlowNode({ definition, agent, description }: { definition: FlowNodeDefinition; agent?: WorkspaceAgent; description: string }) {

@@ -44,10 +44,10 @@ export interface WorkspaceOutputs {
   domain_expert?: TrainingProposal
   learning_strategy?: TrainingProposal
   training_plan?: PersonalizedTrainingPlan
-  doc?: { type: string; title: string; content: string; citations: Citation[] }
-  guide?: { type: string; title: string; content: string; citations: Citation[]; version?: number }
+  doc?: { type: string; title: string; content: string; citations: Citation[]; version?: number; revision_response?: string[] }
+  guide?: { type: string; title: string; content: string; citations: Citation[]; version?: number; revision_response?: string[] }
   mindmap?: { type: string; title: string; content: string }
-  quiz?: { type: string; title: string; items: QuizItem[]; count: number; citations?: Citation[]; version?: number }
+  quiz?: { type: string; title: string; items: QuizItem[]; count: number; citations?: Citation[]; version?: number; revision_response?: string[] }
   path?: { type: string; title: string; nodes: PathNode[]; edges: PathEdge[]; count: number }
   reading?: { type: string; title: string; items: ReadingItem[]; count: number }
   code?: CodeOutput & { type: string; title: string }
@@ -62,6 +62,8 @@ export interface TrainingProposal {
   weekly_hours?: number
   capacity?: number
   preferred_mode?: string
+  debate_round?: number
+  response_to_feedback?: string[]
 }
 
 export interface PersonalizedTrainingPlan {
@@ -563,10 +565,16 @@ class WorkspaceStore {
         break
       }
       case "stage": {
-        this.setState({
-          stage: String(d.stage ?? ""),
-          generationRound: Number(d.generation_round ?? 1),
-        })
+        const stage = String(d.stage ?? "")
+        const generationRound = Number(d.generation_round ?? 1)
+        this.setState((s) => ({
+          stage,
+          generationRound,
+          // 新一轮资源生成开始后，上一轮审核不能继续显示为本轮实时结果。
+          ...(stage === "generation" && generationRound > s.generationRound
+            ? { reviews: {}, decision: null }
+            : {}),
+        }))
         if (d.message) this.appendLog(String(d.message))
         break
       }
