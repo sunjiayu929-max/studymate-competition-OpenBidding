@@ -33,6 +33,7 @@ import {
 
 import { AppTopbar } from "@/components/AppTopbar"
 import { AgentCollaborationFlow } from "@/components/AgentCollaborationFlow"
+import { LearnerMatchReport } from "@/components/LearnerMatchReport"
 import { TheoryAssessmentModal, type TheoryAssessment, type TheoryGateState } from "@/components/TheoryAssessmentModal"
 import { apiGet } from "@/lib/api"
 import { buildRoleCompetencyMap, type CompetencyLevel, type RoleCompetencyMap, type RoleCompetencyNode } from "@/lib/roleCompetencyMap"
@@ -128,7 +129,11 @@ export function CompetencyTraining() {
   const [capabilityEvidence, setCapabilityEvidence] = useState<Record<string, CapabilityEvidence>>({})
   const [theoryGate, setTheoryGate] = useState<TheoryGateState>({ loading: false, completed: false, required: false, assessment: null, error: "" })
   const [theoryPromptSignal, setTheoryPromptSignal] = useState(0)
+  const [reportGenerated, setReportGenerated] = useState(false)
   const capabilityMap = useMemo(() => role ? buildRoleCompetencyMap(role) : null, [role])
+  const reportStorageKey = user?.user_id && role?.id && workspace.runId
+    ? `sm:learner-match-report:${user.user_id}:${role.id}:${workspace.runId}`
+    : ""
 
   useEffect(() => {
     if (!user?.user_id) return
@@ -180,6 +185,10 @@ export function CompetencyTraining() {
     })
   }, [capabilityMap, role?.id, user?.user_id, workspace.feedback, workspace.outputs.training_plan, workspace.runId])
 
+  useEffect(() => {
+    setReportGenerated(Boolean(reportStorageKey && sessionStorage.getItem(reportStorageKey) === "generated"))
+  }, [reportStorageKey])
+
   if (!role || !capabilityMap) return <RoleRequired />
 
   const employmentEvidence = Object.entries(profile?.dims.employment_skills ?? {}).filter(([, score]) => score > 0)
@@ -200,7 +209,7 @@ export function CompetencyTraining() {
   const attempts = Object.values(workspace.quizAttempts)
   const correctCount = attempts.filter((item) => item.is_correct).length
   const resourceCount = (["doc", "guide", "quiz"] as ResourceId[]).filter((id) => Boolean(workspace.outputs[id])).length
-  const completedSteps = [Boolean(role), diagnosisReady, Boolean(plan), released, Boolean(workspace.feedback)].filter(Boolean).length
+  const completedSteps = [Boolean(role), diagnosisReady, Boolean(plan), released, reportGenerated, Boolean(workspace.feedback)].filter(Boolean).length
   const agentDone = workspace.agents.filter((agent) => agent.status === "done").length
   const agentProgress = workspace.agents.length ? Math.round(agentDone / workspace.agents.length * 100) : 0
   const cycle = plan?.cycle ?? workspace.diagnosis?.training_cycle ?? 1
@@ -215,6 +224,17 @@ export function CompetencyTraining() {
     ?? capabilityNodes.find((node) => node.state === "current")
     ?? capabilityNodes.find((node) => node.state === "ready")
     ?? capabilityNodes[0]
+
+  const generateLearnerReport = () => {
+    if (!released || !reportStorageKey) return
+    sessionStorage.setItem(reportStorageKey, "generated")
+    setReportGenerated(true)
+  }
+
+  const resetLearnerReport = () => {
+    if (reportStorageKey) sessionStorage.removeItem(reportStorageKey)
+    setReportGenerated(false)
+  }
 
   const startRound = () => {
     if (!user?.user_id || !course || workspace.status === "running") return
@@ -281,6 +301,8 @@ export function CompetencyTraining() {
                   <button type="button" onClick={startRound} disabled={!course} className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69] disabled:opacity-50"><RefreshCw className="size-4" />重新启动自动返工闭环</button>
                 ) : !plan ? (
                   <button type="button" onClick={startRound} disabled={!course} className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69] shadow-[0_10px_26px_rgba(0,0,0,.15)] disabled:cursor-not-allowed disabled:opacity-50"><Rocket className="size-4" />启动多 Agent 协同决策</button>
+                ) : released && !reportGenerated ? (
+                  <a href="#learner-match-report" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69]"><FileCheck2 className="size-4" />生成个人决策报告<ArrowRight className="size-4" /></a>
                 ) : released ? (
                   <Link to="/workspace/r/doc" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69]"><FileText className="size-4" />开始本轮训练<ArrowRight className="size-4" /></Link>
                 ) : (
@@ -291,7 +313,7 @@ export function CompetencyTraining() {
               {!course && <p className="mt-3 text-[11px] text-[#F5D9A0]">该岗位专属知识库尚未接入，当前可先完成画像；资源生成需选择已开放的 FDE 岗位。</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Metric value={`${completedSteps}/5`} label="闭环阶段" detail="每一步均保留证据" accent />
+              <Metric value={`${completedSteps}/6`} label="闭环阶段" detail="每一步均保留证据" accent />
               <Metric value={`${profileScore}%`} label="画像完整度" detail={profileReady ? `画像 v${profile?.version ?? 1} 已参与决策` : "还需补充目标与实践证据"} />
               <Metric value={workspace.agents.length ? `${agentDone}/${workspace.agents.length}` : "11"} label="协同 Agent" detail={workspace.status === "running" ? `协作进度 ${agentProgress}%` : "分工、交叉审核与仲裁"} />
               <Metric value={`${resourceCount}/3`} label="核心训练资源" detail={released ? "已越过发布门禁" : "裁决通过后开放"} />
@@ -300,12 +322,13 @@ export function CompetencyTraining() {
         </section>
 
         <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-4 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-5">
-          <div className="grid gap-2 md:grid-cols-5">
+          <div className="grid gap-2 md:grid-cols-6">
             <FlowStep index="01" label="选择岗位" detail={role.name} status="done" />
             <FlowStep index="02" label="画像诊断" detail={!profileReady ? "等待补充画像证据" : theoryCompleted ? `理论基线 ${theoryGate.assessment?.score ?? theoryEvidence?.score ?? "—"} 分` : "等待首次理论测评"} status={diagnosisReady ? "done" : "active"} />
             <FlowStep index="03" label="协同决策" detail={plan ? `第 ${plan.cycle} 轮计划已形成` : workspace.status === "running" ? "Agent 协商中" : "等待启动"} status={plan ? "done" : diagnosisReady ? "active" : "idle"} />
             <FlowStep index="04" label="资源训练" detail={released ? "3 类资源已发布" : "等待质量门禁"} status={released ? "done" : plan ? "active" : "idle"} />
-            <FlowStep index="05" label="成果验收" detail={workspace.feedback ? "结果已进入下一轮" : attempts.length ? `已完成 ${attempts.length} 项验证` : "等待测试证据"} status={workspace.feedback ? "done" : released ? "active" : "idle"} last />
+            <FlowStep index="05" label="匹配报告" detail={reportGenerated ? "学习决策已生成" : released ? "等待生成报告" : "等待资源发布"} status={reportGenerated ? "done" : released ? "active" : "idle"} />
+            <FlowStep index="06" label="成果验收" detail={workspace.feedback ? "结果已进入下一轮" : attempts.length ? `已完成 ${attempts.length} 项验证` : "等待测试证据"} status={workspace.feedback ? "done" : reportGenerated ? "active" : "idle"} last />
           </div>
         </section>
 
@@ -381,10 +404,29 @@ export function CompetencyTraining() {
           </div>
         </section>
 
+        <LearnerMatchReport
+          released={released}
+          generated={reportGenerated}
+          onGenerate={generateLearnerReport}
+          onRegenerate={resetLearnerReport}
+          diagnosis={workspace.diagnosis}
+          plan={plan}
+          theoryScore={theoryEvidence?.score ?? theoryGate.assessment?.score ?? undefined}
+          theoryWeakTopics={theoryEvidence?.weak_topics ?? []}
+          profileWeakTopics={profile?.dims.weak_points.topics ?? []}
+          feedbackAccuracy={workspace.feedback?.accuracy}
+          capabilities={capabilityNodes.map((node) => ({ id: node.id, name: node.name, level: node.level, state: node.state, task: node.task }))}
+          resources={[
+            { id: "doc", title: RESOURCE_META.doc.title, reviewScore: workspace.reviews.evidence_review?.score ?? 0, ready: Boolean(workspace.outputs.doc) },
+            { id: "guide", title: RESOURCE_META.guide.title, reviewScore: workspace.reviews.practice_review?.score ?? 0, ready: Boolean(workspace.outputs.guide) },
+            { id: "quiz", title: RESOURCE_META.quiz.title, reviewScore: workspace.reviews.difficulty_review?.score ?? 0, ready: Boolean(workspace.outputs.quiz) },
+          ]}
+        />
+
         <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start">
             <div>
-              <SectionTitle icon={FileCheck2} eyebrow="04 · 成果验收与下一轮" title="测试结果不是终点，而是下一轮的评判标准" description="本轮答题证据会写回训练记录；下一次诊断将据此降阶补强、保持难度或进入更复杂岗位场景。" />
+              <SectionTitle icon={FileCheck2} eyebrow="05 · 成果验收与下一轮" title="测试结果不是终点，而是下一轮的评判标准" description="本轮答题证据会写回训练记录；下一次诊断将据此降阶补强、保持难度或进入更复杂岗位场景。" />
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
                 <ResultMetric label="已验证题目" value={`${attempts.length}`} detail="来自本轮分阶测试" />
                 <ResultMetric label="当前正确率" value={attempts.length ? `${Math.round(correctCount / attempts.length * 100)}%` : "—"} detail={attempts.length ? `${correctCount} 对 / ${attempts.length - correctCount} 错` : "等待真实作答"} />

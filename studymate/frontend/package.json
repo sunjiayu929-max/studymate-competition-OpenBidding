@@ -15,6 +15,7 @@
     "check:phase3": "node scripts/check-phase3-ui.mjs",
     "check:e2e": "node scripts/check-phase3-e2e.mjs",
     "check:universe": "node scripts/check-learning-universe.mjs",
+    "check:learner-report": "node scripts/check-learner-report.mjs",
     "preview": "vite preview",
     "screenshot:setup": "playwright install chromium",
     "screenshot": "node scripts/capture-page.mjs"
