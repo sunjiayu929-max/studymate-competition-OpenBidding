@@ -137,6 +137,8 @@ class Orchestrator:
 class TrainingLoopOrchestrator:
     """岗位训练闭环：诊断 → 生成 → 审核 → 裁决/返工 → 发布。"""
 
+    MAX_REWORK_ATTEMPTS = 3
+
     def __init__(
         self,
         diagnosis_agent: AgentBase,
@@ -182,6 +184,9 @@ class TrainingLoopOrchestrator:
 
     async def _run_pipeline(self, ctx: dict, emit, queue):
         try:
+            ctx.setdefault("debates", [])
+            ctx.setdefault("planning_round", 1)
+            ctx.setdefault("generation_round", 1)
             await emit("meta", {
                 "agents": self.all_metas(),
                 "topic": ctx.get("topic", ""),
@@ -214,45 +219,56 @@ class TrainingLoopOrchestrator:
                 "agent": "diagnosis",
             })
 
-            await self._stage(emit, "planning", "领域专家与教学策略 Agent 独立提案并协商训练范围", ctx)
-            planning_results = await asyncio.gather(
-                *(self._wrap_run(agent, ctx, emit) for agent in self.planning_agents),
-                return_exceptions=True,
-            )
-            proposals: dict[str, dict] = {}
-            for agent, result in zip(self.planning_agents, planning_results):
-                if isinstance(result, Exception):
-                    raise RuntimeError(f"{agent.meta.name} 提案失败：{result}") from result
-                proposals[agent.meta.id] = result
-                ctx.setdefault("outputs", {})[agent.meta.id] = result
-            ctx["planning_proposals"] = proposals
-            await self._stage(emit, "plan_decision", "训练计划仲裁 Agent 正在解决覆盖度与时间预算冲突", ctx)
-            training_plan = await self._wrap_run(self.plan_arbiter, ctx, emit)
-            ctx["training_plan"] = training_plan
-            ctx.setdefault("outputs", {})["training_plan"] = training_plan
+            training_plan, planning_exhausted = await self._run_planning_debate(ctx, emit)
+            if planning_exhausted:
+                failed = self._failed_decision(
+                    phase="planning",
+                    summary="训练计划经过 3 次返工仍未通过仲裁，已保留真实结果并停止发布",
+                    generation_round=int(ctx.get("generation_round", 1)),
+                    required_fixes=training_plan.get("required_fixes") or [],
+                )
+                ctx["decision"] = failed
+                await emit("decision", failed)
+                await self._stage(emit, "failed", failed["summary"], ctx)
+                await self._emit_done(ctx, emit)
+                return
 
             await self._run_generation(ctx, emit, self.generators)
             await self._run_reviews(ctx, emit)
+            await self._record_resource_debate(ctx, emit)
             decision = await self._run_arbiter(ctx, emit)
 
-            previous_issue_signature = ""
-            unchanged_issue_rounds = 0
+            resource_rework_count = 0
             while decision.get("decision") == "rework":
                 targets = set(decision.get("rework_targets") or [])
                 if not targets:
                     targets = {agent.meta.id for agent in self.generators}
-                issue_signature = json.dumps({
-                    "targets": sorted(targets),
-                    "fixes": sorted(str(item) for item in decision.get("required_fixes") or []),
-                    "scores": decision.get("review_scores") or {},
-                }, ensure_ascii=False, sort_keys=True)
-                unchanged_issue_rounds = unchanged_issue_rounds + 1 if issue_signature == previous_issue_signature else 1
-                previous_issue_signature = issue_signature
-                if unchanged_issue_rounds >= 3:
-                    raise RuntimeError("自动返工连续 3 轮没有改善，任务已安全终止且不会发布；请检查知识库、模型服务或审核规则")
+                if resource_rework_count >= self.MAX_REWORK_ATTEMPTS:
+                    failed = {
+                        **decision,
+                        "decision": "failed",
+                        "summary": "资源经过 3 次返工仍未达到发布门槛，已保留真实指标并停止发布",
+                        "rework_targets": [],
+                        "max_reworks_reached": True,
+                        "published": False,
+                    }
+                    ctx["decision"] = failed
+                    await emit("rework_exhausted", {
+                        "phase": "resource",
+                        "rework_count": resource_rework_count,
+                        "summary": failed["summary"],
+                        "decision": failed,
+                    })
+                    await emit("decision", failed)
+                    await self._stage(emit, "failed", failed["summary"], ctx)
+                    await self._emit_done(ctx, emit)
+                    return
 
-                await self._stage(emit, "rework", f"第 {ctx.get('generation_round', 1)} 轮未通过，开始定向返工", ctx)
+                resource_rework_count += 1
+                await self._stage(emit, "rework", f"资源辩论未通过，开始第 {resource_rework_count} / 3 次定向返工", ctx)
                 await emit("rework", {
+                    "phase": "resource",
+                    "rework_attempt": resource_rework_count,
                     "generation_round": ctx.get("generation_round", 1),
                     "targets": sorted(targets),
                     "required_fixes": decision.get("required_fixes", []),
@@ -262,22 +278,13 @@ class TrainingLoopOrchestrator:
                 retry_agents = [agent for agent in self.generators if agent.meta.id in targets]
                 await self._run_generation(ctx, emit, retry_agents)
                 await self._run_reviews(ctx, emit)
+                await self._record_resource_debate(ctx, emit)
                 decision = await self._run_arbiter(ctx, emit)
 
             await self._stage(emit, "publishing", "资源已通过裁决，准备发布三项核心岗位资源", ctx)
             await self._stage(emit, "published", "资源包已发布，可进入学习与反馈", ctx)
 
-            await emit("done", {
-                "run_id": ctx.get("run_id"),
-                "domain": ctx.get("domain", ""),
-                "target_role": ctx.get("target_role", ""),
-                "stage": ctx.get("stage"),
-                "generation_round": ctx.get("generation_round", 1),
-                "diagnosis": ctx.get("diagnosis", {}),
-                "outputs": ctx.get("outputs", {}),
-                "reviews": ctx.get("reviews", {}),
-                "decision": ctx.get("decision", {}),
-            })
+            await self._emit_done(ctx, emit)
         except Exception as exc:
             await emit("error", {"message": str(exc)})
         finally:
@@ -317,8 +324,13 @@ class TrainingLoopOrchestrator:
         for agent, result in zip(self.reviewers, results):
             if isinstance(result, Exception):
                 reviews[agent.meta.id] = {
+                    "type": "review",
+                    "reviewer": agent.meta.name,
                     "status": "fail",
                     "score": 0,
+                    "decision": "rework",
+                    "target_agent": self._review_target(agent.meta.id),
+                    "metrics": {},
                     "findings": [{
                         "severity": "blocker",
                         "message": f"审核执行异常：{result}",
@@ -329,6 +341,141 @@ class TrainingLoopOrchestrator:
             else:
                 reviews[agent.meta.id] = result
         ctx["reviews"] = reviews
+
+    async def _run_planning_debate(self, ctx: dict, emit) -> tuple[dict, bool]:
+        rework_count = 0
+        while True:
+            await self._stage(emit, "planning", "第一次辩论：领域专家与教学策略 Agent 独立提案", ctx)
+            planning_results = await asyncio.gather(
+                *(self._wrap_run(agent, ctx, emit) for agent in self.planning_agents),
+                return_exceptions=True,
+            )
+            proposals: dict[str, dict] = {}
+            for agent, result in zip(self.planning_agents, planning_results):
+                if isinstance(result, Exception):
+                    raise RuntimeError(f"{agent.meta.name} 提案失败：{result}") from result
+                proposals[agent.meta.id] = result
+                ctx.setdefault("outputs", {})[agent.meta.id] = result
+            ctx["planning_proposals"] = proposals
+
+            await self._stage(emit, "plan_decision", "训练计划仲裁 Agent 正在裁决双方分歧与返工要求", ctx)
+            training_plan = await self._wrap_run(self.plan_arbiter, ctx, emit)
+            ctx["training_plan"] = training_plan
+            ctx.setdefault("outputs", {})["training_plan"] = training_plan
+            debate = {
+                "phase": "planning",
+                "round": int(ctx.get("planning_round", 1)),
+                "title": "第一次辩论 · 训练计划协商",
+                "participants": ["domain_expert", "learning_strategy", "plan_arbiter"],
+                "positions": {
+                    "domain_expert": proposals.get("domain_expert", {}).get("position", ""),
+                    "learning_strategy": proposals.get("learning_strategy", {}).get("position", ""),
+                },
+                "conflict": (training_plan.get("debate") or {}).get("conflict", ""),
+                "resolution": (training_plan.get("debate") or {}).get("resolution", ""),
+                "decision": training_plan.get("decision", "accept"),
+                "rework_targets": training_plan.get("rework_targets") or [],
+                "required_fixes": training_plan.get("required_fixes") or [],
+            }
+            ctx["debates"].append(debate)
+            await emit("debate", debate)
+            if training_plan.get("decision") != "rework":
+                return training_plan, False
+            if rework_count >= self.MAX_REWORK_ATTEMPTS:
+                return training_plan, True
+
+            rework_count += 1
+            targets = training_plan.get("rework_targets") or [agent.meta.id for agent in self.planning_agents]
+            fixes = training_plan.get("required_fixes") or []
+            await emit("rework", {
+                "phase": "planning",
+                "rework_attempt": rework_count,
+                "planning_round": ctx.get("planning_round", 1),
+                "generation_round": ctx.get("generation_round", 1),
+                "targets": targets,
+                "required_fixes": fixes,
+            })
+            ctx["planning_revision_feedback"] = {target: list(fixes) for target in targets}
+            ctx["planning_round"] = int(ctx.get("planning_round", 1)) + 1
+
+    async def _record_resource_debate(self, ctx: dict, emit) -> None:
+        reviews = ctx.get("reviews") or {}
+        outputs = ctx.get("outputs") or {}
+        reviewer_targets = {
+            "evidence_review": "doc",
+            "practice_review": "guide",
+            "difficulty_review": "quiz",
+        }
+        exchanges = []
+        for reviewer_id, default_target in reviewer_targets.items():
+            review = reviews.get(reviewer_id) or {}
+            target = str(review.get("target_agent") or default_target)
+            output = outputs.get(target) or {}
+            exchanges.append({
+                "generator": target,
+                "reviewer": reviewer_id,
+                "generator_position": str(output.get("title") or f"{target} 第 {ctx.get('generation_round', 1)} 轮资源"),
+                "generator_response": output.get("revision_response") or [],
+                "reviewer_challenges": review.get("findings") or [],
+                "reviewer_decision": review.get("decision") or ("accept" if review.get("status") == "pass" else "rework"),
+                "review_score": int(review.get("score", 0)),
+            })
+        debate = {
+            "phase": "resource",
+            "round": int(ctx.get("generation_round", 1)),
+            "title": "第二次辩论 · 资源生成与审核质询",
+            "participants": [*reviewer_targets.values(), *reviewer_targets.keys()],
+            "exchanges": exchanges,
+            "decision": "rework" if any(item["reviewer_decision"] == "rework" for item in exchanges) else "accept",
+        }
+        ctx["debates"].append(debate)
+        await emit("debate", debate)
+
+    async def _emit_done(self, ctx: dict, emit) -> None:
+        decision = ctx.get("decision") or {}
+        if isinstance(decision, dict):
+            decision["debates"] = ctx.get("debates", [])
+        await emit("done", {
+            "run_id": ctx.get("run_id"),
+            "domain": ctx.get("domain", ""),
+            "target_role": ctx.get("target_role", ""),
+            "stage": ctx.get("stage"),
+            "generation_round": ctx.get("generation_round", 1),
+            "diagnosis": ctx.get("diagnosis", {}),
+            "outputs": ctx.get("outputs", {}),
+            "reviews": ctx.get("reviews", {}),
+            "decision": decision,
+            "debates": ctx.get("debates", []),
+        })
+
+    @staticmethod
+    def _failed_decision(
+        *,
+        phase: str,
+        summary: str,
+        generation_round: int,
+        required_fixes: list,
+    ) -> dict:
+        return {
+            "type": "decision",
+            "decision": "failed",
+            "summary": summary,
+            "quality_score": 0,
+            "generation_round": generation_round,
+            "rework_targets": [],
+            "required_fixes": required_fixes,
+            "review_scores": {},
+            "quality_metrics": {},
+            "release_gate": {
+                "review_count": 0,
+                "blocker_count": len(required_fixes),
+                "all_reviews_present": False,
+                "all_metrics_passed": False,
+            },
+            "failed_phase": phase,
+            "max_reworks_reached": True,
+            "published": False,
+        }
 
     async def _run_arbiter(self, ctx: dict, emit) -> dict:
         await self._stage(emit, "decision", "总裁决 Agent 汇总证据并执行发布门禁", ctx)

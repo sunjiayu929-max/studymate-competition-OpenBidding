@@ -153,9 +153,16 @@ function agentDescription(agent: WorkspaceAgent | undefined, definition: FlowNod
   if (definition.id === "arbiter" && workspace.decision) {
     return workspace.decision.decision === "publish"
       ? `批准发布 · 质量分 ${workspace.decision.quality_score}`
-      : `定向返工 · ${workspace.decision.rework_targets.length || 3} 个目标`
+      : workspace.decision.decision === "failed"
+        ? "返工已达 3 次上限 · 保留真实评分并停止发布"
+        : `定向返工 · ${workspace.decision.rework_targets.length || 3} 个目标`
   }
-  if (definition.id === "plan_arbiter" && workspace.outputs.training_plan) return "训练合同已形成 · 生成角色共同遵守"
+  if (definition.id === "plan_arbiter" && workspace.outputs.training_plan) {
+    const plan = workspace.outputs.training_plan
+    return plan.decision === "rework"
+      ? `第 ${plan.planning_round ?? 1} 轮辩论 · 决定返工`
+      : "辩论通过 · 训练合同已形成"
+  }
   return agent?.message || agent?.meta.description || definition.fallbackDescription
 }
 
@@ -168,11 +175,11 @@ export function AgentCollaborationFlow({ workspace }: { workspace: WorkspaceStat
     ? "done"
     : workspace.stage === "publishing"
       ? "running"
-      : workspace.decision?.decision === "rework"
+      : workspace.decision
         ? "error"
         : "pending"
   const reworkTargets = new Set(workspace.reworkHistory.at(-1)?.targets ?? workspace.decision?.rework_targets ?? [])
-  const showRework = workspace.generationRound > 1 || workspace.stage === "rework" || workspace.decision?.decision === "rework"
+  const showRework = workspace.reworkHistory.length > 0 || workspace.generationRound > 1 || workspace.stage === "rework" || workspace.decision?.decision === "rework"
 
   const statusOf = (id: string): AgentStatus => {
     if (id === "task") return taskStatus
@@ -293,14 +300,20 @@ export function AgentCollaborationFlow({ workspace }: { workspace: WorkspaceStat
             width={VIRTUAL_NODES.publish.width}
             height={VIRTUAL_NODES.publish.height}
             icon={publishStatus === "done" ? Check : LockKeyhole}
-            eyebrow={workspace.decision?.decision === "rework" ? "未通过门禁" : "发布门禁"}
-            title={publishStatus === "done" ? "训练资源已发布" : workspace.decision?.decision === "rework" ? "携带意见返工" : "等待总裁决"}
+            eyebrow={workspace.decision && workspace.decision.decision !== "publish" ? "未通过门禁" : "发布门禁"}
+            title={publishStatus === "done"
+              ? "训练资源已发布"
+              : workspace.decision?.decision === "failed"
+                ? "达到返工上限，停止发布"
+                : workspace.decision?.decision === "rework"
+                  ? "携带意见返工"
+                  : "等待总裁决"}
             status={publishStatus}
           />
 
           {showRework && (
             <div className="absolute bottom-2 left-[770px] rounded-full border border-[#E7C99E] bg-[#FFF8EB] px-3 py-1 text-[9px] font-bold text-[#A86C22]">
-              第 {workspace.generationRound} 轮 · 审核意见返回对应生成 Agent
+              已返工 {workspace.reworkHistory.length} 次 · 审核意见返回对应 Agent
             </div>
           )}
         </div>

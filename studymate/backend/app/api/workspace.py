@@ -151,7 +151,7 @@ async def generate(req: GenerateRequest, user: User = Depends(require_user)):
                         # 不同类型 content 字段语义不同，统一用 JSON 序列化非 markdown 类型
                         if out_type == "quiz":
                             content_str = json.dumps(out.get("items", []), ensure_ascii=False)
-                            citations = []
+                            citations = out.get("citations", [])
                         elif out_type == "reading":
                             content_str = json.dumps(out.get("items", []), ensure_ascii=False)
                             citations = []

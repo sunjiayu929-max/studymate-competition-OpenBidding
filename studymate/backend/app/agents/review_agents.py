@@ -19,7 +19,13 @@ def _finding(code: str, severity: str, message: str, suggestion: str, target_age
     }
 
 
-def _review_output(reviewer: str, score: int, findings: list[dict], metrics: dict) -> dict:
+def _review_output(
+    reviewer: str,
+    score: int,
+    findings: list[dict],
+    metrics: dict,
+    target_agent: str,
+) -> dict:
     has_blocker = any(item["severity"] == "blocker" for item in findings)
     status = "fail" if has_blocker or score < 70 else "warn" if findings or score < 85 else "pass"
     return {
@@ -29,6 +35,8 @@ def _review_output(reviewer: str, score: int, findings: list[dict], metrics: dic
         "score": max(0, min(100, score)),
         "findings": findings,
         "metrics": metrics,
+        "target_agent": target_agent,
+        "decision": "rework" if status != "pass" or findings else "accept",
     }
 
 
@@ -82,11 +90,57 @@ class EvidenceReviewAgent(AgentBase):
                 "doc",
             ))
 
+        outputs = context.get("outputs") or {}
+        guide = outputs.get("guide") or {}
+        guide_content = str(guide.get("content") or "")
+        guide_citations = guide.get("citations") or []
+        guide_cited_indexes = {int(value) for value in re.findall(r"\[(\d+)\]", guide_content)}
+        guide_valid_indexes = {int(item.get("index", 0)) for item in guide_citations}
+        guide_invalid_indexes = sorted(guide_cited_indexes - guide_valid_indexes)
+        if not guide_citations or not guide_cited_indexes:
+            findings.append(_finding(
+                "guide_claims_unsupported",
+                "blocker",
+                "实操指南的专业步骤没有形成正文引用与真实来源的绑定",
+                "为关键步骤补充 [n] 引用，并绑定到本轮知识库证据",
+                "guide",
+            ))
+        if guide_invalid_indexes:
+            findings.append(_finding(
+                "guide_invalid_citation_index",
+                "blocker",
+                f"实操指南引用了不存在的编号：{guide_invalid_indexes}",
+                "删除无效编号或绑定到真实检索片段",
+                "guide",
+            ))
+
+        quiz = outputs.get("quiz") or {}
+        quiz_items = quiz.get("items") or []
+        quiz_citations = quiz.get("citations") or []
+        quiz_valid_indexes = {int(item.get("index", 0)) for item in quiz_citations}
+        unsupported_quiz_items = [
+            str(item.get("id") or index + 1)
+            for index, item in enumerate(quiz_items)
+            if int(item.get("source_index") or 0) not in quiz_valid_indexes
+        ]
+        if unsupported_quiz_items:
+            findings.append(_finding(
+                "quiz_claims_unsupported",
+                "blocker",
+                f"测试题缺少有效知识来源：{unsupported_quiz_items}",
+                "为每道题绑定有效 source_index，并保证答案与解析来自对应证据",
+                "quiz",
+            ))
+
+        doc_supported = bool(citations and cited_indexes and not invalid_indexes)
+        guide_supported = bool(guide_citations and guide_cited_indexes and not guide_invalid_indexes)
+        supported_quiz_count = len(quiz_items) - len(unsupported_quiz_items)
+        professional_unit_count = 2 + len(quiz_items)
+        unsupported_unit_count = int(not doc_supported) + int(not guide_supported) + len(unsupported_quiz_items)
+        hallucination_rate = round(unsupported_unit_count / professional_unit_count * 100, 2) if professional_unit_count else 100.0
+
         citation_coverage = 0 if not citations else min(100, 70 + min(len(cited_indexes), 6) * 5)
-        score = 100
-        score -= 45 if not citations else 0
-        score -= 25 if citations and not cited_indexes else 0
-        score -= len(invalid_indexes) * 20
+        score = round(100 - hallucination_rate)
         score -= 10 if len(content.replace(" ", "")) < 260 else 0
         result = _review_output(
             "事实与来源审核",
@@ -96,7 +150,14 @@ class EvidenceReviewAgent(AgentBase):
                 "citation_count": len(citations),
                 "used_citation_count": len(cited_indexes & valid_indexes),
                 "citation_coverage": citation_coverage,
+                "guide_citation_count": len(guide_citations),
+                "quiz_source_coverage": round(supported_quiz_count / len(quiz_items) * 100) if quiz_items else 0,
+                "professional_unit_count": professional_unit_count,
+                "unsupported_unit_count": unsupported_unit_count,
+                "hallucination_rate": hallucination_rate,
+                "hallucination_rate_method": "未绑定有效知识来源的资源/题目单元占比",
             },
+            "doc",
         )
         await emit("review", {"agent": self.meta.id, **result})
         return result
@@ -168,6 +229,7 @@ class PracticeReviewAgent(AgentBase):
                 "citation_count": len(citations),
                 "safety_boundary_present": "安全边界" in content,
             },
+            "guide",
         )
         await emit("review", {"agent": self.meta.id, **result})
         return result
@@ -192,7 +254,11 @@ class DifficultyReviewAgent(AgentBase):
             max(1, min(4, int(item.get("difficulty", target) or target)))
             for item in items
         ]
-        competencies = [str(item) for item in context.get("core_competencies") or []]
+        training_plan = context.get("training_plan") or {}
+        competencies = [
+            str(item)
+            for item in (training_plan.get("priority_competencies") or context.get("core_competencies") or [])
+        ]
         corpus = " ".join(
             [str((outputs.get("doc") or {}).get("content") or ""), str((outputs.get("guide") or {}).get("content") or "")]
             + [str(item.get("question") or "") for item in items]
@@ -225,16 +291,24 @@ class DifficultyReviewAgent(AgentBase):
                 "quiz",
             ))
         coverage = round(len(covered) / len(competencies) * 100) if competencies else 100
-        if competencies and coverage < 40:
+        if competencies and coverage < 90:
             findings.append(_finding(
                 "core_coverage_low",
-                "medium",
+                "high",
                 f"当前资源只显式覆盖 {len(covered)} / {len(competencies)} 个岗位核心能力",
                 "在讲义、实操或题目中补充本轮主题直接相关的核心能力",
                 "doc",
             ))
 
         difficulty_fit = 100 if not difficulties else max(0, round(100 - abs(average - target) * 25))
+        if difficulty_fit < 85:
+            findings.append(_finding(
+                "profile_difficulty_fit_low",
+                "high",
+                f"学习者画像与资源难度适配准确率仅 {difficulty_fit}%",
+                "按照学情诊断目标重新校准题目难度层级",
+                "quiz",
+            ))
         score = round(difficulty_fit * 0.7 + max(60, coverage) * 0.3)
         score -= 30 if len(items) < 3 else 0
         score -= 15 if difficulties and len(set(difficulties)) < 2 else 0
@@ -250,6 +324,7 @@ class DifficultyReviewAgent(AgentBase):
                 "covered_competencies": covered,
                 "total_competencies": len(competencies),
             },
+            "quiz",
         )
         await emit("review", {"agent": self.meta.id, **result})
         return result

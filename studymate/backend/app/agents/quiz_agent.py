@@ -64,10 +64,22 @@ class QuizAgent(AgentBase):
         training_plan = context.get("training_plan") or {}
         target_difficulty = int((context.get("diagnosis") or {}).get("target_difficulty") or 2)
         revision_feedback = context.get("revision_feedback", {}).get("quiz", [])
+        chunks = context.get("chunks") or []
+        citations = [
+            {
+                "index": index + 1,
+                "chunk_id": chunk["chunk_id"],
+                "source": chunk["source"],
+                "page": chunk.get("page"),
+                "url": chunk.get("url"),
+                "snippet": chunk["content"][:200],
+            }
+            for index, chunk in enumerate(chunks)
+        ]
         persona = course_cfg.persona if course_cfg else f"{course_name}岗位训练助理"
 
         if not has_llm_key():
-            quiz = await self._stream_mock(emit, target_difficulty)
+            quiz = await self._stream_mock(emit, target_difficulty, citations)
         else:
             try:
                 quiz = await self._gen_real(
@@ -75,12 +87,13 @@ class QuizAgent(AgentBase):
                     target_role=target_role,
                     training_plan=training_plan,
                     revision_feedback=revision_feedback,
+                    chunks=chunks,
                 )
                 if not quiz:
                     raise RuntimeError("empty quiz items")
             except Exception as e:
                 await self.emit_delta(emit, f"\n[LLM 失败，降级到题库模板：{type(e).__name__}]\n", kind="text")
-                quiz = await self._stream_mock(emit, target_difficulty)
+                quiz = await self._stream_mock(emit, target_difficulty, citations)
 
         return {
             "type": "quiz",
@@ -89,14 +102,26 @@ class QuizAgent(AgentBase):
             "count": len(quiz),
             "version": context.get("generation_round", 1),
             "target_role": target_role,
+            "citations": citations,
+            "revision_response": [
+                str(item.get("suggestion", item)) if isinstance(item, dict) else str(item)
+                for item in revision_feedback
+            ],
         }
 
-    async def _stream_mock(self, emit, target_difficulty: int = 2) -> list[dict]:
+    async def _stream_mock(self, emit, target_difficulty: int = 2, citations: list[dict] | None = None) -> list[dict]:
         target = max(1, min(4, target_difficulty))
         levels = [max(1, target - 1), target, min(4, target + 1)]
         if len(set(levels)) < 2:
             levels = [1, 1, 2] if target == 1 else [3, 4, 4]
-        quiz = [{**item, "difficulty": levels[index]} for index, item in enumerate(MOCK_QUIZ)]
+        quiz = [
+            {
+                **item,
+                "difficulty": levels[index],
+                **({"source_index": index % len(citations) + 1} if citations else {}),
+            }
+            for index, item in enumerate(MOCK_QUIZ)
+        ]
         for q in quiz:
             msg = f"生成题目 [{q['type']}] {q['question'][:30]}...\n"
             for ch in msg:
@@ -115,10 +140,18 @@ class QuizAgent(AgentBase):
         target_role: str,
         training_plan: dict,
         revision_feedback: list[dict],
+        chunks: list[dict],
     ) -> list[dict]:
         llm = get_llm_client()
         difficulty_hint = self._difficulty_from_profile(profile)
-        feedback_text = "；".join(str(item.get("suggestion", item)) for item in revision_feedback) or "无"
+        feedback_text = "；".join(
+            str(item.get("suggestion", item)) if isinstance(item, dict) else str(item)
+            for item in revision_feedback
+        ) or "无"
+        references = "\n".join(
+            f"[{index + 1}] {item['source']} p.{item.get('page') or '-'}: {item['content'][:160]}"
+            for index, item in enumerate(chunks)
+        )
         sys = f"""你是一位{persona}，同时是{course_name}出题专家。请围绕岗位“{target_role}”为「{topic}」出 3 道不同类型、至少覆盖两个难度等级的题：
 1 题选择题（mcq）：4 选项，answer 是 0..3 的索引
 1 题填空题（fill）：answer 是简短答案字符串
@@ -133,15 +166,17 @@ class QuizAgent(AgentBase):
 输出**严格 JSON**，不要 Markdown 包裹，结构：
 {{
   "items": [
-    {{"id":"q1","type":"mcq","question":"...","options":["a","b","c","d"],"answer":0,"explanation":"...","difficulty":1-4}},
-    {{"id":"q2","type":"fill","question":"...","answer":"...","explanation":"...","difficulty":1-4}},
-    {{"id":"q3","type":"code","question":"...","starter":"...","answer":"...","explanation":"...","difficulty":1-4}}
+    {{"id":"q1","type":"mcq","question":"...","options":["a","b","c","d"],"answer":0,"explanation":"...","difficulty":1-4,"source_index":1}},
+    {{"id":"q2","type":"fill","question":"...","answer":"...","explanation":"...","difficulty":1-4,"source_index":1}},
+    {{"id":"q3","type":"code","question":"...","starter":"...","answer":"...","explanation":"...","difficulty":1-4,"source_index":1}}
   ]
 }}
 
 学生水平参考（综合给定 1-4 难度）：{difficulty_hint}
 多 Agent 仲裁训练计划：{json.dumps(training_plan, ensure_ascii=False)}
 审核返工意见：{feedback_text}
+本轮知识库证据（每题必须通过 source_index 绑定其中一条）：
+{references}
 题目必须体现岗位任务情境，并与学生当前难度相邻，避免跨度过大；三题应分别承担基础理解、场景应用、迁移挑战，并可用于下一轮升降阶判断。
 """
         msgs = [{"role": "system", "content": sys}, {"role": "user", "content": topic}]

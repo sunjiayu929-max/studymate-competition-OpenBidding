@@ -33,6 +33,7 @@ import {
 
 import { AppTopbar } from "@/components/AppTopbar"
 import { AgentCollaborationFlow } from "@/components/AgentCollaborationFlow"
+import { DebateQualityPanel } from "@/components/DebateQualityPanel"
 import { LearnerMatchReport } from "@/components/LearnerMatchReport"
 import { TheoryAssessmentModal, type TheoryAssessment, type TheoryGateState } from "@/components/TheoryAssessmentModal"
 import { apiGet } from "@/lib/api"
@@ -405,6 +406,7 @@ export function CompetencyTraining() {
             {workspace.status === "running" && <button type="button" onClick={() => workspaceStore.cancel()} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#E1C9C2] bg-[#FFF8F5] px-3 text-[11px] font-bold text-[#A5523A]">停止本轮协作</button>}
           </div>
           <AgentAudit workspace={workspace} progress={agentProgress} />
+          <DebateQualityPanel workspace={workspace} />
         </section>
 
         <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
@@ -451,7 +453,7 @@ export function CompetencyTraining() {
                 {released && !attempts.length && <Link to="/workspace/r/quiz" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#2468CE] px-3 text-[11px] font-bold text-white">进入分阶测试<ArrowRight className="size-3.5" /></Link>}
                 {released && attempts.length > 0 && !workspace.feedback && <button type="button" onClick={() => void submitFeedback()} disabled={feedbackBusy} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#2468CE] px-3 text-[11px] font-bold text-white disabled:opacity-50">{feedbackBusy ? <Loader2 className="size-3.5 animate-spin" /> : <FileCheck2 className="size-3.5" />}提交本轮验收</button>}
                 {advancedChallengeAvailable && <Link to={challengeHref} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#6D50C7] px-3 text-[11px] font-bold text-white shadow-[0_7px_16px_rgba(109,80,199,.18)] hover:bg-[#5940AD]"><Rocket className="size-3.5" />进阶挑战任务<ArrowRight className="size-3.5" /></Link>}
-                {workspace.feedback && <button type="button" onClick={startRound} disabled={!course || workspace.status === "running"} className={cn("inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[11px] font-bold disabled:opacity-50", advancedChallengeAvailable ? "border border-[#C9D9ED] bg-white text-[#315E83] hover:bg-[#F1F6FC]" : "bg-[#2468CE] text-white")}><RefreshCw className="size-3.5" />启动下一轮</button>}
+                {workspace.feedback && <button type="button" onClick={startRound} disabled={!course || workspace.status === "running"} className={cn("inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[11px] font-bold disabled:opacity-50", advancedChallengeAvailable ? "border border-[#C9D9ED] bg-white text-[#315E83] hover:bg-[#F1F6FC]" : "bg-[#2468CE] text-white")}><RefreshCw className="size-3.5" />{advancedChallengeAvailable ? "启动下一轮" : "降维解释"}</button>}
                 <a href="#agent-collaboration" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D4DFEB] bg-white px-3 text-[11px] font-bold text-[#5D718D]">查看完整审计链</a>
               </div>
               {feedbackError && <p role="alert" className="mt-2 text-[10px] text-[#A85138]">{feedbackError}</p>}
@@ -579,7 +581,77 @@ function CapabilityDetail({ node }: { node: CapabilityViewNode }) {
 
 function AgentAudit({ workspace, progress }: { workspace: WorkspaceState; progress: number }) {
   const reviews = Object.entries(workspace.reviews)
-  return <div className="mt-5"><div className="flex items-center justify-between text-[10px] font-bold text-[#63758D]"><span>协作进度 · {stageLabel(workspace.stage)} · 第 {workspace.generationRound} 轮</span><span>{progress}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-[#E8EEF5]"><div className="h-full rounded-full bg-gradient-to-r from-[#3976D0] to-[#20A080] transition-[width] duration-500" style={{ width: `${progress}%` }} /></div><AgentCollaborationFlow workspace={workspace} /><div className="mt-4 grid gap-4 lg:grid-cols-2"><div className="rounded-2xl border border-[#DFE6EF] bg-[#F8FAFD] p-4"><strong className="text-[11px] text-[#334B68]">三项交叉审核</strong>{reviews.length ? <div className="mt-3 space-y-2">{reviews.map(([key, review]) => <div key={key} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-[10px]"><span className="text-[#62748B]">{review.reviewer || key}</span><span className={cn("font-black", review.status === "pass" ? "text-[#1A8067]" : review.status === "fail" ? "text-[#B4523B]" : "text-[#A06C24]")}>{review.score} 分 · {reviewStatusLabel(review.status)}</span></div>)}</div> : <p className="mt-2 text-[10px] leading-5 text-[#7A899D]">等待事实来源、实操规范与难度覆盖审核。</p>}</div><div className={cn("rounded-2xl border p-4", workspace.decision?.decision === "publish" ? "border-[#BFDCCF] bg-[#F3FAF7]" : workspace.decision?.decision === "rework" ? "border-[#E8CDBE] bg-[#FFF7F2]" : "border-[#DFE6EF] bg-[#F8FAFD]")}><strong className="flex items-center gap-2 text-[11px] text-[#334B68]"><ShieldCheck className="size-3.5" />总裁决结论</strong><p className="mt-2 text-[10px] leading-5 text-[#687991]">{workspace.decision?.summary || "等待全部交叉审核完成后决定发布或自动返工。"}</p>{workspace.decision && <span className="mt-2 inline-flex rounded-full bg-white px-2 py-1 text-[9px] font-bold text-[#426384]">{workspace.decision.decision === "publish" ? "批准发布" : "自动返工"} · 质量分 {workspace.decision.quality_score}</span>}</div></div><ReworkTimeline workspace={workspace} />{workspace.logs.length > 0 && <details className="mt-3 rounded-2xl border border-[#E0E7F0] bg-[#FAFCFF] p-3"><summary className="cursor-pointer text-[10px] font-bold text-[#526982]">查看最近协作日志</summary><div className="mt-2 space-y-1.5">{workspace.logs.slice(-8).reverse().map((log, index) => <p key={`${log}-${index}`} className="text-[9px] leading-4 text-[#748399]">{log}</p>)}</div></details>}</div>
+  const decision = workspace.decision
+  const reviewMetric = (reviewId: string, metricId: string) => {
+    const value = workspace.reviews[reviewId]?.metrics?.[metricId]
+    return typeof value === "number" ? value : undefined
+  }
+  const evidenceScore = workspace.reviews.evidence_review?.score
+  const difficultyScore = workspace.reviews.difficulty_review?.score
+  const hallucinationRate = decision?.hallucination_rate
+    ?? decision?.quality_metrics?.hallucination_rate?.value
+    ?? reviewMetric("evidence_review", "hallucination_rate")
+    ?? (typeof evidenceScore === "number" ? Math.max(0, 100 - evidenceScore) : undefined)
+  const profileDifficultyAccuracy = decision?.profile_difficulty_accuracy
+    ?? decision?.quality_metrics?.profile_difficulty_accuracy?.value
+    ?? reviewMetric("difficulty_review", "difficulty_fit")
+    ?? difficultyScore
+  const coreKnowledgeCoverage = decision?.core_knowledge_coverage
+    ?? decision?.quality_metrics?.core_knowledge_coverage?.value
+    ?? reviewMetric("difficulty_review", "core_coverage")
+    ?? difficultyScore
+  const decisionMetrics = decision ? [
+    {
+      key: "hallucination_rate",
+      label: "专业知识谬误率（幻觉率）",
+      value: hallucinationRate,
+      rule: "< 5%",
+      passed: hallucinationRate === undefined ? undefined : hallucinationRate < 5,
+    },
+    {
+      key: "profile_difficulty_accuracy",
+      label: "学习者画像-资源难度适配准确率",
+      value: profileDifficultyAccuracy,
+      rule: "≥ 85%",
+      passed: profileDifficultyAccuracy === undefined ? undefined : profileDifficultyAccuracy >= 85,
+    },
+    {
+      key: "core_knowledge_coverage",
+      label: "核心知识点覆盖率",
+      value: coreKnowledgeCoverage,
+      rule: "≥ 90%",
+      passed: coreKnowledgeCoverage === undefined ? undefined : coreKnowledgeCoverage >= 90,
+    },
+  ] : []
+
+  return (
+    <div className="mt-5">
+      <div className="flex items-center justify-between text-[10px] font-bold text-[#63758D]"><span>协作进度 · {stageLabel(workspace.stage)} · 第 {workspace.generationRound} 轮</span><span>{progress}%</span></div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#E8EEF5]"><div className="h-full rounded-full bg-gradient-to-r from-[#3976D0] to-[#20A080] transition-[width] duration-500" style={{ width: `${progress}%` }} /></div>
+      <AgentCollaborationFlow workspace={workspace} />
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-[#DFE6EF] bg-[#F8FAFD] p-4">
+          <strong className="text-[11px] text-[#334B68]">三项交叉审核</strong>
+          {reviews.length ? <div className="mt-3 space-y-2">{reviews.map(([key, review]) => <div key={key} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-[10px]"><span className="text-[#62748B]">{review.reviewer || key}</span><span className={cn("font-black", review.status === "pass" ? "text-[#1A8067]" : review.status === "fail" ? "text-[#B4523B]" : "text-[#A06C24]")}>{review.score} 分 · {reviewStatusLabel(review.status)}</span></div>)}</div> : <p className="mt-2 text-[10px] leading-5 text-[#7A899D]">等待事实来源、实操规范与难度覆盖审核。</p>}
+        </div>
+        <div className={cn("rounded-2xl border p-4", decision?.decision === "publish" ? "border-[#BFDCCF] bg-[#F3FAF7]" : decision?.decision === "rework" || decision?.decision === "failed" ? "border-[#E8CDBE] bg-[#FFF7F2]" : "border-[#DFE6EF] bg-[#F8FAFD]")}>
+          <strong className="flex items-center gap-2 text-[11px] text-[#334B68]"><ShieldCheck className="size-3.5" />总裁决结论</strong>
+          <p className="mt-2 text-[10px] leading-5 text-[#687991]">{decision?.summary || "等待全部交叉审核完成后决定发布或自动返工。"}</p>
+          {decision && <>
+            <div className="mt-3 space-y-1.5">
+              {decisionMetrics.map((metric) => <div key={metric.key} className="flex items-center justify-between gap-3 rounded-xl border border-white/80 bg-white/90 px-3 py-2 text-[9px]">
+                <span className="font-semibold text-[#5D7088]">{metric.label}</span>
+                <span className={cn("shrink-0 font-black", metric.passed === false ? "text-[#B4523B]" : "text-[#168069]")}>实际结果 {metric.value === undefined ? "--" : `${metric.value}%`} {metric.rule}</span>
+              </div>)}
+            </div>
+            <span className="mt-2 inline-flex rounded-full bg-white px-2 py-1 text-[9px] font-bold text-[#426384]">{decision.decision === "publish" ? "批准发布" : decision.decision === "failed" ? "停止发布" : "自动返工"} · 质量分 {decision.quality_score}</span>
+          </>}
+        </div>
+      </div>
+      <ReworkTimeline workspace={workspace} />
+      {workspace.logs.length > 0 && <details className="mt-3 rounded-2xl border border-[#E0E7F0] bg-[#FAFCFF] p-3"><summary className="cursor-pointer text-[10px] font-bold text-[#526982]">查看最近协作日志</summary><div className="mt-2 space-y-1.5">{workspace.logs.slice(-8).reverse().map((log, index) => <p key={`${log}-${index}`} className="text-[9px] leading-4 text-[#748399]">{log}</p>)}</div></details>}
+    </div>
+  )
 }
 
 function ReworkTimeline({ workspace }: { workspace: WorkspaceState }) {

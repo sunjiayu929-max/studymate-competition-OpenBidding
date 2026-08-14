@@ -131,11 +131,14 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
 """,
                     "citations": [{"index": 1}],
                 },
-                "quiz": {"items": [
-                    {"question": "数据标注", "difficulty": 1},
-                    {"question": "模型训练", "difficulty": 2},
-                    {"question": "综合验证", "difficulty": 3},
-                ]},
+                "quiz": {
+                    "citations": [{"index": 1}],
+                    "items": [
+                        {"question": "数据标注", "difficulty": 1, "source_index": 1},
+                        {"question": "模型训练", "difficulty": 2, "source_index": 1},
+                        {"question": "综合验证", "difficulty": 3, "source_index": 1},
+                    ],
+                },
             },
         }
         reviews = {}
@@ -145,6 +148,22 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
 
         decision = await ArbiterAgent().run({"reviews": reviews, "generation_round": 1}, _ignore_event)
         self.assertEqual(decision["decision"], "publish")
+        self.assertLess(decision["hallucination_rate"], 5)
+        self.assertGreaterEqual(decision["profile_difficulty_accuracy"], 85)
+        self.assertGreaterEqual(decision["core_knowledge_coverage"], 90)
+
+    async def test_plan_arbiter_can_return_planning_proposals_for_rework(self):
+        result = await PlanArbiterAgent().run({
+            "topic": "接口联调",
+            "target_role": "前线部署工程师",
+            "planning_round": 1,
+            "planning_proposals": {
+                "domain_expert": {"position": "需要完整覆盖", "priority_competencies": []},
+                "learning_strategy": {"position": "控制负荷", "weekly_hours": 3, "capacity": 1},
+            },
+        }, _ignore_event)
+        self.assertEqual(result["decision"], "rework")
+        self.assertIn("domain_expert", result["rework_targets"])
 
     async def test_arbiter_returns_blocked_resource_for_rework(self):
         decision = await ArbiterAgent().run({

@@ -82,6 +82,10 @@ class DocAgent(AgentBase):
             "citations": citations,
             "version": int(context.get("generation_round", 1)),
             "target_role": target_role,
+            "revision_response": [
+                str(item.get("suggestion", item)) if isinstance(item, dict) else str(item)
+                for item in revision_feedback
+            ],
         }
 
     async def _stream_mock(

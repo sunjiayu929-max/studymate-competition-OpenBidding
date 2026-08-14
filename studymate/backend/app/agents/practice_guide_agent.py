@@ -65,6 +65,10 @@ class PracticeGuideAgent(AgentBase):
             "version": version,
             "target_difficulty": diagnosis.get("target_difficulty", 2),
             "target_role": target_role,
+            "revision_response": [
+                str(item.get("suggestion", item)) if isinstance(item, dict) else str(item)
+                for item in revision_feedback
+            ],
         }
 
     async def _stream_mock(
@@ -78,7 +82,10 @@ class PracticeGuideAgent(AgentBase):
     ) -> str:
         ref1 = "[1]" if citations else ""
         ref2 = "[2]" if len(citations) > 1 else ref1
-        revision = "\n".join(f"- {item}" for item in revision_feedback)
+        revision = "\n".join(
+            f"- {item.get('suggestion', item) if isinstance(item, dict) else item}"
+            for item in revision_feedback
+        )
         content = f"""# {topic} · 岗位实操指南
 
 > 目标岗位：{target_role}  

@@ -47,7 +47,7 @@ export interface WorkspaceOutputs {
   doc?: { type: string; title: string; content: string; citations: Citation[] }
   guide?: { type: string; title: string; content: string; citations: Citation[]; version?: number }
   mindmap?: { type: string; title: string; content: string }
-  quiz?: { type: string; title: string; items: QuizItem[]; count: number }
+  quiz?: { type: string; title: string; items: QuizItem[]; count: number; citations?: Citation[]; version?: number }
   path?: { type: string; title: string; nodes: PathNode[]; edges: PathEdge[]; count: number }
   reading?: { type: string; title: string; items: ReadingItem[]; count: number }
   code?: CodeOutput & { type: string; title: string }
@@ -81,7 +81,12 @@ export interface PersonalizedTrainingPlan {
     strategy_position: string
     conflict: string
     resolution: string
+    decision?: "accept" | "rework"
   }
+  decision?: "accept" | "rework"
+  planning_round?: number
+  rework_targets?: string[]
+  required_fixes?: string[]
   release_gate: string
   next_round_rule: string
 }
@@ -118,17 +123,62 @@ export interface TrainingReview {
   score: number
   findings: ReviewFinding[]
   metrics?: Record<string, unknown>
+  target_agent?: string
+  decision?: "accept" | "rework"
+}
+
+export interface QualityMetric {
+  label: string
+  value: number
+  operator: "<" | ">=" | string
+  threshold: number
+  passed: boolean
 }
 
 export interface TrainingDecision {
-  decision: "publish" | "rework"
+  decision: "publish" | "rework" | "failed"
   summary: string
   quality_score: number
   generation_round: number
   rework_targets: string[]
   required_fixes: string[]
   review_scores: Record<string, number>
-  release_gate: { review_count: number; blocker_count: number; all_reviews_present: boolean }
+  quality_metrics?: Record<string, QualityMetric>
+  hallucination_rate?: number
+  profile_difficulty_accuracy?: number
+  core_knowledge_coverage?: number
+  max_reworks_reached?: boolean
+  release_gate: {
+    review_count: number
+    blocker_count: number
+    all_reviews_present: boolean
+    all_metrics_passed?: boolean
+    thresholds?: Record<string, string>
+  }
+}
+
+export interface DebateExchange {
+  generator: string
+  reviewer: string
+  generator_position: string
+  generator_response: string[]
+  reviewer_challenges: ReviewFinding[]
+  reviewer_decision: "accept" | "rework"
+  review_score: number
+}
+
+export interface DebateRecord {
+  phase: "planning" | "resource"
+  round: number
+  title: string
+  participants: string[]
+  positions?: Record<string, string>
+  conflict?: string
+  resolution?: string
+  decision: "accept" | "rework"
+  rework_targets?: string[]
+  required_fixes?: string[]
+  exchanges?: DebateExchange[]
 }
 
 export interface TrainingFeedback {
@@ -153,6 +203,8 @@ export interface QuizAttempt {
 }
 
 export interface ReworkRecord {
+  phase: "planning" | "resource"
+  reworkAttempt: number
   generationRound: number
   targets: string[]
   requiredFixes: string[]
@@ -172,6 +224,7 @@ export interface WorkspaceState {
   stage: string
   generationRound: number
   reworkHistory: ReworkRecord[]
+  debates: DebateRecord[]
   diagnosis: TrainingDiagnosis | null
   reviews: Record<string, TrainingReview>
   decision: TrainingDecision | null
@@ -227,6 +280,7 @@ function makeInitialState(): WorkspaceState {
     stage: "idle",
     generationRound: 1,
     reworkHistory: [],
+    debates: [],
     diagnosis: null,
     reviews: {},
     decision: null,
@@ -270,6 +324,8 @@ function loadFromStorage(): WorkspaceState | null {
         required_fixes: normalizedFixes,
       } : null
       parsed.reworkHistory = [...(parsed.reworkHistory ?? []), {
+        phase: "resource" as const,
+        reworkAttempt: 1,
         generationRound: parsed.generationRound ?? 1,
         targets: parsed.decision?.rework_targets ?? ["doc", "guide", "quiz"],
         requiredFixes: parsed.decision?.required_fixes ?? [],
@@ -303,7 +359,12 @@ function loadFromStorage(): WorkspaceState | null {
       coreCompetencies: parsed.coreCompetencies ?? [],
       stage: parsed.stage ?? "idle",
       generationRound: parsed.generationRound ?? 1,
-      reworkHistory: parsed.reworkHistory ?? [],
+      reworkHistory: (parsed.reworkHistory ?? []).map((item, index) => ({
+        ...item,
+        phase: item.phase ?? ("resource" as const),
+        reworkAttempt: item.reworkAttempt ?? index + 1,
+      })),
+      debates: parsed.debates ?? [],
       diagnosis: parsed.diagnosis ?? null,
       reviews: parsed.reviews ?? {},
       decision: parsed.decision ?? null,
@@ -425,6 +486,7 @@ class WorkspaceStore {
       stage: "diagnosis",
       generationRound: 1,
       reworkHistory: [],
+      debates: [],
       diagnosis: null,
       reviews: {},
       decision: null,
@@ -539,18 +601,30 @@ class WorkspaceStore {
         this.setState({ decision: raw as TrainingDecision })
         break
       }
+      case "debate": {
+        const debate = raw as DebateRecord
+        this.setState((s) => ({ debates: [...s.debates, debate].slice(-12) }))
+        this.appendLog(`${debate.title}：${debate.decision === "accept" ? "通过" : "退回返工"}`)
+        break
+      }
       case "rework": {
         this.setState((s) => ({
           stage: "rework",
           generationRound: Number(d.generation_round ?? 1),
           reworkHistory: [...s.reworkHistory, {
+            phase: (d.phase === "planning" ? "planning" : "resource") as ReworkRecord["phase"],
+            reworkAttempt: Number(d.rework_attempt ?? 1),
             generationRound: Number(d.generation_round ?? 1),
             targets: (d.targets as string[]) ?? [],
             requiredFixes: (d.required_fixes as string[]) ?? [],
             createdAt: Date.now(),
           }].slice(-8),
         }))
-        this.appendLog(`裁决退回：${((d.targets as string[]) ?? []).join("、")}`)
+        this.appendLog(`${d.phase === "planning" ? "计划仲裁" : "资源审核"}退回：${((d.targets as string[]) ?? []).join("、")}`)
+        break
+      }
+      case "rework_exhausted": {
+        this.appendLog(String(d.summary ?? "已达到 3 次返工上限，保持真实结果并停止发布"))
         break
       }
       case "agent_status": {
@@ -591,12 +665,12 @@ class WorkspaceStore {
         const data = raw as {
           run_id?: string; stage?: string; generation_round?: number
           diagnosis?: TrainingDiagnosis; reviews?: Record<string, TrainingReview>; decision?: TrainingDecision
-          outputs?: WorkspaceOutputs
+          outputs?: WorkspaceOutputs; debates?: DebateRecord[]
         }
         this.setState((s) => ({
-          status: "done",
+          status: data.decision?.decision === "failed" ? "error" : "done",
           finishedAt: Date.now(),
-          lastError: "",
+          lastError: data.decision?.decision === "failed" ? data.decision.summary : "",
           runId: data.run_id ?? s.runId,
           stage: data.stage ?? s.stage,
           generationRound: data.generation_round ?? s.generationRound,
@@ -604,6 +678,7 @@ class WorkspaceStore {
           reviews: data.reviews ?? s.reviews,
           decision: data.decision ?? s.decision,
           outputs: data.outputs ?? s.outputs,
+          debates: data.debates ?? s.debates,
         }))
         this.abort = null
         break
