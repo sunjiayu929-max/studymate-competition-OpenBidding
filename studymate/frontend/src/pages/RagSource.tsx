@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { AlertTriangle, ArrowLeft, BookOpen, Database, ExternalLink, FileText, Hash, Link2, Loader2, RotateCcw, ShieldCheck } from "lucide-react"
+import { AlertTriangle, ArrowLeft, BookOpen, Database, FileText, Hash, Link2, Loader2, RotateCcw, ShieldCheck } from "lucide-react"
 
 import { PageHeader } from "@/components/PageHeader"
 import { ApiError, apiGet } from "@/lib/api"
@@ -58,6 +58,14 @@ export function RagSource() {
   }, [chunkId, retryToken])
 
   const current = useMemo(() => data?.context.find((item) => item.is_current), [data])
+  const sourceChapter = useMemo(() => {
+    if (!data) return "来源章节未标注"
+    const chapter = data.source.match(/第\s*\d+\s*章(?:：[^，]+)?/u)?.[0]
+    if (chapter) return `来源章节 · ${chapter}`
+    if (data.source.includes("后记")) return "来源章节 · 后记：FDE 的职业道德"
+    if (data.source.includes("训练切片")) return "来源章节 · StudyMate FDE 训练场景"
+    return "来源章节未标注"
+  }, [data])
   useTutorContext(data ? {
     page: "rag",
     title: `原文依据：${formatSourceLabel(data.source)}`,
@@ -70,8 +78,8 @@ export function RagSource() {
       <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
         <PageHeader
           current="rag"
-          title="课程资料原文"
-          subtitle="核对命中片段在课程资料中的来源、页码与相邻上下文。"
+          title="岗位资料来源"
+          subtitle="核对命中片段的来源章节、已入库内容与相邻上下文。"
           icon={FileText}
           iconColor="text-[#315E83]"
           appearance="paper"
@@ -115,18 +123,13 @@ export function RagSource() {
               <div className="pointer-events-none absolute -right-16 -top-24 size-64 rounded-full border border-[#D8D1C3] opacity-60" />
               <div className="relative flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
                 <div className="min-w-0">
-                  <span className="inline-flex items-center gap-2 text-[10px] font-bold tracking-[0.14em] text-[#6F8A69]"><ShieldCheck className="size-3.5" />可追溯的课程依据</span>
+                  <span className="inline-flex items-center gap-2 text-[10px] font-bold tracking-[0.14em] text-[#6F8A69]"><ShieldCheck className="size-3.5" />可追溯的岗位依据</span>
                   <h1 className="mt-2 text-2xl font-bold tracking-[-0.035em] text-[#18232D] sm:text-3xl">{formatSourceLabel(data.source)}</h1>
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-[#66717B]">
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-1.5"><BookOpen className="size-3.5 text-[#6F8A69]" />{data.course_name}</span>
                     {data.page != null && <span className="inline-flex items-center gap-1.5 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-1.5"><Hash className="size-3.5 text-[#B1842C]" />第 {data.page} 页</span>}
                   </div>
                 </div>
-                {data.external_url && (
-                  <a href={data.external_url} target="_blank" rel="noreferrer" className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] shadow-[0_8px_18px_rgba(36,76,102,.18)] transition-all hover:-translate-y-0.5 hover:bg-[#193B50]">
-                    打开外部原文 <ExternalLink className="size-4" />
-                  </a>
-                )}
               </div>
             </section>
 
@@ -134,7 +137,7 @@ export function RagSource() {
               <section className="overflow-hidden rounded-[26px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_12px_32px_rgba(24,35,45,.05)]">
                 <div className="border-b border-[#E3DED3] bg-[#F8F6F0] px-5 py-4 sm:px-6">
                   <span className="text-[10px] font-bold tracking-[0.12em] text-[#6F8A69]">原文上下文</span>
-                  <h2 className="mt-1 text-lg font-bold text-[#18232D]">命中位置与相邻资料片段</h2>
+                  <h2 className="mt-1 text-lg font-bold text-[#18232D]">已入库的命中内容与相邻片段</h2>
                 </div>
                 <div className="divide-y divide-[#E3DED3]">
                   {data.context.map((item) => (
@@ -151,7 +154,7 @@ export function RagSource() {
               <aside className="space-y-3 lg:sticky lg:top-4">
                 <InfoBlock icon={Database} title="资料定位" lines={[
                   data.course_name,
-                  data.page != null ? `第 ${data.page} 页` : "未标注页码",
+                  sourceChapter,
                   formatInternalLocator(data.url),
                 ]} />
                 <InfoBlock icon={ShieldCheck} title="核对说明" lines={[

@@ -48,7 +48,7 @@ const FIRST_ROUTE: GuideLink[] = [
 ]
 
 const GOAL_LINKS: GuideLink[] = [
-  { title: "我想快速弄懂一个知识点", detail: "让课程助教结合当前课程与画像连续讲解", to: "/tutor", action: "问课程助教", icon: MessageCircleMore, tone: "border-[#DFC9BE] bg-[#FFFEFA]", iconTone: "bg-[#F6ECE7] text-[#9A4E35]" },
+  { title: "我想快速弄懂一个知识点", detail: "让岗位助教结合当前岗位与画像连续讲解", to: "/tutor", action: "问岗位助教", icon: MessageCircleMore, tone: "border-[#DFC9BE] bg-[#FFFEFA]", iconTone: "bg-[#F6ECE7] text-[#9A4E35]" },
   { title: "我想核对内容出处", detail: "搜索教材片段，查看教材、页码和前后文", to: "/rag", action: "检索课程知识", icon: Search, tone: "border-[#C7DAD6] bg-[#FFFEFA]", iconTone: "bg-[#E2EEEB] text-[#3E7774]" },
   { title: "我想整理自己的学习成果", detail: "用 Markdown 笔记沉淀、总结并继续出题", to: "/notes", action: "整理智能笔记", icon: NotebookPen, tone: "border-[#CCD7C9] bg-[#FFFEFA]", iconTone: "bg-[#E8EFE8] text-[#5B7C6A]" },
   { title: "我想看懂抽象过程", detail: "播放动画并调整参数，观察过程如何变化", to: "/concept", action: "打开可视讲解", icon: Clapperboard, tone: "border-[#D7CDD9] bg-[#FFFEFA]", iconTone: "bg-[#EEE9EF] text-[#7E6B83]" },
@@ -96,7 +96,7 @@ const CAPABILITY_GROUPS = [
 ]
 
 const TIPS = [
-  ["课程为什么很重要？", "当前课程会同时影响检索范围、助教上下文、生成记录、笔记、测验和报告。开始前先确认顶部课程名称。"],
+  ["目标岗位为什么很重要？", "当前岗位会同时影响检索范围、助教上下文、生成记录、笔记、测验和报告。开始前先确认顶部岗位名称。"],
   ["画像需要一次填完吗？", "不需要。它会随着对话和真实学习结果持续更新，你只需在目标或困难变化时补充信息。"],
   ["生成页面离开后会丢失吗？", "生成记录会保留；学习报告也会在后台继续生成，之后返回页面即可查看结果。"],
   ["在哪里能随时求助？", "除助教页面外，右下角学习助手会感知当前页面、课程和画像，可直接询问“这个页面怎么用”。"],
@@ -277,7 +277,7 @@ export function UserGuide() {
                 <aside className="self-start rounded-[22px] border border-[#C7D2D8] bg-[#E7EDF3] p-5">
                   <span className="grid size-11 place-items-center rounded-2xl bg-[#244C66] text-[#F0D6A4]"><Bot className="size-5" /></span>
                   <h3 className="mt-4 text-lg font-black tracking-[-0.025em] text-[#18232D]">还是不知道从哪开始？</h3>
-                  <p className="mt-2 text-[11px] leading-5 text-[#596A75]">直接问右下角学习助手“带我完成第一次学习”，它会结合当前课程和画像给出下一步。</p>
+                  <p className="mt-2 text-[11px] leading-5 text-[#596A75]">直接问右下角学习助手“带我完成第一次学习”，它会结合当前岗位和画像给出下一步。</p>
                   <button type="button" onClick={openAssistant} className="mt-5 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] hover:bg-[#193B50]">
                     打开学习助手 <ArrowRight className="size-3.5" />
                   </button>

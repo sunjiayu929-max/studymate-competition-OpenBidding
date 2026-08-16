@@ -48,7 +48,7 @@ export function RencaiyaCourses({ keyword }: { keyword: string }) {
             source_state: "fallback",
             match_level: "fallback",
             resolved_query: keyword.trim(),
-            course_name: course?.name || "当前课程",
+            course_name: course?.name || "当前岗位",
             platform_url: "http://rencaiya.vip/college/allcourse",
             items: [],
           })

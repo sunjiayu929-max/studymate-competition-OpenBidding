@@ -20,12 +20,13 @@ from app.db.models import Course, KnowledgeChunk
 
 router = APIRouter(prefix="/courses", tags=["courses"])
 
-FIXED_COURSE_NAMES = {
+VISIBLE_COURSE_NAMES = {
     "机器学习",
     "数据结构与算法",
     "操作系统",
     "计算机网络",
     "计算机组成原理",
+    "FDE 岗位知识库",
 }
 
 
@@ -37,7 +38,7 @@ class CourseIn(BaseModel):
 @router.get("")
 async def list_courses(db: AsyncSession = Depends(get_db)):
     q = await db.execute(select(Course).order_by(Course.id))
-    courses = [c for c in q.scalars().all() if c.name in FIXED_COURSE_NAMES]
+    courses = [c for c in q.scalars().all() if c.name in VISIBLE_COURSE_NAMES]
 
     # 统计每课 chunk 数
     cnt_q = await db.execute(

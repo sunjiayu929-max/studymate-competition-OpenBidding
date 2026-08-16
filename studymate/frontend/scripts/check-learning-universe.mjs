@@ -130,7 +130,8 @@ async function openHome({ withRealData, viewport, screenshotName, reducedMotion 
     sessionStorage.setItem("sm:learning-universe-entered", "1")
   }, { currentUser: user, selectedCourse: withRealData ? course : null })
   const page = await context.newPage()
-  await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" })
+  // 默认首页已升级为浅色品牌首屏；旧版指挥舱保留为回归入口，继续覆盖其真实数据与动效契约。
+  await page.goto(`${baseUrl}/?legacy-home=1`, { waitUntil: "domcontentloaded" })
   await page.getByRole("heading", { name: "学习宇宙 · 实时指挥舱" }).waitFor()
   await page.getByTestId("beijing-clock").waitFor()
   if (screenshotName) await page.screenshot({ path: `${resultDir}/${screenshotName}` })

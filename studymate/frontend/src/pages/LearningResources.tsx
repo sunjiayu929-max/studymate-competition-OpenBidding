@@ -20,7 +20,7 @@ export function LearningResources() {
           <div className="max-w-2xl">
             <span className="inline-flex items-center gap-2 text-[10px] font-bold tracking-[.12em] text-[#6F8A69]"><Compass className="size-4" />DISCOVER</span>
             <h1 className="mt-2 text-2xl font-bold tracking-[-.04em] text-[#18232D]">按知识点寻找真实学习资源</h1>
-            <p className="mt-2 text-xs leading-6 text-[#66717B]">聚合高相关视频与课程，保留外部来源；关键词默认继承当前课程，也可以单独探索。</p>
+            <p className="mt-2 text-xs leading-6 text-[#66717B]">聚合高相关视频与课程，保留外部来源；关键词默认继承当前岗位，也可以单独探索。</p>
           </div>
           <form
             className="mt-5 flex max-w-2xl gap-2"

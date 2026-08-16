@@ -231,6 +231,243 @@ function formatBeijingDate(value: Date) {
   }).format(value)
 }
 
+interface LightHomeHeroProps {
+  learnerName: string
+  courseName: string
+  courseSelected: boolean
+  metrics: UniverseMetric[]
+  profileCompleteness: number
+  generatedResourceCount: number
+  quizCount: number
+  noteCount: number
+  todayProgress: number
+  workspace: WorkspaceState
+}
+
+const HERO_NAV = [
+  { to: "/courses", label: "课程" },
+  { to: "/workspace", label: "学习工坊" },
+  { to: "/tutor", label: "AI 助教" },
+  { to: "/report", label: "学习报告" },
+] as const
+
+function LightHomeHero({
+  learnerName,
+  courseName,
+  courseSelected,
+  metrics,
+  profileCompleteness,
+  generatedResourceCount,
+  quizCount,
+  noteCount,
+  todayProgress,
+  workspace,
+}: LightHomeHeroProps) {
+  const reduceMotion = useReducedMotion()
+  const rootRef = useRef<HTMLElement>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const enterDesk = () => {
+    document.getElementById("learning-desk")?.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "start",
+    })
+  }
+
+  const updatePointer = (clientX?: number, clientY?: number) => {
+    if (reduceMotion) return
+    const root = rootRef.current
+    if (!root) return
+    if (clientX === undefined || clientY === undefined) {
+      root.style.setProperty("--hero-x", "50%")
+      root.style.setProperty("--hero-y", "42%")
+      root.style.setProperty("--hero-tilt-x", "0deg")
+      root.style.setProperty("--hero-tilt-y", "0deg")
+      root.style.setProperty("--hero-shift-x", "0px")
+      root.style.setProperty("--hero-shift-y", "0px")
+      root.style.setProperty("--hero-shift-x-reverse", "0px")
+      root.style.setProperty("--hero-shift-y-reverse", "0px")
+      return
+    }
+    const rect = root.getBoundingClientRect()
+    const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    const y = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
+    root.style.setProperty("--hero-x", `${x * 100}%`)
+    root.style.setProperty("--hero-y", `${y * 100}%`)
+    root.style.setProperty("--hero-tilt-x", `${(0.5 - y) * 3.2}deg`)
+    root.style.setProperty("--hero-tilt-y", `${(x - 0.5) * 4.2}deg`)
+    root.style.setProperty("--hero-shift-x", `${(x - 0.5) * 18}px`)
+    root.style.setProperty("--hero-shift-y", `${(y - 0.5) * 14}px`)
+    root.style.setProperty("--hero-shift-x-reverse", `${(0.5 - x) * 18}px`)
+    root.style.setProperty("--hero-shift-y-reverse", `${(0.5 - y) * 14}px`)
+  }
+
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    let frame = 0
+    const publishVisibility = () => {
+      window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(() => {
+        const rect = root.getBoundingClientRect()
+        const visibleHeight = Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0))
+        const visibleRatio = rect.height > 0 ? visibleHeight / rect.height : 0
+        window.dispatchEvent(new CustomEvent("studymate:home-universe-visibility", {
+          detail: { visible: visibleRatio > 0.48 },
+        }))
+      })
+    }
+    const observer = new IntersectionObserver(publishVisibility, { threshold: [0, 0.48, 0.75] })
+    observer.observe(root)
+    window.addEventListener("scroll", publishVisibility, { passive: true })
+    window.addEventListener("resize", publishVisibility)
+    publishVisibility()
+    return () => {
+      observer.disconnect()
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener("scroll", publishVisibility)
+      window.removeEventListener("resize", publishVisibility)
+    }
+  }, [])
+
+  const activeAgentCount = workspace.agents.filter((agent) => agent.status === "running" || agent.status === "streaming").length
+  const workspaceLabel = workspace.status === "running"
+    ? `${activeAgentCount || 1} 个智能体协作中`
+    : generatedResourceCount
+      ? `${generatedResourceCount} 类资源已就绪`
+      : "7 个智能体随时待命"
+
+  return (
+    <section
+      ref={rootRef}
+      className="sm-hero"
+      onPointerMove={(event) => updatePointer(event.clientX, event.clientY)}
+      onPointerLeave={() => updatePointer()}
+      aria-label="StudyMate 个性化学习首页"
+    >
+      <div className="sm-hero-spotlight" aria-hidden="true" />
+      <div className="sm-hero-grid" aria-hidden="true" />
+      <span className="sm-hero-shape sm-hero-shape-orange" aria-hidden="true" />
+      <span className="sm-hero-shape sm-hero-shape-cyan" aria-hidden="true" />
+      <span className="sm-hero-shape sm-hero-shape-violet" aria-hidden="true" />
+      <span className="sm-hero-shape sm-hero-shape-green" aria-hidden="true" />
+
+      <div className="sm-hero-shell">
+        <header className="sm-hero-nav">
+          <Link to="/" className="sm-hero-brand" aria-label="StudyMate 首页">
+            <span className="sm-hero-logo"><Sparkles className="size-[18px]" /></span>
+            <span><strong>StudyMate</strong><small>AI LEARNING OS</small></span>
+          </Link>
+
+          <nav className="sm-hero-nav-links" aria-label="首页快捷导航">
+            {HERO_NAV.map((item) => <Link key={item.to} to={item.to}>{item.label}</Link>)}
+            <Link to="/guide">使用指南</Link>
+          </nav>
+
+          <div className="sm-hero-nav-actions">
+            <Link to="/profile" className="sm-hero-text-action">{learnerName}</Link>
+            <Link to="/workspace" className="sm-hero-nav-cta">开始学习 <ArrowRight className="size-3.5" /></Link>
+            <button type="button" className="sm-hero-menu-button" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen} aria-label="切换首页导航">
+              {menuOpen ? <span aria-hidden="true">×</span> : <span aria-hidden="true">☰</span>}
+            </button>
+          </div>
+
+          {menuOpen && (
+            <nav className="sm-hero-mobile-menu" aria-label="移动端首页导航">
+              {HERO_NAV.map((item) => <Link key={item.to} to={item.to} onClick={() => setMenuOpen(false)}>{item.label}<ChevronRight className="size-4" /></Link>)}
+              <Link to="/guide" onClick={() => setMenuOpen(false)}>使用指南<ChevronRight className="size-4" /></Link>
+            </nav>
+          )}
+        </header>
+
+        <div className="sm-hero-copy">
+          <div className="sm-hero-kicker"><span /> 为你的每一次学习，实时生成下一步</div>
+          <motion.h1
+            initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.58, ease: [0.22, 1, 0.36, 1] }}
+          >
+            让学习真正<br /><em>围绕你发生。</em>
+          </motion.h1>
+          <motion.p
+            initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.08 }}
+          >
+            从课程理解、AI 讲解到测验与复盘，StudyMate 把分散的工具组织成一条会持续更新的个性化学习路径。
+          </motion.p>
+          <motion.div
+            className="sm-hero-actions"
+            initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.15 }}
+          >
+            <Link to={courseSelected ? "/workspace" : "/courses"} className="sm-hero-primary">
+              {courseSelected ? "生成今日学习内容" : "选择一门课程"}<ArrowRight className="size-4" />
+            </Link>
+            <button type="button" onClick={enterDesk} className="sm-hero-secondary">探索全部功能 <ArrowDown className="size-4" /></button>
+          </motion.div>
+        </div>
+
+        <motion.div
+          className="sm-hero-product"
+          initial={reduceMotion ? false : { opacity: 0, y: 36, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.75, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="sm-hero-float-card sm-hero-float-card-left">
+            <span className="sm-hero-mini-icon"><Target className="size-4" /></span>
+            <span><small>画像完整度</small><strong>{profileCompleteness}%</strong></span>
+          </div>
+          <div className="sm-hero-float-card sm-hero-float-card-right">
+            <span className="sm-hero-mini-icon is-green"><Activity className="size-4" /></span>
+            <span><small>今日进度</small><strong>{todayProgress}%</strong></span>
+          </div>
+
+          <article className="sm-hero-dashboard">
+            <div className="sm-hero-dashboard-top">
+              <div>
+                <span className="sm-hero-dashboard-eyebrow">GOOD {new Date().getHours() < 12 ? "MORNING" : "DAY"}</span>
+                <h2>{learnerName}，今天想学点什么？</h2>
+              </div>
+              <Link to="/courses" className="sm-hero-course-pill"><Library className="size-3.5" /><span>{courseName}</span><ChevronRight className="size-3.5" /></Link>
+            </div>
+
+            <div className="sm-hero-dashboard-grid">
+              <div className="sm-hero-focus-card">
+                <div className="sm-hero-focus-heading">
+                  <span><Route className="size-4" /></span>
+                  <div><small>今日学习路线</small><strong>{courseSelected ? courseName : "先选定你的学习场景"}</strong></div>
+                </div>
+                <div className="sm-hero-route-line" aria-hidden="true"><i /><i /><i /><i /></div>
+                <div className="sm-hero-route-labels"><span>画像</span><span>理解</span><span>练习</span><span>复盘</span></div>
+                <Link to={courseSelected ? "/workspace" : "/courses"}>打开今日路线 <ArrowRight className="size-3.5" /></Link>
+              </div>
+
+              <div className="sm-hero-stat-stack">
+                <Link to="/notes" className="sm-hero-stat-card"><span>课程笔记</span><strong>{noteCount}</strong><small>持续沉淀关键内容</small></Link>
+                <Link to="/quiz" className="sm-hero-stat-card is-cyan"><span>测验记录</span><strong>{quizCount}</strong><small>用作答验证掌握</small></Link>
+              </div>
+            </div>
+
+            <div className="sm-hero-livebar">
+              <span className={workspace.status === "running" ? "is-live" : ""} />
+              <strong>{workspaceLabel}</strong>
+              <div>
+                {metrics.slice(0, 3).map((metric) => <span key={metric.label}><small>{metric.label}</small><b>{metric.value}</b></span>)}
+              </div>
+            </div>
+          </article>
+        </motion.div>
+
+        <button type="button" className="sm-hero-scroll-cue" onClick={enterDesk} aria-label="向下查看学习工作台">
+          <span>向下探索</span><ArrowDown className="size-4" />
+        </button>
+      </div>
+    </section>
+  )
+}
+
 function LearningUniverse(props: LearningUniverseProps) {
   const {
     learnerName,
@@ -357,7 +594,7 @@ function LearningUniverse(props: LearningUniverseProps) {
     notes: { value: String(noteCount), detail: "个人笔记" },
     workspace: { value: `${generatedResourceCount}/7`, detail: workspace.status === "running" ? "正在生成" : "Agent 资源" },
     report: { value: String(reportCount), detail: "阶段评估" },
-    course: { value: courseSelected ? (courseChunkCount ? String(courseChunkCount) : "目录") : "待选", detail: courseSelected ? (courseChunkCount ? "当前课程知识片段" : "前端课程目录预览") : "选择学习场景" },
+    course: { value: courseSelected ? (courseChunkCount ? String(courseChunkCount) : "目录") : "待选", detail: courseSelected ? (courseChunkCount ? "当前岗位知识片段" : "前端岗位目录预览") : "选择目标岗位" },
   }
 
   const visibleAgents = AGENT_DEFINITIONS.map((definition) => {
@@ -373,6 +610,25 @@ function LearningUniverse(props: LearningUniverseProps) {
   const activeAgentCount = visibleAgents.filter((agent) => agent.status === "running" || agent.status === "streaming").length
   const doneAgentCount = visibleAgents.filter((agent) => agent.status === "done").length
   const maxTrend = Math.max(1, ...trend.map((item) => item.value))
+
+  // 保留旧版指挥舱作为本地回归入口（?legacy-home=1），默认交付全新的浅色首页。
+  const showLegacyCommandCenter = new URLSearchParams(window.location.search).has("legacy-home")
+  if (!showLegacyCommandCenter) {
+    return (
+      <LightHomeHero
+        learnerName={learnerName}
+        courseName={courseName}
+        courseSelected={courseSelected}
+        metrics={metrics}
+        profileCompleteness={profileCompleteness}
+        generatedResourceCount={generatedResourceCount}
+        quizCount={quizCount}
+        noteCount={noteCount}
+        todayProgress={todayProgress}
+        workspace={workspace}
+      />
+    )
+  }
 
   return (
     <section
@@ -426,7 +682,7 @@ function LearningUniverse(props: LearningUniverseProps) {
           </div>
           <div className="flex items-center gap-3 sm:gap-5">
             <div className="hidden text-right sm:block">
-              <span className="block text-[9px] tracking-[.12em] text-[#7F8A98]">当前课程</span>
+              <span className="block text-[9px] tracking-[.12em] text-[#7F8A98]">当前岗位</span>
               <strong className={`mt-0.5 block max-w-52 truncate text-[11px] ${courseSelected ? "text-[#DDE5E8]" : "text-[#D2B36D]"}`}>{courseName}</strong>
             </div>
             <div className="h-7 w-px bg-white/10" />
@@ -841,7 +1097,7 @@ export function Home() {
   const courseId = course?.id
   const showcaseCourse = isShowcaseCourse(course)
 
-  useTutorContext({ page: "home", title: `今日学习 · 当前课程：${course?.name || "未选"}` })
+  useTutorContext({ page: "home", title: `今日学习 · 当前岗位：${course?.name || "未选"}` })
 
   useEffect(() => {
     const userId = user?.user_id
@@ -934,7 +1190,7 @@ export function Home() {
       : targetTopics[0]
         ? `这个主题来自你的学习目标，StudyMate 已把它放到今日路线的中心。`
         : course
-          ? `围绕当前课程「${course.name}」给出一条清晰起点，完成后再依据表现调整下一步。`
+          ? `围绕当前岗位「${course.name}」给出一条清晰起点，完成后再依据表现调整下一步。`
           : "选定课程后，笔记、测验与画像会汇成一条只属于你的学习路线。"
 
   const routeSteps = [
@@ -1180,7 +1436,7 @@ export function Home() {
             onClick={() => window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" })}
             className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3 text-[10px] font-bold text-[#59636B] shadow-sm hover:bg-[#ECE8DE]"
           >
-            <Orbit className="size-3.5 text-[#315E83]" />返回学习宇宙
+            <Sparkles className="size-3.5 text-[#5266EA]" />返回首页首屏
           </button>
         </div>
         <AppTopbar current="home" appearance="paper" />
@@ -1334,7 +1590,7 @@ export function Home() {
                   <div>
                     <p className="text-xs font-bold text-[#18232D]">路线依据</p>
                     <p className="mt-1 text-[11px] leading-5 text-[#66717B]">
-                      {profileGoal ? `当前目标：${profileGoal}` : course ? `当前课程：${course.name}` : "完成画像后，路线会更贴近你的目标与节奏"}
+                      {profileGoal ? `当前目标：${profileGoal}` : course ? `当前岗位：${course.name}` : "完成画像后，路线会更贴近你的目标与节奏"}
                     </p>
                   </div>
                 </div>
