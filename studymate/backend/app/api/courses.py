@@ -20,14 +20,7 @@ from app.db.models import Course, KnowledgeChunk
 
 router = APIRouter(prefix="/courses", tags=["courses"])
 
-VISIBLE_COURSE_NAMES = {
-    "机器学习",
-    "数据结构与算法",
-    "操作系统",
-    "计算机网络",
-    "计算机组成原理",
-    "FDE 岗位知识库",
-}
+VISIBLE_COURSE_NAMES = set(list_course_names())
 
 
 class CourseIn(BaseModel):
