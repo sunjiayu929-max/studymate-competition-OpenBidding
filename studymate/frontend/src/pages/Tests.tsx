@@ -409,12 +409,12 @@ export function Tests() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="grid size-9 place-items-center rounded-xl bg-[#244C66] text-[#F0D6A4]"><Database className="size-4" /></span>
-                  <div><strong className="block text-[12px] text-[#18232D]">只读数据健康</strong><span className="text-[9px] text-[#66717B]">课程、知识块、向量、私有任务与迁移记录</span></div>
+                  <div><strong className="block text-[12px] text-[#18232D]">只读数据健康</strong><span className="text-[9px] text-[#66717B]">岗位知识库、知识片段、向量、私有任务与迁移记录</span></div>
                 </div>
                 <span className={`rounded-full px-2 py-1 text-[9px] font-bold ${Object.values(dataHealth.private_tasks).some((count) => count > 0) && (dataHealth.private_tasks.error || 0) > 0 ? "bg-[#F4ECD8] text-[#8E6925]" : "bg-[#E9EEE6] text-[#557052]"}`}>只读 · 不提供开放接口</span>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-                {[["课程", dataHealth.courses], ["课程知识块", dataHealth.knowledge_chunks], ["课程向量", dataHealth.knowledge_vectors], ["私有库", dataHealth.private_libraries], ["私有分片", dataHealth.private_chunks], ["失败任务", dataHealth.private_tasks.error || 0]].map(([label, value]) => <div key={label} className="rounded-xl border border-[#D7D1C4] bg-white px-3 py-2"><span className="block text-[8px] font-bold text-[#7A817F]">{label}</span><strong className="mt-0.5 block text-lg tabular-nums text-[#244C66]">{value}</strong></div>)}
+                {[["岗位知识库", dataHealth.courses], ["岗位知识片段", dataHealth.knowledge_chunks], ["岗位知识向量", dataHealth.knowledge_vectors], ["私有库", dataHealth.private_libraries], ["私有分片", dataHealth.private_chunks], ["失败任务", dataHealth.private_tasks.error || 0]].map(([label, value]) => <div key={label} className="rounded-xl border border-[#D7D1C4] bg-white px-3 py-2"><span className="block text-[8px] font-bold text-[#7A817F]">{label}</span><strong className="mt-0.5 block text-lg tabular-nums text-[#244C66]">{value}</strong></div>)}
               </div>
               <div className="mt-3 grid gap-2 lg:grid-cols-2">
                 <div className="rounded-xl border border-[#D7D1C4] bg-white px-3 py-2 text-[9px] leading-5 text-[#59636B]"><strong className="text-[#18232D]">私有任务</strong><div className="mt-1 flex flex-wrap gap-1.5">{Object.keys(dataHealth.private_tasks).length ? Object.entries(dataHealth.private_tasks).map(([taskStatus, count]) => <span key={taskStatus} className="rounded-full bg-[#F1EDE4] px-2 py-0.5">{taskStatus} {count}</span>) : <span>暂无任务</span>}</div><p className="mt-1">{dataHealth.ocr.note}</p></div>
@@ -528,7 +528,7 @@ export function Tests() {
             <TestListLoading />
           ) : cases.length === 0 ? (
             <div className="grid min-h-72 place-items-center rounded-[22px] border border-dashed border-[#D7D1C4] bg-[#FBF8F0] px-5 py-12 text-center">
-              <div><span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><ClipboardCheck className="size-5" /></span><strong className="mt-3 block text-sm text-[#243746]">还没有测试用例</strong><p className="mx-auto mt-1 max-w-md text-[11px] leading-5 text-[#7A817F]">可以载入典型示例快速形成评测集，也可按课程目标自行创建。</p><div className="mt-4 flex justify-center gap-2"><Button variant="outline" onClick={() => setAddOpen(true)} className="border-[#D7D1C4] bg-[#FFFEFA]"><Plus className="size-4" />新增用例</Button><Button onClick={seed} className="bg-[#244C66] text-white hover:bg-[#193B50]"><Sparkles className="size-4" />载入示例</Button></div></div>
+              <div><span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><ClipboardCheck className="size-5" /></span><strong className="mt-3 block text-sm text-[#243746]">还没有测试用例</strong><p className="mx-auto mt-1 max-w-md text-[11px] leading-5 text-[#7A817F]">可以载入典型示例快速形成评测集，也可按岗位训练目标自行创建。</p><div className="mt-4 flex justify-center gap-2"><Button variant="outline" onClick={() => setAddOpen(true)} className="border-[#D7D1C4] bg-[#FFFEFA]"><Plus className="size-4" />新增用例</Button><Button onClick={seed} className="bg-[#244C66] text-white hover:bg-[#193B50]"><Sparkles className="size-4" />载入示例</Button></div></div>
             </div>
           ) : filteredCases.length === 0 ? (
             <div className="text-center py-12 text-[var(--muted-foreground)] text-sm">
@@ -739,7 +739,7 @@ function EditModal({
     }
     setSaving(true)
     try {
-      // 新建时绑当前课程；编辑时不动 course_id（保留原值）
+      // 新建时绑定当前岗位知识库；编辑时不动兼容 course_id（保留原值）
       const body: Record<string, unknown> = { question, expected, category, target_agent: target }
       if (!initial && course) body.course_id = course.id
       if (initial) {
@@ -807,7 +807,7 @@ function EditModal({
                 onChange={(e) => setTarget(e.target.value as TestCase["target_agent"])}
                 className="h-10 w-full rounded-xl border border-[#D7D1C4] bg-[#FBFAF6] px-3 text-sm focus:border-[#315E83] focus:outline-none focus:ring-2 focus:ring-[#315E83]/10"
               >
-                <option value="tutor">课程助教</option>
+                <option value="tutor">岗位助教</option>
                 <option value="doc">讲解文档</option>
                 <option value="quiz">智能出题</option>
               </select>

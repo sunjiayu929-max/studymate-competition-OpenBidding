@@ -162,6 +162,26 @@ class LearningPath(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(32), default="active")
 
 
+class TrainingRun(Base, TimestampMixin):
+    """一次可审计的岗位训练闭环运行记录。"""
+    __tablename__ = "training_runs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    course_id: Mapped[int | None] = mapped_column(ForeignKey("courses.id"), nullable=True, index=True)
+    domain: Mapped[str] = mapped_column(String(128), default="")
+    target_role: Mapped[str] = mapped_column(String(128), default="")
+    topic: Mapped[str] = mapped_column(String(256), default="")
+    status: Mapped[str] = mapped_column(String(32), default="running", index=True)
+    stage: Mapped[str] = mapped_column(String(32), default="diagnosis")
+    generation_round: Mapped[int] = mapped_column(Integer, default=1)
+    diagnosis: Mapped[dict] = mapped_column(JSON, default=dict)
+    outputs: Mapped[dict] = mapped_column(JSON, default=dict)
+    reviews: Mapped[dict] = mapped_column(JSON, default=dict)
+    decision: Mapped[dict] = mapped_column(JSON, default=dict)
+    feedback: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class Exercise(Base, TimestampMixin):
     __tablename__ = "exercises"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -311,6 +331,27 @@ class QuizSessionItem(Base, TimestampMixin):
     score: Mapped[float] = mapped_column(Float, default=0.0)
     judge_reason: Mapped[str] = mapped_column(Text, default="")  # code 题 LLM judge 留痕
     error_tags: Mapped[list] = mapped_column(JSON, default=list)  # 错题能力标签，供展示与后续自适应出题
+
+
+class TheoryAssessment(Base, TimestampMixin):
+    """用户在进入新目标岗位训练中心时完成的一次理论基线测评。
+
+    记录按 user_id + role_id 隔离；items 保留知识库来源和标准答案，接口在提交前会隐藏答案。
+    status: ready（待作答）/ submitted（已提交）/ error（组卷失败）。
+    """
+    __tablename__ = "theory_assessments"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    role_id: Mapped[str] = mapped_column(String(128), index=True)
+    role_name: Mapped[str] = mapped_column(String(128))
+    course_id: Mapped[int | None] = mapped_column(ForeignKey("courses.id"), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(16), default="ready", index=True)
+    items: Mapped[list] = mapped_column(JSON, default=list)
+    answers: Mapped[dict] = mapped_column(JSON, default=dict)
+    score: Mapped[float] = mapped_column(Float, default=0.0)
+    result: Mapped[dict] = mapped_column(JSON, default=dict)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class TestCase(Base, TimestampMixin):

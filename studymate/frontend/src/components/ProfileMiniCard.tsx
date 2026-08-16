@@ -153,7 +153,7 @@ export function ProfileMiniCard({ profile, variant = "full" }: ProfileMiniCardPr
         <TagCard
           icon={<Target className="size-4" />}
           color="indigo"
-          label="学习目标"
+          label="岗位目标"
           primary={dims.goals?.primary}
           secondary={dims.goals?.deadline}
           chips={dims.goals?.target_topics}
@@ -162,7 +162,7 @@ export function ProfileMiniCard({ profile, variant = "full" }: ProfileMiniCardPr
         <TagCard
           icon={<AlertTriangle className="size-4" />}
           color="amber"
-          label="薄弱点"
+          label="薄弱能力点"
           chips={dims.weak_points?.topics}
           extraChips={dims.weak_points?.error_types}
           compact={compact}

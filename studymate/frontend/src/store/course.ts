@@ -1,5 +1,5 @@
 /**
- * 多课程：当前课程的 localStorage 单例 store + config 拉取 hook。
+ * 兼容知识库边界：底层沿用 current-course localStorage 与 config 拉取 hook。
  *
  * 各页面通过 useCurrentCourse() 订阅；切换调 setCurrentCourse() 或 clear。
  * useCourseConfig() 拉 /api/courses/{id}/config 拿示例题、persona、阅读源。
@@ -62,7 +62,7 @@ const FALLBACK_SAMPLES: Record<string, { topics: string[]; questions: string[] }
   },
 }
 
-/** 没选课时的全局默认示例（保持原版机器学习风格）。 */
+/** 尚未绑定岗位知识库时的兼容示例。 */
 export const DEFAULT_SAMPLE_TOPICS = FALLBACK_SAMPLES["机器学习"].topics
 export const DEFAULT_SAMPLE_QUESTIONS = FALLBACK_SAMPLES["机器学习"].questions
 
@@ -134,14 +134,14 @@ export function setCurrentCourse(c: CourseInfo | null) {
   courseStore.set(c)
 }
 
-/** 课程查询串：course_id=X，没选课时返回空串。 */
+/** 兼容知识库查询串：course_id=X，未绑定时返回空串。 */
 export function courseQuery(): string {
   const c = courseStore.get()
   return c && !isShowcaseCourse(c) ? `course_id=${c.id}` : ""
 }
 
-/** 拉当前课程的配置（示例题 / persona / reading_sources）。
- *  - 没选课 → 返回 null（页面用 fallback）
+/** 拉当前岗位知识库的兼容配置（示例题 / persona / reading_sources）。
+ *  - 未绑定岗位知识库 → 返回 null（页面用 fallback）
  *  - 网络/后端失败 → 也返回 null，由页面用 fallbackSamplesFor 兜底
  */
 export function useCourseConfig(): CourseConfig | null {

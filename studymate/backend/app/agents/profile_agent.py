@@ -23,6 +23,22 @@ _SCORE_FIELDS: dict[str, set[str]] = {
     "employment_skills": {"programming", "algorithms", "data_ai", "systems", "engineering", "professional"},
 }
 _PACE_INTENSITIES = {"slow", "medium", "fast", "intensive"}
+_KNOWLEDGE_TERMS = (
+    "数学", "编程", "代码", "python", "java", "c++", "统计", "概率", "英语",
+    "岗位知识", "领域知识", "专业知识", "课程基础", "技术基础",
+)
+_KNOWLEDGE_LEVEL_TERMS = (
+    "熟悉", "掌握", "擅长", "扎实", "熟练", "了解", "学过", "没学", "基础",
+    "一般", "薄弱", "较弱", "较好", "零基础",
+)
+_COGNITIVE_TERMS = (
+    "图示", "图表", "可视化", "阅读理解", "看文档理解", "动手理解", "边做边学",
+    "实操理解", "听讲", "讲解理解", "学习方式", "认知方式",
+)
+_RESOURCE_TERMS = (
+    "文档", "讲义", "思维导图", "小测", "测验", "代码实操", "实操任务", "视频",
+    "论文", "书籍", "阅读材料", "资源形式",
+)
 _EXPERIENCE_RE = re.compile(
     r"做过|做了.{0,20}项目|已完成|完成了|完成过|参与了|参与过|我负责|本人负责|项目中负责|"
     r"主导了|主导过|实习过|实习期间|实习经历|工作中|项目中|使用过|用过|使用了|"
@@ -31,7 +47,7 @@ _EXPERIENCE_RE = re.compile(
 )
 _NO_EXPERIENCE_RE = re.compile(
     r"(?:"
-    r"(?:目前|暂时|现在)?(?:没有|没|暂无|尚无|从未)(?:任何)?(?:相关的)?"
+    r"(?:目前|暂时|现在)?(?:没有|没|暂无|尚无|从未)(?:任何)?(?:相关(?:的)?)?"
     r"(?:(?:做过|参与过|参加过|完成过|实习过)(?:任何)?的?)?"
     r"(?:项目经历|项目|实习经历|实习|竞赛经历|竞赛|比赛经历|比赛|实践经历|实践|工作经历)"
     r"|(?:从未|没有|没)实习过"
@@ -59,13 +75,14 @@ _EMPLOYMENT_KEYWORDS: dict[str, tuple[str, ...]] = {
     "professional": ("协作", "团队", "沟通", "汇报", "项目管理", "负责", "主导", "实习", "工作中"),
 }
 
-SYSTEM_PROMPT = """你是一位耐心的高校计算机课程助教，正在通过自然对话了解学生背景，
-为他构建跨课程通用的学习画像。你的任务有两部分：
+SYSTEM_PROMPT = """你是一位耐心的领域岗位训练顾问，正在通过自然对话了解学习者背景，
+为他构建面向目标岗位的通用能力画像。你的任务有两部分：
 
-【任务 A】给学生一个简短、自然、亲切的中文回话（控制在 80 字以内）。
-- 一次只问 1 个最关键的问题，由浅入深
-- 不要罗列所有维度，让对话自然
-- 只有满足下方“画像完成约束”时，才可以总结并邀请进入学习工作台
+【任务 A】给学生一个简短、自然、亲切的中文回话（控制在 140 字以内）。
+- 完整画像必须覆盖：学历专业、知识基础与薄弱点、认知风格、资源偏好、就业技能/实践证据、学习时间
+- 每次只询问一个主题组，把同组的 1-2 个维度合并提问；通常用 3 轮完成，避免一项一问或一次堆满所有问题
+- 不得询问历史中已经问过或当前画像已经确认的信息，不得换一种说法重复追问
+- 完整画像一旦形成，必须立即停止追问，简短总结并邀请进入岗位训练中心
 
 【任务 B】根据本轮对话，输出一个 JSON patch（只放本轮**新增或更新**的字段，
 不要重复已确认的字段）。
@@ -77,17 +94,19 @@ SYSTEM_PROMPT = """你是一位耐心的高校计算机课程助教，正在通�
 {
   "knowledge_base": {"math": 3, "programming": 4, "subject_prior": 2},
   "cognitive_style": {"visual": 5},
-  "goals": {"primary": "考研 408 / 完成毕业项目 / 兴趣入门"},
+  "goals": {"primary": "应聘前线部署工程师 / 完成岗位项目 / 补齐交付能力"},
   "weak_points": {"topics": ["概率论", "操作系统调度"]},
   "pace": {"hours_per_week": 8, "intensity": "medium"},
   "preference": {"video": 5, "code": 4},
   "employment_skills": {"programming": 4, "engineering": 3},
+  "learner_background": {"education": "本科大三", "major": "计算机科学", "practice_status": "has"},
+  "profile_coverage": {"knowledge_base": true, "cognitive_style": true, "resource_preference": true, "employment_skills": true},
   "reasoning": "学生提到喜欢看视频和动手写代码，且数学基础一般"
 }
 
 【画像 schema】（值类型注意，每项 0-5 分，goals/weak_points 是字符串/数组）
 - knowledge_base: math/programming/statistics/english/subject_prior (int 0-5)
-  · subject_prior 是「当前课程领域的先验分」，不必局限于机器学习
+  · subject_prior 是「当前目标岗位领域的先验分」，可跨岗位复用
 - cognitive_style: visual/reading/hands_on/auditory (int 0-5)
 - goals: primary(str)/deadline(str)/target_topics(list[str])
 - weak_points: topics(list[str])/error_types(list[str])
@@ -98,14 +117,27 @@ SYSTEM_PROMPT = """你是一位耐心的高校计算机课程助教，正在通�
   · 只有学生明确提到项目经历、使用过的技术、实践成果或职业经历时才更新
   · “想做某岗位”“对某方向感兴趣”只能写入 goals，不能直接当作已经具备就业技能
   · professional 只能依据明确的协作、表达、项目管理或实习经历更新
+- learner_background: education(str)/major(str)/practice_status(unknown|none|has)
+  · 用户明确表示没有相关项目或实习时，practice_status 必须写 none；有明确经历时写 has
+- profile_coverage: knowledge_base/cognitive_style/resource_preference/employment_skills (bool)
+  · 只有用户明确回答了对应主题时才写 true；即使用户回答“各方式都可以”或各项处于中性水平，也要标记对应主题已确认
 
 只输出本轮变化的字段。第一次见面学生还没说什么时，patch 可以是空 {} 或只填 reasoning。
 
 【画像完成约束】
 {completion_guidance}
 
+【本轮之后仍缺少的信息与防重复要求】
+{question_guidance}
+
 【当前已有画像】
 {current_profile}
+
+【当前目标岗位】
+{role_context}
+
+后续追问必须优先补齐与当前目标岗位有关且证据不足的信息。遇到自评与项目证据矛盾时，
+用一个具体岗位场景继续追问；不得把学习意愿直接当成已具备能力。
 """
 
 
@@ -126,19 +158,127 @@ def build_profile_evidence_text(history: list[dict], user_message: str) -> str:
 
 
 def build_profile_completion_guidance(current_profile: ProfileDims) -> str:
-    """给模型明确、可测试的画像完成条件，避免就业技能仍未知时过早收尾。"""
-    employment = current_profile.employment_skills.model_dump()
-    if any(score > 0 for score in employment.values()):
-        return (
-            "就业技能已经有至少一项可信实践证据。若本轮又出现新的项目、竞赛、实习、课程实践或作品证据，"
-            "仍须先写入 employment_skills patch；其余关键画像信息基本明确后才可宣布画像完善。"
-        )
-    return (
-        "当前就业技能六项全为 0，含义是“尚无可信实践证据”，不是能力为零。宣布“画像已完善”、"
-        "“信息收集完成”或邀请进入工作台之前，必须检查历史和本轮消息：若已有完成过的项目、竞赛、实习、"
-        "课程实践或作品证据，先在 employment_skills patch 中更新对应维度；若用户明确表示没有相关经历，"
-        "保持 0 分并说明就业技能暂处于未评估状态；若两者都没有，只追问一个关于实践经历、技术栈、职责或成果的关键问题。"
+    """给模型明确、可测试的完整画像完成条件。"""
+    missing = profile_missing_fields(current_profile)
+    if not missing:
+        return "知识、认知、资源、就业与学习安排等画像维度均已确认。画像已完成，禁止继续提问。"
+    return f"完整画像仍缺：{'、'.join(missing)}。每轮只询问一个相关主题组，不要把所有缺项一次堆给用户。"
+
+
+def profile_missing_fields(current_profile: ProfileDims, target_role: str | None = None) -> list[str]:
+    """返回完成岗位画像仍缺少的描述性证据字段。"""
+    missing: list[str] = []
+    background = current_profile.learner_background
+    coverage = current_profile.profile_coverage
+    if not (current_profile.goals.primary.strip() or str(target_role or "").strip()):
+        missing.append("目标岗位")
+    if not (background.education.strip() or background.major.strip()):
+        missing.append("学历与专业背景")
+    knowledge_is_described = (
+        coverage.knowledge_base
+        or any(value != 3 for value in current_profile.knowledge_base.model_dump().values())
+        or bool(current_profile.weak_points.topics or current_profile.theory_assessments)
     )
+    if not knowledge_is_described:
+        missing.append("知识基础与薄弱点")
+    if not (
+        coverage.cognitive_style
+        or any(value != 3 for value in current_profile.cognitive_style.model_dump().values())
+    ):
+        missing.append("认知风格")
+    if not (
+        coverage.resource_preference
+        or any(value != 3 for value in current_profile.preference.model_dump().values())
+    ):
+        missing.append("资源偏好")
+    has_employment_evidence = any(value > 0 for value in current_profile.employment_skills.model_dump().values())
+    if not coverage.employment_skills and background.practice_status == "unknown" and not has_employment_evidence:
+        missing.append("就业技能与实践经历")
+    if current_profile.pace.hours_per_week <= 0:
+        missing.append("学习目标与时间安排")
+    return missing
+
+
+def _evidence_covers_missing(field: str, evidence: str, target_role: str | None) -> bool:
+    text = evidence.lower()
+    if field == "目标岗位":
+        return bool(str(target_role or "").strip()) or any(word in text for word in ("目标", "岗位", "应聘"))
+    if field == "学历与专业背景":
+        return any(word in text for word in ("专业", "本科", "硕士", "博士", "大专", "高职", "年级", "毕业"))
+    if field == "知识基础与薄弱点":
+        return any(term in text for term in _KNOWLEDGE_TERMS) and any(term in text for term in _KNOWLEDGE_LEVEL_TERMS)
+    if field == "认知风格":
+        return any(term in text for term in _COGNITIVE_TERMS) or (
+            any(term in text for term in ("图示", "图表", "阅读", "动手", "实操", "听讲"))
+            and any(term in text for term in ("理解", "学习", "习惯", "偏好", "更喜欢"))
+        )
+    if field == "资源偏好":
+        return any(term in text for term in _RESOURCE_TERMS) and any(
+            term in text for term in ("希望", "喜欢", "偏好", "多提供", "资源", "材料", "都可以", "都行")
+        )
+    if field == "就业技能与实践经历":
+        return bool(_NO_EXPERIENCE_RE.search(text) or _EXPERIENCE_RE.search(text))
+    if field == "学习目标与时间安排":
+        return bool(re.search(r"(?:每周|一周|每星期).{0,8}\d+(?:\.\d+)?\s*(?:小时|h)", text, re.IGNORECASE))
+    return False
+
+
+def next_profile_question(missing: list[str]) -> str:
+    """把完整画像压缩为最多三个自然主题组，避免一项一问。"""
+    pending = set(missing)
+    if "目标岗位" in pending:
+        return "你希望训练的目标岗位是什么？"
+    if pending & {"学历与专业背景", "知识基础与薄弱点"}:
+        if {"学历与专业背景", "知识基础与薄弱点"} <= pending:
+            return "先介绍一下你的学历和专业，以及与目标岗位相关的课程或技术基础：哪些比较熟悉，哪些较薄弱？"
+        if "学历与专业背景" in pending:
+            return "请补充你的学历、年级或专业背景。"
+        return "你与目标岗位相关的课程或技术基础怎样？请说说比较熟悉和较薄弱的内容。"
+    if pending & {"认知风格", "资源偏好"}:
+        if {"认知风格", "资源偏好"} <= pending:
+            return "学习新内容时，你更容易通过图示、阅读、讲解还是动手实践理解？希望训练中多提供文档、思维导图、视频、代码实操还是小测？"
+        if "认知风格" in pending:
+            return "学习新内容时，你更容易通过图示、阅读、讲解还是动手实践理解？"
+        return "训练资源方面，你更希望多提供文档、思维导图、视频、代码实操还是小测？"
+    if pending & {"就业技能与实践经历", "学习目标与时间安排"}:
+        if {"就业技能与实践经历", "学习目标与时间安排"} <= pending:
+            return "最后说说相关项目或实习中用过的技术、负责内容和成果（没有也可说明），以及每周可投入的时间和期望完成时间。"
+        if "就业技能与实践经历" in pending:
+            return "请说说相关项目或实习中用过的技术、负责内容和成果；如果暂时没有，直接说明即可。"
+        return "你每周可以投入多少学习时间？如果有期望完成时间也可以一起说明。"
+    return "画像信息已经完整，可以进入岗位训练中心。"
+
+
+def build_profile_question_guidance(
+    current_profile: ProfileDims,
+    history: list[dict],
+    user_message: str,
+    target_role: str | None,
+) -> str:
+    """结合本轮回答预测剩余问题，明确禁止重复追问。"""
+    missing = predicted_profile_missing_fields(current_profile, history, user_message, target_role)
+    assistant_questions = [
+        str(item.get("content") or "").strip()
+        for item in history[-10:]
+        if isinstance(item, dict) and item.get("role") == "assistant" and "？" in str(item.get("content") or "")
+    ]
+    asked = "；".join(assistant_questions[-4:]) or "无"
+    if not missing:
+        return f"本轮回答后完整画像已经形成，必须直接收束并邀请进入训练中心，不得再提问。历史已问：{asked}"
+    return f"本轮后预计还缺：{'、'.join(missing)}。下一问必须使用这一主题组：{next_profile_question(missing)} 历史已问内容不得重复：{asked}"
+
+
+def predicted_profile_missing_fields(
+    current_profile: ProfileDims,
+    history: list[dict],
+    user_message: str,
+    target_role: str | None,
+) -> list[str]:
+    evidence = build_profile_evidence_text(history, user_message)
+    return [
+        field for field in profile_missing_fields(current_profile, target_role)
+        if not _evidence_covers_missing(field, evidence, target_role)
+    ]
 
 
 async def profile_chat_stream(
@@ -146,6 +286,8 @@ async def profile_chat_stream(
     history: list[dict],
     current_profile: ProfileDims,
     images: list[str] | None = None,
+    target_role: str | None = None,
+    core_competencies: list[str] | None = None,
 ) -> AsyncIterator[Tuple[str, str]]:
     """
     yield (event_type, data) 元组：
@@ -161,7 +303,16 @@ async def profile_chat_stream(
     sys = SYSTEM_PROMPT.replace(
         "{completion_guidance}",
         build_profile_completion_guidance(current_profile),
-    ).replace("{current_profile}", current_profile.model_dump_json())
+    ).replace(
+        "{question_guidance}",
+        build_profile_question_guidance(current_profile, history, user_message, target_role),
+    ).replace("{current_profile}", current_profile.model_dump_json()).replace(
+        "{role_context}",
+        json.dumps({
+            "target_role": target_role or "尚未选择",
+            "core_competencies": core_competencies or [],
+        }, ensure_ascii=False),
+    )
 
     msgs = [{"role": "system", "content": sys}]
     for h in history[-10:]:
@@ -285,6 +436,134 @@ def _supplement_employment_evidence(
     return supplemented
 
 
+def _supplement_minimum_intake(
+    evidence_context: str,
+    patch: dict,
+    current_profile: ProfileDims,
+) -> None:
+    """从明确表述补齐最小入组信息，减少依赖模型反复追问。"""
+    text = (evidence_context or "").strip()
+    lowered = text.lower()
+    background = patch.setdefault("learner_background", {})
+    if not isinstance(background, dict):
+        background = {}
+        patch["learner_background"] = background
+
+    current_background = current_profile.learner_background
+    education_terms = ("本科", "硕士", "博士", "大专", "高职", "高中", "大一", "大二", "大三", "大四", "研究生", "毕业")
+    if not current_background.education and "education" not in background:
+        matching_line = next((line.strip() for line in reversed(text.splitlines()) if any(term in line for term in education_terms)), "")
+        if matching_line:
+            background["education"] = matching_line[:120]
+
+    if not current_background.major and "major" not in background:
+        major_match = re.search(r"(?:专业(?:是|为)?|学的是|就读于)\s*([^，。,.；;]{2,40})", text)
+        if major_match:
+            background["major"] = major_match.group(1).strip()[:120]
+
+    if current_background.practice_status == "unknown" and "practice_status" not in background:
+        if _NO_EXPERIENCE_RE.search(lowered):
+            background["practice_status"] = "none"
+        elif _EXPERIENCE_RE.search(lowered):
+            background["practice_status"] = "has"
+        elif any(value > 0 for value in current_profile.employment_skills.model_dump().values()):
+            background["practice_status"] = "has"
+
+    if not background:
+        patch.pop("learner_background", None)
+
+    if current_profile.pace.hours_per_week <= 0 and not (patch.get("pace") or {}).get("hours_per_week"):
+        hours_match = re.search(r"(?:每周|一周|每星期).{0,8}(\d+(?:\.\d+)?)\s*(?:小时|h)", text, re.IGNORECASE)
+        if hours_match:
+            patch.setdefault("pace", {})["hours_per_week"] = max(1, min(40, int(float(hours_match.group(1)) + 0.5)))
+
+
+def _score_from_nearby_text(text: str, position: int) -> int:
+    nearby = text[max(0, position - 12):position + 20]
+    if any(term in nearby for term in ("零基础", "没学", "不熟", "薄弱", "较弱", "较差")):
+        return 1
+    if any(term in nearby for term in ("很熟", "熟练", "擅长", "扎实", "掌握", "较好")):
+        return 4
+    return 3
+
+
+def _supplement_descriptive_dimensions(evidence_context: str, patch: dict) -> None:
+    """在无模型或模型漏字段时，从明确选择中补齐知识、认知和资源画像。"""
+    text = (evidence_context or "").strip().lower()
+    if not text:
+        return
+
+    knowledge_terms: dict[str, tuple[str, ...]] = {
+        "math": ("数学", "高数", "线性代数"),
+        "programming": ("编程", "代码", "python", "java", "c++", "javascript"),
+        "statistics": ("统计", "概率"),
+        "english": ("英语", "英文"),
+        "subject_prior": ("岗位知识", "领域知识", "专业知识", "课程基础", "技术基础"),
+    }
+    if any(term in text for term in _KNOWLEDGE_LEVEL_TERMS):
+        knowledge = patch.setdefault("knowledge_base", {})
+        for field, terms in knowledge_terms.items():
+            if field in knowledge:
+                continue
+            positions = [text.find(term) for term in terms if term in text]
+            if positions:
+                knowledge[field] = _score_from_nearby_text(text, min(positions))
+
+    cognitive_map: dict[str, tuple[str, ...]] = {
+        "visual": ("图示", "图表", "可视化", "思维导图"),
+        "reading": ("阅读理解", "看文档理解", "阅读学习"),
+        "hands_on": ("动手理解", "边做边学", "实操理解", "动手实践"),
+        "auditory": ("听讲", "讲解理解"),
+    }
+    cognitive = patch.setdefault("cognitive_style", {})
+    for field, terms in cognitive_map.items():
+        if field not in cognitive and any(term in text for term in terms):
+            cognitive[field] = 5
+    if not cognitive:
+        patch.pop("cognitive_style", None)
+
+    preference_map: dict[str, tuple[str, ...]] = {
+        "document": ("文档", "讲义"),
+        "mindmap": ("思维导图",),
+        "quiz": ("小测", "测验"),
+        "code": ("代码实操", "实操任务"),
+        "video": ("视频",),
+        "reading": ("论文", "书籍", "阅读材料"),
+    }
+    if any(term in text for term in ("希望", "喜欢", "偏好", "多提供", "资源", "材料")):
+        preference = patch.setdefault("preference", {})
+        for field, terms in preference_map.items():
+            if field not in preference and any(term in text for term in terms):
+                preference[field] = 5
+        if not preference:
+            patch.pop("preference", None)
+
+
+def _supplement_profile_coverage(evidence_context: str, patch: dict) -> None:
+    """只在用户确实描述对应主题时标记覆盖，允许中性回答也完成该维度。"""
+    text = (evidence_context or "").strip().lower()
+    coverage = patch.setdefault("profile_coverage", {})
+    if not isinstance(coverage, dict):
+        coverage = {}
+        patch["profile_coverage"] = coverage
+
+    if patch.get("knowledge_base") or patch.get("weak_points") or _evidence_covers_missing("知识基础与薄弱点", text, None):
+        coverage["knowledge_base"] = True
+    if patch.get("cognitive_style") or _evidence_covers_missing("认知风格", text, None):
+        coverage["cognitive_style"] = True
+    if patch.get("preference") or _evidence_covers_missing("资源偏好", text, None):
+        coverage["resource_preference"] = True
+    background_patch = patch.get("learner_background") or {}
+    if (
+        patch.get("employment_skills")
+        or background_patch.get("practice_status") in {"none", "has"}
+        or _evidence_covers_missing("就业技能与实践经历", text, None)
+    ):
+        coverage["employment_skills"] = True
+    if not coverage:
+        patch.pop("profile_coverage", None)
+
+
 def sanitize_profile_patch(
     raw_patch: object,
     current_profile: ProfileDims,
@@ -350,6 +629,26 @@ def sanitize_profile_patch(
         else:
             dropped = True
 
+    learner_background = raw_patch.get("learner_background")
+    if learner_background is not None:
+        if isinstance(learner_background, dict):
+            clean_background: dict[str, str] = {}
+            for key in ("education", "major"):
+                if key in learner_background and isinstance(learner_background[key], str):
+                    clean_background[key] = learner_background[key].strip()[:120]
+                elif key in learner_background:
+                    dropped = True
+            practice_status = learner_background.get("practice_status")
+            if practice_status is not None:
+                if practice_status in {"unknown", "none", "has"}:
+                    clean_background["practice_status"] = practice_status
+                else:
+                    dropped = True
+            if clean_background:
+                patch["learner_background"] = clean_background
+        else:
+            dropped = True
+
     pace = raw_patch.get("pace")
     if pace is not None:
         if isinstance(pace, dict):
@@ -371,6 +670,26 @@ def sanitize_profile_patch(
         else:
             dropped = True
 
+    profile_coverage = raw_patch.get("profile_coverage")
+    if profile_coverage is not None:
+        if isinstance(profile_coverage, dict):
+            clean_coverage: dict[str, bool] = {}
+            allowed_coverage = {
+                "knowledge_base", "cognitive_style", "resource_preference", "employment_skills",
+            }
+            for key, value in profile_coverage.items():
+                if key in allowed_coverage and value is True:
+                    clean_coverage[key] = True
+                elif key in allowed_coverage and value is False:
+                    # 覆盖度一旦确认不可被模型回退，否则会再次询问已经回答的主题。
+                    continue
+                else:
+                    dropped = True
+            if clean_coverage:
+                patch["profile_coverage"] = clean_coverage
+        else:
+            dropped = True
+
     reasoning = raw_patch.get("reasoning")
     if isinstance(reasoning, str) and reasoning.strip():
         patch["reasoning"] = reasoning.strip()[:500]
@@ -378,6 +697,9 @@ def sanitize_profile_patch(
         dropped = True
 
     supplemented = _supplement_employment_evidence(evidence_context, patch, current_profile)
+    _supplement_minimum_intake(evidence_context, patch, current_profile)
+    _supplement_descriptive_dimensions(evidence_context, patch)
+    _supplement_profile_coverage(evidence_context, patch)
     if supplemented:
         evidence_reason = "根据对话中的明确项目或实践经历补充就业技能证据"
         patch["reasoning"] = f"{patch.get('reasoning', '')}；{evidence_reason}".strip("；")[:500]

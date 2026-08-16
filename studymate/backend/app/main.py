@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from datetime import datetime
+import json
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,7 +13,7 @@ from app.db.session import engine, Base
 # 导入 models 让 Base 知道所有表
 from app.db import models  # noqa: F401
 from app.deps import require_admin, require_user
-from app.api import health, profile, rag, workspace, tutor, eval as eval_api, tests as tests_api, courses as courses_api, notes as notes_api, events as events_api, feedback as feedback_api, auth as auth_api, voice as voice_api, quiz_sessions as quiz_sessions_api, run as run_api, concept as concept_api, bili as bili_api, ocr as ocr_api, rencaiya as rencaiya_api, careers as careers_api, reading as reading_api, knowledge as knowledge_api, ppt as ppt_api
+from app.api import health, profile, rag, workspace, tutor, eval as eval_api, tests as tests_api, courses as courses_api, notes as notes_api, events as events_api, feedback as feedback_api, auth as auth_api, voice as voice_api, quiz_sessions as quiz_sessions_api, theory_assessments as theory_assessments_api, run as run_api, concept as concept_api, bili as bili_api, ocr as ocr_api, rencaiya as rencaiya_api, careers as careers_api, reading as reading_api, knowledge as knowledge_api, ppt as ppt_api
 
 
 _seed_password_hash = PasswordHash.recommended()
@@ -128,6 +129,45 @@ async def _ensure_columns(conn):
             await conn.execute(
                 text(f"ALTER TABLE user_knowledge_documents ADD COLUMN {column} {definition}")
             )
+    # 旧版曾把未通过裁决的训练置为 manual_review。人工复核已取消：历史资源仍不发布，
+    # 但统一迁移为“需要重新启动自动返工”，避免旧记录继续向前端暴露已删除的状态。
+    rows = await conn.execute(text("PRAGMA table_info(training_runs)"))
+    training_run_columns = {r[1] for r in rows.fetchall()}
+    if training_run_columns:
+        legacy_runs = await conn.execute(
+            text(
+                "SELECT id, decision FROM training_runs "
+                "WHERE status = 'manual_review' OR stage = 'manual_review' "
+                "OR decision LIKE '%manual_review%' OR decision LIKE '%人工复核%' "
+                "OR decision LIKE '%人工审核%' OR decision LIKE '%转人工%'"
+            )
+        )
+        for run_id, raw_decision in legacy_runs.fetchall():
+            try:
+                decision = json.loads(raw_decision) if isinstance(raw_decision, str) else dict(raw_decision or {})
+            except (TypeError, ValueError):
+                decision = {}
+            required_fixes = [
+                str(item)
+                .replace("导师人工复核", "自动返工")
+                .replace("人工复核", "自动返工")
+                .replace("人工审核", "自动返工")
+                .replace("转人工", "自动返工")
+                for item in decision.get("required_fixes") or []
+            ]
+            decision.update({
+                "decision": "rework",
+                "summary": "旧版未通过裁决的资源不会发布；重新启动训练后进入自动返工闭环。",
+                "rework_targets": decision.get("rework_targets") or ["doc", "guide", "quiz"],
+                "required_fixes": required_fixes,
+            })
+            await conn.execute(
+                text(
+                    "UPDATE training_runs SET status = 'failed', stage = 'failed', decision = :decision "
+                    "WHERE id = :run_id"
+                ),
+                {"run_id": run_id, "decision": json.dumps(decision, ensure_ascii=False)},
+            )
     await conn.execute(
         text(
             "CREATE TABLE IF NOT EXISTS system_migrations ("
@@ -139,6 +179,7 @@ async def _ensure_columns(conn):
     migrations = (
         ("2026.07.29-base", "开发期轻量迁移基线"),
         ("2026.07.29-private-knowledge-jobs", "私有知识库后台任务、原文件校验、OCR 状态与安全重试"),
+        ("2026.08.13-auto-rework", "移除人工复核状态，未通过裁决统一进入自动返工闭环"),
     )
     for version, description in migrations:
         await conn.execute(
@@ -353,6 +394,7 @@ app.include_router(events_api.router, prefix="/api", dependencies=user_required)
 app.include_router(feedback_api.router, prefix="/api", dependencies=user_required)
 app.include_router(voice_api.router, prefix="/api", dependencies=user_required)
 app.include_router(quiz_sessions_api.router, prefix="/api", dependencies=user_required)
+app.include_router(theory_assessments_api.router, prefix="/api", dependencies=user_required)
 app.include_router(run_api.router, prefix="/api", dependencies=user_required)
 app.include_router(concept_api.router, prefix="/api", dependencies=user_required)
 app.include_router(bili_api.router, prefix="/api", dependencies=user_required)

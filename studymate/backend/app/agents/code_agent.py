@@ -23,15 +23,15 @@ class CodeAgent(AgentBase):
         name="代码 Agent",
         icon="💻",
         color="violet",
-        description="按课程风格生成代码/伪代码/硬件示例",
+        description="按岗位任务场景生成代码、伪代码或硬件示例",
     )
 
     async def run(self, context: dict, emit: EventEmitter) -> dict:
-        topic = context.get("topic", "机器学习")
+        topic = context.get("topic", "岗位任务")
         profile = context.get("profile", {})
         course_cfg = context.get("course_cfg")
         course_name = context.get("course_name", "机器学习")
-        persona = course_cfg.persona if course_cfg else f"{course_name}课程助教"
+        persona = course_cfg.persona if course_cfg else f"{course_name}岗位训练助理"
         style = course_cfg.code_style if course_cfg else "ml"
         libs = course_cfg.code_libs if course_cfg else ["numpy", "sklearn"]
 
@@ -127,7 +127,7 @@ class CodeAgent(AgentBase):
             lang = "python"
             fname = "example.py"
 
-        sys = f"""你是一位{persona}，为学生生成《{course_name}》课程下「{topic}」的代码/示例。
+        sys = f"""你是一位{persona}，请依据“{course_name}”岗位知识库，为任务或能力点「{topic}」生成可用于岗位训练的代码/示例。
 
 输出**严格 JSON**（不要 Markdown 包裹）：
 {{

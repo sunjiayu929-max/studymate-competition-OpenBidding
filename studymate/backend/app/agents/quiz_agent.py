@@ -49,10 +49,10 @@ MOCK_QUIZ: list[dict] = [
 class QuizAgent(AgentBase):
     meta = AgentMeta(
         id="quiz",
-        name="题库 Agent",
+        name="分阶测试生成 Agent",
         icon="📝",
         color="emerald",
-        description="生成不同类型的检测题目",
+        description="按岗位能力与学情难度生成分阶检测题",
     )
 
     async def run(self, context: dict, emit: EventEmitter) -> dict:
@@ -60,28 +60,68 @@ class QuizAgent(AgentBase):
         profile = context.get("profile", {})
         course_cfg = context.get("course_cfg")
         course_name = context.get("course_name", "机器学习")
-        persona = course_cfg.persona if course_cfg else f"{course_name}课程助教"
+        target_role = context.get("target_role", "目标岗位")
+        training_plan = context.get("training_plan") or {}
+        target_difficulty = int((context.get("diagnosis") or {}).get("target_difficulty") or 2)
+        revision_feedback = context.get("revision_feedback", {}).get("quiz", [])
+        chunks = context.get("chunks") or []
+        citations = [
+            {
+                "index": index + 1,
+                "chunk_id": chunk["chunk_id"],
+                "source": chunk["source"],
+                "page": chunk.get("page"),
+                "url": chunk.get("url"),
+                "snippet": chunk["content"][:200],
+            }
+            for index, chunk in enumerate(chunks)
+        ]
+        persona = course_cfg.persona if course_cfg else f"{course_name}岗位训练助理"
 
         if not has_llm_key():
-            quiz = await self._stream_mock(emit)
+            quiz = await self._stream_mock(emit, target_difficulty, citations)
         else:
             try:
-                quiz = await self._gen_real(topic, profile, persona, course_name, emit)
+                quiz = await self._gen_real(
+                    topic, profile, persona, course_name, emit,
+                    target_role=target_role,
+                    training_plan=training_plan,
+                    revision_feedback=revision_feedback,
+                    chunks=chunks,
+                )
                 if not quiz:
                     raise RuntimeError("empty quiz items")
             except Exception as e:
                 await self.emit_delta(emit, f"\n[LLM 失败，降级到题库模板：{type(e).__name__}]\n", kind="text")
-                quiz = await self._stream_mock(emit)
+                quiz = await self._stream_mock(emit, target_difficulty, citations)
 
         return {
             "type": "quiz",
-            "title": f"《{topic}》检测题",
+            "title": f"《{topic}》岗位分阶测试",
             "items": quiz,
             "count": len(quiz),
+            "version": context.get("generation_round", 1),
+            "target_role": target_role,
+            "citations": citations,
+            "revision_response": [
+                str(item.get("suggestion", item)) if isinstance(item, dict) else str(item)
+                for item in revision_feedback
+            ],
         }
 
-    async def _stream_mock(self, emit) -> list[dict]:
-        quiz = MOCK_QUIZ
+    async def _stream_mock(self, emit, target_difficulty: int = 2, citations: list[dict] | None = None) -> list[dict]:
+        target = max(1, min(4, target_difficulty))
+        levels = [max(1, target - 1), target, min(4, target + 1)]
+        if len(set(levels)) < 2:
+            levels = [1, 1, 2] if target == 1 else [3, 4, 4]
+        quiz = [
+            {
+                **item,
+                "difficulty": levels[index],
+                **({"source_index": index % len(citations) + 1} if citations else {}),
+            }
+            for index, item in enumerate(MOCK_QUIZ)
+        ]
         for q in quiz:
             msg = f"生成题目 [{q['type']}] {q['question'][:30]}...\n"
             for ch in msg:
@@ -89,10 +129,30 @@ class QuizAgent(AgentBase):
                 await asyncio.sleep(0.008)
         return quiz
 
-    async def _gen_real(self, topic: str, profile: dict, persona: str, course_name: str, emit) -> list[dict]:
+    async def _gen_real(
+        self,
+        topic: str,
+        profile: dict,
+        persona: str,
+        course_name: str,
+        emit,
+        *,
+        target_role: str,
+        training_plan: dict,
+        revision_feedback: list[dict],
+        chunks: list[dict],
+    ) -> list[dict]:
         llm = get_llm_client()
         difficulty_hint = self._difficulty_from_profile(profile)
-        sys = f"""你是一位{persona}，同时是{course_name}出题专家。请为《{course_name}》课程下的「{topic}」出 3 道不同类型的题：
+        feedback_text = "；".join(
+            str(item.get("suggestion", item)) if isinstance(item, dict) else str(item)
+            for item in revision_feedback
+        ) or "无"
+        references = "\n".join(
+            f"[{index + 1}] {item['source']} p.{item.get('page') or '-'}: {item['content'][:160]}"
+            for index, item in enumerate(chunks)
+        )
+        sys = f"""你是一位{persona}，同时是{course_name}出题专家。请围绕岗位“{target_role}”为「{topic}」出 3 道不同类型、至少覆盖两个难度等级的题：
 1 题选择题（mcq）：4 选项，answer 是 0..3 的索引
 1 题填空题（fill）：answer 是简短答案字符串
 1 题编程题（code）：给 starter 起步代码 + 标答 answer + 说明
@@ -106,13 +166,18 @@ class QuizAgent(AgentBase):
 输出**严格 JSON**，不要 Markdown 包裹，结构：
 {{
   "items": [
-    {{"id":"q1","type":"mcq","question":"...","options":["a","b","c","d"],"answer":0,"explanation":"...","difficulty":1-4}},
-    {{"id":"q2","type":"fill","question":"...","answer":"...","explanation":"...","difficulty":1-4}},
-    {{"id":"q3","type":"code","question":"...","starter":"...","answer":"...","explanation":"...","difficulty":1-4}}
+    {{"id":"q1","type":"mcq","question":"...","options":["a","b","c","d"],"answer":0,"explanation":"...","difficulty":1-4,"source_index":1}},
+    {{"id":"q2","type":"fill","question":"...","answer":"...","explanation":"...","difficulty":1-4,"source_index":1}},
+    {{"id":"q3","type":"code","question":"...","starter":"...","answer":"...","explanation":"...","difficulty":1-4,"source_index":1}}
   ]
 }}
 
 学生水平参考（综合给定 1-4 难度）：{difficulty_hint}
+多 Agent 仲裁训练计划：{json.dumps(training_plan, ensure_ascii=False)}
+审核返工意见：{feedback_text}
+本轮知识库证据（每题必须通过 source_index 绑定其中一条）：
+{references}
+题目必须体现岗位任务情境，并与学生当前难度相邻，避免跨度过大；三题应分别承担基础理解、场景应用、迁移挑战，并可用于下一轮升降阶判断。
 """
         msgs = [{"role": "system", "content": sys}, {"role": "user", "content": topic}]
         raw = await llm.chat_structured(messages=msgs, temperature=0.4)
@@ -151,6 +216,9 @@ async def generate_quiz_batch(
     fill_count: int,
     code_count: int,
     focus_tags: list[str] | None = None,
+    target_role: str = "目标岗位",
+    competencies: list[str] | None = None,
+    reference_materials: list[dict] | None = None,
 ) -> list[dict]:
     """按指定数量批量出题：mcq * mcq_count + fill * fill_count + code * code_count。
 
@@ -161,11 +229,34 @@ async def generate_quiz_batch(
     if total <= 0:
         return []
     if not has_llm_key():
+        if reference_materials:
+            return _grounded_mock_fill(
+                mcq_count,
+                fill_count,
+                code_count,
+                reference_materials=reference_materials,
+                competencies=competencies or [],
+                difficulty=difficulty,
+            )
         return _mock_fill(mcq_count, fill_count, code_count)
 
     llm = get_llm_client()
     diff = max(1, min(4, difficulty))
     adaptive_hint = "、".join(focus_tags or [])
+    competency_hint = "、".join(competencies or []) or topic
+    reference_text = "\n".join(
+        f"[资料{index + 1}｜{str(item.get('source') or '岗位知识库')}] {str(item.get('content') or '')[:900]}"
+        for index, item in enumerate((reference_materials or [])[:10])
+        if str(item.get("content") or "").strip()
+    )
+    grounding_section = (
+        "\n**岗位知识库检索材料（命题事实必须以此为依据）**：\n"
+        f"{reference_text}\n"
+        "每题必须返回 competency（对应能力名称）和 source（引用资料标题）；"
+        "不得编造材料之外的制度、数字或结论。source 只写在结构化字段中；"
+        "题干 question 严禁出现书名、作者、版本号、资料名称、章节号或‘根据/依据某资料’等出处信息。"
+        if reference_text else ""
+    )
     adaptive_section = (
         f"\n**自适应加练要求**：学生近期高频错误类型是「{adaptive_hint}」。"
         "至少一半题目应通过新情境或变式重点检测这些能力；不要照抄旧题，也不要在题干中直接暴露错误标签。"
@@ -173,7 +264,7 @@ async def generate_quiz_batch(
         if adaptive_hint
         else ""
     )
-    sys = f"""你是一位{persona}，同时是{course_name}出题专家。请为《{course_name}》课程下的「{topic}」生成测验题：
+    sys = f"""你是一位{persona}，同时是岗位能力测评专家。请依据“{course_name}”岗位知识库，为“{target_role}”的任务或能力点「{topic}」生成测验题：
 - 选择题（mcq）共 {mcq_count} 道：4 选项 options，answer 是 0..3 的整数索引
 - 填空题（fill）共 {fill_count} 道：answer 是简短答案字符串（用 / 分隔多个等价答案）
 - 编程题（code）共 {code_count} 道：starter 起步代码 + answer 标答 + 解析
@@ -189,14 +280,15 @@ async def generate_quiz_batch(
 输出**严格 JSON**（不要 Markdown 包裹），结构：
 {{
   "items": [
-    {{"type":"mcq","question":"...","options":["a","b","c","d"],"answer":0,"explanation":"...","difficulty":{diff}}},
-    {{"type":"fill","question":"...","answer":"...","explanation":"...","difficulty":{diff}}},
-    {{"type":"code","question":"...","starter":"...","answer":"...","explanation":"...","difficulty":{diff}}}
+    {{"type":"mcq","question":"...","options":["a","b","c","d"],"answer":0,"explanation":"...","difficulty":{diff},"competency":"...","source":"..."}},
+    {{"type":"fill","question":"...","answer":"...","explanation":"...","difficulty":{diff},"competency":"...","source":"..."}},
+    {{"type":"code","question":"...","starter":"...","answer":"...","explanation":"...","difficulty":{diff},"competency":"...","source":"..."}}
   ]
 }}
 
-严格按数量出齐 {total} 道，先 mcq 后 fill 再 code。题目避免重复、覆盖不同知识点。
+严格按数量出齐 {total} 道，先 mcq 后 fill 再 code。优先覆盖这些岗位能力：{competency_hint}。题目避免重复、覆盖不同岗位能力与任务情境。
 {adaptive_section}
+{grounding_section}
 """
     msgs = [{"role": "system", "content": sys}, {"role": "user", "content": topic}]
     try:
@@ -212,12 +304,28 @@ async def generate_quiz_batch(
         t = it.get("type")
         if t in by_type:
             by_type[t].append(it)
+    grounded_fallback = _grounded_mock_fill(
+        mcq_count,
+        fill_count,
+        code_count,
+        reference_materials=reference_materials or [],
+        competencies=competencies or [],
+        difficulty=diff,
+    ) if reference_materials else []
+    grounded_by_type = {
+        key: [item for item in grounded_fallback if item.get("type") == key]
+        for key in ("mcq", "fill", "code")
+    }
     mock_by_type = {q["type"]: q for q in MOCK_QUIZ}
 
     def fill_short(t: str, need: int) -> list[dict]:
         cur = by_type[t]
         while len(cur) < need:
-            cur.append({**mock_by_type[t], "id": f"mock_{t}_{len(cur)}"})
+            fallback_index = len(cur)
+            if fallback_index < len(grounded_by_type[t]):
+                cur.append(dict(grounded_by_type[t][fallback_index]))
+            else:
+                cur.append({**mock_by_type[t], "id": f"mock_{t}_{fallback_index}"})
         return cur[:need]
 
     final = (
@@ -230,6 +338,50 @@ async def generate_quiz_batch(
         it.setdefault("difficulty", diff)
         it.setdefault("explanation", "")
     return final
+
+
+def _grounded_mock_fill(
+    mcq: int,
+    fill: int,
+    code: int,
+    *,
+    reference_materials: list[dict],
+    competencies: list[str],
+    difficulty: int,
+) -> list[dict]:
+    """无模型时用已检索知识片段构造可审计的基础卷。"""
+    usable = [item for item in reference_materials if str(item.get("content") or "").strip()]
+    if not usable:
+        return _mock_fill(mcq, fill, code)
+    result: list[dict] = []
+    diff = max(1, min(4, difficulty))
+    distractors = [
+        "只需记忆术语，无需结合岗位任务验证",
+        "该能力仅影响界面展示，不影响交付质量",
+        "所有场景都应直接套用同一结论，无需检查前提",
+    ]
+    for index in range(mcq):
+        material = usable[index % len(usable)]
+        fact = " ".join(str(material.get("content") or "").split())[:120]
+        competency = competencies[index % len(competencies)] if competencies else "岗位领域知识"
+        correct_index = index % 4
+        options = list(distractors)
+        options.insert(correct_index, fact)
+        result.append({
+            "id": f"grounded_mcq_{index}",
+            "type": "mcq",
+            "question": f"根据岗位知识库，关于“{competency}”的哪项表述最准确？",
+            "options": options,
+            "answer": correct_index,
+            "explanation": f"该结论来自岗位知识库资料《{material.get('source') or '岗位知识库'}》。",
+            "difficulty": diff,
+            "competency": competency,
+            "source": str(material.get("source") or "岗位知识库"),
+        })
+    # 理论基线默认只使用选择题；保留其他类型的兼容兜底。
+    if fill or code:
+        result.extend(_mock_fill(0, fill, code))
+    return result
 
 
 def _mock_fill(mcq: int, fill: int, code: int) -> list[dict]:
@@ -246,7 +398,7 @@ async def judge_code_with_llm(
     question: str,
     reference: str,
     user_code: str,
-    persona: str = "课程助教",
+    persona: str = "岗位训练助教",
 ) -> tuple[float, str]:
     """code 题 LLM 判分：返回 (score 0-100, judge_reason)。
     保持简洁，3-5 秒一题。

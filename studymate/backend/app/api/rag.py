@@ -91,7 +91,7 @@ def _source_context_item(row: KnowledgeChunk, current_id: int) -> dict:
 
 @router.get("/chunks/{chunk_id}")
 async def get_source_chunk(chunk_id: int, db: AsyncSession = Depends(get_db)):
-    """返回命中片段及同一课程资料的相邻上下文，供“查看原文”页定位。"""
+    """返回命中片段及同一岗位资料的相邻上下文，供“查看原文”页定位。"""
     row = await db.get(KnowledgeChunk, chunk_id)
     if row is None:
         raise HTTPException(status_code=404, detail="原文片段不存在")
@@ -125,7 +125,7 @@ async def get_source_chunk(chunk_id: int, db: AsyncSession = Depends(get_db)):
     return {
         "chunk_id": str(row.id),
         "course_id": row.course_id,
-        "course_name": course.name if course else "课程资料",
+        "course_name": course.name if course else "岗位资料",
         "source": clean_source_name(row.source),
         "page": row.page,
         "url": row.url,

@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { useNavigate, useParams, Link } from "react-router-dom"
-import { FileText, BookOpen, Hash, ExternalLink, Network as MindMapIcon, Map as RouteIcon, Library, Code2, Sparkles, NotebookText, Check, Plus, Loader2, Film, Target, Database, ShieldCheck, UserRoundSearch, CheckCircle2, CircleHelp, ArrowLeft, ArrowRight, BarChart3 } from "lucide-react"
+import { FileText, BookOpen, Hash, ExternalLink, Sparkles, NotebookText, Check, Plus, Loader2, Target, Database, ShieldCheck, UserRoundSearch, CheckCircle2, CircleHelp, ArrowLeft, ArrowRight, BarChart3, Wrench } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { PageHeader } from "@/components/PageHeader"
 import type { ProfileMiniData } from "@/components/ProfileMiniCard"
@@ -15,34 +15,21 @@ import { useCurrentCourse } from "@/store/course"
 import { useCurrentUser } from "@/store/user"
 import { SaveToNotebookModal } from "@/components/SaveToNotebookModal"
 import { FeedbackThumb } from "@/components/FeedbackThumb"
-import type { ConceptAnim } from "@/components/concepts/registry"
-import { ConceptAnimationBoundary, ConceptAnimationLoading } from "@/components/concepts/ConceptAnimationState"
 
 // 资源详情共用一条路由，但每次只展示一种资源；重组件按实际分支加载，避免一次下载全部渲染器。
 const Markdown = lazy(() => import("@/components/Markdown").then((module) => ({ default: module.Markdown })))
-const MindMapView = lazy(() => import("@/components/MindMapView").then((module) => ({ default: module.MindMapView })))
 const QuizCard = lazy(() => import("@/components/QuizCard").then((module) => ({ default: module.QuizCard })))
-const PathView = lazy(() => import("@/components/PathView").then((module) => ({ default: module.PathView })))
-const ReadingList = lazy(() => import("@/components/ReadingList").then((module) => ({ default: module.ReadingList })))
-const CodeBlock = lazy(() => import("@/components/CodeBlock").then((module) => ({ default: module.CodeBlock })))
-const ConceptPlayer = lazy(() => import("@/components/concepts/ConceptPlayer").then((module) => ({ default: module.ConceptPlayer })))
-const ExternalLearningResources = lazy(() => import("@/components/ExternalLearningResources").then((module) => ({ default: module.ExternalLearningResources })))
-const ConceptAutoExplain = lazy(() => import("@/components/concepts/ConceptAutoExplain").then((module) => ({ default: module.ConceptAutoExplain })))
 
-// concept = 可视讲解，前端合成（不走 orchestrator），与其余 6 个 orchestrator agent 并列展示
-type AgentKey = "doc" | "mindmap" | "quiz" | "reading" | "code" | "path" | "concept"
+// 当前岗位训练资源包只生成并发布这三类可审核的核心成果。
+type AgentKey = "doc" | "guide" | "quiz"
 
 const META: Record<AgentKey, { title: string; icon: LucideIcon; color: string }> = {
-  doc:     { title: "讲解文档",   icon: FileText,    color: "text-[#355C8A]" },
-  mindmap: { title: "思维导图",   icon: MindMapIcon, color: "text-[#B85C3E]" },
-  quiz:    { title: "检测题",     icon: BookOpen,    color: "text-[#3E7774]" },
-  reading: { title: "拓展阅读",   icon: Library,     color: "text-[#6F8A69]" },
-  code:    { title: "代码案例",   icon: Code2,       color: "text-[#7E6B83]" },
-  path:    { title: "学习路径",   icon: RouteIcon,   color: "text-[#B1842C]" },
-  concept: { title: "可视讲解",   icon: Film,        color: "text-[#9B7429]" },
+  doc:     { title: "岗位定制讲义", icon: FileText,    color: "text-[#355C8A]" },
+  guide:   { title: "实操指南",   icon: Wrench,      color: "text-[#A05137]" },
+  quiz:    { title: "岗位分阶测试", icon: BookOpen,    color: "text-[#3E7774]" },
 }
 
-const ORDER: AgentKey[] = ["doc", "mindmap", "quiz", "reading", "code", "path", "concept"]
+const ORDER: AgentKey[] = ["doc", "guide", "quiz"]
 
 function ResourcePager({
   current,
@@ -109,7 +96,6 @@ export function WorkspaceDetail() {
   const [appendingQuiz, setAppendingQuiz] = useState(false)
   const [appendErr, setAppendErr] = useState<string>("")
   const [profile, setProfile] = useState<ProfileMiniData | null>(null)
-  const [conceptMatch, setConceptMatch] = useState<ConceptAnim | null>(null)
 
   useEffect(() => {
     if (!user?.user_id) return
@@ -119,7 +105,7 @@ export function WorkspaceDetail() {
         if (active) setProfile(value)
       })
       .catch(() => {
-        // 画像不是资源详情的硬依赖，拉取失败时保留课程默认策略说明。
+        // 画像不是资源详情的硬依赖，拉取失败时保留岗位默认策略说明。
       })
     return () => {
       active = false
@@ -146,20 +132,17 @@ export function WorkspaceDetail() {
   const evidenceCourseName = state.courseName || course?.name || "当前岗位"
   const quizHref = topic ? `/quiz?create=1&topic=${encodeURIComponent(topic)}` : "/quiz"
   const answeredCount = Object.keys(state.quizAttempts).length
+  const released = state.decision ? state.decision.decision === "publish" : state.status === "done" && !state.agents.some((agent) => agent.meta.id === "arbiter")
 
   const resourceAvailable = useMemo(() => {
-    if (!isValidAgent) return false
+    if (!isValidAgent || !released) return false
     switch (agentId) {
       case "doc": return Boolean(outputs.doc?.content || stream.doc)
-      case "mindmap": return Boolean(outputs.mindmap?.content || stream.mindmap)
+      case "guide": return Boolean(outputs.guide?.content || stream.guide)
       case "quiz": return Boolean(outputs.quiz?.items?.length || stream.quiz)
-      case "reading": return Boolean(outputs.reading?.items?.length || stream.reading)
-      case "code": return Boolean(outputs.code?.code || stream.code)
-      case "path": return Boolean(outputs.path?.nodes?.length || stream.path)
-      case "concept": return Boolean(topic)
       default: return false
     }
-  }, [agentId, isValidAgent, outputs, stream, topic])
+  }, [agentId, isValidAgent, outputs, released, stream])
 
   // 资源停留超过 1.2 秒才记录为“已查看”；页面隐藏时不累计学习时长。
   useEffect(() => {
@@ -203,30 +186,6 @@ export function WorkspaceDetail() {
     }
   }, [agentId, isValidAgent, resourceAvailable])
 
-  // 仅讲解文档需要检索配套动画；注册表包含大量动画，延迟到正文已可展示后再加载。
-  useEffect(() => {
-    let active = true
-    let registryTimer: number | null = null
-    const frame = window.requestAnimationFrame(() => {
-      setConceptMatch(null)
-      if (agentId !== "doc" || !topic) return
-      // 先让 Markdown 正文拿到网络与主线程，再补充体积更大的动画库。
-      registryTimer = window.setTimeout(() => {
-        void import("@/components/concepts/registry").then(({ matchConcept }) => {
-          if (active) setConceptMatch(matchConcept(topic))
-        })
-      }, 650)
-    })
-    return () => {
-      active = false
-      if (registryTimer != null) window.clearTimeout(registryTimer)
-      window.cancelAnimationFrame(frame)
-    }
-  }, [agentId, topic])
-
-  // 主题命中动画库 → doc 页内嵌「动画讲解」
-  const ConceptComp = conceptMatch?.component
-
   // 把当前资源的核心文本作为 page_context.snippet 让助教读到
   const tutorSnippet = useMemo(() => {
     if (!isValidAgent) return undefined
@@ -245,40 +204,10 @@ export function WorkspaceDetail() {
         }
         return lines.join("\n").slice(0, 1400)
       }
-      case "mindmap":
-        return outputs.mindmap?.content?.slice(0, 1200)
-      case "code": {
-        const c = outputs.code
-        if (!c?.code) return undefined
-        const lines: string[] = []
-        lines.push(`【文件：${c.filename || "example"} · 语言：${c.language || "python"}】`)
-        if (c.explanation) lines.push(`说明：${c.explanation}`)
-        if (c.expected_output) lines.push(`预期输出：${c.expected_output}`)
-        lines.push("代码：\n```\n" + String(c.code).slice(0, 900) + "\n```")
-        return lines.join("\n").slice(0, 1400)
-      }
-      case "reading": {
-        const items = outputs.reading?.items
-        if (!items?.length) return undefined
-        return items
-          .map(
-            (r, i) =>
-              `${i + 1}. ${r.title}（${r.type} · ${r.difficulty}${r.source ? ` · ${r.source}` : ""}）\n   ${String(r.summary || "").slice(0, 80)}`,
-          )
-          .join("\n")
-          .slice(0, 1400)
-      }
-      case "path": {
-        const nodes = outputs.path?.nodes
-        if (!nodes?.length) return undefined
-        return nodes
-          .map((n, i) => {
-            const title = n.data?.title || n.id
-            const desc = n.data?.desc ? ` — ${String(n.data.desc).slice(0, 60)}` : ""
-            return `第 ${i + 1} 阶段 · ${title}${desc}`
-          })
-          .join("\n")
-          .slice(0, 1400)
+      case "guide": {
+        const guide = outputs.guide
+        if (!guide?.content) return undefined
+        return `【岗位实操指南】\n${guide.content.slice(0, 1200)}`
       }
       case "quiz": {
         const items = outputs.quiz?.items
@@ -316,8 +245,8 @@ export function WorkspaceDetail() {
           <PageHeader
             current="workspace"
             title="未知资源"
-            backTo="/workspace"
-            backLabel="返回工作台"
+            backTo="/competency"
+            backLabel="返回岗位训练中心"
             icon={Sparkles}
             appearance="paper"
           />
@@ -327,7 +256,7 @@ export function WorkspaceDetail() {
                 <span className="mx-auto grid size-12 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><CircleHelp className="size-5" /></span>
                 <p className="mt-3 text-[11px] font-bold tracking-[0.12em] text-[#B1842C]">资源地址有误 · 已保护当前任务</p>
                 <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#18232D]">这个资源入口不存在</h2>
-                <p className="mx-auto mt-2 max-w-[520px] text-xs leading-5 text-[#6F787A]">StudyMate 的资源详情只对应以下 7 类学习成果。返回工作台后可以继续当前任务，已有生成内容不会被修改。</p>
+                <p className="mx-auto mt-2 max-w-[520px] text-xs leading-5 text-[#6F787A]">当前岗位训练资源包只发布以下 3 类核心成果。其余资源入口暂保留在工作台，当前阶段不生成详情内容。</p>
               </div>
               <div className="flex flex-wrap justify-center gap-2 px-5 py-5" aria-label="支持的资源类型">
                 {ORDER.map((key) => {
@@ -336,8 +265,8 @@ export function WorkspaceDetail() {
                 })}
               </div>
               <div className="flex flex-col-reverse gap-2 border-t border-[#E0DACE] bg-[#FCFAF5] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <Link to="/concept/library" className="text-xs font-semibold text-[#66717B] transition-colors hover:text-[#8E6925]">查看 300 个可视讲解</Link>
-                <Link to="/workspace" className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white transition-colors hover:bg-[#1D4058]"><Sparkles className="size-4" />返回学习资源工坊</Link>
+                <span className="text-xs font-semibold text-[#8A8172]">其他资源入口将在后续阶段开放</span>
+                <Link to="/competency" className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white transition-colors hover:bg-[#1D4058]"><Sparkles className="size-4" />返回岗位训练中心</Link>
               </div>
             </section>
           </div>
@@ -363,35 +292,10 @@ export function WorkspaceDetail() {
         }
         return { title: `《${topic}》讲解摘录`, content, tags: baseTags }
       }
-      case "mindmap": {
-        if (!outputs.mindmap?.content) return null
-        return { title: `《${topic}》思维导图`, content: outputs.mindmap.content, tags: baseTags }
-      }
-      case "code": {
-        const c = outputs.code
-        if (!c?.code) return null
-        const lang = c.language || "text"
-        const content =
-          (c.explanation ? `> ${c.explanation}\n\n` : "") +
-          "```" + lang + "\n" + c.code + "\n```\n" +
-          (c.expected_output ? `\n**预期输出**：${c.expected_output}\n` : "")
-        return { title: `《${topic}》代码 ${c.filename || ""}`, content, tags: baseTags }
-      }
-      case "reading": {
-        const items = outputs.reading?.items
-        if (!items?.length) return null
-        const content = items
-          .map((r) => `- **${r.title}**（${r.type} · ${r.difficulty} · ${r.source}）\n  ${r.summary}${r.url ? `\n  ${r.url}` : ""}`)
-          .join("\n")
-        return { title: `《${topic}》拓展阅读清单`, content, tags: baseTags }
-      }
-      case "path": {
-        const nodes = outputs.path?.nodes
-        if (!nodes?.length) return null
-        const content = nodes
-          .map((n, i) => `${i + 1}. **${n.data?.title || n.id}**${n.data?.desc ? ` — ${n.data.desc}` : ""}`)
-          .join("\n")
-        return { title: `《${topic}》学习路径`, content, tags: baseTags }
+      case "guide": {
+        const guide = outputs.guide
+        if (!guide?.content) return null
+        return { title: `《${topic}》岗位实操指南`, content: guide.content, tags: baseTags }
       }
       default:
         return null
@@ -425,8 +329,8 @@ export function WorkspaceDetail() {
           subtitle={topic ? `主题：${topic}` : "未选择主题"}
           icon={meta.icon}
           iconColor={meta.color}
-          backTo="/workspace"
-          backLabel="返回工作台"
+          backTo="/competency"
+          backLabel="返回岗位训练中心"
           appearance="paper"
           rightExtra={
             <div className="nav-scroll flex max-w-full items-center gap-1 overflow-x-auto">
@@ -463,7 +367,7 @@ export function WorkspaceDetail() {
         )}
 
         {!hasAnyData && (
-          <NoData resourceTitle={meta.title} onBack={() => navigate("/workspace")} />
+          <NoData resourceTitle={meta.title} onBack={() => navigate("/competency")} />
         )}
 
         {hasAnyData && (
@@ -473,7 +377,7 @@ export function WorkspaceDetail() {
             courseName={evidenceCourseName}
             topic={topic}
             retrievedCount={outputs.retriever?.chunks?.length || 0}
-            citationCount={outputs.doc?.citations?.length || 0}
+            citationCount={agentId === "guide" ? outputs.guide?.citations?.length || 0 : outputs.doc?.citations?.length || 0}
           />
         )}
 
@@ -483,23 +387,7 @@ export function WorkspaceDetail() {
             <Suspense fallback={<ResourceLoading label={`正在准备${meta.title}`} />}>
             {agentId === "doc" && (
               <div ref={docRef}>
-                {/* 顺序：1.文字正文 → 2.模型/动画(紧贴正文便于对照) → 引用脚注 → 3.视频 */}
-                {/* 顶部锚点：有配套动画时一键直达，长文档也能随时跳去和文字对照 */}
-                {conceptMatch && ConceptComp && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      docRef.current
-                        ?.querySelector("#doc-concept-anim")
-                        ?.scrollIntoView({ behavior: "smooth", block: "start" })
-                    }
-                    className="mb-4 inline-flex items-center gap-1.5 rounded-xl border border-[#D9CFB7] bg-[#F4ECD8] px-3 py-2 text-xs font-semibold text-[#8E6925] transition-colors hover:bg-[#EEE2C7]"
-                  >
-                    <Film className="size-3.5" /> 本主题有配套动画，点我直达对照
-                  </button>
-                )}
-
-                {/* 1. 文字讲解正文（含内联引用 [n]） */}
+                {/* 岗位定制讲义正文（含内联引用 [n]） */}
                 {outputs.doc?.content || stream.doc ? (
                   <Markdown
                     content={outputs.doc?.content || stream.doc}
@@ -525,41 +413,22 @@ export function WorkspaceDetail() {
                   <EmptyHint icon={Icon} label="文档 Agent 还未输出" />
                 )}
 
-                {/* 2. 模型/动画讲解 —— 紧贴正文，方便边读边对照（仅当该主题有配套动画时） */}
-                {conceptMatch && ConceptComp && (
-                  <div id="doc-concept-anim" className="mt-6 scroll-mt-4">
-                    <ConceptAnimationBoundary key={conceptMatch.key} title={conceptMatch.title}>
-                      <Suspense fallback={<ConceptAnimationLoading title={conceptMatch.title} />}>
-                        <ConceptPlayer
-                          title={conceptMatch.title}
-                          course={conceptMatch.course}
-                          badgeClass={conceptMatch.badgeClass}
-                          intro={`对照上面的讲解，用动画再过一遍《${topic}》👇`}
-                          lectureReady={conceptMatch.lectureReady}
-                          disablePanZoom={!conceptMatch.cssZoom}
-                        >
-                          <ConceptComp />
-                        </ConceptPlayer>
-                      </Suspense>
-                    </ConceptAnimationBoundary>
-                  </div>
-                )}
-
-                {/* 引用来源 —— 正文脚注，放对照内容之后 */}
+                {/* 引用来源 —— 讲义的可验证证据 */}
                 {outputs.doc?.citations && outputs.doc.citations.length > 0 && (
                   <CitationsBlock citations={outputs.doc.citations} />
                 )}
 
-                {/* 3. B 站 + 讯飞人才呀 —— 最后补充外部学习资源 */}
-                {topic && <ExternalLearningResources keyword={topic} />}
               </div>
             )}
 
-            {agentId === "mindmap" && (
-              outputs.mindmap?.content || stream.mindmap ? (
-                <MindMapView markdown={outputs.mindmap?.content || stream.mindmap} height="calc(100vh - 280px)" />
+            {agentId === "guide" && (
+              outputs.guide?.content || stream.guide ? (
+                <div>
+                  <Markdown content={outputs.guide?.content || stream.guide} citations={outputs.guide?.citations} />
+                  {outputs.guide?.citations && outputs.guide.citations.length > 0 && <CitationsBlock citations={outputs.guide.citations} />}
+                </div>
               ) : (
-                <EmptyHint icon={Icon} label="思维导图 Agent 还未输出" />
+                <EmptyHint icon={Icon} label="实操指南生成 Agent 还未输出" />
               )
             )}
 
@@ -622,40 +491,14 @@ export function WorkspaceDetail() {
                   </div>
                 </div>
               ) : (
-                <StreamFallback text={stream.quiz} icon={Icon} label="题库 Agent 还未输出" />
+                stream.quiz ? (
+                  <pre className="whitespace-pre-wrap font-mono text-xs text-[var(--muted-foreground)]">{stream.quiz}</pre>
+                ) : (
+                  <EmptyHint icon={Icon} label="题库 Agent 还未输出" />
+                )
               )
             )}
 
-            {agentId === "reading" && (
-              outputs.reading?.items?.length ? (
-                <ReadingList items={outputs.reading.items} topic={topic} />
-              ) : (
-                <StreamFallback text={stream.reading} icon={Icon} label="阅读 Agent 还未输出" />
-              )
-            )}
-
-            {agentId === "code" && (
-              outputs.code?.code ? (
-                <CodeBlock data={outputs.code} />
-              ) : stream.code ? (
-                <pre className="text-xs font-mono p-4 bg-zinc-950 text-zinc-300 rounded-lg overflow-x-auto"><code>{stream.code}</code></pre>
-              ) : (
-                <EmptyHint icon={Icon} label="代码 Agent 还未输出" />
-              )
-            )}
-
-            {agentId === "path" && (
-              outputs.path?.nodes?.length ? (
-                <PathView nodes={outputs.path.nodes} edges={outputs.path.edges} />
-              ) : (
-                <StreamFallback text={stream.path} icon={Icon} label="路径 Agent 还未输出" />
-              )
-            )}
-
-            {/* 可视讲解：前端合成，按当前主题自动出 AI 动画/黑板 + B 站视频（不走 orchestrator） */}
-            {agentId === "concept" && (
-              <ConceptAutoExplain topic={topic} userId={user?.user_id ?? 0} />
-            )}
             </Suspense>
             </ResourceErrorBoundary>
 
@@ -722,13 +565,9 @@ const PREFERENCE_LABELS: Record<string, string> = {
 }
 
 const RESOURCE_STRATEGY: Record<AgentKey, string> = {
-  doc: "用课程原文建立概念主线，并针对薄弱点增加解释层次",
-  mindmap: "把当前主题拆成层级关系，帮助快速建立整体结构",
+  doc: "用岗位知识库原文建立能力主线，并针对薄弱点增加解释层次",
+  guide: "把岗位任务拆成环境、步骤、预期、异常、安全边界与验收清单",
   quiz: "围绕薄弱点与当前主题生成多题型掌握度验证",
-  reading: "优先补充课程资料、教材章节与可继续深入的内容",
-  code: "将抽象概念转换为可运行示例，强化实践理解",
-  path: "依据目标、薄弱点和学习节奏安排阶段化顺序",
-  concept: "通过动画、黑板推演和真人讲解进行多模态对照",
 }
 
 function ResourceEvidenceBar({
@@ -751,7 +590,7 @@ function ResourceEvidenceBar({
   const preference = Object.entries(profile?.dims.preference || {})
     .filter(([, value]) => typeof value === "number")
     .sort((a, b) => b[1] - a[1])[0]?.[0]
-  const preferenceLabel = preference ? PREFERENCE_LABELS[preference] || preference : "课程默认呈现方式"
+  const preferenceLabel = preference ? PREFERENCE_LABELS[preference] || preference : "岗位默认呈现方式"
   const sourceReady = retrievedCount > 0 || citationCount > 0
   const evidenceCount = [Boolean(profile), Boolean(topic), sourceReady].filter(Boolean).length
 
@@ -769,9 +608,9 @@ function ResourceEvidenceBar({
       </div>
 
       <div className="grid gap-px bg-[#DDD7CB] sm:grid-cols-2 xl:grid-cols-4">
-        <EvidenceCell icon={UserRoundSearch} label="画像依据" value={profile ? `画像 v${profile.version}` : "课程默认策略"} hint={primaryGoal} color="#315E83" wash="#E7EDF3" />
+        <EvidenceCell icon={UserRoundSearch} label="画像依据" value={profile ? `画像 v${profile.version}` : "岗位默认策略"} hint={primaryGoal} color="#315E83" wash="#E7EDF3" />
         <EvidenceCell icon={Target} label="学习重点" value={topic || "当前主题"} hint={weakTopics.length ? `优先关注：${weakTopics.slice(0, 2).join("、")}` : `偏好方式：${preferenceLabel}`} color="#B85C3E" wash="#F4E8E2" />
-        <EvidenceCell icon={Database} label="课程与来源" value={courseName} hint={sourceReady ? `${retrievedCount || citationCount} 条课程依据参与生成` : "返回工作台生成后显示检索依据"} color="#3E7774" wash="#E2EEEB" />
+        <EvidenceCell icon={Database} label="岗位与来源" value={courseName} hint={sourceReady ? `${retrievedCount || citationCount} 条岗位依据参与生成` : "启动岗位训练后显示检索依据"} color="#3E7774" wash="#E2EEEB" />
         <EvidenceCell icon={ShieldCheck} label="内容策略" value={preferenceLabel} hint={RESOURCE_STRATEGY[resource]} color="#8E6925" wash="#F4ECD8" />
       </div>
     </article>
@@ -818,14 +657,14 @@ function NoData({ resourceTitle, onBack }: { resourceTitle: string; onBack: () =
           <p className="mt-3 text-[11px] font-bold tracking-[0.12em] text-[#8E6925]">等待生成 · 操作可继续</p>
           <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#18232D]">这份{resourceTitle}还未生成</h2>
           <p className="mx-auto mt-2 max-w-[560px] text-xs leading-5 text-[#6F787A]">
-            返回工作台输入主题后，7 个学习 Agent 会先检索课程依据，再并发生成完整资源包；完成后可在这里核对内容并进入笔记、测验或报告。
+            返回岗位训练中心启动本轮任务后，11 个核心 Agent 会依次完成诊断、计划协商、生成、审核与裁决；批准发布后可在这里核对内容并进入笔记、测验或报告。
           </p>
         </div>
 
         <div className="grid gap-2.5 p-4 sm:grid-cols-3 sm:p-5" aria-label="生成资源的三个步骤">
           {[
-            { step: "01", title: "选择课程", detail: "限定知识库与教材范围", icon: Database, color: "#355C8A", wash: "#E7EDF3" },
-            { step: "02", title: "定义主题", detail: "画像参与内容生成策略", icon: Target, color: "#B85C3E", wash: "#F4E8E2" },
+            { step: "01", title: "选择目标岗位", detail: "限定岗位知识库与训练范围", icon: Database, color: "#355C8A", wash: "#E7EDF3" },
+            { step: "02", title: "定位能力", detail: "能力地图与画像共同确定本轮任务", icon: Target, color: "#B85C3E", wash: "#F4E8E2" },
             { step: "03", title: "核验成果", detail: "逐类打开并继续学习", icon: ShieldCheck, color: "#6F8A69", wash: "#E8EDE5" },
           ].map(({ step, title, detail, icon: StepIcon, color, wash }) => (
             <div key={step} className="flex items-center gap-3 rounded-2xl border border-[#DDD7CB] bg-[#FBF9F4] p-3 text-left">
@@ -843,10 +682,10 @@ function NoData({ resourceTitle, onBack }: { resourceTitle: string; onBack: () =
 
         <div className="flex flex-col-reverse gap-2 border-t border-[#E0DACE] bg-[#FCFAF5] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <Link to="/courses" className="text-center text-xs font-semibold text-[#66717B] transition-colors hover:text-[#244C66]">
-            还没选课？先选择课程知识库
+            尚未选择岗位？先进入岗位空间
           </Link>
           <Button onClick={onBack} className="bg-[#244C66] text-white hover:bg-[#1D4058]">
-            <Sparkles className="size-4" /> 返回工作台开始生成
+            <Sparkles className="size-4" /> 返回岗位训练中心
           </Button>
         </div>
       </section>
@@ -900,13 +739,6 @@ class ResourceErrorBoundary extends Component<
   }
 }
 
-function StreamFallback({ text, icon, label }: { text: string; icon?: LucideIcon; label: string }) {
-  if (text) {
-    return <pre className="text-xs whitespace-pre-wrap font-mono text-[var(--muted-foreground)]">{text}</pre>
-  }
-  return <EmptyHint icon={icon} label={label} />
-}
-
 function CitationsBlock({ citations }: { citations: Citation[] }) {
   return (
     <div className="mt-4 pt-3 border-t border-[var(--border)]">
@@ -929,7 +761,7 @@ function CitationsBlock({ citations }: { citations: Citation[] }) {
                   )}
                   <span className="inline-flex items-center gap-0.5 font-semibold text-[#315E83]">
                     {target.external ? <ExternalLink className="size-2.5" /> : <ArrowRight className="size-2.5" />}
-                    {target.external ? "打开外部原文" : "查看教材原文"}
+                    {target.external ? "打开外部原文" : "查看岗位知识原文"}
                   </span>
                 </div>
                 <div className="mt-0.5 line-clamp-2 text-[var(--muted-foreground)]">{c.snippet}</div>

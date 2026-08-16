@@ -76,7 +76,7 @@ export function TutorConversationPanel({
           </button>
           <div className="min-w-0 flex-1">
             <h3 className="text-[16px] font-bold tracking-[-0.02em] text-[#18232D]">历史对话</h3>
-            <p className="mt-0.5 truncate text-[10px] text-[#7A817F]">《{courseName}》· {conversations.length} 条记录</p>
+            <p className="mt-0.5 truncate text-[10px] text-[#7A817F]">目标岗位「{courseName}」· {conversations.length} 条记录</p>
           </div>
           <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[#DDD4BF] bg-[#F4ECD8] text-[#9B7429]"><History className="size-4" /></span>
         </div>

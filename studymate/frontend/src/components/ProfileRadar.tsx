@@ -86,9 +86,6 @@ export function ProfileRadar({ title, data, max = 5, color = "#6366f1", height =
     value: typeof v === "number" ? Math.max(0, Math.min(max, v)) : 0,
   }))
   const values = Object.fromEntries(chartData.map((item) => [item.dim, item.value]))
-  const average = chartData.length ? chartData.reduce((sum, item) => sum + item.value, 0) / chartData.length : 0
-  const highlights = [...chartData].sort((a, b) => b.value - a.value).slice(0, 3)
-  const gradientId = `profile-radar-${title.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/gu, "-")}`
 
   return (
     <motion.div
@@ -97,22 +94,18 @@ export function ProfileRadar({ title, data, max = 5, color = "#6366f1", height =
       transition={{ duration: 0.4 }}
       data-testid="profile-radar"
       className={cn(
-        "profile-radar-card rounded-[22px] border border-[#D8E2F0] bg-[#FFFEFA] p-4 shadow-[0_12px_28px_rgba(48,83,139,.08)]",
+        "rounded-[22px] border border-[#CFC8B9] bg-[#FFFEFA] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]",
         fill && "flex min-h-[220px] flex-1 flex-col",
       )}
-      style={{ background: `radial-gradient(circle at 84% 8%, ${color}18, transparent 42%), linear-gradient(145deg, #ffffff 0%, #f8fbff 100%)` }}
     >
-      <div className="mb-1.5 flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="profile-radar-orb" style={{ background: `linear-gradient(135deg, ${color}, ${color}88)` }} aria-hidden="true" />
-          <div className="truncate text-xs font-bold text-[#18232D]">{title}</div>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5 text-[10px] font-semibold text-[#8A8172]">
-          <span>{chartData.length} 个维度</span>
-          <span className="rounded-full bg-white/80 px-2 py-1 text-[#315E83] shadow-sm">均值 {formatScore(average)}</span>
+      <div className="mb-1 flex items-center justify-between gap-3">
+        <div className="text-xs font-bold text-[#18232D]">{title}</div>
+        <div className="flex items-center gap-2 text-[10px] font-semibold text-[#8A8172]">
+          <span>{chartData.length} 画像维度</span>
+          {showScores && <span className="rounded-full bg-[#E7EDF3] px-2 py-1 text-[#315E83]">满分 {max} 分</span>}
         </div>
       </div>
-      <div className={cn("profile-radar-visual", fill ? "min-h-0 flex-1" : "")}>
+      <div className={fill ? "min-h-0 flex-1" : ""}>
         <ResponsiveContainer
           width="100%"
           height={fill ? "100%" : height}
@@ -127,13 +120,7 @@ export function ProfileRadar({ title, data, max = 5, color = "#6366f1", height =
               : { top: 8, right: 18, bottom: 20, left: 18 }}
             outerRadius={showScores ? "74%" : "76%"}
           >
-            <defs>
-              <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor={color} stopOpacity={0.58} />
-                <stop offset="100%" stopColor={color} stopOpacity={0.16} />
-              </linearGradient>
-            </defs>
-            <PolarGrid gridType="polygon" stroke="#C9D7E8" strokeDasharray="3 4" radialLines />
+            <PolarGrid stroke="#D7D1C4" />
             <PolarAngleAxis
               dataKey="dim"
               tick={showScores
@@ -146,32 +133,20 @@ export function ProfileRadar({ title, data, max = 5, color = "#6366f1", height =
                       max={max}
                     />
                   )
-                : { fontSize: 10, fill: "#526A88", fontWeight: 600 }}
+                : { fontSize: 10, fill: "#66717B" }}
             />
             <PolarRadiusAxis angle={90} domain={[0, max]} tick={false} axisLine={false} />
             <Radar
               name={title}
               dataKey="value"
               stroke={color}
-              strokeWidth={2.5}
-              strokeLinejoin="round"
-              fillOpacity={0.42}
-              fill={`url(#${gradientId})`}
+              fill={color}
+              fillOpacity={0.35}
               animationDuration={500}
             />
           </RadarChart>
         </ResponsiveContainer>
       </div>
-      {highlights.length > 0 && (
-        <div className="mt-1.5 flex flex-wrap gap-1.5" aria-label="优势维度">
-          {highlights.map((item) => (
-            <span key={item.dim} className="profile-radar-chip">
-              <span className="profile-radar-chip-dot" style={{ backgroundColor: color }} />
-              {item.dim} <b>{formatScore(item.value)}</b>
-            </span>
-          ))}
-        </div>
-      )}
     </motion.div>
   )
 }

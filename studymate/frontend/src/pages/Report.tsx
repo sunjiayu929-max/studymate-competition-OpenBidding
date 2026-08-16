@@ -35,6 +35,7 @@ import { useTutorContext } from "@/hooks/useTutorContext"
 import { useWorkspaceStore } from "@/store/workspace"
 import { useCurrentUser } from "@/store/user"
 import { useCurrentCourse } from "@/store/course"
+import { useTargetRole } from "@/store/targetRole"
 
 interface EvalScores {
   overall_correct_rate: number
@@ -219,6 +220,7 @@ export function Report() {
   const ws = useWorkspaceStore()
   const user = useCurrentUser()
   const course = useCurrentCourse()
+  const targetRole = useTargetRole()
   const USER_ID = user?.user_id ?? 0
   const reportRef = useRef<HTMLDivElement>(null)
   const noticeTimerRef = useRef<number | null>(null)
@@ -291,7 +293,7 @@ export function Report() {
   ].filter(Boolean))], [quizAttempts, ws.topic])
 
   const evidenceCourseId = ws.courseId ?? course?.id ?? null
-  const evidenceCourseName = ws.courseName || course?.name || null
+  const evidenceCourseName = ws.targetRole || targetRole?.name || ws.courseName || course?.name || null
 
   const timeSpentMin = useMemo(() => {
     if (!resourcesConsumed.length && !quizAttempts.length) return 0
@@ -633,7 +635,7 @@ export function Report() {
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><BarChart3 className="size-4" /></span>
               <div className="min-w-0">
                 <h1 className="text-[15px] font-bold text-[#18232D]">StudyMate 学习报告</h1>
-                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">{ws.topic ? `围绕《${ws.topic}》分析掌握程度、学习投入与下一步路径` : "汇总答题、资源使用与学习画像，形成可以行动的成长反馈"}</p>
+                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">{ws.topic ? `围绕《${ws.topic}》分析掌握程度、训练投入与下一轮路径` : "汇总答题、资源使用与岗位能力画像，形成可以行动的胜任力反馈"}</p>
               </div>
             </div>
             <div className="nav-scroll flex w-full items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto sm:overflow-visible sm:pb-0">
@@ -678,7 +680,7 @@ export function Report() {
               <ReportHistoryLanding items={evalHistory} />
               {trendData.length >= 2 && <TrendLineCard data={trendData} />}
             </div>
-          ) : <EmptyState courseName={course?.name} />
+          ) : <EmptyState courseName={targetRole?.name || course?.name} />
         )}
 
         {canRunEval && !report && !loading && (
@@ -866,7 +868,7 @@ export function Report() {
                       <Link
                         key={i}
                         to={`/workspace?topic=${encodeURIComponent(t)}`}
-                        aria-label={`用主题「${t}」进入学习资源工坊`}
+                        aria-label={`围绕「${t}」进入岗位训练中心`}
                         className="rounded-full border border-[#C9D1CB] bg-[#E9EEE6] px-2.5 py-1 text-xs text-[#557052] transition-colors hover:bg-[#DDE7DA]"
                       >
                         {t}
@@ -939,8 +941,8 @@ function ReportEvidenceStrip({
     ? evidence.resources_consumed.map((key) => RESOURCE_LABEL[key] || key).slice(0, 3).join("、")
     : "未记录资源"
   const cells = [
-    { label: "课程上下文", value: evidence?.course_name || "旧版报告未记录", icon: BookOpen },
-    { label: "学习主题", value: evidence?.topic || evidence?.topics_studied?.[0] || "历史学习", icon: Target },
+    { label: "目标岗位上下文", value: evidence?.course_name || "旧版报告未记录", icon: BookOpen },
+    { label: "岗位训练任务", value: evidence?.topic || evidence?.topics_studied?.[0] || "历史训练", icon: Target },
     { label: "输入证据", value: evidence ? `${evidence.quiz_count} 题 · ${evidence.resources_consumed.length} 类资源` : "已归档", icon: Layers3 },
     { label: "生成时间", value: formatReportTime(generatedAt), icon: Clock },
   ]
@@ -1078,7 +1080,7 @@ function TopicDifficultyHeatmap({
         <table className="w-full min-w-[680px] border-separate border-spacing-0 text-left">
           <thead>
             <tr className="text-[10px] font-bold text-[#7A817F]">
-              <th className="px-2 py-2">学习主题</th>
+              <th className="px-2 py-2">岗位训练任务</th>
               {difficulties.map((difficulty) => <th key={difficulty} className="px-2 py-2 text-center">难度 {difficulty}</th>)}
               <th className="px-2 py-2 text-center">主题总体</th>
             </tr>
@@ -1110,7 +1112,7 @@ function ReportHistoryLanding({ items }: { items: EvalHistoryItem[] }) {
           <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[#66717B]">历史成绩与建议已保留。其中 {masteryCount} 次包含答题依据；未答题的记录只展示学习投入，不再误算为 0% 正确率。</p>
         </div>
         <div className="flex shrink-0 gap-2">
-          <Link to="/workspace" className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[#C7D2D8] bg-[#E7EDF3] px-4 text-xs font-bold text-[#315E83] transition-colors hover:bg-[#DBE6EE]"><Sparkles className="size-3.5" />开始本轮学习</Link>
+          <Link to="/competency" className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[#C7D2D8] bg-[#E7EDF3] px-4 text-xs font-bold text-[#315E83] transition-colors hover:bg-[#DBE6EE]"><Sparkles className="size-3.5" />开始本轮训练</Link>
           <Link to="/quiz" className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-xs font-bold text-[#FFFEFA] transition-colors hover:bg-[#193B50]">继续测验<ArrowRight className="size-3.5" /></Link>
         </div>
       </div>
@@ -1164,7 +1166,7 @@ function EmptyState({ courseName }: { courseName?: string }) {
   const steps = [
     { step: "01", title: "学习资源", desc: "阅读讲解、笔记或可视动画", icon: BookOpen, tone: "bg-[#E7EDF3] text-[#315E83]" },
     { step: "02", title: "完成测验", desc: "留下真实的掌握度证据", icon: CheckCircle2, tone: "bg-[#E9EEE6] text-[#557052]" },
-    { step: "03", title: "生成报告", desc: "获得建议并更新学习画像", icon: BarChart3, tone: "bg-[#F4ECD8] text-[#8E6925]" },
+    { step: "03", title: "生成报告", desc: "获得建议并更新岗位能力画像", icon: BarChart3, tone: "bg-[#F4ECD8] text-[#8E6925]" },
   ]
   return (
     <div className="grid min-h-[520px] place-items-center rounded-[24px] border border-dashed border-[#CFC8B9] bg-[#F8F6F0] px-5 py-12">
@@ -1175,7 +1177,7 @@ function EmptyState({ courseName }: { courseName?: string }) {
           <span className="relative grid size-12 place-items-center rounded-2xl border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925] shadow-[0_10px_24px_rgba(142,105,37,.12)]"><BarChart3 className="size-5" /></span>
         </div>
         <h2 className="mt-4 text-xl font-bold tracking-[-0.03em] text-[#18232D]">完成一次学习闭环，报告就会在这里生长</h2>
-        <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[#66717B]">学习报告会结合资源学习、测验结果和画像变化，告诉你已经掌握什么、薄弱点在哪里，以及下一步最值得学什么。</p>
+        <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[#66717B]">学习报告会结合资源训练、测验结果和画像变化，告诉你已经掌握哪些岗位能力、薄弱能力在哪里，以及下一步最值得训练什么。</p>
         <div className="mt-6 grid gap-2 text-left sm:grid-cols-3">
           {steps.map(({ step, title, desc, icon: Icon, tone }) => (
             <div key={step} className="paper-lift rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] p-4">
@@ -1190,7 +1192,7 @@ function EmptyState({ courseName }: { courseName?: string }) {
         </div>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Link to={courseName ? "/workspace" : "/courses"} className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] transition-colors hover:bg-[#193B50]">
-            <Sparkles className="size-4" /> {courseName ? "生成第一套学习资源" : "先选择一门课程"}
+            <Sparkles className="size-4" /> {courseName ? "生成第一套岗位训练资源" : "先选择目标岗位"}
           </Link>
           {courseName && (
             <Link to="/quiz" className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[#C9C2B4] bg-[#FFFEFA] px-5 text-xs font-bold text-[#315E83] transition-colors hover:bg-[#EEE9DF]">
@@ -1217,7 +1219,7 @@ function WorkspaceGenerationState({ resourceCount }: { resourceCount: number }) 
           <motion.div initial={false} animate={{ width: `${Math.min(100, (resourceCount / 6) * 100)}%` }} className="h-full rounded-full bg-[#315E83]" />
         </div>
         <div className="mt-5 flex flex-wrap justify-center gap-2">
-          <Link to="/workspace" className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-xs font-bold text-[#FFFEFA] transition-colors hover:bg-[#193B50]">查看生成进度<ArrowRight className="size-3.5" /></Link>
+          <Link to="/competency" className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-xs font-bold text-[#FFFEFA] transition-colors hover:bg-[#193B50]">查看训练进度<ArrowRight className="size-3.5" /></Link>
           <span className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[#C9D1CB] bg-[#E9EEE6] px-4 text-xs font-bold text-[#557052]"><ShieldCheck className="size-3.5" />离开页面不会中断</span>
         </div>
       </div>
@@ -1232,7 +1234,7 @@ function WorkspaceGenerationBanner({ resourceCount }: { resourceCount: number })
         <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[#D9CFB7] bg-[#FFFEFA]"><Layers3 className="size-4" /></span>
         <div><strong className="block text-sm">新资源仍在生成，暂不重新评估</strong><p className="mt-0.5 text-[11px] leading-5 text-[#816A3D]">已返回 {resourceCount} / 6 类资源；下方旧报告保持可读，完整后再生成新版。</p></div>
       </div>
-      <Link to="/workspace" className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-xl border border-[#CDBF9E] bg-[#FFFEFA] px-3 text-[11px] font-bold transition-colors hover:bg-[#F8F1E2]">查看进度<ArrowRight className="size-3" /></Link>
+      <Link to="/competency" className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-xl border border-[#CDBF9E] bg-[#FFFEFA] px-3 text-[11px] font-bold transition-colors hover:bg-[#F8F1E2]">查看进度<ArrowRight className="size-3" /></Link>
     </div>
   )
 }
@@ -1459,7 +1461,7 @@ function ProfileDeltaCard({
             className={`rounded-xl border bg-[#FFFEFA] p-3 ${wpApplied ? "border-[#6F8A69]" : "border-[#D7D1C4]"}`}
           >
             <div className="text-xs font-semibold mb-1.5 flex items-center gap-1">
-              <span>⚠️ 薄弱点（替换）</span>
+              <span>⚠️ 薄弱能力点（替换）</span>
               {wpApplied && <CheckCircle2 className="size-3 text-[#557052]" />}
             </div>
             {wp?.topics?.length || wp?.error_types?.length ? (

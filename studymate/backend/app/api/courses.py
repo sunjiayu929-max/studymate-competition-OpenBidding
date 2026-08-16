@@ -1,6 +1,6 @@
 """课程管理 API。
 
-多课程架构基础：评委可在首页选择课程（机器学习 / 数据结构 / 概率论…），
+多岗位知识域架构基础：用户可先选择领域岗位，再绑定对应知识库边界，
 进入工作台后所有 Agent 检索 / 落库都按 course_id 隔离。
 
 端点：
@@ -20,14 +20,7 @@ from app.db.models import Course, KnowledgeChunk
 
 router = APIRouter(prefix="/courses", tags=["courses"])
 
-VISIBLE_COURSE_NAMES = {
-    "机器学习",
-    "数据结构与算法",
-    "操作系统",
-    "计算机网络",
-    "计算机组成原理",
-    "FDE 岗位知识库",
-}
+VISIBLE_COURSE_NAMES = set(list_course_names())
 
 
 class CourseIn(BaseModel):
@@ -62,7 +55,7 @@ async def list_courses(db: AsyncSession = Depends(get_db)):
 
 @router.post("")
 async def create_course(req: CourseIn, db: AsyncSession = Depends(get_db)):
-    raise HTTPException(405, "课程空间已固定为五门预设课程，不支持新增")
+    raise HTTPException(405, "岗位空间由预设岗位知识库驱动，不支持在此接口新增")
 
 
 @router.get("/registry")
@@ -107,4 +100,4 @@ async def get_course_config_endpoint(course_id: int, db: AsyncSession = Depends(
 
 @router.delete("/{course_id}")
 async def delete_course(course_id: int, db: AsyncSession = Depends(get_db)):
-    raise HTTPException(405, "预设课程不支持删除")
+    raise HTTPException(405, "预设岗位知识库不支持删除")

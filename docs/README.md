@@ -20,6 +20,7 @@
 - [Ubuntu 部署指南](../studymate/docs/Ubuntu部署指南.md)
 - [密钥管理指南](../studymate/docs/密钥管理指南.md)
 - [当前开发计划](项目开发相关/plan.md)
+- [赛题 B 适配与获奖导向改造方案](项目开发相关/赛题B适配与获奖导向改造方案.md)
 - [交付材料清单](交付文档/README.md)
 
 ## 文档边界

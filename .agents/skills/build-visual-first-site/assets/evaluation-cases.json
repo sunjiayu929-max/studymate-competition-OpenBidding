@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "scenic-single-hero",
+      "prompt": "用这张山水照片做一个高级、简洁、手机端也漂亮的落地页，你决定风格。",
+      "shouldTrigger": true,
+      "fixture": "one high-resolution 3:2 landscape with open sky and a protected horizon",
+      "expectedBehaviors": [
+        "audits and views the supplied image before layout",
+        "scores plausible profiles instead of defaulting from the word premium",
+        "protects the horizon and proves an independent mobile crop"
+      ],
+      "failureSignals": [
+        "copies a prior seasonal hero composition",
+        "places oversized type across the focal landscape"
+      ]
+    },
+    {
+      "id": "architecture-collection",
+      "prompt": "Turn these architecture photos into a refined portfolio with subtle motion.",
+      "shouldTrigger": true,
+      "fixture": "six geometric interior and exterior photographs",
+      "expectedBehaviors": [
+        "Quiet Luxury receives evidence-based consideration",
+        "motion is tied to light, shadow, reveal, or material"
+      ],
+      "failureSignals": [
+        "adds petals, birds, or dreamlike script without image evidence"
+      ]
+    },
+    {
+      "id": "travel-archive",
+      "prompt": "把这一文件夹旅行照片整理成我自己的旅行网页，日期和地点要保留。",
+      "shouldTrigger": true,
+      "fixture": "twelve mixed-orientation images with dates, locations, and notes",
+      "expectedBehaviors": [
+        "Travel Editorial receives evidence-based consideration",
+        "curates chapters and preserves useful metadata",
+        "does not display every image at equal prominence"
+      ],
+      "failureSignals": [
+        "turns every image into a full-screen hero",
+        "drops journal metadata"
+      ]
+    },
+    {
+      "id": "ordered-cinematic-story",
+      "prompt": "These five photographs tell a departure-to-arrival story. Make the sequence feel cinematic.",
+      "shouldTrigger": true,
+      "fixture": "five coherent images with an explicit narrative order",
+      "expectedBehaviors": [
+        "Cinematic Story receives evidence-based consideration",
+        "scene order remains meaningful",
+        "transitions remain slow and readable"
+      ],
+      "failureSignals": [
+        "uses an unordered masonry gallery",
+        "adds rapid autoplay transitions"
+      ]
+    },
+    {
+      "id": "lifestyle-food-home",
+      "prompt": "用这些做饭和家庭生活照片做一个温暖但不幼稚的个人主页。",
+      "shouldTrigger": true,
+      "fixture": "warm close-ups, people, food, fabric, and everyday moments",
+      "expectedBehaviors": [
+        "Clear Lifestyle receives evidence-based consideration",
+        "motion is human and tactile",
+        "copy remains readable and approachable"
+      ],
+      "failureSignals": [
+        "forces severe black luxury styling",
+        "uses childish decoration"
+      ]
+    },
+    {
+      "id": "weak-mixed-assets",
+      "prompt": "这些图质量不太一致，但我还是想做个好看的摄影展示页。",
+      "shouldTrigger": true,
+      "fixture": "small, noisy, and visually inconsistent images",
+      "expectedBehaviors": [
+        "classifies the set as weak or mixed",
+        "curates or frames instead of stretching",
+        "states material image limitations"
+      ],
+      "failureSignals": [
+        "stretches low-resolution images full-screen",
+        "generates replacements without permission"
+      ]
+    },
+    {
+      "id": "no-images-clear-subject",
+      "prompt": "我还没有图片，给海边民宿做一个视觉抓人的单页网站，你来决定。",
+      "shouldTrigger": true,
+      "fixture": "no image assets; subject and goal are explicit",
+      "expectedBehaviors": [
+        "asks no style-token questionnaire",
+        "creates or sources one hero concept first",
+        "inspects the concept before expanding the image family"
+      ],
+      "failureSignals": [
+        "generates a full unreviewed set",
+        "uses abstract CSS as fake photography"
+      ]
+    },
+    {
+      "id": "existing-mobile-defect",
+      "prompt": "这个摄影网站桌面很好看，但手机文字挡住人物，帮我重新适配。",
+      "shouldTrigger": true,
+      "fixture": "working image-led site plus a mobile screenshot",
+      "expectedBehaviors": [
+        "preserves the existing stack and unrelated behavior",
+        "recomposes mobile and rechecks compact viewports"
+      ],
+      "failureSignals": [
+        "rewrites the application architecture",
+        "only reduces font size"
+      ]
+    },
+    {
+      "id": "analytics-dashboard",
+      "prompt": "Build an analytics dashboard with charts, filters, and export controls.",
+      "shouldTrigger": false,
+      "fixture": "no primary imagery",
+      "expectedBehaviors": [],
+      "failureSignals": [
+        "visual-first site skill becomes the primary workflow"
+      ]
+    },
+    {
+      "id": "admin-crud",
+      "prompt": "做一个员工权限管理后台，要有表格、批量编辑和审计日志。",
+      "shouldTrigger": false,
+      "fixture": "forms and data operations dominate",
+      "expectedBehaviors": [],
+      "failureSignals": [
+        "image-led art direction is applied to an admin tool"
+      ]
+    },
+    {
+      "id": "checkout-flow",
+      "prompt": "Implement cart, shipping address, payment, and order confirmation.",
+      "shouldTrigger": false,
+      "fixture": "commerce operations dominate",
+      "expectedBehaviors": [],
+      "failureSignals": [
+        "immersive imagery obstructs transactional usability"
+      ]
+    },
+    {
+      "id": "backend-api",
+      "prompt": "Add rate limiting and Redis caching to this API.",
+      "shouldTrigger": false,
+      "fixture": "backend-only change",
+      "expectedBehaviors": [],
+      "failureSignals": [
+        "the visual site workflow triggers"
+      ]
+    }
+  ]
+}
+

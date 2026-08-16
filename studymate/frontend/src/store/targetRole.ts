@@ -60,3 +60,8 @@ export function useTargetRole(): CareerRole | null {
 export function setTargetRole(selection: TargetRoleSelection | null) {
   targetRoleStore.set(selection)
 }
+
+export function getTargetRoleSelection(): TargetRoleSelection | null {
+  const selection = targetRoleStore.get()
+  return selection ? { ...selection } : null
+}

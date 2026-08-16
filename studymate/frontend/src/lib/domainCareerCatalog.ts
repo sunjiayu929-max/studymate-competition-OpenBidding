@@ -11,8 +11,10 @@ export interface LearningResource {
 export interface CareerRole {
   id: string
   name: string
+  courseName: string
   summary: string
   skills: string[]
+  sampleTasks: string[]
   baseCourses: string[]
   knowledgeBaseState: "ready" | "planned"
   knowledgeBase?: {
@@ -32,133 +34,87 @@ export interface CareerDomain {
   roles: CareerRole[]
 }
 
+const importedAt = "2026-08-14"
+
+function role(id: string, name: string, summary: string, skills: string[], tasks: string[], sources: LearningResource[], baseCourses = ["机器学习", "数据结构与算法"]): CareerRole {
+  return {
+    id,
+    name,
+    courseName: `${name} 岗位知识库`,
+    summary,
+    skills,
+    sampleTasks: tasks,
+    baseCourses,
+    knowledgeBaseState: "ready",
+    knowledgeBase: {
+      lastImportedAt: importedAt,
+      overview: `${name} 的岗位资料已按“概述、职责流程、技术栈案例、能力模型、行业资料”切片导入；每条切片均保留正文明确标注的外部来源，检索结果可进入来源页核验。`,
+      responsibilities: tasks.slice(0, 3),
+      workflow: ["需求与边界确认", "资料检索与方案设计", "实施与验证", "复盘与迭代"],
+      resources: sources,
+    },
+  }
+}
+
+const fdeSources: LearningResource[] = [
+  { type: "定制讲义", title: "FDE 岗位任务与交付方法", description: "岗位边界、客户问题拆解、技术选型和交付证据链。", sourceLabel: "FDE Guidance Book", sourceUrl: "https://github.com/xdash/FDE-the-Guidance-Book-of-Forward-Deployed-Engineer" },
+  { type: "实操指南", title: "客户现场最小交付闭环", description: "需求澄清、接口联调与演示验收。", sourceLabel: "美团招聘：FDE 解决方案工程师", sourceUrl: "https://www.zhaopin.com/jobdetail/CC383625320J40880566009.htm" },
+  { type: "分阶测试题", title: "FDE 场景诊断题组", description: "检查需求分析、排障和验收决策能力。", sourceLabel: "Palantir：Forward Deployed Software Engineer", sourceUrl: "https://www.palantir.com/careers/" },
+]
+
+const softwareSources: LearningResource[] = [
+  { type: "定制讲义", title: "岗位知识要点", description: "概述、边界和关键术语的可追溯摘要。", sourceLabel: "智联招聘：RAG 架构师", sourceUrl: "https://www.zhaopin.com/jobdetail/CCL1525557200J40887968305.htm" },
+  { type: "实操指南", title: "岗位实施闭环", description: "输入、流程、异常处理、验收与回滚。", sourceLabel: "智联招聘：MLOps 工程师", sourceUrl: "https://www.zhaopin.com/jobdetail/CC537323020J40868750011.htm" },
+  { type: "分阶测试题", title: "岗位能力训练", description: "基础、实践和综合决策题。", sourceLabel: "智联招聘：AI 前端开发工程师", sourceUrl: "https://www.zhaopin.com/jobdetail/CC854626770J41012205702.htm" },
+]
+
+const aiSources: LearningResource[] = [
+  { type: "定制讲义", title: "AI 岗位核心知识", description: "按岗位职责组织的基础概念和工程资料。", sourceLabel: "LangChain 开源仓库", sourceUrl: "https://github.com/langchain-ai/langchain" },
+  { type: "实操指南", title: "AI 岗位实操流程", description: "任务拆解、实施、验证和复盘。", sourceLabel: "vLLM 开源推理引擎", sourceUrl: "https://github.com/vllm-project/vllm" },
+  { type: "分阶测试题", title: "AI 岗位能力题", description: "按知识、工具和工程决策分层练习。", sourceLabel: "OWASP Top 10 for LLM Applications", sourceUrl: "https://genai.owasp.org/llm-top-10/" },
+]
+
+const industrialSources: LearningResource[] = [
+  { type: "定制讲义", title: "工业互联网岗位知识", description: "工业场景、角色职责和安全边界。", sourceLabel: "工业互联网产业联盟", sourceUrl: "https://www.iii.org.cn/" },
+  { type: "实操指南", title: "工业现场实施指南", description: "采集、联调、部署、验收和异常处理。", sourceLabel: "EdgeX Foundry 开源项目", sourceUrl: "https://github.com/edgexfoundry/edgex-go" },
+  { type: "分阶测试题", title: "工业岗位能力题", description: "按现场问题分析、工程实施和综合决策分层。", sourceLabel: "中国工业互联网研究院", sourceUrl: "https://www.china-aii.com/" },
+]
+
 export const careerDomains: CareerDomain[] = [
   {
-    id: "industrial",
-    name: "工业互联网",
-    description: "连接工业现场数据、模型部署与生产场景的技能训练。",
+    id: "ai",
+    name: "人工智能",
+    description: "模型、Agent、基础设施、具身智能和安全的岗位训练。",
     roles: [
-      {
-        id: "industrial-vision",
-        name: "工业视觉质检模型开发与部署工程师",
-        summary: "围绕缺陷数据、视觉模型、边缘部署和现场验收完成质量检测闭环。",
-        skills: ["机器视觉", "模型训练", "边缘部署", "工业现场调试"],
-        baseCourses: ["机器学习", "计算机网络"],
-        knowledgeBaseState: "planned",
-      },
-      {
-        id: "industrial-data",
-        name: "工业数据工程师",
-        summary: "建设设备数据采集、清洗、治理与分析链路。",
-        skills: ["数据采集", "时序数据", "ETL", "数据治理"],
-        baseCourses: ["数据结构与算法", "计算机网络"],
-        knowledgeBaseState: "planned",
-      },
-      {
-        id: "industrial-delivery",
-        name: "工业互联网实施工程师",
-        summary: "将平台能力落到工厂网络、设备接入与业务流程中。",
-        skills: ["设备接入", "网络基础", "方案实施", "现场交付"],
-        baseCourses: ["计算机网络", "操作系统"],
-        knowledgeBaseState: "planned",
-      },
+      role("ai-agent", "AI Agent 开发工程师", "设计可观测、可评测且受控的 Agent 工作流。", ["Agent 设计", "工具调用", "工作流编排", "评测"], ["设计多步骤 Agent 工作流", "实现工具参数校验", "分析失败轨迹并迭代"], aiSources),
+      role("ai-infra", "AI Infra 工程师", "建设训练和推理的可靠基础设施。", ["算力调度", "容器平台", "推理服务", "监控"], ["规划训练资源", "部署推理服务", "排查资源与稳定性问题"], aiSources),
+      role("embodied-ai", "具身智能算法工程师", "完成感知、规划、控制与仿真到实机验证。", ["感知", "规划", "控制", "仿真"], ["验证感知数据", "制定仿真到实机方案", "处理实机异常"], aiSources),
+      role("llm-security", "大模型安全工程师", "评测并治理提示注入、数据泄露与越权等风险。", ["红队评测", "提示注入", "权限", "审计"], ["构造攻击样本", "设计安全门禁", "处理高风险输出"], aiSources),
+      role("llm-application", "大模型应用开发工程师", "构建可追溯、可评测的大模型业务应用。", ["RAG", "Agent", "应用开发", "评测"], ["实现知识问答链路", "设计效果评测", "分析质量与成本"], aiSources),
     ],
   },
   {
     id: "software",
     name: "特定软件开发",
-    description: "面向企业业务场景的软件交付、集成和质量保障。",
+    description: "面向企业场景的软件交付、安全、模型工程和 AI 交互。",
     roles: [
-      {
-        id: "fde",
-        name: "前线部署工程师（FDE）",
-        summary: "深入客户现场，把产品能力、数据和业务流程组合成可验证、可交付的解决方案。",
-        skills: ["需求澄清", "Python 与 SQL", "系统集成", "客户沟通", "交付验证"],
-        baseCourses: ["机器学习", "数据结构与算法", "计算机网络"],
-        knowledgeBaseState: "ready",
-        knowledgeBase: {
-          chunkCount: 11,
-          lastImportedAt: "2026-08-08",
-          overview: "FDE（Forward Deployed Engineer）兼具工程实现与业务交付能力。学习重点不是孤立写代码，而是完成“理解业务问题 -> 对接数据和系统 -> 构建方案 -> 验收迭代”的岗位任务。",
-          responsibilities: [
-            "与客户和项目团队澄清业务目标、约束、验收口径",
-            "完成数据、接口、权限与部署环境的联调排障",
-            "将原型或产品能力配置为可演示、可验证的现场方案",
-            "沉淀实施记录、风险项和可复用交付文档",
-          ],
-          workflow: ["场景调研", "方案拆解", "数据与接口联调", "现场部署", "验收复盘"],
-          resources: [
-            {
-              type: "定制讲义",
-              title: "FDE 岗位任务与交付方法",
-              description: "理解 FDE 的岗位边界、客户问题拆解、技术选型和交付证据链。",
-              sourceLabel: "FDE Guidance Book（岗位参考）",
-              sourceUrl: "https://github.com/xdash/FDE-the-Guidance-Book-of-Forward-Deployed-Engineer",
-            },
-            {
-              type: "实操指南",
-              title: "客户现场最小交付闭环",
-              description: "以“需求澄清 -> 接口联调 -> 演示验收”为主线，完成一份可复盘的实施记录。",
-              sourceLabel: "StudyMate FDE 岗位切片 v1",
-              sourceUrl: "https://github.com/studymate-team/studymate-SoftwareCopyright",
-            },
-            {
-              type: "分阶测试题",
-              title: "FDE 场景诊断题组",
-              description: "按基础、联调、交付三个阶段检查需求分析、排障和验收决策能力。",
-              sourceLabel: "StudyMate FDE 岗位切片 v1",
-              sourceUrl: "https://github.com/studymate-team/studymate-SoftwareCopyright",
-            },
-          ],
-        },
-      },
-      {
-        id: "rag-delivery",
-        name: "企业 RAG 应用实施工程师",
-        summary: "将企业资料、检索系统与业务问答流程整合为可使用的内部应用。",
-        skills: ["RAG", "知识库构建", "接口集成", "评测与纠偏"],
-        baseCourses: ["机器学习", "数据结构与算法"],
-        knowledgeBaseState: "planned",
-      },
-      {
-        id: "software-quality",
-        name: "软件质量工程师",
-        summary: "通过测试设计、自动化验证与缺陷分析保障软件交付质量。",
-        skills: ["测试设计", "自动化测试", "缺陷分析", "质量度量"],
-        baseCourses: ["数据结构与算法", "操作系统"],
-        knowledgeBaseState: "planned",
-      },
+      { ...role("fde", "前线部署工程师（FDE）", "深入客户现场，把产品能力、数据和业务流程组合成可验证、可交付的方案。", ["需求澄清", "Python 与 SQL", "系统集成", "交付验证"], ["需求澄清如何形成可验证价值假设", "现场数据接入与接口联调依赖清单", "部署验收如何保留业务结果与运行证据"], fdeSources, ["机器学习", "数据结构与算法", "计算机网络"]), courseName: "FDE 岗位知识库", knowledgeBase: { ...role("fde-tmp", "前线部署工程师（FDE）", "", [], [], fdeSources).knowledgeBase!, chunkCount: 34, overview: "FDE 既要完成工程实现，也要围绕客户业务流程形成可验证、可交付的现场方案；原有知识保留，并已追加可核验的岗位资料。" } },
+      role("devsecops", "软件供应链安全工程师（DevSecOps）", "保障代码到制品的完整性、可追溯性与安全门禁。", ["SSDF", "SBOM", "签名", "漏洞响应"], ["生成并分析 SBOM", "配置 CI 安全门禁", "演练漏洞响应与回滚"], softwareSources),
+      role("rag-implementation", "企业 RAG 应用实施工程师", "将企业资料转化为有权限、可引用和可评测的检索应用。", ["资料解析", "检索", "引用", "权限", "评测"], ["制定切分与索引规则", "设计混合检索", "处理无证据与越权问题"], softwareSources),
+      role("mlops", "MLOps 工程师", "实现模型训练、部署、监控和回滚的工程闭环。", ["实验追踪", "流水线", "注册", "监控"], ["构建训练 Pipeline", "设计灰度发布", "诊断模型漂移"], softwareSources),
+      role("ai-native-frontend", "AI-native 应用前端开发工程师", "实现流式、可解释、安全且可访问的 AI Web 交互。", ["流式 UI", "Agent 状态", "RAG 引用", "测试"], ["实现 SSE 重连", "制作 Agent 画布", "测试引用与安全渲染"], softwareSources),
     ],
   },
   {
-    id: "ai",
-    name: "人工智能",
-    description: "聚焦模型能力、数据工程与真实业务应用的落地。",
+    id: "industrial",
+    name: "工业互联网",
+    description: "工业平台、数据、边缘 AI、视觉和网络集成的岗位训练。",
     roles: [
-      {
-        id: "ai-app",
-        name: "AI 应用工程师",
-        summary: "将大模型、知识库和工具调用组合成稳定可用的业务应用。",
-        skills: ["提示工程", "RAG", "后端开发", "应用评测"],
-        baseCourses: ["机器学习", "数据结构与算法"],
-        knowledgeBaseState: "planned",
-      },
-      {
-        id: "algorithm",
-        name: "算法工程师",
-        summary: "负责数据建模、模型训练、评估和服务化部署。",
-        skills: ["Python", "机器学习", "模型评估", "MLOps"],
-        baseCourses: ["机器学习", "数据结构与算法"],
-        knowledgeBaseState: "planned",
-      },
-      {
-        id: "llm",
-        name: "大模型应用开发工程师",
-        summary: "为具体业务设计大模型工作流、工具调用和内容安全机制。",
-        skills: ["LLM", "Agent", "工具调用", "安全与评测"],
-        baseCourses: ["机器学习", "计算机网络"],
-        knowledgeBaseState: "planned",
-      },
+      role("industrial-architect", "工业互联网架构师", "设计工业平台与云边端协同架构。", ["架构设计", "系统集成", "云边协同", "安全"], ["划分云边端职责", "设计平台集成边界", "评审数据与安全方案"], industrialSources),
+      role("industrial-data", "工业数据工程师", "建设设备数据采集、治理、时序处理与分析链路。", ["数据采集", "ETL", "时序数据", "治理"], ["设计设备采集链路", "制定清洗规则", "定位指标波动"], industrialSources),
+      role("edge-ai", "边缘计算 AI 工程师", "完成边缘设备 AI 部署、性能优化和运维。", ["边缘部署", "模型优化", "性能", "运维"], ["优化模型体积", "部署边缘服务", "排查现场性能异常"], industrialSources),
+      role("industrial-vision", "工业 AI 视觉工程师", "完成缺陷数据、视觉模型、边缘部署与现场验收。", ["机器视觉", "模型训练", "边缘部署", "验收"], ["制定标注规范", "分析误检漏检", "完成部署验收"], industrialSources),
+      role("industrial-network", "工业互联网网络集成工程师", "完成工业网络、协议接入、现场联调和安全运维。", ["网络规划", "工业协议", "设备接入", "联调"], ["梳理协议适配", "制定联调方案", "定位网络故障"], industrialSources),
     ],
   },
 ]

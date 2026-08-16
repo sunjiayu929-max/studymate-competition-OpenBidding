@@ -30,6 +30,7 @@ import { apiGet, apiPost, sseHeaders } from "@/lib/api"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useCurrentUser } from "@/store/user"
 import { useCurrentCourse } from "@/store/course"
+import { useTargetRole } from "@/store/targetRole"
 import { useVoiceTutorHistory, voiceTutorHistory } from "@/store/voiceTutorHistory"
 import { getCurrentVoice } from "@/store/voice"
 import { formatTutorDisplayContent } from "@/lib/tutorFormatting"
@@ -118,6 +119,7 @@ export function VoiceTutor() {
   const user = useCurrentUser()
   const USER_ID = user?.user_id ?? 0
   const course = useCurrentCourse()
+  const targetRole = useTargetRole()
   const courseId = course?.id ?? null
   const learningMethod = useTutorLearningMethod(USER_ID, courseId)
   const messages = useVoiceTutorHistory(USER_ID, courseId)
@@ -420,12 +422,13 @@ export function VoiceTutor() {
     voiceRunRef.current = tutorGenerationStore.start({
       userId: USER_ID,
       courseId,
+      targetRole: targetRole?.name,
       messages: hist,
       learningMethod,
       origin: "voice",
       historySink: voiceTutorHistory,
     })
-  }, [USER_ID, courseId, learningMethod, setVoiceState, stopAsr, stopTts])
+  }, [USER_ID, courseId, learningMethod, setVoiceState, stopAsr, stopTts, targetRole?.name])
 
   // ===== TTS 播放（同时启 ASR 监听打断）=====
   const startTts = useCallback(async (text: string) => {
@@ -637,10 +640,26 @@ export function VoiceTutor() {
     setVoiceState("paused")
   }
 
-  const courseLabel = course?.name ?? "机器学习"
+  const courseLabel = targetRole?.name ?? course?.name ?? "目标岗位"
   const isPaused = orbState === "paused"
   const pausedActionLabel = conversationStarted ? "继续对话" : "开始对话"
   const needsAnswerRecovery = messages.at(-1)?.role === "user" && generation.status !== "open" && !streaming
+
+  if (!course) {
+    return (
+      <div className="paper-theme fixed inset-0 z-[80] grid place-items-center bg-[#F3F0E7] p-6 text-center" role="status">
+        <div className="max-w-md rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] p-7 shadow-[0_18px_48px_rgba(24,35,45,.10)]">
+          <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#D8C9A8] bg-[#F4ECD8] text-[#8E6925]"><AlertTriangle className="size-5" /></span>
+          <h1 className="mt-4 text-lg font-bold text-[#18232D]">{targetRole ? `${targetRole.name} 的语音岗位助教尚未开放` : "请先选择目标岗位"}</h1>
+          <p className="mt-2 text-xs leading-6 text-[#66717B]">{targetRole ? "专属岗位知识库接入后才会开放语音对话，避免使用无关内容回答。岗位选择已经保留。" : "目标岗位决定语音助教的知识边界与会话归档。"}</p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <Button onClick={() => navigate("/courses?returnTo=%2Ftutor%2Fvoice")} className="bg-[#244C66] text-white hover:bg-[#193B50]">{targetRole ? "更换已开放岗位" : "选择目标岗位"}</Button>
+            <Button variant="outline" onClick={() => navigate(targetRole ? "/workspace" : "/tutor")} className="border-[#D7D1C4] bg-[#F8F6F0]">{targetRole ? "查看岗位状态" : "返回文字助教"}</Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="paper-theme fixed inset-0 z-[80] flex flex-col overflow-hidden bg-[#F3F0E7]">
@@ -744,7 +763,7 @@ export function VoiceTutor() {
                   exit={{ opacity: 0 }}
                   className="text-[11px] text-[#66717B]"
                 >
-                  真人讲师视频 · 当前岗位《{courseLabel}》
+                  真人讲师视频 · 当前岗位「{courseLabel}」
                 </motion.div>
               )}
             </AnimatePresence>
@@ -801,7 +820,7 @@ export function VoiceTutor() {
               <div>
                 <span className="mx-auto grid size-11 place-items-center rounded-2xl bg-[#F4ECD8] text-[#8E6925]"><MessageSquare className="size-5" /></span>
                 <p className="mt-3 text-sm font-bold text-[#18232D]">{serviceStatus?.asr_configured === false ? "语音服务未配置，文字学习仍可继续" : "开口说话，开始这次学习对话"}</p>
-                <p className="mt-1 text-[11px] text-[#7A817F]">{serviceStatus?.asr_configured === false ? "切换到文字模式，课程、画像与历史记录都会保留" : "助教会自动识别、回答并朗读"}</p>
+                <p className="mt-1 text-[11px] text-[#7A817F]">{serviceStatus?.asr_configured === false ? "切换到文字模式，目标岗位、画像与历史记录都会保留" : "助教会自动识别、回答并朗读"}</p>
                 {serviceStatus?.asr_configured === false && <button type="button" onClick={() => navigate("/tutor")} className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#D8C9A8] bg-[#FBF7ED] px-3 text-[10px] font-bold text-[#8E6925] hover:bg-[#F4ECD8]"><MessageSquare className="size-3.5" />继续文字学习</button>}
               </div>
             </div>

@@ -1,0 +1,7 @@
+interface:
+  display_name: "视觉优先网站导演"
+  short_description: "从现有或缺失图片出发，生成高级简洁且适配移动端的视觉网站"
+  default_prompt: "Use $build-visual-first-site to inspect this project and turn my images or idea into a polished visual website with minimal questions."
+policy:
+  allow_implicit_invocation: true
+

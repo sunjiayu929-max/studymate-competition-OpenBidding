@@ -1,5 +1,5 @@
 import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react"
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
+import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-router-dom"
 import { RequireAuth, RequireAdmin } from "@/components/guards"
 import { JudgeTour } from "@/components/JudgeTour"
 import { JudgeDemoMode } from "@/components/JudgeDemoMode"
@@ -12,7 +12,6 @@ const Home = lazy(() => import("@/pages/Home").then((m) => ({ default: m.Home })
 const ProfileChat = lazy(() => import("@/pages/ProfileChat").then((m) => ({ default: m.ProfileChat })))
 const RagDemo = lazy(() => import("@/pages/RagDemo").then((m) => ({ default: m.RagDemo })))
 const RagSource = lazy(() => import("@/pages/RagSource").then((m) => ({ default: m.RagSource })))
-const Workspace = lazy(() => import("@/pages/Workspace").then((m) => ({ default: m.Workspace })))
 const WorkspaceDetail = lazy(() => import("@/pages/WorkspaceDetail").then((m) => ({ default: m.WorkspaceDetail })))
 const TutorChat = lazy(() => import("@/pages/TutorChat").then((m) => ({ default: m.TutorChat })))
 const VoiceTutor = lazy(() => import("@/pages/VoiceTutor").then((m) => ({ default: m.VoiceTutor })))
@@ -30,12 +29,13 @@ const KnowledgeBase = lazy(() => import("@/pages/KnowledgeBase").then((m) => ({ 
 const PptGenerator = lazy(() => import("@/pages/PptGenerator").then((m) => ({ default: m.PptGenerator })))
 const LearningResources = lazy(() => import("@/pages/LearningResources").then((m) => ({ default: m.LearningResources })))
 const CareerExplorer = lazy(() => import("@/pages/CareerExplorer").then((m) => ({ default: m.CareerExplorer })))
+const CompetencyTraining = lazy(() => import("@/pages/CompetencyTraining").then((m) => ({ default: m.CompetencyTraining })))
 const Login = lazy(() => import("@/pages/Login").then((m) => ({ default: m.Login })))
 const NotFound = lazy(() => import("@/pages/NotFound").then((m) => ({ default: m.NotFound })))
 const TutorBubble = lazy(() => import("@/components/TutorBubble").then((m) => ({ default: m.TutorBubble })))
 
 // 登录、助教自身、沉浸工具与高密度数据页不叠加悬浮人物，避免遮挡关键控件和数据卡。
-const BUBBLE_HIDDEN_PATHS = ["/login", "/tutor", "/tutor/voice", "/concept", "/ppt", "/report", "/tests"]
+const BUBBLE_HIDDEN_PATHS = ["/login", "/tutor", "/tutor/voice", "/concept", "/ppt", "/report", "/tests", "/competency"]
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -155,7 +155,8 @@ export default function App() {
           <Route path="/ppt" element={<ProtectedPage><PptGenerator /></ProtectedPage>} />
           <Route path="/resources" element={<ProtectedPage><LearningResources /></ProtectedPage>} />
           <Route path="/career" element={<ProtectedPage><CareerExplorer /></ProtectedPage>} />
-          <Route path="/workspace" element={<ProtectedPage><Workspace /></ProtectedPage>} />
+          <Route path="/competency" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
+          <Route path="/workspace" element={<Navigate to="/competency" replace />} />
           <Route path="/workspace/r/:agentId" element={<ProtectedPage><WorkspaceDetail /></ProtectedPage>} />
           <Route path="/tutor" element={<ProtectedPage><TutorChat /></ProtectedPage>} />
           <Route path="/tutor/voice" element={<ProtectedPage><VoiceTutor /></ProtectedPage>} />

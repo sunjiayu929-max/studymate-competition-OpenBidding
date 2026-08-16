@@ -9,7 +9,7 @@ export function formatSourceLabel(source: string) {
   const cleaned = cleanSourceLabel(source)
     .replace(/^教材(?:原文)?\s*[·._—-]?\s*/i, "")
     .trim()
-  return `教材原文 · ${cleaned || "课程资料"}`
+  return `岗位知识原文 · ${cleaned || "岗位资料"}`
 }
 
 export function externalSourceUrl(url: string | null | undefined): string | null {

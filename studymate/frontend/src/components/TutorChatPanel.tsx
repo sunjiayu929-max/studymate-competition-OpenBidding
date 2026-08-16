@@ -32,6 +32,7 @@ import {
   type TutorMsg,
 } from "@/store/tutorHistory"
 import { useTutorPageContext } from "@/store/tutorContext"
+import { useTargetRole } from "@/store/targetRole"
 import { tutorGenerationStore, useTutorDraft, useTutorGeneration } from "@/store/tutorGeneration"
 import { formatTutorDisplayContent } from "@/lib/tutorFormatting"
 import {
@@ -62,6 +63,7 @@ export function TutorChatPanel({
   const user = useCurrentUser()
   const USER_ID = user?.user_id ?? 0
   const course = useCurrentCourse()
+  const targetRole = useTargetRole()
   const courseCfg = useCourseConfig()
   const pageCtx = useTutorPageContext()
 
@@ -71,7 +73,7 @@ export function TutorChatPanel({
       ? fallbackSamplesFor(course.name).questions
       : DEFAULT_SAMPLE_QUESTIONS
 
-  const courseLabel = course?.name || "机器学习"
+  const courseLabel = targetRole?.name || course?.name || "目标岗位"
   const courseId = course?.id ?? null
   const learningMethod = useTutorLearningMethod(USER_ID, courseId)
   const generation = useTutorGeneration(USER_ID, courseId)
@@ -86,11 +88,11 @@ export function TutorChatPanel({
       content:
         learningMethod === "feynman"
           ? variant === "drawer"
-            ? `嗨，我是 StudyMate 学习助手。我会结合你正在浏览的页面与《${courseLabel}》，先用大白话和例子讲清，再请你用自己的话复述。你想先讲懂哪个知识点？`
-            : `你好！我是 StudyMate 学习助手。你可以问《${courseLabel}》的概念、公式、代码或题目。我会用尽量简单的语言拆解它，再通过复述帮你发现理解缺口。你今天最想讲懂什么？`
+            ? `嗨，我是 StudyMate 学习助手。我会结合你正在浏览的页面与目标岗位「${courseLabel}」，先用大白话和例子讲清，再请你用自己的话复述。你想先攻克哪个岗位能力点？`
+            : `你好！我是 StudyMate 学习助手。你可以问目标岗位「${courseLabel}」涉及的能力、任务、代码或题目。我会用尽量简单的语言拆解它，再通过复述帮你发现理解缺口。你今天最想讲懂什么？`
           : variant === "drawer"
-            ? `嗨，我是 StudyMate 学习助手。我会结合你正在浏览的页面与《${courseLabel}》先讲清关键点，再用一个问题带你继续推理。你想从哪一步开始？`
-            : `你好！我是 StudyMate 学习助手。你可以问《${courseLabel}》的概念、公式、代码或题目。我会先讲清当前问题，再一次问一小步，陪你把结论自己推出来。你今天最想弄懂什么？`,
+            ? `嗨，我是 StudyMate 学习助手。我会结合你正在浏览的页面与目标岗位「${courseLabel}」先讲清关键点，再用一个问题带你继续推理。你想从哪一步开始？`
+            : `你好！我是 StudyMate 学习助手。你可以问目标岗位「${courseLabel}」涉及的能力、任务、代码或题目。我会先讲清当前问题，再一次问一小步，陪你把结论自己推出来。你今天最想弄懂什么？`,
     }),
     [courseLabel, learningMethod, variant]
   )
@@ -231,6 +233,7 @@ export function TutorChatPanel({
     tutorGenerationStore.start({
       userId: USER_ID,
       courseId,
+      targetRole: targetRole?.name,
       messages: newMessages.map((message) => ({
         role: message.role,
         content: message.content,
@@ -241,7 +244,7 @@ export function TutorChatPanel({
       learningMethod,
       origin: "text",
     })
-  }, [USER_ID, courseId, learningMethod, pageCtx])
+  }, [USER_ID, courseId, learningMethod, pageCtx, targetRole?.name])
 
   const handleSend = useCallback(
     (text: string, images: string[] = [], attachments: TutorAttachment[] = []) => {
@@ -315,8 +318,8 @@ export function TutorChatPanel({
             <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
             <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#DDD4BF] bg-[#F4ECD8] text-[#9B7429]"><Bot className="size-4" /></span>
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-[15px] font-bold text-[#18232D]">StudyMate 课程助教</h2>
-              <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">正在辅导《{courseLabel}》· {learningMethod === "feynman" ? "大白话讲清，再由你复述" : "一次一问，沿你的回答继续推理"}</p>
+              <h2 className="truncate text-[15px] font-bold text-[#18232D]">StudyMate 岗位助教</h2>
+              <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">正在辅导「{courseLabel}」· {learningMethod === "feynman" ? "大白话讲清，再由你复述" : "一次一问，沿你的回答继续推理"}</p>
             </div>
           </div>
           <div className="tutor-toolbar-scroll nav-scroll flex min-w-0 items-center gap-2 overflow-x-auto pb-0.5 min-[1800px]:w-auto min-[1800px]:shrink-0 min-[1800px]:overflow-visible min-[1800px]:pb-0">
@@ -505,7 +508,7 @@ export function TutorChatPanel({
                 onPaste={handlePaste}
                 onKeyDown={handleComposerKeyDown}
                 rows={1}
-                placeholder={`向助教提问《${courseLabel}》中的任何问题…`}
+                placeholder={`向助教提问「${courseLabel}」岗位中的任何问题…`}
                 className="max-h-28 min-h-10 w-full resize-none bg-transparent px-2 py-2 text-sm leading-6 text-[#18232D] outline-none placeholder:text-[#929792]"
               />
               <div className="mt-1 flex items-center justify-between gap-3">
@@ -529,6 +532,22 @@ export function TutorChatPanel({
           </div>
         </form>
       </div>
+    )
+  }
+
+  if (!course) {
+    return (
+      <section className="grid min-h-[360px] flex-1 place-items-center bg-[#FFFEFA] p-6 text-center" role="status">
+        <div className="max-w-md">
+          <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#D8C9A8] bg-[#F4ECD8] text-[#8E6925]"><AlertCircle className="size-5" /></span>
+          <h2 className="mt-4 text-base font-bold text-[#18232D]">{targetRole ? `${targetRole.name} 的岗位知识库正在建设` : "请先选择目标岗位"}</h2>
+          <p className="mt-2 text-xs leading-6 text-[#66717B]">{targetRole ? "岗位选择已保留。为避免用无关知识生成看似正确的回答，专属知识库接入前暂不开放岗位助教。" : "目标岗位决定助教的知识边界与会话归档，选定后再开始对话。"}</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Link to="/courses?returnTo=%2Ftutor" className="inline-flex h-9 items-center rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-white hover:bg-[#193B50]">{targetRole ? "更换已开放岗位" : "选择目标岗位"}</Link>
+            {targetRole && <Link to="/workspace" className="inline-flex h-9 items-center rounded-xl border border-[#D7D1C4] bg-[#F8F6F0] px-4 text-[11px] font-bold text-[#59636B] hover:bg-[#EFEAE0]">查看岗位状态</Link>}
+          </div>
+        </div>
+      </section>
     )
   }
 
@@ -583,7 +602,7 @@ export function TutorChatPanel({
           className={`relative rounded-[18px] border bg-[#FFFEFA] p-2 shadow-[0_10px_28px_rgba(24,35,45,.08)] focus-within:border-[#9FB1BC] ${dragActive ? "border-[#8E6925] ring-3 ring-[#B1842C]/12" : "border-[#CFC8B9]"}`}
         >
           {dragActive && <div className="pointer-events-none absolute inset-1 z-10 grid place-items-center rounded-[14px] border border-dashed border-[#B1842C] bg-[#FBF7ED]/95 text-[11px] font-bold text-[#8E6925]">松开即可加入参考</div>}
-          <textarea ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} onPaste={handlePaste} onKeyDown={handleComposerKeyDown} rows={1} placeholder={`问我《${courseLabel}》或当前页面…`} className="max-h-28 min-h-14 w-full resize-none bg-transparent px-2 py-2 text-[13px] leading-5 text-[#18232D] outline-none placeholder:text-[#929792]" />
+          <textarea ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} onPaste={handlePaste} onKeyDown={handleComposerKeyDown} rows={1} placeholder={`问我「${courseLabel}」岗位或当前页面…`} className="max-h-28 min-h-14 w-full resize-none bg-transparent px-2 py-2 text-[13px] leading-5 text-[#18232D] outline-none placeholder:text-[#929792]" />
           <div className="mt-1 flex items-center justify-between gap-2">
             <div className="flex items-center gap-1">
               <input ref={fileRef} type="file" multiple accept="image/*,.pdf,.md,.markdown,.txt,.py,.js,.jsx,.ts,.tsx,.java,.c,.cc,.cpp,.h,.hpp,.go,.rs,.sql,.html,.css,.json,.yaml,.yml,.sh,.ps1" className="hidden" onChange={(event) => handlePickFiles(event.target.files)} />

@@ -20,6 +20,7 @@ export interface QuizItem {
   answer: number | string
   explanation: string
   difficulty: number
+  source_index?: number
 }
 
 export interface QuizResult {

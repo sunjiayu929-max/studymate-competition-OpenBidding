@@ -28,6 +28,7 @@ export interface TutorGenerationState {
 interface StartTutorGeneration {
   userId: number
   courseId: number | null
+  targetRole?: string | null
   messages: TutorMsg[]
   pageContext?: TutorPageContext | null
   learningMethod: TutorLearningMethod
@@ -131,6 +132,7 @@ class TutorGenerationStore {
   start({
     userId,
     courseId,
+    targetRole,
     messages,
     pageContext,
     learningMethod,
@@ -160,6 +162,7 @@ class TutorGenerationStore {
       body: JSON.stringify({
         user_id: userId,
         course_id: courseId,
+        target_role: targetRole || undefined,
         messages: messages.map((message) => ({
           role: message.role,
           content: message.content,

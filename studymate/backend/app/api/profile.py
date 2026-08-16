@@ -17,6 +17,9 @@ from app.schemas.profile import ProfileDims, ProfileChatRequest, normalize_profi
 from app.agents.profile_agent import (
     build_profile_evidence_text,
     merge_patch,
+    next_profile_question,
+    predicted_profile_missing_fields,
+    profile_missing_fields,
     profile_chat_stream,
     sanitize_profile_patch,
 )
@@ -64,11 +67,15 @@ async def _get_or_create_profile(db: AsyncSession, user_id: int) -> Profile:
 async def get_profile(user_id: int, db: AsyncSession = Depends(get_db)):
     await _get_or_create_user(db, user_id)
     profile = await _get_or_create_profile(db, user_id)
+    dims = normalize_profile_dims(profile.dims)
+    missing_fields = profile_missing_fields(ProfileDims.model_validate(dims))
     return {
         "user_id": user_id,
         "version": profile.version,
         # 旧画像按最新 schema 补默认维度，但不因此写库或增加版本。
-        "dims": normalize_profile_dims(profile.dims),
+        "dims": dims,
+        "intake_complete": not missing_fields,
+        "missing_fields": missing_fields,
         "updated_at": profile.updated_at.isoformat() if profile.updated_at else None,
     }
 
@@ -90,6 +97,21 @@ async def profile_chat(req: ProfileChatRequest):
     # 不能复用 Depends(get_db) 的 session 跨越 SSE 生成器边界——SSE 流持续期间
     # 需要新开 session 写库。这里在 generator 内部自己起 session。
     from app.db.session import async_session_maker
+
+    if req.target_role_id and req.target_role and req.course_id is not None:
+        from app.api.theory_assessments import (
+            CreateTheoryAssessmentRequest,
+            schedule_theory_assessment_preparation,
+        )
+        schedule_theory_assessment_preparation(
+            req.user_id,
+            CreateTheoryAssessmentRequest(
+                role_id=req.target_role_id,
+                role_name=req.target_role,
+                course_id=req.course_id,
+                competencies=req.core_competencies,
+            ),
+        )
 
     # 带图 → 走 qwen-vl 视觉模型（需 qwen key）；纯文字 → 默认 provider
     has_image = bool(req.images)
@@ -121,8 +143,14 @@ async def profile_chat(req: ProfileChatRequest):
         patch_json = "{}"
         stream_warning: str | None = None
         if not key_ok:
-            # mock：固定返回 + 模拟 patch（演示用）
-            mock_reply = "（mock 模式）你好！能先告诉我你的专业、年级，还有最想攻克的课程或方向吗？"
+            missing_after_message = predicted_profile_missing_fields(
+                current_dims, history, req.message, req.target_role,
+            )
+            mock_reply = (
+                "知识、认知、资源、就业与学习安排均已确认，画像已经完成。你可以进入岗位训练中心。"
+                if not missing_after_message
+                else next_profile_question(missing_after_message)
+            )
             for ch in mock_reply:
                 yield {"event": "delta", "data": ch}
                 await _sleep(0.02)
@@ -136,6 +164,8 @@ async def profile_chat(req: ProfileChatRequest):
                     history=history,
                     current_profile=current_dims,
                     images=req.images,
+                    target_role=req.target_role,
+                    core_competencies=req.core_competencies,
                 ):
                     if ev_type == "delta":
                         yield {"event": "delta", "data": data}
@@ -161,7 +191,17 @@ async def profile_chat(req: ProfileChatRequest):
             old_dims = current.model_dump()
             evidence_text = build_profile_evidence_text(history, req.message)
             patch, sanitize_warning = sanitize_profile_patch(raw_patch, current, evidence_text)
+            if req.target_role:
+                goals_patch = patch.setdefault("goals", {})
+                if req.target_role not in current.goals.primary:
+                    goals_patch["primary"] = f"应聘{req.target_role}"
+                if req.core_competencies and (
+                    req.target_role not in current.goals.primary
+                    or not current.goals.target_topics
+                ):
+                    goals_patch["target_topics"] = req.core_competencies[:10]
             new_dims = merge_patch(current, patch).model_dump()
+            missing_fields = profile_missing_fields(ProfileDims.model_validate(new_dims))
             changed_fields = _changed_fields(old_dims, new_dims)
             changed = bool(changed_fields)
             if changed:
@@ -185,6 +225,8 @@ async def profile_chat(req: ProfileChatRequest):
                     "dims": new_dims,
                     "changed": changed,
                     "changed_fields": changed_fields,
+                    "intake_complete": not missing_fields,
+                    "missing_fields": missing_fields,
                     "warning": "；".join(dict.fromkeys(warnings)) or None,
                 }, ensure_ascii=False),
             }

@@ -130,8 +130,7 @@ async function openHome({ withRealData, viewport, screenshotName, reducedMotion 
     sessionStorage.setItem("sm:learning-universe-entered", "1")
   }, { currentUser: user, selectedCourse: withRealData ? course : null })
   const page = await context.newPage()
-  // 默认首页已升级为浅色品牌首屏；旧版指挥舱保留为回归入口，继续覆盖其真实数据与动效契约。
-  await page.goto(`${baseUrl}/?legacy-home=1`, { waitUntil: "domcontentloaded" })
+  await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" })
   await page.getByRole("heading", { name: "学习宇宙 · 实时指挥舱" }).waitFor()
   await page.getByTestId("beijing-clock").waitFor()
   if (screenshotName) await page.screenshot({ path: `${resultDir}/${screenshotName}` })
@@ -248,7 +247,7 @@ try {
     assert.equal(await page.getByText("模拟观测", { exact: false }).count(), 0, "formal universe showed simulated observations")
     assert.equal(await page.getByTestId("universe-empty-state").count(), 1, "empty account did not show a real-data empty state")
     assert.equal(await page.getByText("暂无历史，不绘制虚假曲线", { exact: true }).count(), 1, "empty trend did not explain its real-data boundary")
-    assert.equal(await page.getByTestId("learning-universe-command-center").getByRole("link", { name: "选择课程", exact: true }).count(), 1, "empty account is missing the course CTA")
+    assert.equal(await page.getByTestId("learning-universe-command-center").getByRole("link", { name: "选择目标岗位", exact: true }).count(), 1, "empty account is missing the target-role CTA")
     assert.deepEqual(unexpectedWrites, [], "opening the universe triggered a business write request")
 
     await page.getByTestId("universe-primary-cta").click()

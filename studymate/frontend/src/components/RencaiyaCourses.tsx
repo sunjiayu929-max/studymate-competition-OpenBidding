@@ -71,11 +71,11 @@ export function RencaiyaCourses({ keyword }: { keyword: string }) {
           讯飞人才呀课程
           <span className="text-xs font-normal text-[var(--muted-foreground)]/70">
             · {data?.match_level === "exact"
-              ? "知识点直接匹配"
+              ? "岗位能力点直接匹配"
               : data?.match_level === "related"
-                ? "知识点相关匹配"
+                ? "岗位能力点相关匹配"
                 : data?.match_level === "course"
-                  ? "同课程方向补充"
+                  ? "同岗位能力方向补充"
                   : "精确匹配优先"}
           </span>
         </h2>
@@ -109,7 +109,7 @@ export function RencaiyaCourses({ keyword }: { keyword: string }) {
                 )}
                 <span className="absolute left-2 top-2 rounded-full border border-white/60 bg-[#244C66]/92 px-2 py-1 text-[9px] font-bold text-white">讯飞人才呀</span>
                 <span className="absolute right-2 top-2 rounded-full border border-white/60 bg-[#FFFEFA]/92 px-2 py-1 text-[9px] font-bold text-[#315E83]">
-                  {item.match_level === "course" ? "课程方向补充" : item.match_level === "related" ? "主题相关" : "直接相关"}
+                  {item.match_level === "course" ? "岗位能力方向补充" : item.match_level === "related" ? "主题相关" : "直接相关"}
                 </span>
               </div>
               <div className="p-3">

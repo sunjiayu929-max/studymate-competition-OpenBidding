@@ -56,11 +56,11 @@ class ReadingAgent(AgentBase):
     )
 
     async def run(self, context: dict, emit: EventEmitter) -> dict:
-        topic = context.get("topic", "机器学习")
+        topic = context.get("topic", "岗位任务")
         profile = context.get("profile", {})
         course_cfg = context.get("course_cfg")
         course_name = context.get("course_name", "机器学习")
-        persona = course_cfg.persona if course_cfg else f"{course_name}课程助教"
+        persona = course_cfg.persona if course_cfg else f"{course_name}岗位训练助理"
         sources = course_cfg.reading_sources if course_cfg else []
 
         if not has_llm_key():
@@ -91,7 +91,7 @@ class ReadingAgent(AgentBase):
     async def _gen_real(self, topic: str, profile: dict, persona: str, course_name: str, sources: list[str]) -> list[dict]:
         llm = get_llm_client()
         src_hint = "、".join(sources) if sources else "公开权威教材与文档"
-        sys = f"""你是一位{persona}，为学生推荐《{course_name}》课程下「{topic}」的拓展阅读材料。
+        sys = f"""你是一位{persona}，请依据“{course_name}”岗位知识库，为任务或能力点「{topic}」推荐拓展阅读材料。
 
 输出**严格 JSON**（不要 Markdown 包裹），结构：
 {{
@@ -114,7 +114,7 @@ class ReadingAgent(AgentBase):
    - 论文(paper)：**至少 1 篇中文(lang=zh) + 1 篇英文(lang=en)**（中英文论文都要有，可各给 2 篇）
    - 博客(blog)：2-3 篇，**以中文为主**（如 CSDN / 掘金 / 知乎 / 博客园 等知名平台）
    - 文档(doc) / 视频(video)：各 1 条左右作补充
-2. **优先来自《{course_name}》经典材料**：{src_hint}
+2. **优先来自“{course_name}”岗位知识库关联的经典材料**：{src_hint}
 3. **根据学生画像调难度**：knowledge_base 低 → 多入门资料；高 → 多论文/进阶博客
 4. **薄弱点优先**：weak_points 里的主题，对应的资料要排前面
 5. **资源偏好**：preference.reading 高就多推阅读类，video 高就多推视频

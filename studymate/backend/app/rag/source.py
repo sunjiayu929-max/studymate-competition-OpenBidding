@@ -11,6 +11,6 @@ _AI_SOURCE_PREFIX = re.compile(
 
 
 def clean_source_name(value: str | None) -> str:
-    """Remove legacy generation markers from labels shown as course knowledge sources."""
+    """Remove legacy generation markers from labels shown as position knowledge sources."""
     cleaned = _AI_SOURCE_PREFIX.sub("", value or "").strip()
-    return cleaned or "课程资料"
+    return cleaned or "岗位资料"

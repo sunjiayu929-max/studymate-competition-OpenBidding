@@ -11,7 +11,7 @@
 
 import { fetchEventSource } from "@microsoft/fetch-event-source"
 import { useSyncExternalStore } from "react"
-import { sseHeaders } from "@/lib/api"
+import { apiPost, sseHeaders } from "@/lib/api"
 import type { QuizItem } from "@/components/QuizCard"
 import type { ReadingItem } from "@/components/ReadingList"
 import type { CodeOutput } from "@/components/CodeBlock"
@@ -39,17 +39,159 @@ export interface RetrievedChunk {
 }
 
 export interface WorkspaceOutputs {
+  diagnosis?: TrainingDiagnosis
   retriever?: { chunks: RetrievedChunk[] }
-  doc?: { type: string; title: string; content: string; citations: Citation[] }
+  domain_expert?: TrainingProposal
+  learning_strategy?: TrainingProposal
+  training_plan?: PersonalizedTrainingPlan
+  doc?: { type: string; title: string; content: string; citations: Citation[]; version?: number; revision_response?: string[] }
+  guide?: { type: string; title: string; content: string; citations: Citation[]; version?: number; revision_response?: string[] }
   mindmap?: { type: string; title: string; content: string }
-  quiz?: { type: string; title: string; items: QuizItem[]; count: number }
+  quiz?: { type: string; title: string; items: QuizItem[]; count: number; citations?: Citation[]; version?: number; revision_response?: string[] }
   path?: { type: string; title: string; nodes: PathNode[]; edges: PathEdge[]; count: number }
   reading?: { type: string; title: string; items: ReadingItem[]; count: number }
   code?: CodeOutput & { type: string; title: string }
 }
 
-export type StreamMap = { doc: string; mindmap: string; quiz: string; path: string; reading: string; code: string }
+export interface TrainingProposal {
+  type: "expert_proposal" | "strategy_proposal"
+  role: string
+  position: string
+  risk: string
+  priority_competencies?: string[]
+  weekly_hours?: number
+  capacity?: number
+  preferred_mode?: string
+  debate_round?: number
+  response_to_feedback?: string[]
+}
+
+export interface PersonalizedTrainingPlan {
+  type: "training_plan"
+  title: string
+  cycle: number
+  rationale: string
+  priority_competencies: string[]
+  deferred_competencies: string[]
+  weekly_hours: number
+  target_difficulty: number
+  preferred_mode: string
+  stages: Array<{ id: string; resource: string; goal: string; evidence: string }>
+  acceptance_criteria: string[]
+  debate: {
+    expert_position: string
+    strategy_position: string
+    conflict: string
+    resolution: string
+    decision?: "accept" | "rework"
+  }
+  decision?: "accept" | "rework"
+  planning_round?: number
+  rework_targets?: string[]
+  required_fixes?: string[]
+  release_gate: string
+  next_round_rule: string
+}
+
+export type StreamMap = { doc: string; guide: string; mindmap: string; quiz: string; path: string; reading: string; code: string }
 export type RunStatus = "idle" | "running" | "done" | "error" | "interrupted"
+
+export interface TrainingDiagnosis {
+  type: "diagnosis"
+  title: string
+  current_level: string
+  target_difficulty: number
+  knowledge_score: number | null
+  evidence_confidence: number
+  training_cycle?: number
+  adaptation_reason?: string
+  knowledge_gaps: string[]
+  training_goal: string
+  training_contract: Record<string, unknown>
+}
+
+export interface ReviewFinding {
+  code?: string
+  severity: "blocker" | "high" | "medium" | string
+  message: string
+  suggestion: string
+  target_agent: "doc" | "guide" | "quiz" | string
+}
+
+export interface TrainingReview {
+  type?: "review"
+  reviewer?: string
+  status: "pass" | "warn" | "fail"
+  score: number
+  findings: ReviewFinding[]
+  metrics?: Record<string, unknown>
+  target_agent?: string
+  decision?: "accept" | "rework"
+}
+
+export interface QualityMetric {
+  label: string
+  value: number
+  operator: "<" | ">=" | string
+  threshold: number
+  passed: boolean
+}
+
+export interface TrainingDecision {
+  decision: "publish" | "rework" | "failed"
+  summary: string
+  quality_score: number
+  generation_round: number
+  rework_targets: string[]
+  required_fixes: string[]
+  review_scores: Record<string, number>
+  quality_metrics?: Record<string, QualityMetric>
+  hallucination_rate?: number
+  profile_difficulty_accuracy?: number
+  core_knowledge_coverage?: number
+  max_reworks_reached?: boolean
+  release_gate: {
+    review_count: number
+    blocker_count: number
+    all_reviews_present: boolean
+    all_metrics_passed?: boolean
+    thresholds?: Record<string, string>
+  }
+}
+
+export interface DebateExchange {
+  generator: string
+  reviewer: string
+  generator_position: string
+  generator_response: string[]
+  reviewer_challenges: ReviewFinding[]
+  reviewer_decision: "accept" | "rework"
+  review_score: number
+}
+
+export interface DebateRecord {
+  phase: "planning" | "resource"
+  round: number
+  title: string
+  participants: string[]
+  positions?: Record<string, string>
+  conflict?: string
+  resolution?: string
+  decision: "accept" | "rework"
+  rework_targets?: string[]
+  required_fixes?: string[]
+  exchanges?: DebateExchange[]
+}
+
+export interface TrainingFeedback {
+  run_id: string
+  accuracy: number | null
+  answered_count: number
+  wrong_items: string[]
+  next_action: string
+  message: string
+  profile_update: { evidence_source: string; suggested_difficulty_delta: number; confidence_delta: number }
+}
 
 export interface QuizAttempt {
   id: string
@@ -62,11 +204,33 @@ export interface QuizAttempt {
   difficulty: number
 }
 
+export interface ReworkRecord {
+  phase: "planning" | "resource"
+  reworkAttempt: number
+  generationRound: number
+  targets: string[]
+  requiredFixes: string[]
+  createdAt: number
+}
+
 export interface WorkspaceState {
   topic: string
   courseId: number | null
   courseName: string
   status: RunStatus
+  runId: string
+  domain: string
+  targetRole: string
+  roleSummary: string
+  coreCompetencies: string[]
+  stage: string
+  generationRound: number
+  reworkHistory: ReworkRecord[]
+  debates: DebateRecord[]
+  diagnosis: TrainingDiagnosis | null
+  reviews: Record<string, TrainingReview>
+  decision: TrainingDecision | null
+  feedback: TrainingFeedback | null
   outputs: WorkspaceOutputs
   stream: StreamMap
   agentStatus: Record<string, string>
@@ -88,7 +252,7 @@ export interface WorkspaceState {
 
 const STORAGE_KEY = "sm:workspace-state"
 
-const EMPTY_STREAM: StreamMap = { doc: "", mindmap: "", quiz: "", path: "", reading: "", code: "" }
+const EMPTY_STREAM: StreamMap = { doc: "", guide: "", mindmap: "", quiz: "", path: "", reading: "", code: "" }
 
 function settleActiveAgents(agents: AgentState[], message: string): AgentState[] {
   return agents.map((agent) => agent.status === "running" || agent.status === "streaming"
@@ -110,6 +274,19 @@ function makeInitialState(): WorkspaceState {
     courseId: null,
     courseName: "",
     status: "idle",
+    runId: "",
+    domain: "",
+    targetRole: "",
+    roleSummary: "",
+    coreCompetencies: [],
+    stage: "idle",
+    generationRound: 1,
+    reworkHistory: [],
+    debates: [],
+    diagnosis: null,
+    reviews: {},
+    decision: null,
+    feedback: null,
     outputs: {},
     stream: { ...EMPTY_STREAM },
     agentStatus: {},
@@ -132,6 +309,32 @@ function loadFromStorage(): WorkspaceState | null {
     const raw = sessionStorage.getItem(STORAGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as WorkspaceState
+    const legacyDecision = parsed.decision as (Omit<TrainingDecision, "decision"> & { decision?: string }) | null
+    const hadLegacyManualReview = parsed.stage === "manual_review" || legacyDecision?.decision === "manual_review"
+    if (hadLegacyManualReview) {
+      const normalizedFixes = (legacyDecision?.required_fixes ?? []).map((item) =>
+        item.replace(/导师人工复核|人工复核|人工审核|转人工/g, "自动返工")
+      )
+      parsed.stage = "rework"
+      parsed.status = "interrupted"
+      parsed.lastError = "旧版待处理状态已取消；请重新启动本轮训练，系统会自动返工并重新审核。"
+      parsed.decision = legacyDecision ? {
+        ...legacyDecision,
+        decision: "rework",
+        summary: "旧版未通过裁决的资源不会发布；重新启动后将进入自动返工闭环。",
+        rework_targets: legacyDecision.rework_targets?.length ? legacyDecision.rework_targets : ["doc", "guide", "quiz"],
+        required_fixes: normalizedFixes,
+      } : null
+      parsed.reworkHistory = [...(parsed.reworkHistory ?? []), {
+        phase: "resource" as const,
+        reworkAttempt: 1,
+        generationRound: parsed.generationRound ?? 1,
+        targets: parsed.decision?.rework_targets ?? ["doc", "guide", "quiz"],
+        requiredFixes: parsed.decision?.required_fixes ?? [],
+        createdAt: Date.now(),
+      }].slice(-8)
+      parsed.logs = [...(parsed.logs ?? []), "旧版待处理状态已迁移为自动返工待重启"].slice(-40)
+    }
     // 浏览器刷新会中断 SSE，但已经生成的成果仍然有效；明确标记为中断，避免静默伪装成空闲。
     if (parsed.status === "running") {
       const activeAgents = parsed.agents ?? []
@@ -151,6 +354,23 @@ function loadFromStorage(): WorkspaceState | null {
       ...parsed,
       courseId: parsed.courseId ?? null,
       courseName: parsed.courseName ?? "",
+      runId: parsed.runId ?? "",
+      domain: parsed.domain ?? "",
+      targetRole: parsed.targetRole ?? "",
+      roleSummary: parsed.roleSummary ?? "",
+      coreCompetencies: parsed.coreCompetencies ?? [],
+      stage: parsed.stage ?? "idle",
+      generationRound: parsed.generationRound ?? 1,
+      reworkHistory: (parsed.reworkHistory ?? []).map((item, index) => ({
+        ...item,
+        phase: item.phase ?? ("resource" as const),
+        reworkAttempt: item.reworkAttempt ?? index + 1,
+      })),
+      debates: parsed.debates ?? [],
+      diagnosis: parsed.diagnosis ?? null,
+      reviews: parsed.reviews ?? {},
+      decision: parsed.decision ?? null,
+      feedback: parsed.feedback ?? null,
       resourcesConsumed: parsed.resourcesConsumed ?? {},
       quizSessionsRecorded: parsed.quizSessionsRecorded ?? {},
       learningStartedAt: parsed.learningStartedAt ?? 0,
@@ -260,6 +480,19 @@ class WorkspaceStore {
       courseId: courseId ?? null,
       courseName,
       status: "running",
+      runId: "",
+      domain: "",
+      targetRole: "",
+      roleSummary: "",
+      coreCompetencies: [],
+      stage: "diagnosis",
+      generationRound: 1,
+      reworkHistory: [],
+      debates: [],
+      diagnosis: null,
+      reviews: {},
+      decision: null,
+      feedback: null,
       outputs: {},
       stream: { ...EMPTY_STREAM },
       agentStatus: {},
@@ -317,10 +550,89 @@ class WorkspaceStore {
     const d = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>
     switch (eventName) {
       case "meta": {
-        const data = raw as { agents: AgentMeta[] }
+        const data = raw as {
+          agents: AgentMeta[]; run_id?: string; domain?: string; target_role?: string
+          role_summary?: string; core_competencies?: string[]
+        }
         this.setState({
           agents: data.agents.map((m) => ({ meta: m, status: "pending" as const })),
+          runId: data.run_id ?? "",
+          domain: data.domain ?? "",
+          targetRole: data.target_role ?? "",
+          roleSummary: data.role_summary ?? "",
+          coreCompetencies: data.core_competencies ?? [],
         })
+        break
+      }
+      case "stage": {
+        const stage = String(d.stage ?? "")
+        const generationRound = Number(d.generation_round ?? 1)
+        this.setState((s) => ({
+          stage,
+          generationRound,
+          // 新一轮资源生成开始后，上一轮审核不能继续显示为本轮实时结果。
+          ...(stage === "generation" && generationRound > s.generationRound
+            ? { reviews: {}, decision: null }
+            : {}),
+        }))
+        if (d.message) this.appendLog(String(d.message))
+        break
+      }
+      case "diagnosis": {
+        const diagnosis = raw as TrainingDiagnosis
+        this.setState((s) => ({ diagnosis, outputs: { ...s.outputs, diagnosis } }))
+        break
+      }
+      case "proposal": {
+        const aid = String(d.agent ?? "")
+        if (aid === "domain_expert" || aid === "learning_strategy") {
+          this.setState((s) => ({
+            outputs: { ...s.outputs, [aid]: raw as TrainingProposal },
+          }))
+        }
+        break
+      }
+      case "plan": {
+        this.setState((s) => ({
+          outputs: { ...s.outputs, training_plan: raw as PersonalizedTrainingPlan },
+        }))
+        break
+      }
+      case "review": {
+        const aid = String(d.agent ?? "")
+        this.setState((s) => ({
+          reviews: { ...s.reviews, [aid]: raw as TrainingReview },
+        }))
+        break
+      }
+      case "decision": {
+        this.setState({ decision: raw as TrainingDecision })
+        break
+      }
+      case "debate": {
+        const debate = raw as DebateRecord
+        this.setState((s) => ({ debates: [...s.debates, debate].slice(-12) }))
+        this.appendLog(`${debate.title}：${debate.decision === "accept" ? "通过" : "退回返工"}`)
+        break
+      }
+      case "rework": {
+        this.setState((s) => ({
+          stage: "rework",
+          generationRound: Number(d.generation_round ?? 1),
+          reworkHistory: [...s.reworkHistory, {
+            phase: (d.phase === "planning" ? "planning" : "resource") as ReworkRecord["phase"],
+            reworkAttempt: Number(d.rework_attempt ?? 1),
+            generationRound: Number(d.generation_round ?? 1),
+            targets: (d.targets as string[]) ?? [],
+            requiredFixes: (d.required_fixes as string[]) ?? [],
+            createdAt: Date.now(),
+          }].slice(-8),
+        }))
+        this.appendLog(`${d.phase === "planning" ? "计划仲裁" : "资源审核"}退回：${((d.targets as string[]) ?? []).join("、")}`)
+        break
+      }
+      case "rework_exhausted": {
+        this.appendLog(String(d.summary ?? "已达到 3 次返工上限，保持真实结果并停止发布"))
         break
       }
       case "agent_status": {
@@ -358,7 +670,24 @@ class WorkspaceStore {
         break
       }
       case "done": {
-        this.setState({ status: "done", finishedAt: Date.now(), lastError: "" })
+        const data = raw as {
+          run_id?: string; stage?: string; generation_round?: number
+          diagnosis?: TrainingDiagnosis; reviews?: Record<string, TrainingReview>; decision?: TrainingDecision
+          outputs?: WorkspaceOutputs; debates?: DebateRecord[]
+        }
+        this.setState((s) => ({
+          status: data.decision?.decision === "failed" ? "error" : "done",
+          finishedAt: Date.now(),
+          lastError: data.decision?.decision === "failed" ? data.decision.summary : "",
+          runId: data.run_id ?? s.runId,
+          stage: data.stage ?? s.stage,
+          generationRound: data.generation_round ?? s.generationRound,
+          diagnosis: data.diagnosis ?? s.diagnosis,
+          reviews: data.reviews ?? s.reviews,
+          decision: data.decision ?? s.decision,
+          outputs: data.outputs ?? s.outputs,
+          debates: data.debates ?? s.debates,
+        }))
         this.abort = null
         break
       }
@@ -462,6 +791,23 @@ class WorkspaceStore {
         },
       }
     })
+  }
+
+  async submitTrainingFeedback(satisfaction?: number): Promise<TrainingFeedback> {
+    if (!this.state.runId) throw new Error("没有可反馈的训练记录")
+    const attempts = Object.values(this.state.quizAttempts).map((item) => ({
+      question_id: item.id,
+      correct: item.is_correct,
+      difficulty: item.difficulty,
+    }))
+    const result = await apiPost<TrainingFeedback>("/workspace/feedback", {
+      run_id: this.state.runId,
+      attempts,
+      time_spent_min: Math.round(this.state.learningDurationMs / 60000),
+      satisfaction,
+    })
+    this.setState({ feedback: result, stage: "feedback_updated" })
+    return result
   }
 }
 

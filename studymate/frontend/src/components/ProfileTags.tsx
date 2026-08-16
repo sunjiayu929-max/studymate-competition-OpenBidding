@@ -44,7 +44,7 @@ export function ProfileTags({ goals, weakPoints, pace }: ProfileTagsProps) {
         )}
       </Section>
 
-      <Section icon={<AlertTriangle className="size-4" />} title="薄弱点">
+      <Section icon={<AlertTriangle className="size-4" />} title="薄弱能力点">
         {(weakPoints.topics?.length || 0) > 0 ? (
           <>
             <TagRow tags={weakPoints.topics} color="amber" />

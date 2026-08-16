@@ -359,7 +359,7 @@ export function KnowledgeBase() {
             ) : (
               <div className="p-4 sm:p-5">
                 <form onSubmit={(event) => { event.preventDefault(); void runSearch() }} className="flex gap-2">
-                  <div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8A8172]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="输入知识点，验证当前私有库的检索结果" className="h-11 w-full rounded-xl border border-[#D7D1C4] bg-[#FDFBF6] pl-10 pr-3 text-[11px] outline-none focus:border-[#9FB1BC]" /></div>
+                  <div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8A8172]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="输入岗位能力点或任务问题，验证当前私有库的检索结果" className="h-11 w-full rounded-xl border border-[#D7D1C4] bg-[#FDFBF6] pl-10 pr-3 text-[11px] outline-none focus:border-[#9FB1BC]" /></div>
                   <button type="submit" disabled={busy || !selected || !query.trim()} className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[10px] font-bold text-white disabled:opacity-40">{busy ? <Loader2 className="size-3.5 animate-spin" /> : <FileSearch className="size-3.5" />}检索</button>
                 </form>
                 <div className="mt-4 space-y-2.5">

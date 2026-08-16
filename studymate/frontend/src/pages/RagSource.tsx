@@ -89,7 +89,7 @@ export function RagSource() {
 
         {!data && !error && (
           <section className="grid min-h-[520px] place-items-center rounded-[28px] border border-[#CFC8B9] bg-[#F8F6F0]">
-            <div className="text-center text-sm font-semibold text-[#66717B]"><Loader2 className="mx-auto mb-3 size-5 animate-spin text-[#315E83]" />正在定位课程资料原文</div>
+            <div className="text-center text-sm font-semibold text-[#66717B]"><Loader2 className="mx-auto mb-3 size-5 animate-spin text-[#315E83]" />正在定位岗位知识库原文</div>
           </section>
         )}
 
@@ -103,7 +103,7 @@ export function RagSource() {
                 <p className="mx-auto mt-2 max-w-[480px] text-xs leading-5 text-[#6F787A]">{error.message}</p>
               </div>
               <div className="px-5 py-4 text-left sm:px-7">
-                <p className="text-[11px] leading-5 text-[#737C80]">你可以返回检索结果选择另一条课程依据；如果是短暂的网络波动，重新定位不会重复提交或修改任何学习记录。</p>
+                <p className="text-[11px] leading-5 text-[#737C80]">你可以返回检索结果选择另一条岗位依据；如果是短暂的网络波动，重新定位不会重复提交或修改任何学习记录。</p>
               </div>
               <div className="flex flex-col-reverse gap-2 border-t border-[#E0DACE] bg-[#FCFAF5] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <Link to="/rag" className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#D1C9BA] bg-[#FFFEFA] px-4 text-xs font-bold text-[#59666E] transition-colors hover:bg-[#F1EDE4]"><ArrowLeft className="size-3.5" />返回检索结果</Link>
@@ -159,7 +159,7 @@ export function RagSource() {
                 ]} />
                 <InfoBlock icon={ShieldCheck} title="核对说明" lines={[
                   "当前高亮内容就是检索命中的原文片段",
-                  "上下相邻内容来自同一课程资料",
+                  "上下相邻内容来自同一岗位知识资料",
                   "来源和页码由知识库入库时保留",
                 ]} />
                 {visibleMetadata(data.meta).length > 0 && (

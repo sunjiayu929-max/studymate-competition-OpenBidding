@@ -52,7 +52,7 @@ const STYLE_OPTIONS = {
     soft: "334155",
   },
   sage: {
-    label: "苔原青·课堂故事",
+    label: "苔原青·岗位故事",
     background: "ECF2EC",
     primary: "2F5C55",
     accent: "C2673A",
@@ -104,8 +104,8 @@ export function PptGenerator() {
   const [knowledgeBaseName, setKnowledgeBaseName] = useState("")
   const provider = useTutorModelProvider()
   const [topic, setTopic] = useState("")
-  const [audience, setAudience] = useState("高校课程学习者")
-  const [purpose, setPurpose] = useState("课堂讲解")
+  const [audience, setAudience] = useState("岗位训练学习者")
+  const [purpose, setPurpose] = useState("岗位讲解")
   const [pageCount, setPageCount] = useState(10)
   const [styleId, setStyleId] = useState<StyleId>("paper")
   const [slides, setSlides] = useState<SlideDraft[]>([])
@@ -280,7 +280,7 @@ export function PptGenerator() {
           <section className="grid gap-3 border-b border-[#D7D1C4] p-4 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.4fr)_repeat(4,minmax(130px,.65fr))_auto] sm:p-5">
             <label className="sm:col-span-2 lg:col-span-1"><span className="mb-1 block text-[9px] font-bold text-[#8A8172]">主题</span><input value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="例如：梯度下降的直觉与应用" className="h-10 w-full rounded-xl border border-[#D7D1C4] bg-[#FDFBF6] px-3 text-[11px] outline-none focus:border-[#9FB1BC]" /></label>
             <label><span className="mb-1 block text-[9px] font-bold text-[#8A8172]">受众</span><input value={audience} onChange={(event) => setAudience(event.target.value)} className="h-10 w-full rounded-xl border border-[#D7D1C4] bg-[#FDFBF6] px-3 text-[11px] outline-none" /></label>
-            <label><span className="mb-1 block text-[9px] font-bold text-[#8A8172]">用途</span><select value={purpose} onChange={(event) => setPurpose(event.target.value)} className="h-10 w-full rounded-xl border border-[#D7D1C4] bg-[#FDFBF6] px-3 text-[11px]"><option>课堂讲解</option><option>学习汇报</option><option>答辩展示</option><option>复习总结</option></select></label>
+            <label><span className="mb-1 block text-[9px] font-bold text-[#8A8172]">用途</span><select value={purpose} onChange={(event) => setPurpose(event.target.value)} className="h-10 w-full rounded-xl border border-[#D7D1C4] bg-[#FDFBF6] px-3 text-[11px]"><option>岗位讲解</option><option>训练汇报</option><option>答辩展示</option><option>能力复盘</option></select></label>
             <label><span className="mb-1 block text-[9px] font-bold text-[#8A8172]">页数</span><input type="number" min={7} max={18} value={pageCount} onChange={(event) => setPageCount(Math.max(7, Math.min(18, Number(event.target.value))))} className="h-10 w-full rounded-xl border border-[#D7D1C4] bg-[#FDFBF6] px-3 text-[11px]" /></label>
             <label><span className="mb-1 block text-[9px] font-bold text-[#8A8172]">视觉风格</span><select value={styleId} onChange={(event) => setStyleId(event.target.value as StyleId)} className="h-10 w-full rounded-xl border border-[#D7D1C4] bg-[#FDFBF6] px-3 text-[11px]">{Object.entries(STYLE_OPTIONS).map(([id, option]) => <option key={id} value={id}>{option.label}</option>)}</select></label>
             <button type="button" onClick={() => void generateOutline(false)} disabled={!topic.trim() || generating} className="mt-auto inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[10px] font-bold text-white disabled:opacity-40">{generating ? <Loader2 className="ppt-generation-spinner size-3.5" /> : <Sparkles className="size-3.5" />}使用所选模型生成</button>
@@ -343,7 +343,7 @@ export function PptGenerator() {
                       <label className="inline-flex items-center gap-2 rounded-xl border border-[#D7D1C4] bg-[#F8F6F0] px-3 py-2 text-[9px] font-bold text-[#59636B]">页面构图<select value={selected.layout} onChange={(event) => updateSelected({ layout: event.target.value as SlideDraft["layout"] })} className="border-0 bg-transparent text-[10px] text-[#244C66] outline-none"><option value="cover">视觉封面</option><option value="agenda">叙事路径</option><option value="content">观点 + 证据</option><option value="case">情境案例</option><option value="process">流程推进</option><option value="comparison">双栏对比</option><option value="spotlight">大字聚焦</option><option value="chart">数据 + 结论</option><option value="summary">行动收束</option><option value="qa">问题引导</option></select></label>
                       <details className="min-w-[260px] flex-1 rounded-xl border border-[#D7D1C4] bg-[#F8F6F0] px-3 py-2 text-[9px] text-[#59636B]">
                         <summary className="cursor-pointer font-bold text-[#315E83]">查看引用来源（{selected.citations.length}）</summary>
-                        <div className="mt-2 space-y-1.5">{selected.citations.length ? selected.citations.map((citation, index) => <div key={`${citation.source}-${index}`} className="rounded-lg bg-white px-2 py-1.5"><strong>{citation.source}</strong>{citation.page ? ` · 第 ${citation.page} 页` : ""}<span className="ml-2 text-[#8A8172]">{citation.kind === "private" ? "私有资料" : citation.kind === "course" ? "课程知识库" : "用户主题"}</span></div>) : <span>本页没有外部引用；不会伪造来源。</span>}</div>
+                        <div className="mt-2 space-y-1.5">{selected.citations.length ? selected.citations.map((citation, index) => <div key={`${citation.source}-${index}`} className="rounded-lg bg-white px-2 py-1.5"><strong>{citation.source}</strong>{citation.page ? ` · 第 ${citation.page} 页` : ""}<span className="ml-2 text-[#8A8172]">{citation.kind === "private" ? "私有资料" : citation.kind === "course" ? "岗位知识库" : "用户主题"}</span></div>) : <span>本页没有外部引用；不会伪造来源。</span>}</div>
                       </details>
                     </div>
                     <div className="mx-auto mt-4 flex max-w-[900px] flex-wrap items-center justify-between gap-2">

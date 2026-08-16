@@ -5,9 +5,9 @@ import { AppTopbar } from "@/components/AppTopbar"
 import { useTrackPage } from "@/lib/useTrackPage"
 
 const DESTINATIONS = [
-  { to: "/courses", label: "课程空间", detail: "先确定学习范围", icon: Library, color: "#8E6925", wash: "#F4ECD8" },
-  { to: "/workspace", label: "学习资源工坊", detail: "7 Agents 生成完整资源包", icon: LayoutDashboard, color: "#315E83", wash: "#E7EDF3" },
-  { to: "/tutor", label: "AI 课程助教", detail: "继续当前问题", icon: MessageCircleMore, color: "#6F8A69", wash: "#E8EDE5" },
+  { to: "/courses", label: "岗位空间", detail: "选择领域与目标岗位", icon: Library, color: "#8E6925", wash: "#F4ECD8" },
+  { to: "/competency", label: "岗位训练中心", detail: "能力地图与 11 Agents 训练闭环", icon: LayoutDashboard, color: "#315E83", wash: "#E7EDF3" },
+  { to: "/tutor", label: "AI 岗位助教", detail: "继续当前问题", icon: MessageCircleMore, color: "#6F8A69", wash: "#E8EDE5" },
   { to: "/knowledge", label: "知识库", detail: "管理私有资料与来源", icon: Database, color: "#B85C3E", wash: "#F4E8E2" },
 ]
 
@@ -39,7 +39,7 @@ export function NotFound() {
             <div className="p-5 sm:p-8 lg:p-10">
               <p className="flex items-center gap-2 text-[11px] font-bold tracking-[0.12em] text-[#B1842C]"><Compass className="size-3.5" />页面未找到 · 学习进度不受影响</p>
               <h1 className="mt-2 text-2xl font-bold tracking-[-0.035em] text-[#18232D] sm:text-3xl">这个入口不存在，换一条学习路线继续。</h1>
-              <p className="mt-3 max-w-[580px] text-sm leading-6 text-[#66717B]">链接可能已经更新或输入有误。你的课程、笔记、测验与学习记录都不会受到影响，可以从下面任一入口继续。</p>
+              <p className="mt-3 max-w-[580px] text-sm leading-6 text-[#66717B]">链接可能已经更新或输入有误。你的岗位选择、笔记、测验与学习记录都不会受到影响，可以从下面任一入口继续。</p>
 
               <div className="mt-6 grid gap-2.5 sm:grid-cols-2" aria-label="推荐学习入口">
                 {DESTINATIONS.map(({ to, label, detail, icon: Icon, color, wash }) => (

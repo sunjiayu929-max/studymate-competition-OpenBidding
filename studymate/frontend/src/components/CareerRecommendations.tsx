@@ -4,6 +4,7 @@ import { BriefcaseBusiness, ExternalLink, Loader2, Route, Sparkles, Target } fro
 import { apiGet } from "@/lib/api"
 import { track } from "@/lib/track"
 import { isShowcaseCourse, useCurrentCourse } from "@/store/course"
+import { useTargetRole } from "@/store/targetRole"
 
 interface CareerItem {
   post_id: number
@@ -30,12 +31,13 @@ interface CareerResponse {
 
 export function CareerRecommendations({ profileVersion = 0, compact = false }: { profileVersion?: number; compact?: boolean }) {
   const course = useCurrentCourse()
+  const targetRole = useTargetRole()
   const showcaseCourse = isShowcaseCourse(course)
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<CareerResponse | null>(null)
 
   useEffect(() => {
-    if (showcaseCourse) {
+    if (showcaseCourse || !course) {
       setLoading(false)
       setData(null)
       return
@@ -54,12 +56,12 @@ export function CareerRecommendations({ profileVersion = 0, compact = false }: {
       alive = false
       window.cancelAnimationFrame(frame)
     }
-  }, [compact, course?.id, profileVersion, showcaseCourse])
+  }, [compact, course, course?.id, profileVersion, showcaseCourse])
 
   if (loading) {
     return (
       <section className="rounded-[22px] border border-dashed border-[#C7D2D8] bg-[#F8F6F0] p-5" role="status">
-        <div className="flex items-center justify-center gap-2 text-xs font-semibold text-[#66717B]"><Loader2 className="size-4 animate-spin" />正在结合课程与画像匹配岗位…</div>
+        <div className="flex items-center justify-center gap-2 text-xs font-semibold text-[#66717B]"><Loader2 className="size-4 animate-spin" />正在结合岗位能力证据与画像校准适配度…</div>
       </section>
     )
   }
@@ -79,7 +81,7 @@ export function CareerRecommendations({ profileVersion = 0, compact = false }: {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.12em] text-[#315E83]"><Sparkles className="size-3.5" />讯飞人才呀 · 就业导向</span>
-          <h2 className="mt-1 text-base font-bold text-[#18232D]">适配《{data.current_course}》的岗位方向</h2>
+          <h2 className="mt-1 text-base font-bold text-[#18232D]">围绕「{targetRole?.name || data.current_course}」校准岗位适配度</h2>
           <p className="mt-1 max-w-2xl text-[11px] leading-5 text-[#66717B]">{data.evidence_note}</p>
         </div>
         <a href={data.platform_url} target="_blank" rel="noreferrer noopener" onClick={() => track("external_resource_open", "rencaiya_career_platform", data.current_course)} className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#B9C9D3] bg-[#FFFEFA] px-3 text-[10px] font-bold text-[#315E83] hover:bg-[#E7EDF3]">岗位课程库<ExternalLink className="size-3" /></a>
@@ -106,7 +108,7 @@ export function CareerRecommendations({ profileVersion = 0, compact = false }: {
             <p className="mt-1.5 line-clamp-3 min-h-12 text-[11px] leading-4 text-[#66717B]">{item.summary}</p>
             <div className="mt-3 space-y-2 border-t border-[#E3DED3] pt-3">
               <CareerLine icon={Target} label="已有优势" values={item.strengths} empty="等待画像补充" tone="green" />
-              <CareerLine icon={Route} label="建议补齐" values={item.gaps} empty="继续积累课程证据" tone="gold" />
+              <CareerLine icon={Route} label="建议补齐" values={item.gaps} empty="继续积累岗位能力证据" tone="gold" />
             </div>
             <p className="mt-3 text-[10px] text-[#8A8172]">人才呀包含 {item.course_count} 门岗位课程{item.project_count > 0 ? ` · ${item.project_count} 个实训项目` : ""}</p>
           </a>

@@ -578,7 +578,7 @@ export function Notes() {
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83]"><NotebookText className="size-4" /></span>
               <div className="min-w-0 flex-1">
                 <h1 className="truncate text-[15px] font-bold text-[#18232D]">StudyMate 智能笔记</h1>
-                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">管理课程笔记、错题与讲解摘录 · 支持 Markdown 编辑、识图总结及 Markdown / PDF 下载</p>
+                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">管理岗位训练笔记、错题与讲解摘录 · 支持 Markdown 编辑、识图总结及 Markdown / PDF 下载</p>
               </div>
             </div>
             <div className="nav-scroll flex w-full items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto sm:shrink-0 sm:overflow-visible sm:pb-0">
@@ -1188,7 +1188,7 @@ function BulkActionBar({
           onClick={onRequiz}
           disabled={disabled}
           className="w-full text-xs bg-amber-500 hover:bg-amber-600 text-white"
-          title="基于这些错题的知识点生成新一轮测验"
+          title="基于这些错题暴露的岗位能力点生成新一轮测验"
         >
           {busy ? <Loader2 className="size-3 animate-spin" /> : <Wand2 className="size-3" />}
           错题二刷

@@ -11,6 +11,7 @@ import { ArrowLeft, Film, Sparkles, Send, Loader2, Library, ChevronRight, PlayCi
 import { AppTopbar } from "@/components/AppTopbar"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useCurrentUser } from "@/store/user"
+import { useTargetRole } from "@/store/targetRole"
 import { CONCEPT_ANIMS } from "@/components/concepts/registry"
 import { ConceptResultView } from "@/components/concepts/ConceptResultView"
 import { explainConcept, type ExplainResult } from "@/lib/concept"
@@ -27,7 +28,13 @@ const EXAMPLES = [
 export function ConceptDemo() {
   useTrackPage("concept")
   const user = useCurrentUser()
+  const targetRole = useTargetRole()
   const USER_ID = user?.user_id ?? 0
+  const examples = Array.from(new Set([
+    ...(targetRole?.sampleTasks?.slice(0, 2) || []),
+    ...(targetRole?.skills?.slice(0, 2) || []),
+    ...EXAMPLES,
+  ])).slice(0, 6)
 
   const [searchParams] = useSearchParams()
   const initialAnimKey = searchParams.get("anim")
@@ -99,7 +106,7 @@ export function ConceptDemo() {
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Film className="size-4" /></span>
               <div className="min-w-0">
                 <h1 className="text-[15px] font-bold text-[#18232D]">StudyMate 可视讲解</h1>
-                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">将抽象知识转化为分步动画、黑板推演与真人视频，帮助你看清概念如何运作</p>
+                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">将岗位能力点转化为分步动画、黑板推演与真人视频，帮助你看清任务原理与执行过程</p>
               </div>
             </div>
             <Link to="/concept/library" className="inline-flex h-9 w-full shrink-0 items-center justify-center gap-1.5 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#F4ECD8] hover:text-[#8E6925] sm:w-auto">
@@ -110,9 +117,9 @@ export function ConceptDemo() {
           <div className="flex flex-1 flex-col p-4 sm:p-5">
             <section className="relative overflow-hidden rounded-[24px] border border-[#CFC8B9] bg-[#F8F6F0] p-5 sm:p-6">
               <div className="pointer-events-none absolute -right-20 -top-28 size-64 rounded-full border border-[#DDD4BF]" />
-              <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] text-[#6F8A69]"><Sparkles className="size-3.5 text-[#B1842C]" />概念可视化引擎</span>
-              <h2 className="relative mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D] sm:text-2xl">把难懂的概念，变成可以播放的过程</h2>
-              <p className="relative mt-2 text-sm leading-6 text-[#66717B]">输入任何知识点，系统会匹配精品动画或现场编排分步讲解，并推荐真人教学视频作为补充。</p>
+              <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] text-[#6F8A69]"><Sparkles className="size-3.5 text-[#B1842C]" />岗位能力可视化引擎</span>
+              <h2 className="relative mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D] sm:text-2xl">把岗位能力与任务原理，变成可以播放的过程</h2>
+              <p className="relative mt-2 text-sm leading-6 text-[#66717B]">输入岗位能力点、任务步骤或技术概念，系统会匹配精品动画或现场编排分步讲解，并推荐真人教学视频作为补充。</p>
 
         {/* Agent 提问框 */}
         <form
@@ -127,7 +134,7 @@ export function ConceptDemo() {
             <input
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="问我任何概念，我用动画讲给你看…"
+              placeholder="输入岗位能力点或任务原理，我用动画讲给你看…"
               className="h-11 w-full bg-transparent pl-9 pr-3 text-sm text-[#18232D] outline-none placeholder:text-[#929792]"
             />
           </div>
@@ -139,7 +146,7 @@ export function ConceptDemo() {
 
         {/* 示例问题 */}
         <div className="relative mt-3 flex flex-wrap gap-2">
-          {EXAMPLES.map((s) => (
+          {examples.map((s) => (
             <button
               key={s}
               onClick={() => {

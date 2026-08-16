@@ -1,6 +1,6 @@
 /**
  * /quiz · 题库测验列表页
- * - 顶部：当前课程 + 新建测验按钮
+ * - 顶部：当前目标岗位 + 新建测验按钮
  * - 历史 sessions 卡片墙：主题 / 题数 / 模式 / 状态 / 得分 / 用时
  * - 已提交 → 跳详情页查回顾；ready 状态 → 继续作答
  */
@@ -27,6 +27,7 @@ import { NewQuizModal } from "@/components/NewQuizModal"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useTutorContext } from "@/hooks/useTutorContext"
 import { useCurrentCourse } from "@/store/course"
+import { useTargetRole } from "@/store/targetRole"
 import { useCurrentUser } from "@/store/user"
 import { listQuizSessions, type QuizSession } from "@/lib/quizSession"
 
@@ -37,22 +38,27 @@ export function QuizLibrary() {
   const user = useCurrentUser()
   const USER_ID = user?.user_id ?? 0
   const course = useCurrentCourse()
+  const targetRole = useTargetRole()
   const courseId = course?.id ?? null
   const [sessions, setSessions] = useState<QuizSession[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalTopic, setModalTopic] = useState("")
+  const [challengePreset, setChallengePreset] = useState(false)
 
   useEffect(() => {
     if (!course || searchParams.get("create") !== "1") return
     const requestedTopic = searchParams.get("topic")?.trim() || ""
+    const requestedChallenge = searchParams.get("challenge") === "1"
     const frame = window.requestAnimationFrame(() => {
       setModalTopic(requestedTopic)
+      setChallengePreset(requestedChallenge)
       setModalOpen(true)
       const next = new URLSearchParams(searchParams)
       next.delete("create")
       next.delete("topic")
+      next.delete("challenge")
       setSearchParams(next, { replace: true })
     })
     return () => window.cancelAnimationFrame(frame)
@@ -113,23 +119,23 @@ export function QuizLibrary() {
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><BookOpen className="size-4" /></span>
               <div className="min-w-0 flex-1">
                 <h1 className="truncate text-[15px] font-bold text-[#18232D]">StudyMate 智能测验</h1>
-                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">{course ? `围绕《${course.name}》生成个性化题目 · 完成评分、错题归档与针对性复习` : "选择课程后生成个性化题目，并把错题准确归档"}</p>
+                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">{course ? `围绕“${targetRole?.name || course.name}”岗位知识库生成个性化题目 · 完成评分、错题归档与针对性复习` : targetRole ? `已选择“${targetRole.name}” · 专属知识库接入后开放岗位测验` : "选择目标岗位后生成个性化题目，并把错题准确归档"}</p>
               </div>
             </div>
             {course ? (
-              <button type="button" onClick={() => { setModalTopic(""); setModalOpen(true) }} className="inline-flex h-9 w-fit shrink-0 items-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] shadow-[0_7px_16px_rgba(36,76,102,.18)] transition-all hover:-translate-y-0.5 hover:bg-[#193B50]">
+              <button type="button" onClick={() => { setModalTopic(""); setChallengePreset(false); setModalOpen(true) }} className="inline-flex h-9 w-fit shrink-0 items-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] shadow-[0_7px_16px_rgba(36,76,102,.18)] transition-all hover:-translate-y-0.5 hover:bg-[#193B50]">
                 <Plus className="size-3.5" />新建测验
               </button>
             ) : (
-              <Link to="/courses" className="inline-flex h-9 w-fit shrink-0 items-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] shadow-[0_7px_16px_rgba(36,76,102,.18)] transition-all hover:-translate-y-0.5 hover:bg-[#193B50]">
-                <Library className="size-3.5" />选择课程
+              <Link to={targetRole ? "/workspace" : "/courses?returnTo=%2Fquiz"} className="inline-flex h-9 w-fit shrink-0 items-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] shadow-[0_7px_16px_rgba(36,76,102,.18)] transition-all hover:-translate-y-0.5 hover:bg-[#193B50]">
+                <Library className="size-3.5" />{targetRole ? "查看岗位状态" : "选择目标岗位"}
               </Link>
             )}
           </header>
 
           <div className="flex flex-1 flex-col p-4 sm:p-5">
             {!course ? (
-              <CourseRequiredState />
+              <CourseRequiredState targetRoleName={targetRole?.name} />
             ) : (
               <>
             <div className="mb-5 grid overflow-hidden rounded-[22px] border border-[#CFC8B9] bg-[#F8F6F0] sm:grid-cols-3">
@@ -151,7 +157,7 @@ export function QuizLibrary() {
             <Loader2 className="size-5 animate-spin mr-2" /> 加载中...
           </div>
         ) : sessions.length === 0 ? (
-          <EmptyHint onCreate={() => { setModalTopic(""); setModalOpen(true) }} />
+          <EmptyHint onCreate={() => { setModalTopic(""); setChallengePreset(false); setModalOpen(true) }} />
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {sessions.map((s, i) => (
@@ -174,6 +180,7 @@ export function QuizLibrary() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         initialTopic={modalTopic}
+        challengePreset={challengePreset}
         onCreated={(s) => {
           setModalOpen(false)
           navigate(`/quiz/${s.id}`)
@@ -183,15 +190,16 @@ export function QuizLibrary() {
   )
 }
 
-function CourseRequiredState() {
+function CourseRequiredState({ targetRoleName }: { targetRoleName?: string }) {
   return (
     <div className="grid flex-1 place-items-center rounded-[24px] border border-dashed border-[#CFC8B9] bg-[#F8F6F0] px-5 py-12 text-center">
       <div className="max-w-lg">
         <span className="mx-auto grid size-14 place-items-center rounded-2xl border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Library className="size-5" /></span>
-        <div className="mt-4 text-[10px] font-bold tracking-[0.12em] text-[#8E6925]">开始测验前</div>
-        <h2 className="mt-1.5 text-xl font-bold tracking-[-0.03em] text-[#18232D]">先选择题目所属课程</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#66717B]">课程会锁定出题范围、知识依据和错题归档位置，避免不同学科的记录混在一起。</p>
-        <Link to="/courses" className="mt-5 inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] hover:bg-[#193B50]">选择课程并继续 <ArrowRight className="size-3.5" /></Link>
+        <div className="mt-4 text-[10px] font-bold tracking-[0.12em] text-[#8E6925]">{targetRoleName ? "岗位已选定" : "开始测验前"}</div>
+        <h2 className="mt-1.5 text-xl font-bold tracking-[-0.03em] text-[#18232D]">{targetRoleName ? `“${targetRoleName}”岗位知识库正在建设` : "先选择测验所属目标岗位"}</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#66717B]">{targetRoleName ? "岗位选择与画像已经保存；专属知识库接入后，系统会按岗位能力范围生成测验并归档答题证据。" : "目标岗位会锁定出题范围、知识依据和错题归档位置，避免不同岗位的训练记录混在一起。"}</p>
+        <Link to={targetRoleName ? "/workspace" : "/courses?returnTo=%2Fquiz"} className="mt-5 inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] hover:bg-[#193B50]">{targetRoleName ? "返回资源工坊查看状态" : "选择目标岗位并继续"} <ArrowRight className="size-3.5" /></Link>
+        {targetRoleName && <Link to="/courses?returnTo=%2Fquiz" className="mt-3 inline-flex text-xs font-semibold text-[#66717B] hover:text-[#244C66]">更换目标岗位</Link>}
       </div>
     </div>
   )
