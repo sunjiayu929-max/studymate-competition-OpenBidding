@@ -10,7 +10,7 @@ from app.agents.arbiter_agent import ArbiterAgent
 from app.agents.diagnosis_agent import DiagnosisAgent
 from app.agents.review_agents import EvidenceReviewAgent, PracticeReviewAgent, DifficultyReviewAgent
 from app.agents.planning_agents import DomainExpertAgent, LearningStrategyAgent, PlanArbiterAgent
-from app.training import resolve_training_role
+from app.training import TARGET_ROLES, resolve_training_role
 from app.api.workspace import TrainingFeedbackRequest, _build_orchestrator, submit_training_feedback
 from app.db.session import Base
 from app.db.models import TrainingRun, User
@@ -42,6 +42,14 @@ class TrainingCatalogTests(unittest.TestCase):
         self.assertEqual(role["domain"], "特定软件开发")
         self.assertEqual(role["target_role"], "前线部署工程师（FDE）")
         self.assertIn("交付验证", role["core_competencies"])
+
+    def test_interview_enabled_roles_share_one_competency_catalogue(self):
+        for role_id, target in TARGET_ROLES.items():
+            with self.subTest(role_id=role_id):
+                mapped = resolve_training_role(target.course_name)
+                self.assertEqual(mapped["target_role"], target.name)
+                self.assertEqual(mapped["domain"], target.domain)
+                self.assertEqual(mapped["core_competencies"], list(target.competencies))
 
     def test_unknown_course_has_safe_generic_role(self):
         role = resolve_training_role("新领域")
