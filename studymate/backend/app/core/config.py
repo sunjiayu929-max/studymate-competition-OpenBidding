@@ -112,6 +112,13 @@ class Settings(BaseSettings):
     SESSION_EXPIRE_DAYS: int = 7
     SESSION_COOKIE_SECURE: bool = False
 
+    # AI interview is a separately deployed service. These values are only
+    # consumed server-side; the frontend never receives the integration key.
+    AI_INTERVIEW_PUBLIC_URL: str = ""
+    AI_INTERVIEW_SERVICE_SECRET: str = ""
+    AI_INTERVIEW_TICKET_TTL_SECONDS: int = 120
+    AI_INTERVIEW_SIGNATURE_TTL_SECONDS: int = 300
+
     @model_validator(mode="after")
     def disable_external_services_in_safe_offline(self):
         """即使父进程仍带有凭据，安全离线模式也把所有外部能力视为未配置。"""
@@ -131,6 +138,7 @@ class Settings(BaseSettings):
             "SMTP_PASSWORD",
             "SMTP_FROM_EMAIL",
             "PISTON_URL",
+            "AI_INTERVIEW_SERVICE_SECRET",
         ):
             setattr(self, field, "")
         self.PRIVATE_KNOWLEDGE_OCR_MODE = "unconfigured"

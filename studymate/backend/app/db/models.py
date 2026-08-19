@@ -354,6 +354,43 @@ class TheoryAssessment(Base, TimestampMixin):
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class InterviewAttempt(Base, TimestampMixin):
+    """A StudyMate-owned record for one externally executed practice interview.
+
+    The remote service owns its conversation and uploaded files. This model
+    stores the immutable launch context and the normalized report returned by
+    that service, so no cross-service database access is necessary.
+    """
+    __tablename__ = "interview_attempts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    role_id: Mapped[str] = mapped_column(String(128), index=True)
+    role_name: Mapped[str] = mapped_column(String(128))
+    course_id: Mapped[int | None] = mapped_column(ForeignKey("courses.id"), nullable=True, index=True)
+    role_context: Mapped[dict] = mapped_column(JSON, default=dict)
+    profile_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(32), default="launch_ready", index=True)
+    external_interview_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    report: Mapped[dict] = mapped_column(JSON, default=dict)
+    report_hash: Mapped[str] = mapped_column(String(64), default="")
+    launched_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class InterviewLaunchTicket(Base, TimestampMixin):
+    """One browser-visible, short-lived credential for a remote launch."""
+    __tablename__ = "interview_launch_tickets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    attempt_id: Mapped[str] = mapped_column(ForeignKey("interview_attempts.id"), unique=True, index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class TestCase(Base, TimestampMixin):
     """挑战杯交付物：典型测试 case + 准确性论证。
 

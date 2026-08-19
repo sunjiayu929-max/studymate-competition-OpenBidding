@@ -16,3 +16,18 @@
 		Referrer-Policy strict-origin-when-cross-origin
 	}
 }
+
+{$AI_INTERVIEW_SITE_ADDRESS:interview.localhost} {
+	encode zstd gzip
+
+	# Flask-SocketIO upgrades WebSocket connections through this proxy.
+	reverse_proxy ai-interview:5000 {
+		flush_interval -1
+	}
+
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
