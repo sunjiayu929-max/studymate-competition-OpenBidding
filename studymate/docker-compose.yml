@@ -87,6 +87,7 @@ services:
       args:
         NODE_IMAGE: "${NODE_IMAGE:-node:20-alpine}"
         NGINX_IMAGE: "${NGINX_IMAGE:-nginx:alpine}"
+        VITE_AI_INTERVIEW_URL: "${VITE_AI_INTERVIEW_URL:-}"
     image: studymate-frontend:latest
     container_name: studymate-frontend
     restart: unless-stopped

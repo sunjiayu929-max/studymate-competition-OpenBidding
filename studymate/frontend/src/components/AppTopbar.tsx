@@ -39,6 +39,7 @@ export type PageId =
   | "quiz"
   | "concept"
   | "guide"
+  | "interview"
 
 const PAGE_META: Record<PageId, { label: string; group: string; icon: typeof Home }> = {
   home: { label: "今日学习", group: "学习中心", icon: Home },
@@ -58,6 +59,7 @@ const PAGE_META: Record<PageId, { label: string; group: string; icon: typeof Hom
   quiz: { label: "智能测验", group: "练习与成长", icon: BookOpenCheck },
   concept: { label: "可视讲解", group: "AI 学习工具", icon: Orbit },
   guide: { label: "新手指引", group: "辅助入口", icon: Compass },
+  interview: { label: "AI 面试", group: "求职准备", icon: MessageSquare },
 }
 
 interface AppTopbarProps {
