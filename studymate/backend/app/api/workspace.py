@@ -10,8 +10,11 @@ from sse_starlette.sse import EventSourceResponse
 from app.agents.arbiter_agent import ArbiterAgent
 from app.agents.diagnosis_agent import DiagnosisAgent
 from app.agents.doc_agent import DocAgent
+from app.agents.mindmap_agent import MindMapAgent
 from app.agents.practice_guide_agent import PracticeGuideAgent
 from app.agents.quiz_agent import QuizAgent, generate_quiz_batch
+from app.agents.reading_agent import ReadingAgent
+from app.agents.code_agent import CodeAgent
 from app.agents.orchestrator import TrainingLoopOrchestrator, serialize_event
 from app.agents.planning_agents import DomainExpertAgent, LearningStrategyAgent, PlanArbiterAgent
 from app.agents.review_agents import EvidenceReviewAgent, PracticeReviewAgent, DifficultyReviewAgent
@@ -36,7 +39,15 @@ def _build_orchestrator() -> TrainingLoopOrchestrator:
         diagnosis_agent=DiagnosisAgent(),
         planning_agents=[DomainExpertAgent(), LearningStrategyAgent()],
         plan_arbiter=PlanArbiterAgent(),
-        generators=[DocAgent(), PracticeGuideAgent(), QuizAgent()],
+        # 六类岗位资源统一进入审核与发布门禁；不恢复独立学习路径生成器。
+        generators=[
+            DocAgent(),
+            PracticeGuideAgent(),
+            QuizAgent(),
+            MindMapAgent(),
+            ReadingAgent(),
+            CodeAgent(),
+        ],
         reviewers=[EvidenceReviewAgent(), PracticeReviewAgent(), DifficultyReviewAgent()],
         arbiter=ArbiterAgent(),
     )

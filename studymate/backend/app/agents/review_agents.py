@@ -1,6 +1,6 @@
 """三个相互独立的内容审核与纠偏 Agent。
 
-审核采用可复现的结构规则与证据检查；模型生成内容不参与修改审核阈值。
+审核采用可复现的结构规则与证据检查；六类岗位资源都必须通过本轮审核，模型生成内容不参与修改审核阈值。
 """
 from __future__ import annotations
 
@@ -132,11 +132,56 @@ class EvidenceReviewAgent(AgentBase):
                 "quiz",
             ))
 
+        mindmap = outputs.get("mindmap") or {}
+        mindmap_content = str(mindmap.get("content") or "").strip()
+        if not mindmap_content or not re.search(r"(?m)^#{1,3}\s+", mindmap_content):
+            findings.append(_finding(
+                "mindmap_structure_missing",
+                "blocker",
+                "思维导图没有形成可渲染的层级结构",
+                "补充主题、维度和关键节点，并保持 Markmap Markdown 层级",
+                "mindmap",
+            ))
+
+        reading = outputs.get("reading") or {}
+        reading_items = reading.get("items") or []
+        invalid_reading_items = [
+            str(index + 1)
+            for index, item in enumerate(reading_items)
+            if not str(item.get("title") or "").strip()
+            or not str(item.get("source") or item.get("url") or "").strip()
+        ]
+        if len(reading_items) < 3 or invalid_reading_items:
+            findings.append(_finding(
+                "reading_evidence_missing",
+                "blocker",
+                "拓展阅读缺少足够的带出处推荐材料",
+                "至少保留 3 条推荐，并为每条材料补充出处或官方链接",
+                "reading",
+            ))
+
+        code = outputs.get("code") or {}
+        code_content = str(code.get("code") or "").strip()
+        if not code_content or not str(code.get("language") or "").strip():
+            findings.append(_finding(
+                "code_case_missing",
+                "blocker",
+                "代码案例没有返回完整代码与语言信息",
+                "补充可用于岗位训练的完整代码、语言和文件名",
+                "code",
+            ))
+
         doc_supported = bool(citations and cited_indexes and not invalid_indexes)
         guide_supported = bool(guide_citations and guide_cited_indexes and not guide_invalid_indexes)
         supported_quiz_count = len(quiz_items) - len(unsupported_quiz_items)
-        professional_unit_count = 2 + len(quiz_items)
-        unsupported_unit_count = int(not doc_supported) + int(not guide_supported) + len(unsupported_quiz_items)
+        enhanced_ready = int(bool(mindmap_content)) + int(len(reading_items) >= 3 and not invalid_reading_items) + int(bool(code_content))
+        professional_unit_count = 5 + len(quiz_items)
+        unsupported_unit_count = (
+            int(not doc_supported)
+            + int(not guide_supported)
+            + len(unsupported_quiz_items)
+            + (3 - enhanced_ready)
+        )
         hallucination_rate = round(unsupported_unit_count / professional_unit_count * 100, 2) if professional_unit_count else 100.0
 
         citation_coverage = 0 if not citations else min(100, 70 + min(len(cited_indexes), 6) * 5)
@@ -152,6 +197,9 @@ class EvidenceReviewAgent(AgentBase):
                 "citation_coverage": citation_coverage,
                 "guide_citation_count": len(guide_citations),
                 "quiz_source_coverage": round(supported_quiz_count / len(quiz_items) * 100) if quiz_items else 0,
+                "enhanced_resource_count": 3,
+                "enhanced_resource_ready": enhanced_ready,
+                "enhanced_resource_coverage": round(enhanced_ready / 3 * 100),
                 "professional_unit_count": professional_unit_count,
                 "unsupported_unit_count": unsupported_unit_count,
                 "hallucination_rate": hallucination_rate,
@@ -215,8 +263,19 @@ class PracticeReviewAgent(AgentBase):
                 "guide",
             ))
 
+        code = (context.get("outputs") or {}).get("code") or {}
+        code_ready = bool(str(code.get("code") or "").strip() and str(code.get("language") or "").strip())
+        if not code_ready:
+            findings.append(_finding(
+                "code_case_not_actionable",
+                "blocker",
+                "代码案例缺少可供学习者阅读或运行的完整内容",
+                "补充完整源码、语言标识和预期结果",
+                "code",
+            ))
+
         completeness = round((len(self.REQUIRED_SECTIONS) - len(missing)) / len(self.REQUIRED_SECTIONS) * 100)
-        score = completeness
+        score = round((completeness + int(code_ready) * 100) / 2)
         score -= 30 if not citations else 0
         score -= 15 if numbered_steps < 3 else 0
         result = _review_output(
@@ -228,6 +287,7 @@ class PracticeReviewAgent(AgentBase):
                 "numbered_steps": numbered_steps,
                 "citation_count": len(citations),
                 "safety_boundary_present": "安全边界" in content,
+                "code_case_ready": code_ready,
             },
             "guide",
         )
@@ -300,6 +360,21 @@ class DifficultyReviewAgent(AgentBase):
                 "doc",
             ))
 
+        enhanced_checks = {
+            "mindmap": bool(str((outputs.get("mindmap") or {}).get("content") or "").strip()),
+            "reading": len((outputs.get("reading") or {}).get("items") or []) >= 3,
+            "code": bool(str((outputs.get("code") or {}).get("code") or "").strip()),
+        }
+        missing_enhanced = [resource_id for resource_id, ready in enhanced_checks.items() if not ready]
+        if missing_enhanced:
+            findings.append(_finding(
+                "enhanced_resource_incomplete",
+                "blocker",
+                f"增强资源未完整生成：{', '.join(missing_enhanced)}",
+                "重新生成缺失的增强资源后再进入发布门禁",
+                missing_enhanced[0],
+            ))
+
         difficulty_fit = 100 if not difficulties else max(0, round(100 - abs(average - target) * 25))
         if difficulty_fit < 85:
             findings.append(_finding(
@@ -309,7 +384,8 @@ class DifficultyReviewAgent(AgentBase):
                 "按照学情诊断目标重新校准题目难度层级",
                 "quiz",
             ))
-        score = round(difficulty_fit * 0.7 + max(60, coverage) * 0.3)
+        enhanced_coverage = round(sum(enhanced_checks.values()) / len(enhanced_checks) * 100)
+        score = round(difficulty_fit * 0.6 + max(60, coverage) * 0.25 + enhanced_coverage * 0.15)
         score -= 30 if len(items) < 3 else 0
         score -= 15 if difficulties and len(set(difficulties)) < 2 else 0
         result = _review_output(
@@ -323,6 +399,8 @@ class DifficultyReviewAgent(AgentBase):
                 "core_coverage": coverage,
                 "covered_competencies": covered,
                 "total_competencies": len(competencies),
+                "enhanced_resource_coverage": enhanced_coverage,
+                "enhanced_resource_checks": enhanced_checks,
             },
             "quiz",
         )

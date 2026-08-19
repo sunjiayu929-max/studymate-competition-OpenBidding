@@ -13,8 +13,11 @@ import {
   FileText,
   Gauge,
   GitCompareArrows,
+  Code2,
+  Library,
   Loader2,
   LockKeyhole,
+  Network,
   SearchCheck,
   ShieldCheck,
   Wrench,
@@ -47,7 +50,7 @@ interface FlowEdgeDefinition {
 
 const NODE_WIDTH = 160
 const NODE_HEIGHT = 124
-const CANVAS_WIDTH = 1440
+const CANVAS_WIDTH = 1585
 const CANVAS_HEIGHT = 600
 
 const FLOW_COLUMNS = [
@@ -55,10 +58,10 @@ const FLOW_COLUMNS = [
   { x: 170, width: NODE_WIDTH, step: "01", title: "画像诊断", detail: "确认起点与差距" },
   { x: 365, width: NODE_WIDTH, step: "02", title: "提出观点", detail: "专业主张与学习约束" },
   { x: 560, width: NODE_WIDTH, step: "03", title: "质疑与仲裁", detail: "回应分歧并形成合同" },
-  { x: 755, width: NODE_WIDTH, step: "04", title: "生成方陈述", detail: "三类训练资源" },
-  { x: 950, width: NODE_WIDTH, step: "05", title: "审核方质询", detail: "三组交叉验证" },
-  { x: 1145, width: NODE_WIDTH, step: "06", title: "总裁决", detail: "汇总全部证据" },
-  { x: 1315, width: 120, step: "门禁", title: "发布结果", detail: "通过或定向返工" },
+  { x: 755, width: 330, step: "04", title: "生成方陈述", detail: "六类资源并行生成" },
+  { x: 1095, width: NODE_WIDTH, step: "05", title: "审核方质询", detail: "三组交叉验证六类资源" },
+  { x: 1270, width: NODE_WIDTH, step: "06", title: "总裁决", detail: "汇总全部证据" },
+  { x: 1445, width: 120, step: "门禁", title: "发布结果", detail: "通过或定向返工" },
 ] as const
 
 const FLOW_NODES: FlowNodeDefinition[] = [
@@ -69,10 +72,13 @@ const FLOW_NODES: FlowNodeDefinition[] = [
   { id: "doc", x: 755, y: 120, width: NODE_WIDTH, height: NODE_HEIGHT, group: "生成方陈述", icon: FileText, fallbackName: "定制讲义生成 Agent", fallbackDescription: "生成带领域来源的岗位讲义" },
   { id: "guide", x: 755, y: 265, width: NODE_WIDTH, height: NODE_HEIGHT, group: "生成方陈述", icon: Wrench, fallbackName: "实操指南生成 Agent", fallbackDescription: "生成可执行、可验收的实操指南" },
   { id: "quiz", x: 755, y: 410, width: NODE_WIDTH, height: NODE_HEIGHT, group: "生成方陈述", icon: BookOpenCheck, fallbackName: "分阶测试生成 Agent", fallbackDescription: "生成匹配学情的分阶测试" },
-  { id: "evidence_review", x: 950, y: 120, width: NODE_WIDTH, height: NODE_HEIGHT, group: "审核方质询", icon: SearchCheck, fallbackName: "事实与来源审核 Agent", fallbackDescription: "交叉核对专业主张与知识来源" },
-  { id: "practice_review", x: 950, y: 265, width: NODE_WIDTH, height: NODE_HEIGHT, group: "审核方质询", icon: ShieldCheck, fallbackName: "实操规范审核 Agent", fallbackDescription: "交叉检查步骤、异常与安全边界" },
-  { id: "difficulty_review", x: 950, y: 410, width: NODE_WIDTH, height: NODE_HEIGHT, group: "审核方质询", icon: FileCheck2, fallbackName: "难度与覆盖审核 Agent", fallbackDescription: "交叉校准难度与岗位能力覆盖" },
-  { id: "arbiter", x: 1145, y: 265, width: NODE_WIDTH, height: NODE_HEIGHT, group: "发布裁决", icon: BadgeCheck, fallbackName: "总裁决 Agent", fallbackDescription: "汇总审核证据，决定发布或定向返工" },
+  { id: "mindmap", x: 925, y: 120, width: NODE_WIDTH, height: NODE_HEIGHT, group: "生成方陈述", icon: Network, fallbackName: "思维导图生成 Agent", fallbackDescription: "梳理岗位任务中的概念、依赖与关系" },
+  { id: "reading", x: 925, y: 265, width: NODE_WIDTH, height: NODE_HEIGHT, group: "生成方陈述", icon: Library, fallbackName: "拓展阅读生成 Agent", fallbackDescription: "推荐与岗位任务相关的可追溯材料" },
+  { id: "code", x: 925, y: 410, width: NODE_WIDTH, height: NODE_HEIGHT, group: "生成方陈述", icon: Code2, fallbackName: "代码案例生成 Agent", fallbackDescription: "生成适配岗位任务的代码或示例" },
+  { id: "evidence_review", x: 1095, y: 120, width: NODE_WIDTH, height: NODE_HEIGHT, group: "审核方质询", icon: SearchCheck, fallbackName: "事实与来源审核 Agent", fallbackDescription: "交叉核对六类资源的专业依据与来源" },
+  { id: "practice_review", x: 1095, y: 265, width: NODE_WIDTH, height: NODE_HEIGHT, group: "审核方质询", icon: ShieldCheck, fallbackName: "实操规范审核 Agent", fallbackDescription: "交叉检查步骤、代码、异常与安全边界" },
+  { id: "difficulty_review", x: 1095, y: 410, width: NODE_WIDTH, height: NODE_HEIGHT, group: "审核方质询", icon: FileCheck2, fallbackName: "难度与覆盖审核 Agent", fallbackDescription: "交叉校准六类资源的难度与岗位覆盖" },
+  { id: "arbiter", x: 1270, y: 265, width: NODE_WIDTH, height: NODE_HEIGHT, group: "发布裁决", icon: BadgeCheck, fallbackName: "总裁决 Agent", fallbackDescription: "汇总全部审核证据，决定发布或定向返工" },
 ]
 
 const FLOW_EDGES: FlowEdgeDefinition[] = [
@@ -84,9 +90,20 @@ const FLOW_EDGES: FlowEdgeDefinition[] = [
   { from: "plan_arbiter", to: "doc" },
   { from: "plan_arbiter", to: "guide" },
   { from: "plan_arbiter", to: "quiz" },
+  { from: "plan_arbiter", to: "mindmap" },
+  { from: "plan_arbiter", to: "reading" },
+  { from: "plan_arbiter", to: "code" },
   { from: "doc", to: "evidence_review" },
+  { from: "guide", to: "evidence_review" },
   { from: "guide", to: "practice_review" },
+  { from: "quiz", to: "evidence_review" },
   { from: "quiz", to: "difficulty_review" },
+  { from: "mindmap", to: "evidence_review" },
+  { from: "mindmap", to: "difficulty_review" },
+  { from: "reading", to: "evidence_review" },
+  { from: "reading", to: "difficulty_review" },
+  { from: "code", to: "practice_review" },
+  { from: "code", to: "difficulty_review" },
   { from: "evidence_review", to: "arbiter" },
   { from: "practice_review", to: "arbiter" },
   { from: "difficulty_review", to: "arbiter" },
@@ -95,7 +112,7 @@ const FLOW_EDGES: FlowEdgeDefinition[] = [
 
 const VIRTUAL_NODES = {
   task: { x: 18, y: 281, width: 125, height: 92 },
-  publish: { x: 1315, y: 281, width: 120, height: 92 },
+  publish: { x: 1445, y: 281, width: 120, height: 92 },
 } as const
 
 const EDGE_STYLES: Record<EdgeState, { color: string; width: number; dash?: string; marker: string }> = {
@@ -215,7 +232,7 @@ export function AgentCollaborationFlow({ workspace }: { workspace: WorkspaceStat
           <div className="agent-flow-grid pointer-events-none absolute inset-0" />
 
           <DebateZone x={348} width={392} label="第1轮辩论" detail="专业观点 × 教学约束 × 计划仲裁" active={planningDebateActive} />
-          <DebateZone x={738} width={390} label="第2轮辩论" detail="三组资源陈述 × 审核质询" active={resourceDebateActive} />
+          <DebateZone x={738} width={370} label="第2轮辩论" detail="六类资源陈述 × 审核质询" active={resourceDebateActive} />
 
           {FLOW_COLUMNS.map((column) => (
             <div key={column.title} className="absolute top-5 z-[3] text-center" style={{ left: column.x, width: column.width }}>
@@ -324,8 +341,8 @@ export function AgentCollaborationFlow({ workspace }: { workspace: WorkspaceStat
         </div>
       </div>
       <div className="flex items-center justify-between border-t border-[#E1E8F1] bg-white px-4 py-2.5 text-[9px] text-[#718096]">
-        <span>左右拖动查看完整协作链 · 审核证据最终汇聚到总裁决 Agent</span>
-        <span className="font-bold text-[#526B88]">第 {workspace.generationRound} 轮 · {workspace.agents.length || 11} 个核心 Agent</span>
+        <span>左右拖动查看完整协作链 · 六类资源的审核证据最终汇聚到总裁决 Agent</span>
+        <span className="font-bold text-[#526B88]">第 {workspace.generationRound} 轮 · {workspace.agents.length || 14} 个协作节点</span>
       </div>
     </div>
   )

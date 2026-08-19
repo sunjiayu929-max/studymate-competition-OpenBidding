@@ -1,6 +1,6 @@
 """
 多 Agent 编排器。
-状态机风格：retrieve → [doc, mindmap, quiz]（并发）→ done
+状态机风格：retrieve → [doc, guide, quiz, mindmap, reading, code]（并发）→ done
 
 事件协议（推送给前端 SSE）：
   meta            首次发，包含所有 Agent 元数据
@@ -281,7 +281,7 @@ class TrainingLoopOrchestrator:
                 await self._record_resource_debate(ctx, emit)
                 decision = await self._run_arbiter(ctx, emit)
 
-            await self._stage(emit, "publishing", "资源已通过裁决，准备发布三项核心岗位资源", ctx)
+            await self._stage(emit, "publishing", "六类岗位资源已通过裁决，准备发布资源包", ctx)
             await self._stage(emit, "published", "资源包已发布，可进入学习与反馈", ctx)
 
             await self._emit_done(ctx, emit)
@@ -315,7 +315,7 @@ class TrainingLoopOrchestrator:
                 ctx.setdefault("outputs", {})[agent.meta.id] = result
 
     async def _run_reviews(self, ctx: dict, emit):
-        await self._stage(emit, "review", "三类审核并行交叉验证生成结果", ctx)
+        await self._stage(emit, "review", "三类审核并行交叉验证六类生成结果", ctx)
         results = await asyncio.gather(
             *(self._wrap_run(agent, ctx, emit) for agent in self.reviewers),
             return_exceptions=True,
@@ -402,29 +402,36 @@ class TrainingLoopOrchestrator:
         reviews = ctx.get("reviews") or {}
         outputs = ctx.get("outputs") or {}
         reviewer_targets = {
-            "evidence_review": "doc",
-            "practice_review": "guide",
-            "difficulty_review": "quiz",
+            "evidence_review": ("doc", "guide", "quiz", "mindmap", "reading"),
+            "practice_review": ("guide", "code"),
+            "difficulty_review": ("quiz", "mindmap", "reading", "code"),
         }
         exchanges = []
-        for reviewer_id, default_target in reviewer_targets.items():
+        for reviewer_id, resource_ids in reviewer_targets.items():
             review = reviews.get(reviewer_id) or {}
-            target = str(review.get("target_agent") or default_target)
-            output = outputs.get(target) or {}
-            exchanges.append({
-                "generator": target,
-                "reviewer": reviewer_id,
-                "generator_position": str(output.get("title") or f"{target} 第 {ctx.get('generation_round', 1)} 轮资源"),
-                "generator_response": output.get("revision_response") or [],
-                "reviewer_challenges": review.get("findings") or [],
-                "reviewer_decision": review.get("decision") or ("accept" if review.get("status") == "pass" else "rework"),
-                "review_score": int(review.get("score", 0)),
-            })
+            for target in resource_ids:
+                output = outputs.get(target) or {}
+                target_findings = [
+                    finding for finding in review.get("findings") or []
+                    if finding.get("target_agent") == target
+                ]
+                exchanges.append({
+                    "generator": target,
+                    "reviewer": reviewer_id,
+                    "generator_position": str(output.get("title") or f"{target} 第 {ctx.get('generation_round', 1)} 轮资源"),
+                    "generator_response": output.get("revision_response") or [],
+                    "reviewer_challenges": target_findings,
+                    "reviewer_decision": "rework" if target_findings else "accept",
+                    "review_score": int(review.get("score", 0)),
+                })
         debate = {
             "phase": "resource",
             "round": int(ctx.get("generation_round", 1)),
             "title": "第二次辩论 · 资源生成与审核质询",
-            "participants": [*reviewer_targets.values(), *reviewer_targets.keys()],
+            "participants": [
+                "doc", "guide", "quiz", "mindmap", "reading", "code",
+                *reviewer_targets.keys(),
+            ],
             "exchanges": exchanges,
             "decision": "rework" if any(item["reviewer_decision"] == "rework" for item in exchanges) else "accept",
         }
@@ -496,7 +503,9 @@ class TrainingLoopOrchestrator:
 
     @staticmethod
     def _feedback_by_target(reviews: dict) -> dict[str, list[dict]]:
-        feedback: dict[str, list[dict]] = {"doc": [], "guide": [], "quiz": []}
+        feedback: dict[str, list[dict]] = {
+            "doc": [], "guide": [], "quiz": [], "mindmap": [], "reading": [], "code": [],
+        }
         for review in reviews.values():
             for finding in review.get("findings", []):
                 target = finding.get("target_agent")

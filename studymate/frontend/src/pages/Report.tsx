@@ -274,7 +274,7 @@ export function Report() {
     Boolean(ws.outputs.quiz?.items?.length),
     Boolean(ws.outputs.reading?.items?.length),
     Boolean(ws.outputs.code?.code),
-    Boolean(ws.outputs.path?.nodes?.length),
+    Boolean(ws.outputs.guide?.content),
   ].filter(Boolean).length, [ws.outputs])
 
   const availableResources = useMemo(() => [
@@ -283,7 +283,7 @@ export function Report() {
     ws.outputs.quiz?.items?.length ? "quiz" : null,
     ws.outputs.reading?.items?.length ? "reading" : null,
     ws.outputs.code?.code ? "code" : null,
-    ws.outputs.path?.nodes?.length ? "path" : null,
+    ws.outputs.guide?.content ? "guide" : null,
     ws.topic ? "concept" : null,
   ].filter((resource): resource is string => Boolean(resource)), [ws.outputs, ws.topic])
 

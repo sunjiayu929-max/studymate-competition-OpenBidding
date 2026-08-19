@@ -21,11 +21,11 @@ async def _ignore_event(_event: str, _data: dict) -> None:
 
 
 class TrainingCatalogTests(unittest.TestCase):
-    def test_current_resource_pack_has_only_three_core_generators(self):
+    def test_current_resource_pack_has_six_generators_without_learning_path(self):
         orchestrator = _build_orchestrator()
         self.assertEqual(
             [agent.meta.id for agent in orchestrator.generators],
-            ["doc", "guide", "quiz"],
+            ["doc", "guide", "quiz", "mindmap", "reading", "code"],
         )
         self.assertEqual(
             [agent.meta.id for agent in orchestrator.planning_agents],
@@ -100,9 +100,12 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
             "profile": {"knowledge_base": {"math": 3, "programming": 2}},
         }, _ignore_event)
         self.assertEqual(result["target_difficulty"], 2)
-        self.assertEqual(result["training_contract"]["required_resources"], ["定制讲义", "实操指南", "分阶测试"])
+        self.assertEqual(
+            result["training_contract"]["required_resources"],
+            ["定制讲义", "实操指南", "分阶测试", "思维导图", "拓展阅读", "代码案例"],
+        )
 
-    async def test_three_reviews_pass_a_complete_resource_pack(self):
+    async def test_three_reviews_pass_a_complete_six_resource_pack(self):
         context = {
             "chunks": [{"chunk_id": "1", "source": "教材", "content": "数据标注 模型训练"}],
             "core_competencies": ["数据标注", "模型训练"],
@@ -139,6 +142,15 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
                         {"question": "综合验证", "difficulty": 3, "source_index": 1},
                     ],
                 },
+                "mindmap": {"content": "# 数据标注\n## 模型训练\n- 质量检查"},
+                "reading": {
+                    "items": [
+                        {"title": "资料一", "source": "教材"},
+                        {"title": "资料二", "source": "论文"},
+                        {"title": "资料三", "source": "文档"},
+                    ],
+                },
+                "code": {"language": "python", "code": "print('ok')"},
             },
         }
         reviews = {}
@@ -146,7 +158,7 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
             reviews[agent.meta.id] = await agent.run(context, _ignore_event)
         self.assertTrue(all(review["status"] != "fail" for review in reviews.values()))
 
-        decision = await ArbiterAgent().run({"reviews": reviews, "generation_round": 1}, _ignore_event)
+        decision = await ArbiterAgent().run({"reviews": reviews, "outputs": context["outputs"], "generation_round": 1}, _ignore_event)
         self.assertEqual(decision["decision"], "publish")
         self.assertLess(decision["hallucination_rate"], 5)
         self.assertGreaterEqual(decision["profile_difficulty_accuracy"], 85)
@@ -183,12 +195,12 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
             },
         }, _ignore_event)
         self.assertEqual(decision["decision"], "rework")
-        self.assertEqual(decision["rework_targets"], ["doc"])
+        self.assertEqual(decision["rework_targets"], ["doc", "guide", "quiz", "mindmap", "reading", "code"])
 
     async def test_arbiter_never_publishes_with_missing_reviews(self):
         decision = await ArbiterAgent().run({"reviews": {}, "generation_round": 1}, _ignore_event)
         self.assertEqual(decision["decision"], "rework")
-        self.assertEqual(decision["rework_targets"], ["doc", "guide", "quiz"])
+        self.assertEqual(decision["rework_targets"], ["doc", "guide", "quiz", "mindmap", "reading", "code"])
         self.assertFalse(decision["release_gate"]["all_reviews_present"])
 
     async def test_arbiter_reworks_warning_until_no_findings_remain(self):
@@ -209,7 +221,7 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
             },
         }, _ignore_event)
         self.assertEqual(decision["decision"], "rework")
-        self.assertEqual(decision["rework_targets"], ["doc"])
+        self.assertEqual(decision["rework_targets"], ["doc", "guide", "quiz", "mindmap", "reading", "code"])
 
     async def test_feedback_endpoint_updates_owned_published_run(self):
         with TemporaryDirectory() as temp_dir:
