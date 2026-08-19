@@ -2,6 +2,7 @@
 from __future__ import annotations
 import json
 import uuid
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -17,8 +18,9 @@ from app.agents.planning_agents import DomainExpertAgent, LearningStrategyAgent,
 from app.agents.review_agents import EvidenceReviewAgent, PracticeReviewAgent, DifficultyReviewAgent
 from app.courses import get_course_by_id
 from app.db import async_session_maker
-from app.db.models import Profile, Resource, LearningPath, TrainingRun, User
+from app.db.models import Profile, ProfileSnapshot, Resource, LearningPath, TrainingRun, User
 from app.deps import require_user
+from app.schemas.profile import ProfileDims, TrainingRoundEvidence
 from app.training import resolve_training_role
 
 router = APIRouter(prefix="/workspace", tags=["workspace"])
@@ -236,6 +238,7 @@ async def submit_training_feedback(
             next_action = "advanced_challenge"
             message = "下一轮提升一级难度，并增加更接近真实岗位的综合任务"
 
+        difficulty_delta = -1 if accuracy is not None and accuracy < 60 else 1 if accuracy is not None and accuracy >= 85 else 0
         result = {
             "run_id": run.id,
             "accuracy": accuracy,
@@ -245,13 +248,55 @@ async def submit_training_feedback(
             "message": message,
             "profile_update": {
                 "evidence_source": "岗位分阶测试",
-                "suggested_difficulty_delta": -1 if accuracy is not None and accuracy < 60 else 1 if accuracy is not None and accuracy >= 85 else 0,
+                "suggested_difficulty_delta": difficulty_delta,
                 "confidence_delta": 0.08 if answered else 0,
             },
         }
+        had_feedback = bool(run.feedback)
         run.feedback = {**result, "time_spent_min": req.time_spent_min, "satisfaction": req.satisfaction}
         run.stage = "feedback_updated"
         run.status = "feedback_updated"
+
+        # 每轮验收后回写画像：追加训练轮次证据、按表现更新薄弱点，并记录快照与版本。
+        # 仅在有真实作答证据且首次提交时更新；重复提交同一轮不会重复累加版本。
+        if answered and not had_feedback:
+            profile = await db.scalar(select(Profile).where(Profile.user_id == user.id))
+            dims = ProfileDims.model_validate(profile.dims if profile else {})
+            old_dims = dims.model_dump()
+            dims.training_rounds.insert(0, TrainingRoundEvidence(
+                run_id=run.id,
+                domain=run.domain or "",
+                target_role=run.target_role or "",
+                topic=run.topic or "",
+                accuracy=accuracy,
+                answered_count=len(answered),
+                wrong_count=len(wrong_items),
+                next_action=next_action,
+                difficulty_delta=difficulty_delta,
+                completed_at=datetime.utcnow().isoformat(),
+            ))
+            dims.training_rounds = dims.training_rounds[:20]
+            # 达标能力从薄弱点移除；未达标能力提到最前，供下一轮诊断优先补齐。
+            plan = (run.outputs or {}).get("training_plan") or {}
+            round_topics = [str(item).strip() for item in (plan.get("priority_competencies") or []) if str(item).strip()]
+            if run.topic and str(run.topic).strip():
+                round_topics.append(str(run.topic).strip())
+            round_topics = list(dict.fromkeys(round_topics))
+            remaining = [item for item in dims.weak_points.topics if item not in round_topics]
+            dims.weak_points.topics = ((round_topics + remaining) if accuracy is not None and accuracy < 85 else remaining)[:12]
+
+            if profile is None:
+                profile = Profile(user_id=user.id, dims=dims.model_dump(), version=1)
+                db.add(profile)
+            else:
+                db.add(ProfileSnapshot(
+                    user_id=user.id,
+                    snapshot=old_dims,
+                    trigger_event=f"training_round:{run.id}"[:64],
+                ))
+                profile.dims = dims.model_dump()
+                profile.version += 1
+
         await db.commit()
         return result
 

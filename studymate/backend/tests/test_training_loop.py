@@ -4,6 +4,7 @@ import unittest
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.agents.arbiter_agent import ArbiterAgent
@@ -13,7 +14,8 @@ from app.agents.planning_agents import DomainExpertAgent, LearningStrategyAgent,
 from app.training import resolve_training_role
 from app.api.workspace import TrainingFeedbackRequest, _build_orchestrator, submit_training_feedback
 from app.db.session import Base
-from app.db.models import TrainingRun, User
+from app.db.models import Profile, ProfileSnapshot, TrainingRun, User
+from app.schemas.profile import ProfileDims
 
 
 async def _ignore_event(_event: str, _data: dict) -> None:
@@ -32,9 +34,9 @@ class TrainingCatalogTests(unittest.TestCase):
             ["domain_expert", "learning_strategy"],
         )
 
-    def test_machine_learning_maps_to_primary_competition_role(self):
+    def test_legacy_course_name_falls_back_to_generic_role(self):
         role = resolve_training_role("机器学习")
-        self.assertEqual(role["target_role"], "工业视觉质检算法工程师")
+        self.assertEqual(role["target_role"], "机器学习应用工程师")
         self.assertGreaterEqual(len(role["core_competencies"]), 5)
 
     def test_fde_knowledge_base_maps_to_selected_frontend_role(self):
@@ -247,6 +249,62 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
                 stored = await db.get(TrainingRun, "feedback-run")
                 self.assertEqual(stored.stage, "feedback_updated")
                 self.assertEqual(stored.feedback["accuracy"], 50)
+                profile = await db.scalar(select(Profile).where(Profile.user_id == user.id))
+                self.assertIsNotNone(profile)
+                dims = ProfileDims.model_validate(profile.dims)
+                self.assertEqual(len(dims.training_rounds), 1)
+                self.assertEqual(dims.training_rounds[0].run_id, "feedback-run")
+                self.assertEqual(dims.training_rounds[0].accuracy, 50)
+                self.assertEqual(dims.training_rounds[0].next_action, "prerequisite_repair")
+                self.assertIn("岗位任务", dims.weak_points.topics)
+            await engine.dispose()
+
+    async def test_feedback_mastery_bumps_version_and_clears_weak_point(self):
+        with TemporaryDirectory() as temp_dir:
+            engine = create_async_engine(f"sqlite+aiosqlite:///{temp_dir}/training.db")
+            maker = async_sessionmaker(engine, expire_on_commit=False)
+            async with engine.begin() as connection:
+                await connection.run_sync(Base.metadata.create_all)
+            async with maker() as db:
+                user = User(name="画像回写测试用户")
+                db.add(user)
+                await db.flush()
+                db.add(Profile(user_id=user.id, dims=ProfileDims(weak_points={"topics": ["系统集成"]}).model_dump(), version=1))
+                db.add(TrainingRun(
+                    id="feedback-mastery-run",
+                    user_id=user.id,
+                    domain="特定软件开发",
+                    target_role="前线部署工程师（FDE）",
+                    topic="系统集成",
+                    status="published",
+                    stage="published",
+                    decision={"decision": "publish"},
+                    outputs={"training_plan": {"priority_competencies": ["系统集成"]}},
+                ))
+                await db.commit()
+
+            request = TrainingFeedbackRequest(
+                run_id="feedback-mastery-run",
+                attempts=[
+                    {"question_id": "q1", "correct": True},
+                    {"question_id": "q2", "correct": True},
+                ],
+                time_spent_min=10,
+            )
+            with patch("app.api.workspace.async_session_maker", maker):
+                result = await submit_training_feedback(request, user)
+            self.assertEqual(result["accuracy"], 100)
+            self.assertEqual(result["next_action"], "advanced_challenge")
+            self.assertEqual(result["profile_update"]["suggested_difficulty_delta"], 1)
+
+            async with maker() as db:
+                profile = await db.scalar(select(Profile).where(Profile.user_id == user.id))
+                dims = ProfileDims.model_validate(profile.dims)
+                self.assertEqual(profile.version, 2)
+                self.assertEqual(dims.training_rounds[0].difficulty_delta, 1)
+                self.assertNotIn("系统集成", dims.weak_points.topics)
+                snapshots = (await db.scalars(select(ProfileSnapshot).where(ProfileSnapshot.user_id == user.id))).all()
+                self.assertEqual(len(snapshots), 1)
             await engine.dispose()
 
 
