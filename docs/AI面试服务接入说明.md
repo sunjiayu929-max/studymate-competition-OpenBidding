@@ -1,6 +1,25 @@
 # AI 面试服务接入说明
 
-StudyMate 的 AI 面试采用独立服务部署。面试服务代码位于同级目录 `ai-interview/`，来源为 Gitee 项目 `https://gitee.com/uorol123/ai-interview.git`，后续应迁移到团队 GitHub 仓库 `https://github.com/studymate-team/ai-interview.git`，并以 Git submodule 接入主仓库。
+StudyMate 的 AI 面试采用独立服务部署。面试服务代码位于同级目录 `ai-interview/`，来源为 Gitee 项目 `https://gitee.com/uorol123/ai-interview.git`，现已迁移到团队 GitHub 仓库 `https://github.com/studymate-team/ai-interview.git`，并以 Git submodule 接入主仓库。
+
+## 原项目说明
+
+原项目是一个完整的“AI 面试官系统”，不是只有一个聊天页面。它原本包含以下能力：
+
+- 求职者端：简历上传与 AI 简历解析、岗位模拟面试、实时文字/WebSocket 面试、面试评分报告、个人资料和简历管理。
+- 企业端：企业资料、职位发布与管理、候选人管理、面试安排、评分权重设置和面试报告查看。
+- AI 与语音：OpenAI 兼容的大模型接口、阿里百炼/DeepSeek 等模型接入方式、讯飞语音服务、可选数字人交互资源。
+- 技术结构：Flask 应用、Flask-SocketIO 实时通信、SQLAlchemy 数据模型、MySQL 数据库、Jinja 页面、JavaScript/CSS 静态资源。
+
+本次接入保留原项目的路由、模型、模板、实时面试流程、简历分析和企业管理能力；改造重点是部署和边界，而不是删减原功能：
+
+- 配置从源码中的数据库地址和第三方密钥改为环境变量。
+- 面试服务拥有独立 MySQL 和上传文件卷，主 StudyMate 不直接访问这些表。
+- 增加 Dockerfile、Docker Compose、健康检查和独立服务 README。
+- 新注册/修改密码使用哈希，历史明文密码在成功登录时兼容迁移。
+- 去除原仓库历史中的敏感信息后，以新的脱敏提交推送到团队 GitHub；原 Gitee 仅作为 `upstream` 参考。
+
+当前主系统已经提供按目标岗位进入面试的入口，会传入岗位名称、岗位能力标签和知识库 ID。一次性登录凭证、面试报告签名回传以及评分写回 StudyMate 岗位画像仍属于下一阶段 API 开发，不通过 URL 传递正式用户身份。
 
 ## 当前边界
 
@@ -20,14 +39,14 @@ StudyMate 前端
 
 ## 本地管理方式
 
-当前外部目录还是独立 Git 仓库，`origin` 保留 Gitee 作为上游。团队仓库建立后，在主仓库根目录执行：
+当前外部目录是独立 Git 仓库，`origin` 指向团队 GitHub，`upstream` 保留原 Gitee。主仓库已经通过 `.gitmodules` 固定到面试服务的脱敏提交：
 
 ```bash
-git submodule add https://github.com/studymate-team/ai-interview.git ai-interview
-git commit -m "chore: add AI interview service submodule"
+git submodule update --init --recursive
+git -C ai-interview remote -v
 ```
 
-新仓库应使用经过脱敏的单独首个提交，不要把原 Gitee 历史直接推送到团队仓库。原历史曾出现数据库和第三方 API 凭据，相关凭据应在服务商后台撤销并重新生成。
+面试服务 GitHub 当前使用经过脱敏的独立首个提交，不包含原 Gitee 历史。原历史曾出现数据库和第三方 API 凭据，相关凭据应在服务商后台撤销并重新生成。
 
 ## 独立启动
 
@@ -49,7 +68,6 @@ VITE_AI_INTERVIEW_URL=http://localhost:5000
 
 ## 后续开发顺序
 
-1. 创建团队 GitHub 面试服务仓库并推送本地脱敏提交。
-2. 将主仓库中的目录转换为真实 submodule，固定到可审计 commit。
-3. 实现短期启动凭证或一次性会话 token，避免通过 URL 传递用户身份。
-4. 实现面试报告签名回传和岗位能力维度映射，再接入 StudyMate 的画像与训练建议。
+1. 实现短期启动凭证或一次性会话 token，避免通过 URL 传递用户身份。
+2. 实现面试报告签名回传和岗位能力维度映射，再接入 StudyMate 的画像与训练建议。
+3. 增加面试服务数据库迁移脚本、备份恢复流程和生产级反向代理配置。
