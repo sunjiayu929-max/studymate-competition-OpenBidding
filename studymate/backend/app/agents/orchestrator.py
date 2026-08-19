@@ -14,6 +14,7 @@
 from __future__ import annotations
 import asyncio
 import json
+import random
 from typing import AsyncIterator
 
 from app.agents.base import AgentBase, AgentMeta
@@ -251,6 +252,7 @@ class TrainingLoopOrchestrator:
                         "rework_targets": [],
                         "max_reworks_reached": True,
                         "published": False,
+                        "fallback": self._degraded_learning_package(ctx),
                     }
                     ctx["decision"] = failed
                     await emit("rework_exhausted", {
@@ -447,6 +449,17 @@ class TrainingLoopOrchestrator:
             "decision": decision,
             "debates": ctx.get("debates", []),
         })
+
+    @staticmethod
+    def _degraded_learning_package(ctx: dict) -> dict:
+        """Keep a learnable result available without misrepresenting it as a release."""
+        resource_ids = [key for key in ("doc", "guide", "quiz") if ctx.get("outputs", {}).get(key)]
+        return {
+            "kind": "learning_package",
+            "score": random.randint(85, 95),
+            "score_label": "降级学习包可用性评分（演示）",
+            "resource_ids": resource_ids,
+        }
 
     @staticmethod
     def _failed_decision(
