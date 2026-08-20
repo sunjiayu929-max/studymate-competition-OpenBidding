@@ -12,6 +12,7 @@ from app.agents.review_agents import EvidenceReviewAgent, PracticeReviewAgent, D
 from app.agents.planning_agents import DomainExpertAgent, LearningStrategyAgent, PlanArbiterAgent
 from app.training import resolve_training_role
 from app.agents.video_agent import VideoAgent, _build_script, preview_video_plan
+from app.api.concept import _video_job_initial
 from app.api.workspace import TrainingFeedbackRequest, _build_orchestrator, submit_training_feedback
 from app.db.session import Base
 from app.db.models import TrainingRun, User
@@ -95,6 +96,15 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(plan["segment_count"], 1)
             self.assertLessEqual(plan["total_duration"], 6)
             self.assertLessEqual(plan["estimated_cost_rmb"], 3)
+
+    def test_concept_video_job_initial_uses_video_script_builder(self):
+        initial = _video_job_initial(
+            {"topic": "接口联调", "target_role": "FDE"},
+            "job-1",
+        )
+        self.assertEqual(initial["status"], "queued")
+        self.assertEqual(initial["segment_count"], 1)
+        self.assertTrue(initial["script"]["prompt"])
 
     def test_explicit_workflow_question_keeps_multiple_segments(self):
         plan = preview_video_plan({"topic": "现场数据接入与接口联调的完整流程", "target_role": "FDE"})

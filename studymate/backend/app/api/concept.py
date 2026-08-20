@@ -14,7 +14,11 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.agents.video_agent import VideoAgent, _build_script, preview_video_plan
+from app.agents.video_agent import (
+    VideoAgent,
+    _build_script as _build_video_script,
+    preview_video_plan,
+)
 from app.deps import require_user
 from app.llm import get_llm_client, has_llm_key
 
@@ -269,7 +273,7 @@ async def _silent_emit(_event: str, _data: dict) -> None:
 
 
 def _video_job_initial(context: dict, job_id: str) -> dict:
-    script = _build_script(context)
+    script = _build_video_script(context)
     return {
         "job_id": job_id,
         "type": "video",
