@@ -69,9 +69,9 @@ export function AIInterview() {
             <div className="flex max-w-3xl items-start gap-3">
               <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#E7EDF3] text-[#315E83]"><Target className="size-5" /></span>
               <div>
-                <p className="text-[10px] font-bold tracking-[.14em] text-[#8E6925]">ROLE-ALIGNED INTERVIEW</p>
-                <h1 className="mt-1 text-2xl font-bold tracking-[-.035em] text-[#18232D]">围绕目标岗位，开始一次真实面试</h1>
-                <p className="mt-2 text-sm leading-6 text-[#66717B]">面试服务独立部署，岗位要求通过接口传入；StudyMate 不读取面试服务数据库。</p>
+                <p className="text-[10px] font-bold tracking-[.14em] text-[#8E6925]">岗位模拟面试</p>
+                <h1 className="mt-1 text-2xl font-bold tracking-[-.035em] text-[#18232D]">开始一场岗位模拟面试</h1>
+                <p className="mt-2 text-sm leading-6 text-[#66717B]">题目会结合当前岗位生成。完成后可查看成绩和改进建议。</p>
               </div>
             </div>
           </div>
@@ -92,14 +92,14 @@ export function AIInterview() {
               </div>
               <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
                 <button type="button" onClick={() => void startInterview()} disabled={launching || !role} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white shadow-[0_8px_18px_rgba(36,76,102,.16)] hover:bg-[#1D4058] disabled:cursor-wait disabled:opacity-60">{launching ? <LoaderCircle className="size-4 animate-spin" /> : <ExternalLink className="size-4" />}{launching ? "正在建立安全会话" : "进入独立 AI 面试"}</button>
-                <span className="text-[10px] leading-4 text-[#8A8172]">岗位和用户身份由后端验证后通过一次性会话传入。</span>
+                <span className="text-[10px] leading-4 text-[#8A8172]">将打开独立面试页面，结束后返回查看结果。</span>
               </div>
               {error && <p className="mt-3 text-xs font-semibold text-[#9A4E35]" role="alert">{error}</p>}
             </section>
 
-            <aside className="space-y-3" aria-label="面试服务边界">
-              <div className="rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] p-4"><ShieldCheck className="size-5 text-[#6F8A69]" /><h2 className="mt-3 text-sm font-bold text-[#18232D]">独立服务边界</h2><p className="mt-1.5 text-xs leading-5 text-[#66717B]">独立容器、独立 MySQL、独立密钥；主系统仅通过 API 和面试服务交换必要数据。</p></div>
-              <div className="rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] p-4"><FileCheck2 className="size-5 text-[#B1842C]" /><h2 className="mt-3 text-sm font-bold text-[#18232D]">结果回到岗位画像</h2><p className="mt-1.5 text-xs leading-5 text-[#66717B]">完成并同步后，面试评分会作为岗位能力证据，参与 StudyMate 的训练建议和差距分析。</p></div>
+            <aside className="space-y-3" aria-label="面试说明">
+              <div className="rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] p-4"><ShieldCheck className="size-5 text-[#6F8A69]" /><h2 className="mt-3 text-sm font-bold text-[#18232D]">数据说明</h2><p className="mt-1.5 text-xs leading-5 text-[#66717B]">只向面试页面传递当前岗位和必要的账号信息。</p></div>
+              <div className="rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] p-4"><FileCheck2 className="size-5 text-[#B1842C]" /><h2 className="mt-3 text-sm font-bold text-[#18232D]">成绩用途</h2><p className="mt-1.5 text-xs leading-5 text-[#66717B]">同步成绩后，训练建议会结合本次面试表现更新。</p></div>
             </aside>
           </div>
           <section className="border-t border-[#D7D1C4] bg-[#FFFEFA] px-5 py-5 sm:px-8" aria-labelledby="interview-history">

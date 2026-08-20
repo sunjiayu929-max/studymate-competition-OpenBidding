@@ -243,7 +243,7 @@ export function TheoryAssessmentModal({
             <div>
               <div className="flex items-center gap-2 text-[10px] font-bold tracking-[.16em] text-[#AFC9EB]"><ShieldCheck className="size-4 text-[#6AD2B8]" />首次进入诊断门槛</div>
               <h2 id="theory-assessment-title" className="mt-2 text-xl font-bold tracking-[-.03em] sm:text-2xl">{roleName} · 理论基础测评</h2>
-              <p className="mt-1.5 max-w-2xl text-xs leading-5 text-[#BFD0E5]">试题由当前岗位知识库现场组卷。结果将与学历背景等先验画像共同交给学情诊断 Agent，用于确定训练起点。</p>
+              <p className="mt-1.5 max-w-2xl text-xs leading-5 text-[#BFD0E5]">试题根据当前岗位知识库生成，结果用于安排首轮训练。</p>
             </div>
             <div className="flex shrink-0 gap-2 text-[10px] font-bold text-[#D7E6F7]">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5"><Database className="size-3.5" />{sourceCount || "—"} 个知识来源</span>
@@ -254,7 +254,7 @@ export function TheoryAssessmentModal({
 
         {loading ? (
           <div className="grid min-h-[420px] place-items-center px-6 text-center">
-            <div><Loader2 className="mx-auto size-8 animate-spin text-[#326CC0]" /><p className="mt-4 text-sm font-bold text-[#294A73]">正在检索岗位知识库并组织试卷</p><p className="mt-1 text-xs text-[#75849A]">命题 Agent 正在校验能力覆盖与知识来源…</p></div>
+            <div><Loader2 className="mx-auto size-8 animate-spin text-[#326CC0]" /><p className="mt-4 text-sm font-bold text-[#294A73]">正在生成试卷</p><p className="mt-1 text-xs text-[#75849A]">正在检查题型、难度和知识范围…</p></div>
           </div>
         ) : error && !assessment ? (
           <div className="grid min-h-[420px] place-items-center px-6 text-center">
@@ -319,7 +319,7 @@ function AssessmentResult({ assessment, onContinue }: { assessment: TheoryAssess
       <div className="mx-auto mt-6 grid max-w-3xl gap-3 sm:grid-cols-2">
         {competencyScores.map(([name, value]) => <div key={name} className="rounded-2xl border border-[#DCE5EF] bg-white p-4"><div className="flex justify-between text-[11px] font-bold text-[#405B7B]"><span>{name}</span><span>{value}%</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#E8EDF3]"><div className={cn("h-full rounded-full", value >= 60 ? "bg-[#25876E]" : "bg-[#D28B3D]")} style={{ width: `${value}%` }} /></div></div>)}
       </div>
-      <div className="mx-auto mt-4 max-w-3xl rounded-2xl border border-[#D8E5F0] bg-[#F0F6FC] p-4 text-xs leading-6 text-[#536B86]"><strong className="text-[#294D75]">诊断 Agent 将如何使用：</strong>{weakTopics.length ? `优先补强 ${weakTopics.join("、")}，并结合你的学历背景与岗位目标调整首轮资源难度。` : "当前理论基础较完整，首轮将更快进入岗位场景应用与迁移训练。"}</div>
+      <div className="mx-auto mt-4 max-w-3xl rounded-2xl border border-[#D8E5F0] bg-[#F0F6FC] p-4 text-xs leading-6 text-[#536B86]"><strong className="text-[#294D75]">下一步：</strong>{weakTopics.length ? `先补强 ${weakTopics.join("、")}，并据此调整首轮难度。` : "理论基础较完整，可以更快进入岗位实操。"}</div>
       <div className="mt-6 text-center"><button type="button" onClick={onContinue} className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#245FAE] px-5 text-sm font-bold text-white shadow-[0_10px_24px_rgba(36,95,174,.2)]">进入岗位训练中心<ChevronRight className="size-4" /></button></div>
     </div>
   )
