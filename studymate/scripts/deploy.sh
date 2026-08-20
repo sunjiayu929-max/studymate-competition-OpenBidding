@@ -275,7 +275,11 @@ start_oj() {
     echo "Shared Docker network studymate_edge was not created by the main stack." >&2
     return 1
   fi
-  oj_compose up -d --build --remove-orphans
+  # Hydro's web and judge images each run a large TypeScript build. Build them
+  # one at a time so a small production host does not OOM under BuildKit.
+  oj_compose build hydro-web
+  oj_compose build hydro-judge
+  oj_compose up -d --no-build --remove-orphans
   wait_for_oj_health
 }
 
