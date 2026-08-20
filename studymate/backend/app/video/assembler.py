@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import re
 import shutil
+import textwrap
 import uuid
 from pathlib import Path
 from urllib.parse import urlparse
@@ -38,6 +39,37 @@ def ffmpeg_available() -> bool:
     return shutil.which("ffmpeg") is not None
 
 
+def _srt_timestamp(seconds: float) -> str:
+    milliseconds = max(0, int(round(seconds * 1000)))
+    hours, remainder = divmod(milliseconds, 3_600_000)
+    minutes, remainder = divmod(remainder, 60_000)
+    seconds_value, milliseconds = divmod(remainder, 1000)
+    return f"{hours:02d}:{minutes:02d}:{seconds_value:02d},{milliseconds:03d}"
+
+
+def _subtitle_lines(text: str, width: int = 24) -> str:
+    normalized = re.sub(r"\s+", " ", str(text or "")).strip()
+    if not normalized:
+        return ""
+    return "\n".join(textwrap.wrap(normalized, width=width, break_long_words=True, break_on_hyphens=False))
+
+
+def _build_srt(subtitle_segments: list[dict]) -> str:
+    """Create one subtitle cue per generated segment using its voiceover."""
+    entries: list[str] = []
+    cursor = 0.0
+    for index, segment in enumerate(subtitle_segments, start=1):
+        duration = max(0.1, float(segment.get("duration") or 0))
+        text = _subtitle_lines(str(segment.get("voiceover") or ""))
+        end = cursor + duration
+        if text:
+            entries.append(
+                f"{index}\n{_srt_timestamp(cursor)} --> {_srt_timestamp(end)}\n{text}"
+            )
+        cursor = end
+    return "\n\n".join(entries) + ("\n" if entries else "")
+
+
 async def _download_segment(client: httpx.AsyncClient, url: str, target: Path) -> None:
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
@@ -52,8 +84,13 @@ async def _download_segment(client: httpx.AsyncClient, url: str, target: Path) -
         raise VideoAssemblyError(f"下载视频片段失败：{exc}") from exc
 
 
-async def assemble_video_segments(*, user_id: int, video_urls: list[str]) -> dict[str, str]:
-    """Download clips and concatenate them. Returns a private API URL on success."""
+async def assemble_video_segments(
+    *,
+    user_id: int,
+    video_urls: list[str],
+    subtitle_segments: list[dict] | None = None,
+) -> dict[str, str]:
+    """Download clips, burn Chinese subtitles, and concatenate them."""
     if not video_urls:
         raise VideoAssemblyError("没有可供合成的视频片段")
     if not ffmpeg_available():
@@ -81,13 +118,39 @@ async def assemble_video_segments(*, user_id: int, video_urls: list[str]) -> dic
                 segment_paths.append(segment_path)
 
         concat_path.write_text(
-            "".join(f"file '{path.as_posix().replace(chr(39), chr(39) + chr(39) + chr(39))}'\n" for path in segment_paths),
+            "".join(
+                f"file '{path.resolve().as_posix().replace(chr(39), chr(39) + chr(39) + chr(39))}'\n"
+                for path in segment_paths
+            ),
             encoding="utf-8",
         )
+        subtitle_text = _build_srt(subtitle_segments or [])
+        if subtitle_text:
+            subtitle_path = temp_dir / "subtitles.srt"
+            subtitle_path.write_text(subtitle_text, encoding="utf-8")
+
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        ffmpeg_args = [
+            "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_path.resolve()),
+        ]
+        if subtitle_text:
+            subtitle_filter = (
+                f"subtitles=filename='{subtitle_path.resolve().as_posix()}':"
+                "force_style='FontName=Noto Sans CJK SC,FontSize=20,"
+                "PrimaryColour=&H00FFFFFF,OutlineColour=&H80000000,"
+                "BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=36'"
+            )
+            ffmpeg_args.extend([
+                "-map", "0:v:0", "-map", "0:a?", "-vf", subtitle_filter,
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+                "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
+                "-movflags", "+faststart",
+            ])
+        else:
+            ffmpeg_args.extend(["-c", "copy"])
+        ffmpeg_args.append(str(output_path.resolve()))
         process = await asyncio.create_subprocess_exec(
-            "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_path),
-            "-c", "copy", str(output_path),
+            *ffmpeg_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )

@@ -35,7 +35,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y ffmpeg
+sudo apt-get install -y ffmpeg fonts-noto-cjk
 ffmpeg -version
 ```
 

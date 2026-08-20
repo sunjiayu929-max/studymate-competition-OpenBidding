@@ -26,7 +26,7 @@ RUN for source in /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources; 
       fi; \
     done \
     && apt-get update \
-    && apt-get install -y --no-install-recommends curl ffmpeg \
+    && apt-get install -y --no-install-recommends curl ffmpeg fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
 # 先装依赖（利用 docker layer cache，源码变动不会触发重装）

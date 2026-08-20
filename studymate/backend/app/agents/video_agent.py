@@ -96,6 +96,7 @@ def _build_script(context: dict) -> dict:
             f"画面清晰、动作可核验，旁白准确朗读：‘{segment_voiceover}’。"
             "使用自然、清晰、适合培训的普通话，配合克制的环境音，画面与旁白同步。"
             "不要生成无法核验的品牌、人物或具体数据，不要在画面中堆叠长段文字。"
+            "字幕由系统后期烧录，画面不要自行生成字幕。"
         )
         segment_specs.append({
             "index": index,
@@ -213,6 +214,7 @@ class VideoAgent(AgentBase):
             return {**base, "status": "unconfigured", "message": "待配置 MiniMax H3 API Key"}
         segments = [dict(segment) for segment in script["segments"]]
         successful_urls: list[str] = []
+        successful_segments: list[dict] = []
         successful_tasks: list[str] = []
         failure_messages: list[str] = []
         for segment in segments:
@@ -227,6 +229,7 @@ class VideoAgent(AgentBase):
                     "usage": result.get("usage", {}),
                 })
                 successful_urls.append(segment["video_url"])
+                successful_segments.append(segment)
                 successful_tasks.append(segment["task_id"])
                 await publish_progress({
                     **base,
@@ -269,7 +272,11 @@ class VideoAgent(AgentBase):
             }
 
         try:
-            assembly = await assemble_video_segments(user_id=int(context.get("user_id") or 0), video_urls=successful_urls)
+            assembly = await assemble_video_segments(
+                user_id=int(context.get("user_id") or 0),
+                video_urls=successful_urls,
+                subtitle_segments=successful_segments,
+            )
         except VideoAssemblyError as exc:
             return {
                 **common,
