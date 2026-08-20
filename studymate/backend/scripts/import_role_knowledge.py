@@ -13,6 +13,7 @@ import hashlib
 import re
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 from sqlalchemy import delete, select
 
@@ -27,6 +28,8 @@ URL_RE = re.compile(r"https://[^\s)）；;，。]+")
 REFERENCE_RE = re.compile(r"^[-*]\s+\[([A-Za-z]+\d+)\]\s*(.+?)\s*(https://[^\s)）；;，。]+)", re.MULTILINE)
 REFERENCE_LABEL_RE = re.compile(r"\[([A-Za-z]+\d+)\]")
 REFERENCE_MARKER_RE = re.compile(r"\s*\[[A-Za-z]+\d+\]")
+URL_LINE_RE = re.compile(r"(?:^|\s)URL\s*[:：]\s*https://", re.IGNORECASE)
+SOURCE_METADATA_RE = re.compile(r"^(?:URL\s*[:：]?|发布日期|发布日|版本|许可证|访问核验)", re.IGNORECASE)
 
 SUPPLEMENTAL_REFERENCES: dict[str, list[dict[str, str]]] = {
     "AI Agent 开发工程师": [{"name": "LangChain 官方 GitHub 仓库（MIT）", "url": "https://github.com/langchain-ai/langchain", "note": "补充核验资料"}],
@@ -89,23 +92,87 @@ def parse_reference_map(text: str) -> dict[str, dict[str, str]]:
     return references
 
 
+def _platform_name(url: str) -> str:
+    host = urlparse(url).netloc.lower().removeprefix("www.").removeprefix("m.")
+    labels = {
+        "zhaopin.com": "智联招聘",
+        "liepin.com": "猎聘",
+        "zhipin.com": "BOSS直聘",
+        "lagou.com": "拉勾招聘",
+        "github.com": "GitHub",
+    }
+    return next((name for domain, name in labels.items() if host.endswith(domain)), host or "外部资料")
+
+
+def _inline_source_name(role: str, block: str, url: str) -> str:
+    """Give a URL-only citation a human-readable, reviewable label."""
+    position = block.find(url)
+    if position >= 0:
+        for raw_line in reversed(block[:position].splitlines()):
+            candidate = raw_line.strip().strip("-*#■ ")
+            if not candidate or SOURCE_METADATA_RE.match(candidate) or "原始来源" in candidate:
+                continue
+            candidate = URL_RE.sub("", candidate).strip(" ：:")
+            if 4 <= len(candidate) <= 72:
+                return f"{_platform_name(url)} · {candidate}"
+    return f"{_platform_name(url)} · {role}岗位资料"
+
+
+def _reference_source_name(raw_name: str, url: str) -> str:
+    """Turn a bibliography entry into a compact label suitable for a source card."""
+    platform = _platform_name(url)
+    title = re.sub(r"^(?:智联招聘|猎聘|BOSS直聘|拉勾招聘)[，,\s]*", "", raw_name)
+    title = re.sub(r"[，,；;]\s*(?:公开招聘信息[，,；;]?\s*转述引用|访问核验|发布日期|发布日).*$", "", title)
+    title = re.sub(r"[，,；;]\s*(?:MIT|Apache-[\d.]+|GitHub|官方文档|新闻稿).*$", "", title)
+    title = re.sub(r"[：:]$", "", title).strip()
+    return f"{platform} · {title}" if title else platform
+
+
+def _citation_kind(url: str) -> str:
+    host = urlparse(url).netloc.lower().removeprefix("www.").removeprefix("m.")
+    if any(host.endswith(domain) for domain in ("zhaopin.com", "liepin.com", "zhipin.com", "lagou.com")):
+        return "招聘岗位原文"
+    if host.endswith("github.com"):
+        return "开源项目原文"
+    if "/docs/" in url or host.endswith(("kubernetes.io", "owasp.org")):
+        return "官方技术文档"
+    return "原始网页资料"
+
+
 def resolve_sources(role: str, block: str, references: dict[str, dict[str, str]]) -> tuple[str, str | None, list[dict[str, str]], str]:
     labels = list(dict.fromkeys(REFERENCE_LABEL_RE.findall(block)))
-    sources = [references[label] for label in labels if label in references]
+    sources = [
+        {
+            **references[label],
+            "name": _reference_source_name(references[label]["name"], references[label]["url"]),
+            "kind": _citation_kind(references[label]["url"]),
+        }
+        for label in labels
+        if label in references
+    ]
     source_status = "document_citation"
     if not sources:
         inline_urls = list(dict.fromkeys(URL_RE.findall(block)))
-        sources = [{"label": "URL", "name": "正文中的原始链接", "url": url.rstrip(".,，。；;")} for url in inline_urls]
+        sources = [
+            {
+                "label": "URL",
+                "name": _inline_source_name(role, block, url),
+                "url": url.rstrip(".,，。；;"),
+                "kind": _citation_kind(url),
+            }
+            for url in inline_urls
+        ]
         source_status = "inline_url" if sources else "supplemental_reference"
     if not sources:
         sources = SUPPLEMENTAL_REFERENCES.get(role, [])
     if not sources:
         return "来源待补充", None, [], "unverified"
-    label = "；".join(item["name"] for item in sources[:2])
-    return label, sources[0]["url"], sources, source_status
+    # The card title must identify one concrete source. Other citations remain
+    # in metadata and are explicitly listed in the source panel.
+    return sources[0]["name"], sources[0]["url"], sources, source_status
 
 
-def split_blocks(text: str, limit: int = 850) -> list[tuple[str, str]]:
+def split_blocks(text: str, limit: int = 850, *, preserve_paragraphs: bool = False) -> list[tuple[str, str]]:
     heading = "资料正文"
     blocks: list[tuple[str, str]] = []
     current: list[str] = []
@@ -113,6 +180,13 @@ def split_blocks(text: str, limit: int = 850) -> list[tuple[str, str]]:
     for raw in text.splitlines():
         line = raw.strip()
         if not line:
+            if preserve_paragraphs and current:
+                blocks.append((heading, "\n".join(current)))
+                current, length = [], 0
+            elif current and current[-1] != "":
+                # Keep Markdown paragraph boundaries. In particular, table
+                # rows must remain consecutive for remark-gfm to parse them.
+                current.append("")
             continue
         if line.startswith("#") or re.match(r"^(第[一二三四五六七八九十\d]+[章节]|[一二三四五六七八九十\d]+[、.])", line):
             if current:
@@ -125,6 +199,11 @@ def split_blocks(text: str, limit: int = 850) -> list[tuple[str, str]]:
             current, length = [], 0
         current.append(line)
         length += len(line)
+        # 招聘资料常以 URL 行分隔不同职位样本；在此切开可避免多个
+        # 职位描述和链接挤在同一张检索卡里。
+        if URL_LINE_RE.search(line):
+            blocks.append((heading, "\n".join(current)))
+            current, length = [], 0
     if current:
         blocks.append((heading, "\n".join(current)))
     return blocks
@@ -135,6 +214,23 @@ def clean_content(block: str) -> str:
     cleaned = REFERENCE_MARKER_RE.sub("", block)
     # 正文不显示 Markdown 粗体/斜体星号，避免将格式标记暴露为 AI 痕迹。
     cleaned = re.sub(r"\*+", "", cleaned)
+    visible_lines: list[str] = []
+    lines = cleaned.splitlines()
+    for index, raw_line in enumerate(lines):
+        line = raw_line.strip()
+        next_line = lines[index + 1].strip() if index + 1 < len(lines) else ""
+        if not line:
+            if visible_lines and visible_lines[-1] != "":
+                visible_lines.append("")
+            continue
+        if SOURCE_METADATA_RE.match(line) or "原始来源与引用" in line:
+            continue
+        if line.startswith("■") or (URL_LINE_RE.search(next_line) and any(tag in line for tag in ("招聘", "GitHub", "BOSS直聘", "猎聘", "智联"))):
+            continue
+        line = URL_RE.sub("", line).strip(" ：:")
+        if line:
+            visible_lines.append(line)
+    cleaned = "\n".join(visible_lines)
     cleaned = re.sub(r"\s+([，。；：、])", r"\1", cleaned)
     return cleaned.strip()
 
@@ -244,15 +340,29 @@ def make_chunks(domain: str, folder: str, role: str) -> list[dict]:
             print(f"跳过空白资料：{path.name}")
             continue
         references = parse_reference_map(text)
-        raw_blocks = split_blocks(text)
+        # FDE 的招聘事实和“相邻岗位”样本都在同一份资料中。按自然段
+        # 切分可以保留每一句原文自身的引用边界，避免将相邻岗位链接误挂到
+        # CatPaw FDE 的正文旁。
+        raw_blocks = split_blocks(text, preserve_paragraphs=role.startswith("FDE"))
         # 五个数字编号目录只用于“特定软件开发”领域；其他领域保持原有切分粒度。
-        blocks = enrich_short_software_blocks(raw_blocks) if folder[:2] in {"00", "01", "02", "03", "04"} else raw_blocks
+        blocks = enrich_short_software_blocks(raw_blocks) if folder[:2] in {"01", "02", "03", "04"} else raw_blocks
         for index, (heading, block) in enumerate(blocks, start=1):
             if is_source_section(heading):
                 continue
-            stable_material = f"{domain}|{role}|{path.relative_to(ROOT).as_posix()}|{index}|{block}"
+            # The identity tracks the source position instead of display-only
+            # cleanup, keeping source-page links stable across future rebuilds.
+            stable_material = f"{domain}|{role}|{path.relative_to(ROOT).as_posix()}|{index}"
             stable_id = hashlib.sha256(stable_material.encode("utf-8")).hexdigest()[:48]
             source, url, citations, source_status = resolve_sources(role, block, references)
+            # J2-J7 are explicitly documented as neighbouring AI roles, not
+            # FDE roles. Keep them out of the FDE corpus so a FDE query never
+            # presents an Agent/algorithm vacancy as its own job evidence.
+            if role.startswith("FDE") and any(
+                str(citation.get("label", "")).startswith("J")
+                and citation.get("label") != "J1"
+                for citation in citations
+            ):
+                continue
             content = clean_content(block)
             if not content:
                 continue

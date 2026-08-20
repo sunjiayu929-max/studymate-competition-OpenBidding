@@ -6,6 +6,8 @@ RAG 服务：把检索引擎和 SQLite 持久化粘起来。
   没配 embedding key / 向量缺失 / embedding 调用失败时，自动退化为纯 BM25（demo 永不崩）。
 """
 from __future__ import annotations
+import hashlib
+import re
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +19,31 @@ from app.rag.source import clean_source_name
 
 # RRF 融合常数（标准取 60）；候选池大小（每路各取多少条进融合）
 _RRF_C = 60
-_POOL = 20
+_POOL = 50
+
+
+def _normalized_content_key(content: str) -> str:
+    """Stable key used to suppress copies of the same source passage."""
+    normalized = re.sub(r"\s+", "", content).lower()
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def _is_fde_chunk(chunk: Chunk) -> bool:
+    return str(chunk.meta.get("role", "")).strip().startswith("FDE")
+
+
+def _source_priority(chunk: Chunk) -> int:
+    """Source order used only for the FDE showcase catalogue."""
+    url = (chunk.url or "").lower()
+    if _is_fde_chunk(chunk) and "github.com/xdash/fde-the-guidance-book-of-forward-deployed-engineer" in url:
+        return 4
+    if any(host in url for host in ("zhaopin.com", "liepin.com", "zhipin.com", "lagou.com")):
+        return 3
+    if "github.com/" in url:
+        return 2
+    if url.startswith(("https://", "http://")):
+        return 1
+    return 0
 
 
 def relative_relevance_percent(score: float, active_branches: int) -> int:
@@ -120,7 +146,10 @@ class RAGService:
                 print(f"  [warn] semantic branch failed: {e}; 退化为纯 BM25")
 
         active_lists = [hits for hits in (bm_hits, vec_hits) if hits]
-        fused = self._rrf_fuse(active_lists, k=k)
+        # Pull a wider candidate set before removing duplicate passages and
+        # applying the source-type tie-breaker.
+        fused = self._rrf_fuse(active_lists, k=max(k * 3, _POOL))
+        fused = self._deduplicate_and_rerank(fused, k=k)
         active_branches = len(active_lists)
         mode = "hybrid" if bm_hits and vec_hits else "semantic" if vec_hits else "lexical"
         results = [
@@ -164,6 +193,34 @@ class RAGService:
         ranked = sorted(scores.keys(), key=lambda c: scores[c], reverse=True)[:k]
         return [SearchHit(chunk=chunk_of[c], score=scores[c]) for c in ranked]
 
+    @staticmethod
+    def _deduplicate_and_rerank(hits: list[SearchHit], k: int) -> list[SearchHit]:
+        """Keep one result for identical passages and near-identical source cards."""
+        unique: list[SearchHit] = []
+        seen_content: set[str] = set()
+        seen_source_preview: set[tuple[str, str]] = set()
+        for hit in hits:
+            content_key = _normalized_content_key(hit.chunk.content)
+            preview = re.sub(r"\s+", "", hit.chunk.content).lower()[:180]
+            source_key = (hit.chunk.source, preview)
+            if (
+                content_key in seen_content
+                or source_key in seen_source_preview
+            ):
+                continue
+            seen_content.add(content_key)
+            seen_source_preview.add(source_key)
+            unique.append(hit)
+
+        # Only the FDE showcase has a prescribed source order. Every other
+        # role retains pure relevance ordering from the retrieval engine.
+        if unique and all(_is_fde_chunk(hit.chunk) for hit in unique):
+            return sorted(
+                unique,
+                key=lambda hit: (-_source_priority(hit.chunk), -hit.score),
+            )[:k]
+        return unique[:k]
+
     async def stats(self, course_id: int | None = None) -> dict:
         """全库或单课统计。"""
         await self.ensure_loaded()
@@ -190,7 +247,9 @@ class RAGService:
     @staticmethod
     def _row_to_chunk(row: KnowledgeChunk) -> Chunk:
         return Chunk(
-            chunk_id=str(row.id),
+            # ``chroma_id`` is deterministic for imported materials. Returning
+            # it to the browser keeps source links valid after a local rebuild.
+            chunk_id=row.chroma_id or str(row.id),
             content=row.content,
             source=clean_source_name(row.source),
             page=row.page,

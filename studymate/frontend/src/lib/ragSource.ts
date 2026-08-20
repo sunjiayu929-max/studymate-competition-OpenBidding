@@ -35,8 +35,13 @@ export function formatInternalLocator(url: string | null | undefined): string {
 }
 
 export function visibleMetadata(meta: Record<string, unknown>) {
-  return Object.entries(meta).filter(([key]) => {
+  return Object.entries(meta).filter(([key, value]) => {
     const normalized = key.toLowerCase().replace(/[-\s]/g, "_")
-    return !normalized.includes("ai_generated") && !normalized.includes("generated_by") && normalized !== "generated"
+    return (
+      !normalized.includes("ai_generated") &&
+      !normalized.includes("generated_by") &&
+      !["generated", "citations", "source_notice", "source_status", "catalog_version"].includes(normalized) &&
+      ["string", "number", "boolean"].includes(typeof value)
+    )
   })
 }

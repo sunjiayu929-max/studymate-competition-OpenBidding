@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { AlertTriangle, ArrowLeft, BookOpen, Database, FileText, Hash, Link2, Loader2, RotateCcw, ShieldCheck } from "lucide-react"
+import { AlertTriangle, ArrowLeft, BookOpen, Database, ExternalLink, FileText, Hash, Link2, Loader2, RotateCcw, ShieldCheck } from "lucide-react"
 
 import { PageHeader } from "@/components/PageHeader"
+import { Markdown } from "@/components/Markdown"
 import { ApiError, apiGet } from "@/lib/api"
 import { formatInternalLocator, formatSourceLabel, visibleMetadata } from "@/lib/ragSource"
 import { useTrackPage } from "@/lib/useTrackPage"
@@ -33,6 +34,27 @@ interface SourceLoadError {
   status: number
 }
 
+interface SourceCitation {
+  name: string
+  url: string
+  kind: string
+}
+
+function sourceCitations(meta: Record<string, unknown>, fallbackUrl: string | null): SourceCitation[] {
+  const raw = Array.isArray(meta.citations) ? meta.citations : []
+  const items = raw.flatMap((item): SourceCitation[] => (
+    item && typeof item === "object" && typeof (item as { url?: unknown }).url === "string"
+      ? [{
+        name: typeof (item as { name?: unknown }).name === "string" ? (item as { name: string }).name : "外部原文资料",
+        url: (item as { url: string }).url,
+        kind: typeof (item as { kind?: unknown }).kind === "string" ? (item as { kind: string }).kind : "原始网页资料",
+      }]
+      : []
+  ))
+  if (fallbackUrl && !items.some((item) => item.url === fallbackUrl)) items.unshift({ name: "当前命中原文", url: fallbackUrl, kind: "原始网页资料" })
+  return items.filter((item, index, all) => /^https?:\/\//.test(item.url) && all.findIndex((other) => other.url === item.url) === index)
+}
+
 export function RagSource() {
   const { chunkId } = useParams<{ chunkId: string }>()
   useTrackPage(`rag_source:${chunkId || "unknown"}`)
@@ -58,6 +80,7 @@ export function RagSource() {
   }, [chunkId, retryToken])
 
   const current = useMemo(() => data?.context.find((item) => item.is_current), [data])
+  const citations = useMemo(() => data ? sourceCitations(data.meta, data.external_url) : [], [data])
   const sourceChapter = useMemo(() => {
     if (!data) return "来源章节未标注"
     const chapter = data.source.match(/第\s*\d+\s*章(?:：[^，]+)?/u)?.[0]
@@ -145,7 +168,7 @@ export function RagSource() {
                       {item.is_current && <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-[#244C66] px-3 py-1 text-[10px] font-bold text-[#FFFEFA]"><Link2 className="size-3" />当前命中片段</span>}
                       {!item.is_current && <span className="mb-3 inline-flex text-[10px] font-bold tracking-[0.1em] text-[#8A8172]">相邻原文</span>}
                       {item.page != null && <span className="ml-2 text-[10px] font-semibold text-[#8A8172]">第 {item.page} 页</span>}
-                      <p className={`whitespace-pre-wrap text-sm leading-8 ${item.is_current ? "font-medium text-[#18232D]" : "text-[#3F4A51]"}`}>{item.content}</p>
+                      <Markdown content={item.content} wrapLongContent className={`text-sm leading-8 ${item.is_current ? "font-medium text-[#18232D]" : "text-[#3F4A51]"}`} />
                     </article>
                   ))}
                 </div>
@@ -162,6 +185,10 @@ export function RagSource() {
                   "上下相邻内容来自同一岗位知识资料",
                   "来源和页码由知识库入库时保留",
                 ]} />
+                {citations.length > 0 && <section className="rounded-[22px] border border-[#CFC8B9] bg-[#F8F6F0] p-4">
+                  <h3 className="text-sm font-bold text-[#18232D]">真实网页来源</h3>
+                  <div className="mt-3 space-y-2">{citations.map((citation) => <a key={citation.url} href={citation.url} target="_blank" rel="noreferrer" className="flex items-start gap-2 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-2 text-[11px] leading-5 text-[#315E83] transition-colors hover:bg-[#E7EDF3]"><ExternalLink className="mt-0.5 size-3.5 shrink-0" /><span className="min-w-0 break-words"><strong className="block font-bold">{citation.name}</strong><small className="mt-0.5 block text-[10px] font-medium text-[#78827F]">{citation.kind}</small></span></a>)}</div>
+                </section>}
                 {visibleMetadata(data.meta).length > 0 && (
                   <section className="rounded-[22px] border border-[#CFC8B9] bg-[#F8F6F0] p-4">
                     <h3 className="text-sm font-bold text-[#18232D]">片段标签</h3>
