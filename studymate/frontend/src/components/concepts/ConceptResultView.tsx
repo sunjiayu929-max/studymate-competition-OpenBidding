@@ -211,6 +211,9 @@ function ConceptVideoCard({ video }: { video: ConceptVideoResult }) {
   const ready = video.status === "succeeded" && Boolean(video.video_url)
   const failed = video.status === "failed" || video.status === "partial_failed"
   const segments = video.segments || []
+  const failureDetails = segments
+    .filter((segment) => segment.status === "failed" && segment.message)
+    .map((segment) => `片段 ${segment.index}：${segment.message}`)
   return (
     <div className="mt-1 space-y-4">
       {ready ? (
@@ -222,7 +225,7 @@ function ConceptVideoCard({ video }: { video: ConceptVideoResult }) {
       ) : (
         <div className={`flex items-start gap-2 rounded-xl border px-3 py-3 text-[11px] leading-5 ${failed ? "border-[#DFC8BE] bg-[#FCF7F4] text-[#9A4E35]" : "border-[#D9CFB7] bg-[#F4ECD8] text-[#72551F]"}`}>
           {failed ? <AlertCircle className="mt-0.5 size-3.5 shrink-0" /> : <Settings2 className="mt-0.5 size-3.5 shrink-0" />}
-          <span>{failed ? "部分视频片段生成失败，下面保留已完成片段供复核。" : video.status === "segments_ready" ? "视频片段已生成，但当前环境暂未合成最终视频。" : video.status === "queued" || video.status === "running" ? (video.message || "视频正在后台生成，页面会自动更新进度。") : "尚未配置 MiniMax H3 API Key，已保留岗位视频脚本。"}</span>
+          <span>{failed ? `${failureDetails.length > 0 ? failureDetails.join("；") : "部分视频片段生成失败"}，下面保留已完成片段供复核。` : video.status === "segments_ready" ? "视频片段已生成，但当前环境暂未合成最终视频。" : video.status === "queued" || video.status === "running" ? (video.message || "视频正在后台生成，页面会自动更新进度。") : "尚未配置 MiniMax H3 API Key，已保留岗位视频脚本。"}</span>
         </div>
       )}
 
@@ -237,7 +240,7 @@ function ConceptVideoCard({ video }: { video: ConceptVideoResult }) {
           {segments.map((segment) => (
             <div key={segment.index} className="rounded-lg border border-[#DDE9E5] bg-[#F8FCFA] px-2.5 py-2 text-[10px] leading-4 text-[#527077]">
               <span className={`font-bold ${segment.status === "succeeded" ? "text-[#287F8D]" : segment.status === "failed" ? "text-[#9A4E35]" : "text-[#8E6925]"}`}>{String(segment.index).padStart(2, "0")} · {segment.title} · {segment.duration} 秒</span>
-              <p className="mt-0.5">{segment.status === "succeeded" ? "已生成" : segment.status === "failed" ? "生成失败" : "等待生成"}</p>
+              <p className="mt-0.5">{segment.status === "succeeded" ? "已生成" : segment.status === "failed" ? (segment.message || "生成失败") : "等待生成"}</p>
               {segment.status === "succeeded" && segment.video_url && <a className="text-[#287F8D] underline" href={segment.video_url} target="_blank" rel="noreferrer">查看片段</a>}
             </div>
           ))}
