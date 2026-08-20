@@ -109,7 +109,6 @@ services:
     restart: unless-stopped
     environment:
       SITE_ADDRESS: "${SITE_ADDRESS:-http://localhost}"
-      AI_INTERVIEW_SITE_ADDRESS: "${AI_INTERVIEW_SITE_ADDRESS:-interview.localhost}"
     networks:
       - default
       - studymate_edge

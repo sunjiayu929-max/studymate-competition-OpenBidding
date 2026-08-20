@@ -5,24 +5,22 @@
 {$SITE_ADDRESS:http://localhost} {
 	encode zstd gzip
 
+	# Keep the independent interview service behind the existing StudyMate host.
+	# handle_path removes /interview before forwarding it to Flask.
+	redir /interview /interview/ 308
+	handle_path /interview/* {
+		# Flask uses this prefix for redirects, static assets, and its own cookie path.
+		reverse_proxy ai-interview:5000 {
+			header_up X-Forwarded-Prefix /interview
+			flush_interval -1
+		}
+	}
+
 	# Low-latency mode is important for FastAPI/SSE token streaming.
-	reverse_proxy frontend:80 {
-		flush_interval -1
-	}
-
-	header {
-		-Server
-		X-Content-Type-Options nosniff
-		Referrer-Policy strict-origin-when-cross-origin
-	}
-}
-
-{$AI_INTERVIEW_SITE_ADDRESS:interview.localhost} {
-	encode zstd gzip
-
-	# Flask-SocketIO upgrades WebSocket connections through this proxy.
-	reverse_proxy ai-interview:5000 {
-		flush_interval -1
+	handle {
+		reverse_proxy frontend:80 {
+			flush_interval -1
+		}
 	}
 
 	header {

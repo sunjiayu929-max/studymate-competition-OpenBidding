@@ -49,8 +49,9 @@ sequenceDiagram
 
 ```text
 浏览器 -> Caddy
-          ├── studymate.example.com    -> StudyMate frontend -> backend
-          └── interview.example.com    -> ai-interview:5000
+          └── matropic.cn
+              ├── /                    -> StudyMate frontend -> backend
+              └── /interview/*         -> ai-interview:5000
 
 StudyMate backend <----签名 HTTP----> ai-interview
                                       │
@@ -59,8 +60,10 @@ StudyMate backend <----签名 HTTP----> ai-interview
 
 - 两个 Compose 项目通过名为 `studymate_edge` 的受控网络连接，只用于反向代理和签名 API。
 - 面试 MySQL 只加入面试项目自己的默认网络，不加入 `studymate_edge`。
-- 面试端口只绑定 `127.0.0.1`；生产公网入口由主项目 Caddy 的独立面试域名提供。
+- 面试端口只绑定 `127.0.0.1`；生产公网入口由主项目 Caddy 在现有域名的 `/interview/` 路径提供，无需新增 DNS、证书或公网端口。
 - 双方共享的 `AI_INTERVIEW_SERVICE_SECRET` 只放在两个后端容器环境变量中，绝不进入前端构建产物。
+
+StudyMate 学习者面试流以 `/interview/` 发布。原项目 legacy 前后台的旧路由大量使用根路径和 `/api`，会与 StudyMate 主系统命名空间冲突，因此不通过该同域路径直接公开；相关代码和独立容器能力仍保留。若后续确实需要对外启用旧后台，应先完成其路由命名空间迁移，而不是增加一条简单反向代理规则。
 
 ## 配置
 
@@ -80,6 +83,13 @@ MYSQL_ROOT_PASSWORD=...
 STUDYMATE_API_URL=http://backend:8000
 STUDYMATE_SERVICE_SECRET=同一条随机长密钥
 LLM_API_KEY=...
+```
+
+生产环境额外在 `ai-interview/.env` 设置：
+
+```dotenv
+PUBLIC_BASE_PATH=/interview
+SESSION_COOKIE_SECURE=1
 ```
 
 启用语音时，再填写 `XFYUN_APP_ID`、`XFYUN_API_KEY` 和 `XFYUN_API_SECRET`。浏览器只会从 `/api/speech/asr-url` 取得短时签名 WebSocket URL，不会取得 API Secret。
@@ -109,7 +119,7 @@ curl http://localhost:5000/health
 docker network create studymate_edge
 ```
 
-本地不启用 Caddy 时，`backend/.env` 中的 `AI_INTERVIEW_PUBLIC_URL=http://localhost:5000`；生产环境在 `studymate/.deploy.env` 设置 `AI_INTERVIEW_SITE_ADDRESS=interview.example.com`，并把 `backend/.env` 的 `AI_INTERVIEW_PUBLIC_URL` 设置为对应 HTTPS 地址。公网启动：
+本地不启用 Caddy 时，`backend/.env` 中的 `AI_INTERVIEW_PUBLIC_URL=http://localhost:5000`；当前生产环境把 `backend/.env` 的 `AI_INTERVIEW_PUBLIC_URL` 设置为 `https://matropic.cn/interview`，并在 `ai-interview/.env` 设置 `PUBLIC_BASE_PATH=/interview` 与 `SESSION_COOKIE_SECURE=1`。公网启动：
 
 ```bash
 cd studymate
@@ -125,6 +135,8 @@ docker compose --env-file .deploy.env --profile public up -d --build
 ## 当前验收边界
 
 - 文字面试、浏览器朗读、主动语音输入和本地数字人模型属于首期学习者流；摄像头不参与评分。
+- 当前同域发布入口为 `https://matropic.cn/interview/`；Caddy 会把该路径转发到独立面试容器。
+- 原项目 legacy 招聘后台仍保留在独立服务中，但其根路径与 `/api` 路由尚未命名空间化，不能与 StudyMate 同域直接公开。
 - 未配置 LLM 时可以进行问答演示，但不会产生可回传的能力评分。
 - 未配置讯飞语音时文字面试仍可用，语音按钮会返回明确的配置提示。
 - 完整 Docker/跨容器验收需要 Docker daemon、Python 3.11 镜像和实际 MySQL；本地 Python 3.14 不作为后端运行环境。
