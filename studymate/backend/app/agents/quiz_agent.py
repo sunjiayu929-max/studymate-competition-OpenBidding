@@ -124,9 +124,8 @@ class QuizAgent(AgentBase):
         ]
         for q in quiz:
             msg = f"生成题目 [{q['type']}] {q['question'][:30]}...\n"
-            for ch in msg:
-                await self.emit_delta(emit, ch, kind="text")
-                await asyncio.sleep(0.008)
+            await self.emit_delta(emit, msg, kind="text")
+            await asyncio.sleep(0.003)
         return quiz
 
     async def _gen_real(
