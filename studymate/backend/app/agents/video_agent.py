@@ -238,7 +238,7 @@ class VideoAgent(AgentBase):
                     "message": f"已完成 {sum(item['status'] == 'succeeded' for item in segments)}/{len(segments)} 个视频片段",
                 })
             except MiniMaxH3Error as exc:
-                segment.update({"status": "failed", "message": str(exc)})
+                segment.update({"status": "failed", "message": str(exc), "task_id": exc.task_id})
                 failure_messages.append(f"片段 {segment['index']}：{exc}")
                 await publish_progress({
                     **base,

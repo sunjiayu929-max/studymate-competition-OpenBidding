@@ -17,6 +17,10 @@ from app.core.config import require_external_access, settings
 class MiniMaxH3Error(RuntimeError):
     """An actionable MiniMax H3 API failure."""
 
+    def __init__(self, message: str, *, task_id: str = "") -> None:
+        super().__init__(message)
+        self.task_id = task_id
+
 
 def minimax_h3_configured() -> bool:
     return bool(settings.MINIMAX_API_KEY.strip()) and not settings.STUDYMATE_SAFE_OFFLINE
@@ -89,7 +93,10 @@ async def generate_h3_video(
                 headers={"Authorization": _headers()["Authorization"]},
             )
             if query.status_code >= 400:
-                raise MiniMaxH3Error(f"查询 H3 视频任务失败（{query.status_code}）：{_error_message(query.json())}")
+                raise MiniMaxH3Error(
+                    f"查询 H3 视频任务失败（{query.status_code}）：{_error_message(query.json())}",
+                    task_id=str(task_id),
+                )
             query_payload = query.json()
             query_task = query_payload.get("task") if isinstance(query_payload, dict) else None
             if not isinstance(query_task, dict):
@@ -99,7 +106,7 @@ async def generate_h3_video(
                 content = query_task.get("content") or {}
                 video_url = content.get("url") if isinstance(content, dict) else None
                 if not video_url:
-                    raise MiniMaxH3Error("H3 任务已完成，但没有返回视频地址")
+                    raise MiniMaxH3Error("H3 任务已完成，但没有返回视频地址", task_id=str(task_id))
                 return {
                     "task_id": str(task_id),
                     "video_url": str(video_url),
@@ -109,6 +116,12 @@ async def generate_h3_video(
                     "usage": query_task.get("usage") or {},
                 }
             if status in {"failed", "error", "canceled", "cancelled"}:
-                raise MiniMaxH3Error(f"H3 视频任务{status}：{_error_message(query_task)}")
+                raise MiniMaxH3Error(
+                    f"H3 视频任务{status}：{_error_message(query_task)}",
+                    task_id=str(task_id),
+                )
 
-        raise MiniMaxH3Error("H3 视频任务等待超时，请稍后在控制台查询任务状态")
+        raise MiniMaxH3Error(
+            f"H3 视频任务等待超时，请稍后在控制台查询任务状态（task_id: {task_id}）",
+            task_id=str(task_id),
+        )
