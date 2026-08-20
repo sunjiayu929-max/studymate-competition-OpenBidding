@@ -21,9 +21,9 @@ export function LearningResources() {
         <AppTopbar current="resources" appearance="paper" />
         <section className="mt-5 rounded-[28px] border border-[#D7D1C4] bg-[#FFFEFA] p-5 shadow-[0_18px_48px_rgba(24,35,45,.07)] sm:p-7">
           <div className="max-w-2xl">
-            <span className="inline-flex items-center gap-2 text-[10px] font-bold tracking-[.12em] text-[#6F8A69]"><Compass className="size-4" />DISCOVER</span>
-            <h1 className="mt-2 text-2xl font-bold tracking-[-.04em] text-[#18232D]">围绕岗位能力点寻找真实学习资源</h1>
-            <p className="mt-2 text-xs leading-6 text-[#66717B]">默认继承当前岗位任务，并聚合可核验的视频、公开课程和文档；外部资源保留原始来源与平台名称。</p>
+            <span className="inline-flex items-center gap-2 text-[10px] font-bold tracking-[.12em] text-[#6F8A69]"><Compass className="size-4" />学习资源</span>
+            <h1 className="mt-2 text-2xl font-bold tracking-[-.04em] text-[#18232D]">查找与岗位相关的学习资源</h1>
+            <p className="mt-2 text-xs leading-6 text-[#66717B]">搜索视频、公开课程和文档；每条结果都会标明来源。</p>
           </div>
           <form
             className="mt-5 flex max-w-2xl gap-2"

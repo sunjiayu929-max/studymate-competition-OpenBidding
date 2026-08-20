@@ -53,7 +53,7 @@ export function Courses() {
   const returnTo = requestedReturnTo?.startsWith("/") && !requestedReturnTo.startsWith("//")
     ? requestedReturnTo
     : "/profile"
-  const returnLabel = returnTo.startsWith("/workspace") ? "返回资源工坊" : returnTo.startsWith("/competency") ? "返回训练驾驶舱" : "进入画像诊断"
+  const returnLabel = returnTo.startsWith("/workspace") ? "返回训练资源" : returnTo.startsWith("/competency") ? "返回训练中心" : "建立岗位画像"
 
   useEffect(() => {
     let cancelled = false
@@ -107,7 +107,7 @@ export function Courses() {
               <Link to={returnTo} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]"><ArrowLeft className="size-3.5" /><span className="hidden sm:inline">{returnLabel}</span></Link>
               <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Target className="size-4" /></span>
-              <div className="min-w-0"><h1 className="text-[15px] font-bold text-[#18232D]">选择你的目标岗位</h1><p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">先选择领域，再选择该领域的目标岗位</p></div>
+          <div className="min-w-0"><h1 className="text-[15px] font-bold text-[#18232D]">选择目标岗位</h1><p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">先选领域，再选岗位</p></div>
             </div>
             <div className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-[11px] font-bold ${storedRole ? "border-[#C9D1CB] bg-[#E9EEE6] text-[#557052]" : "border-[#D7D1C4] bg-[#FFFEFA] text-[#7A817F]"}`}>
               {storedRole ? <CheckCircle2 className="size-3.5" /> : <BookOpenCheck className="size-3.5" />}{storedRole ? `当前目标岗位 · ${storedRole.name}` : "请选择目标岗位"}
@@ -118,8 +118,8 @@ export function Courses() {
             <div className="relative mb-5 overflow-hidden rounded-[24px] border border-[#D7D1C4] bg-[#F8F6F0] px-5 py-5 sm:px-6">
               <div className="pointer-events-none absolute -right-16 -top-20 size-52 rounded-full border border-[#DDD4BF]" />
               <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] text-[#6F8A69]"><Sparkles className="size-3.5 text-[#B1842C]" />岗位训练模式</span>
-              <h2 className="relative mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D]">从领域进入目标岗位，再围绕岗位能力开展训练</h2>
-              <p className="relative mt-1.5 max-w-3xl text-sm leading-6 text-[#66717B]">岗位是求职者的训练目标；后续学情诊断、知识库检索、资源生成和测评都会围绕所选岗位进行。</p>
+            <h2 className="relative mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D]">你想训练哪个岗位？</h2>
+            <p className="relative mt-1.5 max-w-3xl text-sm leading-6 text-[#66717B]">选择后，画像、学习资源和测验都会围绕这个岗位展开。</p>
             </div>
 
             <section aria-labelledby="domain-heading">

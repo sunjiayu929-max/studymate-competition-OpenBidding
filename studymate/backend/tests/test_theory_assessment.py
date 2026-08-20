@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -62,6 +63,8 @@ class TheoryAssessmentUnitTests(unittest.TestCase):
     def test_answers_and_level_boundaries(self):
         self.assertTrue(_answer_is_correct("2", 2))
         self.assertFalse(_answer_is_correct(None, 0))
+        self.assertTrue(_answer_is_correct(" 交付验证 ", "交付验证/验收验证", "fill"))
+        self.assertFalse(_answer_is_correct("系统集成", "交付验证/验收验证", "fill"))
         self.assertEqual([_knowledge_level(value) for value in (39, 40, 59, 60, 79, 80)], [
             "入门", "基础", "基础", "应用", "应用", "进阶",
         ])
@@ -208,6 +211,11 @@ class TheoryAssessmentPersistenceTests(unittest.IsolatedAsyncioTestCase):
             await engine.dispose()
             self.assertEqual(response["status"], "ready")
             self.assertEqual(len(response["items"]), 8)
+            self.assertEqual(Counter(item["type"] for item in response["items"]), {
+                "mcq": 6,
+                "fill": 2,
+            })
+            self.assertGreaterEqual(len({item["difficulty"] for item in response["items"]}), 2)
             self.assertTrue(all(item["source"] == "FDE 岗位知识库" for item in response["items"]))
 
     async def test_background_preparation_is_persisted_and_idempotent(self):

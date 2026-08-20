@@ -88,11 +88,11 @@ export function TutorChatPanel({
       content:
         learningMethod === "feynman"
           ? variant === "drawer"
-            ? `嗨，我是 StudyMate 学习助手。我会结合你正在浏览的页面与目标岗位「${courseLabel}」，先用大白话和例子讲清，再请你用自己的话复述。你想先攻克哪个岗位能力点？`
-            : `你好！我是 StudyMate 学习助手。你可以问目标岗位「${courseLabel}」涉及的能力、任务、代码或题目。我会用尽量简单的语言拆解它，再通过复述帮你发现理解缺口。你今天最想讲懂什么？`
+            ? `我会结合当前页面和「${courseLabel}」，先讲清楚，再请你复述。你想先学什么？`
+            : `可以问我「${courseLabel}」相关的能力、任务、代码或题目。你今天想先弄懂什么？`
           : variant === "drawer"
-            ? `嗨，我是 StudyMate 学习助手。我会结合你正在浏览的页面与目标岗位「${courseLabel}」先讲清关键点，再用一个问题带你继续推理。你想从哪一步开始？`
-            : `你好！我是 StudyMate 学习助手。你可以问目标岗位「${courseLabel}」涉及的能力、任务、代码或题目。我会先讲清当前问题，再一次问一小步，陪你把结论自己推出来。你今天最想弄懂什么？`,
+            ? `我会结合当前页面和「${courseLabel}」讲清关键点，再一次问一小步。你想从哪里开始？`
+            : `可以问我「${courseLabel}」相关的能力、任务、代码或题目。我会一次带你解决一个问题。`,
     }),
     [courseLabel, learningMethod, variant]
   )
@@ -319,7 +319,7 @@ export function TutorChatPanel({
             <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#DDD4BF] bg-[#F4ECD8] text-[#9B7429]"><Bot className="size-4" /></span>
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-[15px] font-bold text-[#18232D]">StudyMate 岗位助教</h2>
-              <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">正在辅导「{courseLabel}」· {learningMethod === "feynman" ? "大白话讲清，再由你复述" : "一次一问，沿你的回答继续推理"}</p>
+              <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">正在学习「{courseLabel}」· {learningMethod === "feynman" ? "讲清后复述" : "一次解决一个问题"}</p>
             </div>
           </div>
           <div className="tutor-toolbar-scroll nav-scroll flex min-w-0 items-center gap-2 overflow-x-auto pb-0.5 min-[1800px]:w-auto min-[1800px]:shrink-0 min-[1800px]:overflow-visible min-[1800px]:pb-0">
@@ -436,10 +436,10 @@ export function TutorChatPanel({
                 <h3 className="mt-4 text-xl font-bold tracking-[-0.03em] text-[#18232D]">今天想弄懂什么？</h3>
                 <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#66717B]">
                   {learningMethod === "feynman"
-                    ? "概念、公式、代码、题目都可以直接问。助教会先用大白话和例子讲清，再请你用自己的话复述，帮助你找到理解缺口。"
-                    : "概念、公式、代码、题目都可以直接问。助教会先解释当前关键点，再通过连续的一步一问，引导你自己完成后续推理。"}
+                    ? "概念、公式、代码和题目都可以问。我会先讲清楚，再请你复述。"
+                    : "概念、公式、代码和题目都可以问。我们一次解决一个问题。"}
                 </p>
-                <div className="mx-auto mt-3 inline-flex items-center gap-2 rounded-full border border-[#C9D1CB] bg-[#F5F8F3] px-3 py-1.5 text-[10px] font-semibold text-[#557052]"><Sparkles className="size-3" />{learningMethod === "feynman" ? "讲清之后请你复述，用输出检验理解" : "每轮只推进一个问题，不会一次灌输全部答案"}</div>
+                <div className="mx-auto mt-3 inline-flex items-center gap-2 rounded-full border border-[#C9D1CB] bg-[#F5F8F3] px-3 py-1.5 text-[10px] font-semibold text-[#557052]"><Sparkles className="size-3" />{learningMethod === "feynman" ? "讲清后复述" : "一次一个问题"}</div>
                 {showStarters && (
                   <div className="mt-6 grid gap-2 text-left sm:grid-cols-2">
                     {starters.slice(0, 4).map((question, index) => (
@@ -541,7 +541,7 @@ export function TutorChatPanel({
         <div className="max-w-md">
           <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#D8C9A8] bg-[#F4ECD8] text-[#8E6925]"><AlertCircle className="size-5" /></span>
           <h2 className="mt-4 text-base font-bold text-[#18232D]">{targetRole ? `${targetRole.name} 的岗位知识库正在建设` : "请先选择目标岗位"}</h2>
-          <p className="mt-2 text-xs leading-6 text-[#66717B]">{targetRole ? "岗位选择已保留。为避免用无关知识生成看似正确的回答，专属知识库接入前暂不开放岗位助教。" : "目标岗位决定助教的知识边界与会话归档，选定后再开始对话。"}</p>
+          <p className="mt-2 text-xs leading-6 text-[#66717B]">{targetRole ? "目标岗位已保留。岗位知识库接入后即可开始提问。" : "选择岗位后，助教会围绕对应知识回答。"}</p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             <Link to="/courses?returnTo=%2Ftutor" className="inline-flex h-9 items-center rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-white hover:bg-[#193B50]">{targetRole ? "更换已开放岗位" : "选择目标岗位"}</Link>
             {targetRole && <Link to="/workspace" className="inline-flex h-9 items-center rounded-xl border border-[#D7D1C4] bg-[#F8F6F0] px-4 text-[11px] font-bold text-[#59636B] hover:bg-[#EFEAE0]">查看岗位状态</Link>}
