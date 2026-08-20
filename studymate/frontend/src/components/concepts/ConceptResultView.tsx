@@ -157,7 +157,7 @@ export function ConceptResultView({
                   <h2 className="text-sm font-bold text-[#183E46]">这个问题也可以生成岗位视频</h2>
                   <p className="mt-1 text-[11px] leading-5 text-[#527077]">当前岗位：{roleContext.target_role}。系统会把任务拆成多个短片段，完整原理继续用动画或黑板讲解。</p>
                   <p className="mt-1 text-[10px] font-semibold text-[#287F8D]">
-                    {videoPlanLoading ? "正在规划教学片段…" : videoPlan ? `预计 ${videoPlan.segment_count} 个片段，合计约 ${videoPlan.total_duration} 秒 · 约 ¥${videoPlan.estimated_cost_rmb.toFixed(2)} · ${videoPlan.scope}` : "将根据问题长度和复杂度自动决定片段数量与时长"}
+                    {videoPlanLoading ? "正在规划教学片段…" : videoPlan ? `预计 ${videoPlan.segment_count} 个片段，合计约 ${videoPlan.total_duration} 秒 · ${videoPlan.scope}` : "将根据问题长度和复杂度自动决定片段数量与时长"}
                   </p>
                 </div>
               </div>
