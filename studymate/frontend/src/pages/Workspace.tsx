@@ -37,6 +37,7 @@ import {
 import type { LucideIcon } from "lucide-react"
 
 import { AppTopbar } from "@/components/AppTopbar"
+import { DebateQualityPanel } from "@/components/DebateQualityPanel"
 import { MicButton } from "@/components/MicButton"
 import { PhotoTopicButton } from "@/components/PhotoTopicButton"
 import type { AgentState, AgentStatus } from "@/components/AgentTimeline"
@@ -280,9 +281,10 @@ export function Workspace() {
 
   const released = decision ? decision.decision === "publish" : status === "done" && !agents.some((agent) => agent.meta.id === "arbiter")
 
+  const reviewable = Boolean(decision?.max_reworks_reached && readyResourceCount > 0)
   const resourceItems: ResourceView[] = RESOURCE_DEFS.map((resource) => {
     const deferred = !CORE_RESOURCE_IDS.includes(resource.id)
-    const available = hasOutput(resource.id) && released
+    const available = hasOutput(resource.id) && (released || reviewable)
     const resourceStatus: AgentStatus | "ready" = available ? "done" : deferred ? "pending" : statusOf(resource.id)
     return { resource, status: resourceStatus, summary: summaryOf(resource.id), available, deferred }
   })
@@ -443,6 +445,8 @@ export function Workspace() {
                 decision={decision}
               />
 
+              <DebateQualityPanel workspace={workspaceStore.getState()} />
+
               <ResourceShelf
                 items={resourceItems}
                 generatedCount={readyResourceCount}
@@ -452,6 +456,7 @@ export function Workspace() {
                 onOpen={(resourceId) => navigate(`/workspace/r/${resourceId}`)}
                 reduceMotion={Boolean(reduceMotion)}
                 released={released}
+                reviewable={reviewable}
               />
 
               <FeedbackLoopPanel
@@ -830,6 +835,7 @@ function ResourceShelf({
   showingPrevious,
   onOpen,
   reduceMotion,
+  reviewable,
   released,
 }: {
   items: ResourceView[]
@@ -839,6 +845,7 @@ function ResourceShelf({
   showingPrevious: boolean
   onOpen: (resourceId: ResourceKey) => void
   reduceMotion: boolean
+  reviewable: boolean
   released: boolean
 }) {
   const docReady = items.some((item) => item.resource.id === "doc" && item.available)
@@ -891,6 +898,7 @@ function ResourceShelf({
             index={index + 1}
             resource={resource}
             status={status}
+            reviewable={reviewable}
             summary={summary}
             available={available}
             deferred={deferred}
@@ -961,6 +969,7 @@ function ResourceTile({
   summary,
   available,
   deferred,
+  reviewable,
   runStatus,
   onOpen,
   reduceMotion,
@@ -972,6 +981,7 @@ function ResourceTile({
   summary: string
   available: boolean
   deferred: boolean
+  reviewable: boolean
   runStatus: RunStatus
   onOpen: () => void
   reduceMotion: boolean
@@ -980,7 +990,7 @@ function ResourceTile({
   const Icon = resource.icon
   const isLoading = status === "running" || status === "streaming"
   const didNotFinish = !deferred && !available && status === "pending" && (runStatus === "done" || runStatus === "error" || runStatus === "interrupted")
-  const waitingDecision = !released && status === "done"
+  const waitingDecision = !released && !reviewable && status === "done"
   const stateLabel = deferred ? "暂不生成" : waitingDecision ? "待裁决" : status === "done" ? "已发布" : status === "ready" ? "可打开" : status === "error" ? "生成异常" : isLoading ? "生成中" : didNotFinish ? "本轮未完成" : "等待任务"
 
   return (
@@ -998,7 +1008,7 @@ function ResourceTile({
       <div className="mt-3 flex items-center justify-between gap-2">
         <strong className="text-xs text-[#18232D]">{resource.title}</strong>
         <span className="inline-flex items-center gap-1 text-[10px] font-bold" style={{ color: status === "error" || didNotFinish ? "#B85C3E" : resource.color }}>
-          {isLoading && <Loader2 className="size-3 animate-spin" />}{status === "done" && <CheckCircle2 className="size-3" />}{status === "ready" && <ArrowRight className="size-3" />}{stateLabel}
+          {isLoading && <Loader2 className="size-3 animate-spin" />}{status === "done" && <CheckCircle2 className="size-3" />}{reviewable ? "REVIEWABLE" : stateLabel}
         </span>
       </div>
       <p className="mt-1 text-[11px] leading-4 text-[#737C80]">{available ? summary : deferred ? "当前阶段仅保留入口，暂不生成或预取内容。" : waitingDecision ? `${summary} · 裁决通过后解锁` : didNotFinish ? "本轮未产出，可通过上方入口重新生成整套资源。" : resource.detail}</p>

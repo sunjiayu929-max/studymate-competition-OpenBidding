@@ -1,25 +1,39 @@
 # SITE_ADDRESS examples:
 #   Local:      http://localhost
-#   Production: studymate.example.com
+#   Production: matropic.cn
 # Caddy automatically provisions and renews HTTPS for a real public domain.
 {$SITE_ADDRESS:http://localhost} {
 	encode zstd gzip
 
 	# Keep the independent interview service behind the existing StudyMate host.
-	# handle_path removes /interview before forwarding it to Flask.
-	redir /interview /interview/ 308
-	handle_path /interview/* {
-		# Flask uses this prefix for redirects, static assets, and its own cookie path.
-		reverse_proxy ai-interview:5000 {
-			header_up X-Forwarded-Prefix /interview
-			flush_interval -1
-		}
-	}
+	# route preserves this ordering instead of relying on global directive sorting.
+	route {
+		# handle_path removes /interview before forwarding it to Flask.
+		redir /interview /interview/ 308
 
-	# Low-latency mode is important for FastAPI/SSE token streaming.
-	handle {
-		reverse_proxy frontend:80 {
-			flush_interval -1
+		# Only the StudyMate learner flow is published here. The retained legacy
+		# recruitment UI still owns root-level /api and page routes, which would
+		# collide with StudyMate if it were exposed through this same host.
+		@unpublished_interview {
+			path /interview/*
+			not path /interview/health /interview/integrations/studymate/launch /interview/practice/* /interview/api/practice/* /interview/api/speech/asr-url /interview/static/*
+		}
+		handle @unpublished_interview {
+			respond "Not found" 404
+		}
+		handle_path /interview/* {
+			# Flask uses this prefix for redirects, static assets, and its own cookie path.
+			reverse_proxy ai-interview:5000 {
+				header_up X-Forwarded-Prefix /interview
+				flush_interval -1
+			}
+		}
+
+		# Low-latency mode is important for FastAPI/SSE token streaming.
+		handle {
+			reverse_proxy frontend:80 {
+				flush_interval -1
+			}
 		}
 	}
 

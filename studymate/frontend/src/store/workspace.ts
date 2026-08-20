@@ -150,6 +150,12 @@ export interface TrainingDecision {
   profile_difficulty_accuracy?: number
   core_knowledge_coverage?: number
   max_reworks_reached?: boolean
+  fallback?: {
+    kind: "learning_package"
+    score: number
+    score_label: string
+    resource_ids: string[]
+  }
   release_gate: {
     review_count: number
     blocker_count: number

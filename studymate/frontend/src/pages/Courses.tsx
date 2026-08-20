@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { motion } from "framer-motion"
 import {
@@ -47,6 +47,7 @@ export function Courses() {
   const [domainId, setDomainId] = useState<DomainId>(storedDomain ?? "ai")
   const [activationError, setActivationError] = useState("")
   const [activatingRoleId, setActivatingRoleId] = useState("")
+  const [courses, setCourses] = useState<CourseInfo[]>([])
   const domain = domains.find((item) => item.id === domainId) ?? domains[0]
   const requestedReturnTo = searchParams.get("returnTo")
   const returnTo = requestedReturnTo?.startsWith("/") && !requestedReturnTo.startsWith("//")
@@ -54,34 +55,42 @@ export function Courses() {
     : "/profile"
   const returnLabel = returnTo.startsWith("/workspace") ? "返回训练资源" : returnTo.startsWith("/competency") ? "返回训练中心" : "建立岗位画像"
 
+  useEffect(() => {
+    let cancelled = false
+    apiGet<CourseListResponse>("/courses")
+      .then((response) => {
+        if (!cancelled) setCourses(response.items)
+      })
+      .catch(() => {
+        if (!cancelled) setCourses([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   async function selectRole(role: CareerRole) {
     setActivationError("")
     const roleChanged = storedRole?.id !== role.id
-    if (role.id !== "fde") {
-      setTargetRole({ domainId: domain.id, roleId: role.id })
-      setCurrentCourse(null)
-      if (roleChanged) clearWorkspaceState()
-      navigate(returnTo, { replace: true })
-      return
-    }
-
     setActivatingRoleId(role.id)
     try {
       const response = await apiGet<CourseListResponse>("/courses")
-      const fdeCourse = response.items.find((course) => course.name === "FDE 岗位知识库")
-      if (!fdeCourse) throw new Error("FDE 知识库尚未加载")
+      const roleCourse = response.items.find((course) => course.name === role.courseName)
+      if (!roleCourse) throw new Error(`${role.name} 知识库尚未加载`)
       setTargetRole({ domainId: domain.id, roleId: role.id })
-      setCurrentCourse(fdeCourse)
-      void apiPost("/theory-assessments/prepare", {
-        role_id: role.id,
-        role_name: role.name,
-        course_id: fdeCourse.id,
-        competencies: role.skills,
-      }).catch(() => undefined)
+      setCurrentCourse(roleCourse)
+      if (role.id === "fde") {
+        void apiPost("/theory-assessments/prepare", {
+          role_id: role.id,
+          role_name: role.name,
+          course_id: roleCourse.id,
+          competencies: role.skills,
+        }).catch(() => undefined)
+      }
       if (roleChanged) clearWorkspaceState()
       navigate(returnTo, { replace: true })
     } catch {
-      setActivationError("FDE 知识库暂未连接。请重新登录后刷新页面，再点击进入岗位训练。")
+      setActivationError(`${role.name} 知识库暂未连接。请重新登录后刷新页面，再点击进入岗位训练。`)
     } finally {
       setActivatingRoleId("")
     }
@@ -130,7 +139,7 @@ export function Courses() {
             <section className="mt-6 border-t border-[#E3DED3] pt-5" aria-labelledby="role-heading">
               <div className="mb-4 flex flex-wrap items-end justify-between gap-2"><div><span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[.12em] text-[#B1842C]"><BriefcaseBusiness className="size-3.5" />{domain.name.toUpperCase()}</span><h2 id="role-heading" className="mt-1 text-lg font-bold text-[#18232D]">选择该领域的目标岗位</h2></div><p className="max-w-xl text-[11px] leading-5 text-[#66717B]">{domain.description}</p></div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {domain.roles.map((role, index) => <RoleBook key={role.id} role={role} domainId={domain.id} index={index} selected={storedRole?.id === role.id} activating={activatingRoleId === role.id} onSelect={() => void selectRole(role)} />)}
+                {domain.roles.map((role, index) => <RoleBook key={role.id} role={role} domainId={domain.id} index={index} chunkCount={courses.find((course) => course.name === role.courseName)?.chunk_count} selected={storedRole?.id === role.id} activating={activatingRoleId === role.id} onSelect={() => void selectRole(role)} />)}
               </div>
               {activationError && <p role="alert" className="mt-4 border border-[#DFC9BE] bg-[#F6ECE7] px-3 py-2 text-xs text-[#9A4E35]">{activationError}</p>}
             </section>
@@ -141,14 +150,14 @@ export function Courses() {
   )
 }
 
-function RoleBook({ role, domainId, index, selected, activating, onSelect }: { role: CareerRole; domainId: DomainId; index: number; selected: boolean; activating: boolean; onSelect: () => void }) {
+function RoleBook({ role, domainId, index, chunkCount, selected, activating, onSelect }: { role: CareerRole; domainId: DomainId; index: number; chunkCount?: number; selected: boolean; activating: boolean; onSelect: () => void }) {
   const tone = domainTones[domainId]
   const Icon = domainId === "ai" ? Cpu : domainId === "industrial" ? Network : BriefcaseBusiness
   return <motion.article initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: index * 0.05 }} className={`group relative min-h-[224px] overflow-hidden rounded-[22px] border bg-[#FFFEFA] shadow-[0_8px_22px_rgba(24,35,45,.04)] transition-all hover:-translate-y-1 hover:shadow-[0_18px_34px_rgba(24,35,45,.11)] ${selected ? "border-[#7F9AAA] ring-2 ring-[#315E83]/12" : "border-[#D7D1C4] hover:border-[#AEBAB5]"}`}>
     <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${tone.cover}`} />
     <button type="button" onClick={onSelect} disabled={activating} className="relative z-10 grid h-full min-h-[224px] w-full grid-cols-[104px_minmax(0,1fr)] gap-4 p-4 text-left disabled:cursor-wait sm:grid-cols-[116px_minmax(0,1fr)]">
       <span className={`relative my-auto block aspect-[0.73] w-full overflow-hidden rounded-[9px] border border-black/10 bg-gradient-to-br ${tone.cover} shadow-[0_12px_22px_rgba(24,35,45,.18),-5px_0_0_#ece7db]`}><span className="absolute left-3 top-4 text-[9px] font-bold tracking-[.1em] text-white/75">TARGET ROLE</span><span className="absolute inset-x-3 top-11 h-px bg-white/35" /><Icon className="absolute left-3 top-[44%] size-7 text-[#F5D989]" /><span className="absolute inset-x-3 bottom-4 text-[11px] font-bold leading-4 text-white">{role.name}</span><span className="pointer-events-none absolute inset-y-0 left-0 w-2 bg-gradient-to-r from-black/20 to-transparent" /></span>
-      <span className="flex min-w-0 flex-col py-1"><span className="flex min-h-6 items-start justify-end">{selected ? <span className="inline-flex items-center gap-1 rounded-full bg-[#E9EEE6] px-2 py-1 text-[10px] font-bold text-[#557052]"><CheckCircle2 className="size-3" />已选择</span> : role.knowledgeBaseState === "ready" ? <span className="rounded-full bg-[#E9EEE6] px-2 py-1 text-[10px] font-bold text-[#557052]">知识库已导入</span> : <span className="rounded-full bg-[#F8F1E4] px-2 py-1 text-[10px] font-bold text-[#8E6925]">待建设</span>}</span><strong className="mt-3 text-lg leading-6 tracking-[-.025em] text-[#18232D]">{role.name}</strong><span className="mt-1.5 text-xs leading-5 text-[#66717B]">{role.summary}</span><span className="mt-auto flex w-full items-end justify-between gap-2 pt-4"><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${tone.chip}`}>{role.knowledgeBase?.chunkCount ? `${role.knowledgeBase.chunkCount} 条知识片段` : "岗位目录"}</span><span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-[#315E83]">{activating ? "正在进入" : role.id === "fde" ? "进入岗位训练" : "选择岗位"}<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" /></span></span></span>
+      <span className="flex min-w-0 flex-col py-1"><span className="flex min-h-6 items-start justify-end">{selected ? <span className="inline-flex items-center gap-1 rounded-full bg-[#E9EEE6] px-2 py-1 text-[10px] font-bold text-[#557052]"><CheckCircle2 className="size-3" />已选择</span> : role.knowledgeBaseState === "ready" ? <span className="rounded-full bg-[#E9EEE6] px-2 py-1 text-[10px] font-bold text-[#557052]">知识库已导入</span> : <span className="rounded-full bg-[#F8F1E4] px-2 py-1 text-[10px] font-bold text-[#8E6925]">待建设</span>}</span><strong className="mt-3 text-lg leading-6 tracking-[-.025em] text-[#18232D]">{role.name}</strong><span className="mt-1.5 text-xs leading-5 text-[#66717B]">{role.summary}</span><span className="mt-auto flex w-full items-end justify-between gap-2 pt-4"><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${tone.chip}`}>{chunkCount ? `${chunkCount} 条知识片段` : "知识库连接中"}</span><span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-[#315E83]">{activating ? "正在进入" : role.id === "fde" ? "进入岗位训练" : "选择岗位"}<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" /></span></span></span>
     </button>
   </motion.article>
 }

@@ -1,6 +1,6 @@
 # StudyMate Ubuntu 公网部署指南
 
-> 最后核对：2026-08-01。本文对应当前 `docker-compose.yml`、压缩种子库和 Caddy 部署方式。
+> 最后核对：2026-08-20。本文对应当前 `docker-compose.yml`、压缩种子库、Caddy 和独立 AI 面试服务部署方式。
 > 开始前先阅读 [`密钥管理指南.md`](密钥管理指南.md) 和 [`开发与验收指南.md`](开发与验收指南.md)。
 
 ## 方案
@@ -9,12 +9,14 @@
 
 ```text
 浏览器 -> Caddy :80/:443 -> frontend nginx -> /api -> FastAPI -> SQLite/Piston
+                    └-> /interview/* -> 独立 ai-interview -> 独立 MySQL
 ```
 
 Caddy 自动申请、续期 HTTPS 证书。FastAPI、前端排障端口和 Piston 都只绑定
 `127.0.0.1`，云安全组无需开放这些端口。
 
 默认业务数据库是 SQLite。PostgreSQL、Redis 和 Chroma 属于 `extras` 扩展服务，当前部署不需要启动。
+AI 面试服务也不与主业务数据库共享数据，它使用同域路径 `https://matropic.cn/interview/` 和独立 Compose 项目。详细配置见 [AI 面试部署指南](AI面试部署指南.md)。
 
 ## 1. DNS 与端口
 
@@ -128,7 +130,13 @@ mkdir -p ~/studymate
 ```bash
 rsync -az --delete --progress \
   --exclude '.git/' \
+  --exclude '.agents/' \
+  --exclude '.codex/' \
+  --exclude '__pycache__/' \
+  --exclude '*.pyc' \
+  --exclude '*.db' \
   --exclude 'frontend/node_modules/' \
+  --exclude 'frontend/test-results/' \
   --exclude 'backend/.venv/' \
   --exclude 'backend/.env' \
   --exclude 'backend/backups/' \
@@ -192,6 +200,14 @@ PRIVATE_KNOWLEDGE_DIR=./data/private_knowledge
 PRIVATE_KNOWLEDGE_OCR_MODE=unconfigured
 ```
 
+启用 AI 面试时，再按 [AI 面试部署指南](AI面试部署指南.md) 配置相邻的
+`~/ai-interview/.env`，并在 `~/studymate/.deploy.env` 增加：
+
+```dotenv
+AI_INTERVIEW_ENABLED=1
+AI_INTERVIEW_DIR=../ai-interview
+```
+
 如果同时使用主域名和 `www`，将两个 HTTPS 来源都写入 `CORS_ORIGINS`，逗号分隔。
 模型、语音、邮件和 Piston 变量按 `.env.example` 配置；没有启用的服务保持空值，不要复制其他环境中的旧 Key。
 私有知识库原文件默认保存在 `/app/data/private_knowledge`，与 SQLite 共用
@@ -210,6 +226,7 @@ PRIVATE_KNOWLEDGE_OCR_MODE=unconfigured
 
 ```bash
 cd ~/studymate
+bash scripts/deploy.sh preflight
 bash scripts/deploy.sh
 ```
 
@@ -232,6 +249,7 @@ bash scripts/deploy.sh logs
 ```bash
 curl -I https://你的备案域名
 curl https://你的备案域名/api/ping
+curl https://你的备案域名/interview/health
 ```
 
 第一次上线还要手动检查登录、SSE 流式回答、文件上传、语音和在线代码运行。

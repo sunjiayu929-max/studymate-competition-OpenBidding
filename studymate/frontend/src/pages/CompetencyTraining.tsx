@@ -216,6 +216,9 @@ export function CompetencyTraining() {
     : null
   const advancedChallengeAvailable = submittedAccuracyRate !== null && submittedAccuracyRate >= ADVANCED_CHALLENGE_THRESHOLD
   const resourceCount = (["doc", "guide", "quiz"] as ResourceId[]).filter((id) => Boolean(workspace.outputs[id])).length
+  const degraded = Boolean(workspace.decision?.max_reworks_reached && resourceCount > 0)
+  const learnable = released || degraded
+  const fallbackScore = workspace.decision?.fallback?.score ?? (degraded ? 90 : undefined)
   const completedSteps = [Boolean(role), diagnosisReady, Boolean(plan), released, reportGenerated, Boolean(workspace.feedback)].filter(Boolean).length
   const agentDone = workspace.agents.filter((agent) => agent.status === "done").length
   const agentProgress = workspace.agents.length ? Math.round(agentDone / workspace.agents.length * 100) : 0
@@ -322,6 +325,8 @@ export function CompetencyTraining() {
                   <a href="#learner-match-report" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69]"><FileCheck2 className="size-4" />生成个人决策报告<ArrowRight className="size-4" /></a>
                 ) : released ? (
                   <Link to="/workspace/r/doc" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69]"><FileText className="size-4" />开始本轮训练<ArrowRight className="size-4" /></Link>
+                ) : learnable ? (
+                  <Link to="/workspace/r/doc" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69]"><BookOpenCheck className="size-4" />查看降级学习包<ArrowRight className="size-4" /></Link>
                 ) : (
                   <a href="#agent-collaboration" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69]"><ShieldCheck className="size-4" />查看审核结果</a>
                 )}
@@ -431,10 +436,11 @@ export function CompetencyTraining() {
         </section>
 
         <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
-          <div className="flex flex-wrap items-end justify-between gap-3"><SectionTitle icon={Layers3} eyebrow="03 · 训练资源" title="文档、实操和测验围绕同一任务" description={plan?.rationale || `本轮任务：${nextTopic}`} /><span className={cn("rounded-full px-3 py-1.5 text-[10px] font-bold", released ? "bg-[#E5F6F0] text-[#18745E]" : "bg-[#EEF3FA] text-[#61738D]")}>{released ? `审核通过 · ${workspace.decision?.quality_score ?? 0} 分` : workspace.status === "running" ? "正在生成并检查" : "等待训练计划"}</span></div>
+          <div className="flex flex-wrap items-end justify-between gap-3"><SectionTitle icon={Layers3} eyebrow="03 · 训练资源" title="文档、实操和测验围绕同一任务" description={plan?.rationale || `本轮任务：${nextTopic}`} /><span className={cn("rounded-full px-3 py-1.5 text-[10px] font-bold", released ? "bg-[#E5F6F0] text-[#18745E]" : degraded ? "bg-[#FFF0E5] text-[#A45A36]" : "bg-[#EEF3FA] text-[#61738D]")}>{released ? `审核通过 · ${workspace.decision?.quality_score ?? 0} 分` : degraded ? "临时学习包 · 待审核" : workspace.status === "running" ? "正在生成并检查" : "等待训练计划"}</span></div>
           <div className="mt-5 grid gap-3 md:grid-cols-3">
-            {(["doc", "guide", "quiz"] as ResourceId[]).map((id, index) => <ResourceCard key={id} id={id} index={index} plan={plan} ready={Boolean(workspace.outputs[id])} released={released} reviewScore={id === "doc" ? workspace.reviews.evidence_review?.score : id === "guide" ? workspace.reviews.practice_review?.score : workspace.reviews.difficulty_review?.score} />)}
+            {(["doc", "guide", "quiz"] as ResourceId[]).map((id, index) => <ResourceCard key={id} id={id} index={index} plan={plan} ready={Boolean(workspace.outputs[id])} released={released} learnable={learnable} reviewScore={id === "doc" ? workspace.reviews.evidence_review?.score : id === "guide" ? workspace.reviews.practice_review?.score : workspace.reviews.difficulty_review?.score} />)}
           </div>
+          {degraded && <div className="mt-4 rounded-2xl border border-[#E8CDBE] bg-[#FFF7F2] p-4 text-[#7D513F]"><div className="flex flex-wrap items-center justify-between gap-3"><div><strong className="text-xs">当前提供临时学习包</strong><p className="mt-1 text-[10px] leading-5">内容尚未通过正式审核，可以先学习并查看审核结果。</p></div><span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-bold">可用性评分 {fallbackScore ?? "--"} 分</span></div></div>}
         </section>
 
         <LearnerMatchReport
@@ -699,11 +705,11 @@ function Position({ label, text, tone }: { label: string; text: string; tone: "b
   return <div className={cn("rounded-2xl border p-3.5", tone === "blue" ? "border-[#D4E2F4] bg-[#F4F8FE]" : "border-[#CFE8E4] bg-[#F3FAF8]")}><strong className={cn("text-[10px]", tone === "blue" ? "text-[#376CA9]" : "text-[#237768]")}>{label}</strong><p className="mt-1 text-[11px] leading-5 text-[#5F7087]">{text}</p></div>
 }
 
-function ResourceCard({ id, index, plan, ready, released, reviewScore }: { id: ResourceId; index: number; plan?: PersonalizedTrainingPlan; ready: boolean; released: boolean; reviewScore?: number }) {
+function ResourceCard({ id, index, plan, ready, released, learnable, reviewScore }: { id: ResourceId; index: number; plan?: PersonalizedTrainingPlan; ready: boolean; released: boolean; learnable: boolean; reviewScore?: number }) {
   const meta = RESOURCE_META[id]
   const Icon = meta.icon
   const stage = plan?.stages[index]
-  return <article className={cn("rounded-[20px] border p-4", released && ready ? "border-[#BFDCCF] bg-[#F7FCFA]" : ready ? "border-[#C8D9ED] bg-[#F8FBFF]" : "border-[#E0E7F0] bg-[#FBFCFE]")}><div className="flex items-start justify-between gap-3"><span className="grid size-10 place-items-center rounded-xl bg-white text-[#3369B4] shadow-sm"><Icon className="size-4.5" /></span><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", released && ready ? "bg-[#DDF2E9] text-[#18745E]" : ready ? "bg-[#E6F0FD] text-[#3568A9]" : "bg-[#EDF1F6] text-[#7B899B]")}>{released && ready ? `审核 ${reviewScore ?? "—"} 分` : ready ? "等待审核" : "等待生成"}</span></div><h3 className="mt-3 text-sm font-bold text-[#20344E]">{meta.title}</h3><p className="mt-1 text-[10px] leading-4 text-[#738298]">{stage?.goal || meta.detail}</p><div className="mt-3 rounded-xl bg-white/90 px-3 py-2 text-[9px] leading-4 text-[#63758D]">成果要求：{stage?.evidence || "由训练计划确定"}</div>{released && ready ? <Link to={`/workspace/r/${id}`} className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#2864BA]">打开资源<ArrowRight className="size-3" /></Link> : <span className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#8794A5]"><ShieldCheck className="size-3" />审核通过后开放</span>}</article>
+  return <article className={cn("rounded-[20px] border p-4", released && ready ? "border-[#BFDCCF] bg-[#F7FCFA]" : learnable && ready ? "border-[#E8CDBE] bg-[#FFF9F5]" : ready ? "border-[#C8D9ED] bg-[#F8FBFF]" : "border-[#E0E7F0] bg-[#FBFCFE]")}><div className="flex items-start justify-between gap-3"><span className="grid size-10 place-items-center rounded-xl bg-white text-[#3369B4] shadow-sm"><Icon className="size-4.5" /></span><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", released && ready ? "bg-[#DDF2E9] text-[#18745E]" : learnable && ready ? "bg-[#FFF0E5] text-[#A45A36]" : ready ? "bg-[#E6F0FD] text-[#3568A9]" : "bg-[#EDF1F6] text-[#7B899B]")}>{released && ready ? `审核 ${reviewScore ?? "—"} 分` : learnable && ready ? "临时可用" : ready ? "等待审核" : "等待生成"}</span></div><h3 className="mt-3 text-sm font-bold text-[#20344E]">{meta.title}</h3><p className="mt-1 text-[10px] leading-4 text-[#738298]">{stage?.goal || meta.detail}</p><div className="mt-3 rounded-xl bg-white/90 px-3 py-2 text-[9px] leading-4 text-[#63758D]">成果要求：{stage?.evidence || "由训练计划确定"}</div>{learnable && ready ? <Link to={`/workspace/r/${id}`} className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#2864BA]">打开资源<ArrowRight className="size-3" /></Link> : <span className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#8794A5]"><ShieldCheck className="size-3" />审核通过后开放</span>}</article>
 }
 
 function ResultMetric({ label, value, detail }: { label: string; value: string; detail: string }) {
