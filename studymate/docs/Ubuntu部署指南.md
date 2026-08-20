@@ -130,7 +130,13 @@ mkdir -p ~/studymate
 ```bash
 rsync -az --delete --progress \
   --exclude '.git/' \
+  --exclude '.agents/' \
+  --exclude '.codex/' \
+  --exclude '__pycache__/' \
+  --exclude '*.pyc' \
+  --exclude '*.db' \
   --exclude 'frontend/node_modules/' \
+  --exclude 'frontend/test-results/' \
   --exclude 'backend/.venv/' \
   --exclude 'backend/.env' \
   --exclude 'backend/backups/' \

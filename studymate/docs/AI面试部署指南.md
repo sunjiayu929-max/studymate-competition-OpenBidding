@@ -38,7 +38,13 @@ StudyMate backend <--签名 HTTP--> ai-interview <---> 独立 MySQL
 ```bash
 rsync -az --delete --progress \
   --exclude '.git/' \
+  --exclude '.agents/' \
+  --exclude '.codex/' \
+  --exclude '__pycache__/' \
+  --exclude '*.pyc' \
+  --exclude '*.db' \
   --exclude 'frontend/node_modules/' \
+  --exclude 'frontend/test-results/' \
   --exclude 'backend/.venv/' \
   --exclude 'backend/.env' \
   --exclude 'backend/backups/' \
@@ -50,6 +56,7 @@ rsync -az --delete --progress \
 
 rsync -az --delete --progress \
   --exclude '.git/' \
+  --exclude '.idea/' \
   --exclude '.env' \
   --exclude '__pycache__/' \
   --exclude '*.pyc' \
@@ -84,6 +91,11 @@ AI_INTERVIEW_ENABLED=1
 AI_INTERVIEW_DIR=../ai-interview
 HTTP_PORT=80
 HTTPS_PORT=443
+# 服务器无法访问 Docker Hub 时，填写可达的可信镜像或本地镜像名：
+# CADDY_IMAGE=...
+# PYTHON_IMAGE=...
+# NODE_IMAGE=...
+# NGINX_IMAGE=...
 ```
 
 `/home/deploy/studymate/backend/.env` 除现有生产配置外，必须有：
@@ -107,6 +119,9 @@ SESSION_COOKIE_NAME=ai_interview_session
 STUDYMATE_API_URL=http://backend:8000
 STUDYMATE_SERVICE_SECRET=与 backend/.env 的 AI_INTERVIEW_SERVICE_SECRET 完全相同
 LLM_API_KEY=生产模型密钥
+# 服务器无法访问 Docker Hub 时：
+# PYTHON_IMAGE=...
+# MYSQL_IMAGE=...
 ```
 
 保持 `DATABASE_URL` 为空即可由面试 Compose 根据 MySQL 配置生成连接串。`LLM_API_KEY` 为空时可以演示问答页面，但不会生成可回写的岗位能力报告。不要将任何真实值写入仓库、Shell 历史、截图或部署日志。
