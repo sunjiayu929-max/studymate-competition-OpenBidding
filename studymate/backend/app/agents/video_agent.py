@@ -10,14 +10,15 @@ from app.video.minimax_h3 import MiniMaxH3Error, generate_h3_video, minimax_h3_c
 
 
 def _estimate_complexity(context: dict, topic: str) -> str:
-    """把视频定位为一个可完成的短片段，不把长课程塞进一次 H3 调用。"""
+    """按问题本身判断规模，不让岗位能力数量把短问题放大成流程课。"""
     difficulty = int((context.get("diagnosis") or {}).get("target_difficulty") or 0)
-    markers = ("原理", "详解", "全面", "完整", "系统", "为什么", "区别", "从头到尾", "架构")
-    signals = int(len(topic) > 24) + int(any(marker in topic for marker in markers))
-    signals += int(len(context.get("core_competencies") or []) >= 4) + int(difficulty >= 4)
+    long_topic_markers = ("原理", "详解", "全面", "完整", "系统", "从头到尾", "架构", "课程")
+    workflow_markers = ("流程", "步骤", "实战", "配置清单", "部署方案", "完整讲解")
+    signals = int(len(topic) > 28) + int(any(marker in topic for marker in long_topic_markers))
+    signals += int(difficulty >= 4)
     if signals >= 2:
         return "complex"
-    if signals == 1 or len(topic) > 12:
+    if len(topic) > 18 or any(marker in topic for marker in workflow_markers):
         return "workflow"
     return "focused"
 
@@ -172,6 +173,12 @@ class VideoAgent(AgentBase):
 
     async def run(self, context: dict, emit: EventEmitter) -> dict:
         script = _build_script(context)
+        progress_callback = context.get("_video_progress")
+
+        async def publish_progress(payload: dict) -> None:
+            if callable(progress_callback):
+                await progress_callback(payload)
+
         base = {
             "type": "video",
             "title": script["title"],
@@ -200,6 +207,7 @@ class VideoAgent(AgentBase):
             "duration_reason": script["duration_reason"],
             "estimated_cost_rmb": script["estimated_cost_rmb"],
         }
+        await publish_progress({**base, "status": "running", "message": "正在准备视频片段…"})
         if not minimax_h3_configured():
             await self.emit_delta(emit, "H3 API Key 未配置，已保留岗位视频脚本与分镜占位。")
             return {**base, "status": "unconfigured", "message": "待配置 MiniMax H3 API Key"}
@@ -220,9 +228,26 @@ class VideoAgent(AgentBase):
                 })
                 successful_urls.append(segment["video_url"])
                 successful_tasks.append(segment["task_id"])
+                await publish_progress({
+                    **base,
+                    "status": "running",
+                    "segments": segments,
+                    "completed_segments": sum(item["status"] == "succeeded" for item in segments),
+                    "segment_urls": successful_urls,
+                    "actual_cost_rmb": round(sum(float(item.get("duration") or 0) * 0.5 for item in segments if item["status"] == "succeeded"), 2),
+                    "message": f"已完成 {sum(item['status'] == 'succeeded' for item in segments)}/{len(segments)} 个视频片段",
+                })
             except MiniMaxH3Error as exc:
                 segment.update({"status": "failed", "message": str(exc)})
                 failure_messages.append(f"片段 {segment['index']}：{exc}")
+                await publish_progress({
+                    **base,
+                    "status": "partial_failed" if successful_urls else "failed",
+                    "segments": segments,
+                    "completed_segments": len(successful_urls),
+                    "segment_urls": successful_urls,
+                    "message": "部分视频片段生成失败，已保留已完成片段和脚本。",
+                })
                 break
 
         completed = sum(segment["status"] == "succeeded" for segment in segments)

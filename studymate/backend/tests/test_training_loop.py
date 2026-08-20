@@ -88,6 +88,20 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(plan["resolution"], "768P")
         self.assertEqual(plan["estimated_cost_rmb"], plan["total_duration"] * 0.5)
 
+    def test_short_video_questions_use_one_affordable_segment(self):
+        for topic in ("什么是幂等性？", "FDE这个岗位是干什么的", "接口联调"):
+            plan = preview_video_plan({"topic": topic, "target_role": "FDE"})
+            self.assertEqual(plan["complexity"], "focused")
+            self.assertEqual(plan["segment_count"], 1)
+            self.assertLessEqual(plan["total_duration"], 6)
+            self.assertLessEqual(plan["estimated_cost_rmb"], 3)
+
+    def test_explicit_workflow_question_keeps_multiple_segments(self):
+        plan = preview_video_plan({"topic": "现场数据接入与接口联调的完整流程", "target_role": "FDE"})
+        self.assertEqual(plan["complexity"], "workflow")
+        self.assertEqual(plan["segment_count"], 4)
+        self.assertGreater(plan["total_duration"], 20)
+
     async def test_planning_agents_debate_and_respect_time_budget(self):
         context = {
             "topic": "客户接口联调",

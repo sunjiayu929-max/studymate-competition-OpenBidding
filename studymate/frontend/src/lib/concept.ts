@@ -57,6 +57,7 @@ export interface ConceptVideoResult {
   provider: string
   model: string
   status: "unconfigured" | "succeeded" | "failed" | string
+  job_id?: string
   message?: string
   video_url: string
   assembled_video_url?: string

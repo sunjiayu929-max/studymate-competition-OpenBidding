@@ -7,7 +7,7 @@ import { Suspense, useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { AlertCircle, CheckCircle2, Film, Loader2, MessageCircle, Settings2, Volume2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { apiPost } from "@/lib/api"
+import { apiGet, apiPost } from "@/lib/api"
 import { CONCEPT_ANIMS } from "@/components/concepts/registry"
 import { ConceptPlayer } from "@/components/concepts/ConceptPlayer"
 import { GenericConceptAnim } from "@/components/concepts/GenericConceptAnim"
@@ -67,11 +67,26 @@ export function ConceptResultView({
     setVideoLoading(true)
     setVideoError("")
     try {
-      const next = await apiPost<ConceptVideoResult>("/concept/video", {
+      const initial = await apiPost<ConceptVideoResult>("/concept/video", {
         question: lastQuery,
         ...roleContext,
       })
-      setVideo(next)
+      setVideo(initial)
+      if (!initial.job_id) return
+      for (let attempt = 0; attempt < 240; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 3000))
+        let next: ConceptVideoResult
+        try {
+          next = await apiGet<ConceptVideoResult>(`/concept/video/${initial.job_id}`)
+        } catch (error) {
+          // 允许短暂网络抖动，不让一次代理重连丢掉后台任务结果。
+          if (attempt < 3) continue
+          throw error
+        }
+        setVideo(next)
+        if (["succeeded", "failed", "partial_failed", "segments_ready", "unconfigured"].includes(next.status)) return
+      }
+      throw new Error("视频仍在后台生成，请稍后刷新岗位讲解页面查看结果")
     } catch (error) {
       setVideoError(error instanceof Error ? error.message : "岗位视频生成失败，请稍后重试")
     } finally {
@@ -207,7 +222,7 @@ function ConceptVideoCard({ video }: { video: ConceptVideoResult }) {
       ) : (
         <div className={`flex items-start gap-2 rounded-xl border px-3 py-3 text-[11px] leading-5 ${failed ? "border-[#DFC8BE] bg-[#FCF7F4] text-[#9A4E35]" : "border-[#D9CFB7] bg-[#F4ECD8] text-[#72551F]"}`}>
           {failed ? <AlertCircle className="mt-0.5 size-3.5 shrink-0" /> : <Settings2 className="mt-0.5 size-3.5 shrink-0" />}
-          <span>{failed ? "部分视频片段生成失败，下面保留已完成片段供复核。" : video.status === "segments_ready" ? "视频片段已生成，但当前环境暂未合成最终视频。" : "尚未配置 MiniMax H3 API Key，已保留岗位视频脚本。"}</span>
+          <span>{failed ? "部分视频片段生成失败，下面保留已完成片段供复核。" : video.status === "segments_ready" ? "视频片段已生成，但当前环境暂未合成最终视频。" : video.status === "queued" || video.status === "running" ? (video.message || "视频正在后台生成，页面会自动更新进度。") : "尚未配置 MiniMax H3 API Key，已保留岗位视频脚本。"}</span>
         </div>
       )}
 
