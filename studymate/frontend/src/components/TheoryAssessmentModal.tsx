@@ -19,14 +19,14 @@ import { cn } from "@/lib/utils"
 export interface TheoryAssessmentItem {
   id: string
   index: number
-  type: "mcq"
+  type: "mcq" | "fill"
   question: string
   options: string[]
   difficulty: number
   competency: string
   source: string
-  user_answer?: number | null
-  correct_answer?: number
+  user_answer?: number | string | null
+  correct_answer?: number | string
   is_correct?: boolean
   explanation?: string
 }
@@ -92,7 +92,7 @@ export function TheoryAssessmentModal({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [assessment, setAssessment] = useState<TheoryAssessment | null>(null)
-  const [answers, setAnswers] = useState<Record<string, number>>({})
+  const [answers, setAnswers] = useState<Record<string, number | string>>({})
   const [currentIndex, setCurrentIndex] = useState(0)
   const startedAtRef = useRef(Date.now())
   const requestRef = useRef<{ key: string; promise: Promise<TheoryAssessment> } | null>(null)
@@ -185,7 +185,11 @@ export function TheoryAssessmentModal({
     return () => { document.body.style.overflow = previous }
   }, [open])
 
-  const answeredCount = Object.keys(answers).length
+  const hasAnswer = (itemId: string) => {
+    const answer = answers[itemId]
+    return typeof answer === "number" || (typeof answer === "string" && answer.trim().length > 0)
+  }
+  const answeredCount = assessment?.items.filter((item) => hasAnswer(item.id)).length ?? 0
   const sourceCount = useMemo(() => new Set(assessment?.items.map((item) => item.source)).size, [assessment])
   const current = assessment?.items[currentIndex]
 
@@ -265,20 +269,28 @@ export function TheoryAssessmentModal({
                 <div className="flex items-center justify-between text-[10px] font-bold text-[#6D7E94]"><span>答题进度</span><span>{answeredCount}/{assessment.items.length}</span></div>
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#E8EDF3]"><div className="h-full rounded-full bg-[#2F70C8] transition-[width]" style={{ width: `${answeredCount / assessment.items.length * 100}%` }} /></div>
                 <div className="mt-4 grid grid-cols-8 gap-2 lg:grid-cols-4">
-                  {assessment.items.map((item, index) => <button key={item.id} type="button" aria-label={`第 ${index + 1} 题${answers[item.id] !== undefined ? "，已作答" : ""}`} onClick={() => setCurrentIndex(index)} className={cn("grid size-8 place-items-center rounded-lg border text-[10px] font-bold transition", currentIndex === index ? "border-[#2E6CC1] bg-[#E9F2FF] text-[#235DAF]" : answers[item.id] !== undefined ? "border-[#BBDACF] bg-[#EAF7F2] text-[#1C8067]" : "border-[#D8E1EC] bg-white text-[#7D8B9E]")}>{index + 1}</button>)}
+                  {assessment.items.map((item, index) => <button key={item.id} type="button" aria-label={`第 ${index + 1} 题${hasAnswer(item.id) ? "，已作答" : ""}`} onClick={() => setCurrentIndex(index)} className={cn("grid size-8 place-items-center rounded-lg border text-[10px] font-bold transition", currentIndex === index ? "border-[#2E6CC1] bg-[#E9F2FF] text-[#235DAF]" : hasAnswer(item.id) ? "border-[#BBDACF] bg-[#EAF7F2] text-[#1C8067]" : "border-[#D8E1EC] bg-white text-[#7D8B9E]")}>{index + 1}</button>)}
                 </div>
                 <div className="mt-5 hidden rounded-xl bg-[#F5F8FC] p-3 text-[10px] leading-5 text-[#718096] lg:block"><strong className="text-[#49617F]">说明</strong><br />本测评只用于定位起点，不影响课程资格。提交后不可修改。</div>
               </aside>
 
               <section className="min-h-0 overflow-y-auto p-5 sm:p-7">
-                <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-[#E8F1FE] px-2.5 py-1 text-[10px] font-bold text-[#2E65B2]">第 {currentIndex + 1} 题 · 单选</span><span className="rounded-full bg-[#E8F7F1] px-2.5 py-1 text-[10px] font-bold text-[#21806B]">{current.competency}</span><span className="rounded-full bg-[#F2EEFC] px-2.5 py-1 text-[10px] font-bold text-[#7256A8]">难度 L{current.difficulty}</span></div>
+                <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-[#E8F1FE] px-2.5 py-1 text-[10px] font-bold text-[#2E65B2]">第 {currentIndex + 1} 题 · {current.type === "mcq" ? "单选" : "填空"}</span><span className="rounded-full bg-[#E8F7F1] px-2.5 py-1 text-[10px] font-bold text-[#21806B]">{current.competency}</span><span className="rounded-full bg-[#F2EEFC] px-2.5 py-1 text-[10px] font-bold text-[#7256A8]">难度 L{current.difficulty}</span></div>
                 <h3 className="mt-5 text-base font-bold leading-7 text-[#253F60] sm:text-lg">{current.question}</h3>
-                <div className="mt-5 space-y-3">
-                  {current.options.map((option, index) => {
-                    const selected = answers[current.id] === index
-                    return <button key={`${current.id}-${index}`} type="button" aria-pressed={selected} onClick={() => setAnswers((value) => ({ ...value, [current.id]: index }))} className={cn("flex w-full items-start gap-3 rounded-2xl border p-4 text-left text-xs leading-6 transition", selected ? "border-[#3974C6] bg-[#EDF4FF] text-[#234E84] shadow-[0_8px_20px_rgba(52,105,178,.1)]" : "border-[#D9E3EE] bg-white text-[#52657D] hover:border-[#AEC5E2] hover:bg-[#F9FBFE]")}><span className={cn("mt-0.5 grid size-6 shrink-0 place-items-center rounded-full border text-[10px] font-bold", selected ? "border-[#3974C6] bg-[#3974C6] text-white" : "border-[#CBD6E3] text-[#72839A]")}>{String.fromCharCode(65 + index)}</span><span>{option}</span></button>
-                  })}
-                </div>
+                {current.type === "mcq" ? (
+                  <div className="mt-5 space-y-3">
+                    {current.options.map((option, index) => {
+                      const selected = answers[current.id] === index
+                      return <button key={`${current.id}-${index}`} type="button" aria-pressed={selected} onClick={() => setAnswers((value) => ({ ...value, [current.id]: index }))} className={cn("flex w-full items-start gap-3 rounded-2xl border p-4 text-left text-xs leading-6 transition", selected ? "border-[#3974C6] bg-[#EDF4FF] text-[#234E84] shadow-[0_8px_20px_rgba(52,105,178,.1)]" : "border-[#D9E3EE] bg-white text-[#52657D] hover:border-[#AEC5E2] hover:bg-[#F9FBFE]")}><span className={cn("mt-0.5 grid size-6 shrink-0 place-items-center rounded-full border text-[10px] font-bold", selected ? "border-[#3974C6] bg-[#3974C6] text-white" : "border-[#CBD6E3] text-[#72839A]")}>{String.fromCharCode(65 + index)}</span><span>{option}</span></button>
+                    })}
+                  </div>
+                ) : (
+                  <div className="mt-5">
+                    <label htmlFor={`theory-fill-${current.id}`} className="mb-2 block text-[11px] font-bold text-[#536B86]">填写关键术语或能力名称</label>
+                    <input id={`theory-fill-${current.id}`} value={typeof answers[current.id] === "string" ? answers[current.id] : ""} onChange={(event) => setAnswers((value) => ({ ...value, [current.id]: event.target.value }))} placeholder="请输入答案" autoComplete="off" className="h-12 w-full rounded-2xl border border-[#D9E3EE] bg-white px-4 text-sm text-[#253F60] outline-none transition placeholder:text-[#A2AFBE] focus:border-[#3974C6] focus:ring-4 focus:ring-[#3974C6]/10" />
+                    <p className="mt-2 text-[10px] leading-5 text-[#7A899C]">答案只需填写题干要求的关键词，不必抄写整段资料。</p>
+                  </div>
+                )}
               </section>
             </div>
 
