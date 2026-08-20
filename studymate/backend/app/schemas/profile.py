@@ -92,6 +92,20 @@ class TheoryAssessmentEvidence(BaseModel):
     completed_at: str
 
 
+class InterviewAssessmentEvidence(BaseModel):
+    """Latest completed simulated-interview evidence for one target role."""
+    attempt_id: str
+    role_id: str
+    role_name: str
+    course_id: int | None = None
+    overall_score: float = Field(ge=0, le=100)
+    role_match_score: float = Field(ge=0, le=100)
+    general_score: float = Field(ge=0, le=100)
+    competency_scores: dict[str, float] = Field(default_factory=dict)
+    weak_competencies: list[str] = Field(default_factory=list)
+    completed_at: str
+
+
 class ProfileDims(BaseModel):
     """完整画像。和 db.models.Profile.dims 一一对应。"""
     knowledge_base: KnowledgeBase = Field(default_factory=KnowledgeBase)
@@ -106,6 +120,10 @@ class ProfileDims(BaseModel):
     theory_assessments: dict[str, TheoryAssessmentEvidence] = Field(
         default_factory=dict,
         description="按目标岗位 role_id 保存的理论基线证据",
+    )
+    interview_assessments: dict[str, InterviewAssessmentEvidence] = Field(
+        default_factory=dict,
+        description="按目标岗位 role_id 保存的模拟面试证据",
     )
 
 

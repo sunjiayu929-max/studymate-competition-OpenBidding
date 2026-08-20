@@ -62,6 +62,7 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
     items: [
       { label: "岗位空间", to: "/courses", icon: Library },
       { label: "岗位能力画像", to: "/profile", icon: GraduationCap },
+      { label: "AI 面试", to: "/ai-interview", icon: MessageSquare },
     ],
   },
   {
