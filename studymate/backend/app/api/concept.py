@@ -9,9 +9,11 @@
 """
 import json
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from app.agents.video_agent import VideoAgent, preview_video_plan
+from app.deps import require_user
 from app.llm import get_llm_client, has_llm_key
 
 router = APIRouter(prefix="/concept", tags=["concept"])
@@ -29,9 +31,33 @@ class ConceptItem(BaseModel):
 
 class ExplainRequest(BaseModel):
     user_id: int = 1
-    question: str
+    question: str = Field(min_length=1, max_length=500)
     concepts: list[ConceptItem] = Field(default_factory=list)
     matched_key: str | None = None  # 前端关键词初筛结果（可选）
+    target_role: str | None = Field(default=None, max_length=120)
+    role_summary: str | None = Field(default=None, max_length=500)
+    core_competencies: list[str] = Field(default_factory=list, max_length=8)
+    sample_tasks: list[str] = Field(default_factory=list, max_length=8)
+
+
+class VideoRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+    target_role: str = Field(min_length=1, max_length=120)
+    role_summary: str = Field(default="", max_length=500)
+    core_competencies: list[str] = Field(default_factory=list, max_length=8)
+    sample_tasks: list[str] = Field(default_factory=list, max_length=8)
+
+
+def _video_context(req: VideoRequest, user_id: int) -> dict:
+    return {
+        "user_id": user_id,
+        "topic": req.question,
+        "target_role": req.target_role,
+        "role_summary": req.role_summary,
+        "core_competencies": req.core_competencies,
+        "sample_tasks": req.sample_tasks,
+        "generation_round": 1,
+    }
 
 
 def _title_of(concepts: list[ConceptItem], key: str) -> str:
@@ -168,6 +194,14 @@ async def explain(req: ExplainRequest):
 
     # —— LLM 分类：先尝试命中手写动画 ——
     catalog = "\n".join(f"- {c.key}：{c.title}（{c.course}）" for c in req.concepts)
+    role_context = ""
+    if req.target_role:
+        role_context = (
+            f"\n当前目标岗位：{req.target_role}。"
+            f"岗位简介：{req.role_summary or '未提供'}。"
+            f"核心能力：{'、'.join(req.core_competencies[:8]) or '未提供'}。"
+            "如果问题描述的是岗位任务，要优先判断它是否属于岗位流程，而不是强行匹配一个泛化概念动画。"
+        )
     sys = (
         "你是「动画讲解」调度助手。根据学生的问题，从下列已有概念动画里选出最匹配的一个。\n"
         f"可选概念：\n{catalog}\n\n"
@@ -181,7 +215,7 @@ async def explain(req: ExplainRequest):
         raw = await llm.chat_structured(
             messages=[
                 {"role": "system", "content": sys},
-                {"role": "user", "content": req.question + hint},
+                {"role": "user", "content": req.question + role_context + hint},
             ]
         )
         data = json.loads(raw)
@@ -221,3 +255,20 @@ async def explain(req: ExplainRequest):
         "generated": True,
         "mock": False,
     }
+
+
+async def _silent_emit(_event: str, _data: dict) -> None:
+    """即时讲解不需要把后台 Agent 事件暴露成工作台 SSE。"""
+
+
+@router.post("/video")
+async def generate_concept_video(req: VideoRequest, user=Depends(require_user)):
+    """用户确认后生成一次岗位视频；即时结果不进入正式资源包和审核链。"""
+    output = await VideoAgent().run(_video_context(req, user.id), _silent_emit)
+    return output
+
+
+@router.post("/video/preview")
+async def preview_concept_video(req: VideoRequest, user=Depends(require_user)):
+    """生成前预估时长与成本；此接口不调用外部模型，也不扣费。"""
+    return preview_video_plan(_video_context(req, user.id))

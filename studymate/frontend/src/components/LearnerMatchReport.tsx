@@ -97,7 +97,7 @@ export function LearnerMatchReport(props: LearnerMatchReportProps) {
       <section className="mt-4 rounded-[24px] border border-[#D9E1E9] bg-white p-5 shadow-[0_10px_30px_rgba(41,67,112,.06)] sm:p-6">
         <div className="flex items-start gap-4 rounded-[18px] border border-dashed border-[#C9D3DE] bg-[#FAFBFC] p-5">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#EEF1F4] text-[#748291]"><LockKeyhole className="size-4.5" /></span>
-          <div><h2 className="text-base font-bold text-[#28394B]">个人学情与资源匹配度报告</h2><p className="mt-1 text-xs leading-5 text-[#74808D]">六类资源通过发布门禁后，即可生成完整报告。</p></div>
+          <div><h2 className="text-base font-bold text-[#28394B]">个人学情与资源匹配度报告</h2><p className="mt-1 text-xs leading-5 text-[#74808D]">七类资源通过发布门禁后，即可生成完整报告。</p></div>
         </div>
       </section>
     )

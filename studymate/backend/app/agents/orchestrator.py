@@ -281,7 +281,7 @@ class TrainingLoopOrchestrator:
                 await self._record_resource_debate(ctx, emit)
                 decision = await self._run_arbiter(ctx, emit)
 
-            await self._stage(emit, "publishing", "六类岗位资源已通过裁决，准备发布资源包", ctx)
+            await self._stage(emit, "publishing", "七类岗位资源已通过裁决，准备发布资源包", ctx)
             await self._stage(emit, "published", "资源包已发布，可进入学习与反馈", ctx)
 
             await self._emit_done(ctx, emit)
@@ -315,7 +315,7 @@ class TrainingLoopOrchestrator:
                 ctx.setdefault("outputs", {})[agent.meta.id] = result
 
     async def _run_reviews(self, ctx: dict, emit):
-        await self._stage(emit, "review", "三类审核并行交叉验证六类生成结果", ctx)
+        await self._stage(emit, "review", "三类审核并行交叉验证七类生成结果", ctx)
         results = await asyncio.gather(
             *(self._wrap_run(agent, ctx, emit) for agent in self.reviewers),
             return_exceptions=True,
@@ -402,9 +402,9 @@ class TrainingLoopOrchestrator:
         reviews = ctx.get("reviews") or {}
         outputs = ctx.get("outputs") or {}
         reviewer_targets = {
-            "evidence_review": ("doc", "guide", "quiz", "mindmap", "reading"),
+            "evidence_review": ("doc", "guide", "quiz", "mindmap", "reading", "video"),
             "practice_review": ("guide", "code"),
-            "difficulty_review": ("quiz", "mindmap", "reading", "code"),
+            "difficulty_review": ("quiz", "mindmap", "reading", "code", "video"),
         }
         exchanges = []
         for reviewer_id, resource_ids in reviewer_targets.items():
@@ -429,7 +429,7 @@ class TrainingLoopOrchestrator:
             "round": int(ctx.get("generation_round", 1)),
             "title": "第二次辩论 · 资源生成与审核质询",
             "participants": [
-                "doc", "guide", "quiz", "mindmap", "reading", "code",
+                "doc", "guide", "quiz", "mindmap", "reading", "code", "video",
                 *reviewer_targets.keys(),
             ],
             "exchanges": exchanges,
@@ -504,7 +504,7 @@ class TrainingLoopOrchestrator:
     @staticmethod
     def _feedback_by_target(reviews: dict) -> dict[str, list[dict]]:
         feedback: dict[str, list[dict]] = {
-            "doc": [], "guide": [], "quiz": [], "mindmap": [], "reading": [], "code": [],
+            "doc": [], "guide": [], "quiz": [], "mindmap": [], "reading": [], "code": [], "video": [],
         }
         for review in reviews.values():
             for finding in review.get("findings", []):

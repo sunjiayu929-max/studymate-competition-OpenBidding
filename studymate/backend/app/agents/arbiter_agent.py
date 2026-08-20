@@ -10,7 +10,7 @@ class ArbiterAgent(AgentBase):
         name="总裁决 Agent",
         icon="⚖️",
         color="amber",
-        description="汇总六类资源的审核证据并决定发布或定向返工",
+        description="汇总七类资源的审核证据并决定发布或定向返工",
     )
 
     async def run(self, context: dict, emit: EventEmitter) -> dict:
@@ -31,7 +31,7 @@ class ArbiterAgent(AgentBase):
         targets = list(dict.fromkeys(
             str(item.get("target_agent"))
             for item in findings
-            if item.get("target_agent") in {"doc", "guide", "quiz", "mindmap", "reading", "code"}
+            if item.get("target_agent") in {"doc", "guide", "quiz", "mindmap", "reading", "code", "video"}
         ))
         evidence_metrics = (reviews.get("evidence_review") or {}).get("metrics") or {}
         difficulty_metrics = (reviews.get("difficulty_review") or {}).get("metrics") or {}
@@ -41,12 +41,13 @@ class ArbiterAgent(AgentBase):
         difficulty_accuracy = round(float(difficulty_metrics.get("difficulty_fit", difficulty_score)), 2)
         knowledge_coverage = round(float(difficulty_metrics.get("core_coverage", difficulty_score)), 2)
         outputs = context.get("outputs") or {}
-        resource_ids = ("doc", "guide", "quiz", "mindmap", "reading", "code")
+        resource_ids = ("doc", "guide", "quiz", "mindmap", "reading", "code", "video")
         missing_resources = [resource_id for resource_id in resource_ids if not outputs.get(resource_id)]
         enhanced_checks = {
             "mindmap": bool(str((outputs.get("mindmap") or {}).get("content") or "").strip()),
             "reading": len((outputs.get("reading") or {}).get("items") or []) >= 3,
             "code": bool(str((outputs.get("code") or {}).get("code") or "").strip()),
+            "video": bool((outputs.get("video") or {}).get("script")),
         }
         enhanced_coverage = round(sum(enhanced_checks.values()) / len(enhanced_checks) * 100)
         quality_metrics = {
@@ -72,7 +73,7 @@ class ArbiterAgent(AgentBase):
                 "passed": knowledge_coverage >= 90,
             },
             "resource_completeness": {
-                "label": "六类资源完整生成率",
+                "label": "七类资源完整生成率",
                 "value": round((len(resource_ids) - len(missing_resources)) / len(resource_ids) * 100),
                 "operator": ">=",
                 "threshold": 100,
@@ -113,7 +114,7 @@ class ArbiterAgent(AgentBase):
             summary = f"发现 {len(findings) + len(failed_metrics)} 项质量问题，退回 {len(targets)} 个生成角色继续定向修订"
         else:
             decision = "publish"
-            summary = "六类资源均已通过三组交叉审核与发布门禁，资源包已批准发布"
+            summary = "七类资源均已通过三组交叉审核与发布门禁，资源包已批准发布"
 
         result = {
             "type": "decision",

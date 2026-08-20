@@ -42,7 +42,7 @@ interface GuideLink {
 const FIRST_ROUTE: GuideLink[] = [
   { title: "选择目标岗位", detail: "确定领域、岗位知识库与训练上下文", to: "/courses", action: "选择岗位", icon: Library, tone: "border-[#D8C9A8] bg-[#FBF7ED]", iconTone: "bg-[#F4ECD8] text-[#8E6925]" },
   { title: "让系统认识你", detail: "用对话补充目标与薄弱点", to: "/profile", action: "建立画像", icon: GraduationCap, tone: "border-[#C7D2D8] bg-[#F3F7F9]", iconTone: "bg-[#E7EDF3] text-[#315E83]" },
-  { title: "运行岗位训练闭环", detail: "14 个协作节点完成诊断、协商、生成、审核、裁决与反馈", to: "/competency", action: "开始训练", icon: LayoutDashboard, tone: "border-[#CCD7C9] bg-[#F4F7F2]", iconTone: "bg-[#E8EDE5] text-[#5D7658]" },
+  { title: "运行岗位训练闭环", detail: "15 个协作节点完成诊断、协商、生成、审核、裁决与反馈", to: "/competency", action: "开始训练", icon: LayoutDashboard, tone: "border-[#CCD7C9] bg-[#F4F7F2]", iconTone: "bg-[#E8EDE5] text-[#5D7658]" },
   { title: "做一次真实测验", detail: "用作答结果检验掌握程度", to: "/quiz", action: "进入测验", icon: BookOpenCheck, tone: "border-[#DFC9BE] bg-[#FBF5F1]", iconTone: "bg-[#F6ECE7] text-[#9A4E35]" },
   { title: "查看学习报告", detail: "获得建议并更新下一步路线", to: "/report", action: "查看报告", icon: BarChart3, tone: "border-[#D7CDD9] bg-[#F8F5F8]", iconTone: "bg-[#EEE9EF] text-[#7E6B83]" },
 ]

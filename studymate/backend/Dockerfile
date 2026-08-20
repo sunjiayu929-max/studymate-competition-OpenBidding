@@ -14,7 +14,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# curl 用于 HEALTHCHECK；其余 pip wheel 即可。默认切到国内 Debian 源，
+# curl 用于 HEALTHCHECK，ffmpeg 用于拼接岗位视频片段。默认切到国内 Debian 源，
 # 同时兼容旧式 sources.list 与新版 deb822 的 debian.sources。
 RUN for source in /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources; do \
       if [ -f "$source" ]; then \
@@ -26,7 +26,7 @@ RUN for source in /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources; 
       fi; \
     done \
     && apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends curl ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # 先装依赖（利用 docker layer cache，源码变动不会触发重装）

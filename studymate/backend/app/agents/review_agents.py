@@ -1,6 +1,6 @@
 """三个相互独立的内容审核与纠偏 Agent。
 
-审核采用可复现的结构规则与证据检查；六类岗位资源都必须通过本轮审核，模型生成内容不参与修改审核阈值。
+审核采用可复现的结构规则与证据检查；七类岗位资源都必须通过本轮审核，模型生成内容不参与修改审核阈值。
 """
 from __future__ import annotations
 
@@ -171,16 +171,33 @@ class EvidenceReviewAgent(AgentBase):
                 "code",
             ))
 
+        video = outputs.get("video") or {}
+        video_script = video.get("script") or {}
+        if not str(video_script.get("prompt") or "").strip() or not str(video_script.get("voiceover") or "").strip():
+            findings.append(_finding(
+                "video_script_missing",
+                "blocker",
+                "可视讲解没有返回可审核的岗位脚本与旁白",
+                "补充岗位任务、分镜、旁白和安全边界后再调用视频模型",
+                "video",
+            ))
+
         doc_supported = bool(citations and cited_indexes and not invalid_indexes)
         guide_supported = bool(guide_citations and guide_cited_indexes and not guide_invalid_indexes)
         supported_quiz_count = len(quiz_items) - len(unsupported_quiz_items)
-        enhanced_ready = int(bool(mindmap_content)) + int(len(reading_items) >= 3 and not invalid_reading_items) + int(bool(code_content))
-        professional_unit_count = 5 + len(quiz_items)
+        video_ready = bool(str(video_script.get("prompt") or "").strip() and str(video_script.get("voiceover") or "").strip())
+        enhanced_ready = (
+            int(bool(mindmap_content))
+            + int(len(reading_items) >= 3 and not invalid_reading_items)
+            + int(bool(code_content))
+            + int(video_ready)
+        )
+        professional_unit_count = 6 + len(quiz_items)
         unsupported_unit_count = (
             int(not doc_supported)
             + int(not guide_supported)
             + len(unsupported_quiz_items)
-            + (3 - enhanced_ready)
+            + (4 - enhanced_ready)
         )
         hallucination_rate = round(unsupported_unit_count / professional_unit_count * 100, 2) if professional_unit_count else 100.0
 
@@ -197,9 +214,9 @@ class EvidenceReviewAgent(AgentBase):
                 "citation_coverage": citation_coverage,
                 "guide_citation_count": len(guide_citations),
                 "quiz_source_coverage": round(supported_quiz_count / len(quiz_items) * 100) if quiz_items else 0,
-                "enhanced_resource_count": 3,
+                "enhanced_resource_count": 4,
                 "enhanced_resource_ready": enhanced_ready,
-                "enhanced_resource_coverage": round(enhanced_ready / 3 * 100),
+                "enhanced_resource_coverage": round(enhanced_ready / 4 * 100),
                 "professional_unit_count": professional_unit_count,
                 "unsupported_unit_count": unsupported_unit_count,
                 "hallucination_rate": hallucination_rate,
@@ -274,8 +291,20 @@ class PracticeReviewAgent(AgentBase):
                 "code",
             ))
 
+        video = (context.get("outputs") or {}).get("video") or {}
+        video_script = video.get("script") or {}
+        video_ready = bool(str(video_script.get("prompt") or "").strip() and str(video_script.get("voiceover") or "").strip())
+        if not video_ready:
+            findings.append(_finding(
+                "video_not_actionable",
+                "blocker",
+                "可视讲解缺少可执行的分镜与旁白内容",
+                "补充与岗位任务一致的画面动作、中文旁白和验证结果",
+                "video",
+            ))
+
         completeness = round((len(self.REQUIRED_SECTIONS) - len(missing)) / len(self.REQUIRED_SECTIONS) * 100)
-        score = round((completeness + int(code_ready) * 100) / 2)
+        score = round((completeness + int(code_ready) * 100 + int(video_ready) * 100) / 3)
         score -= 30 if not citations else 0
         score -= 15 if numbered_steps < 3 else 0
         result = _review_output(
@@ -288,6 +317,7 @@ class PracticeReviewAgent(AgentBase):
                 "citation_count": len(citations),
                 "safety_boundary_present": "安全边界" in content,
                 "code_case_ready": code_ready,
+                "video_script_ready": video_ready,
             },
             "guide",
         )
@@ -364,6 +394,7 @@ class DifficultyReviewAgent(AgentBase):
             "mindmap": bool(str((outputs.get("mindmap") or {}).get("content") or "").strip()),
             "reading": len((outputs.get("reading") or {}).get("items") or []) >= 3,
             "code": bool(str((outputs.get("code") or {}).get("code") or "").strip()),
+            "video": bool((outputs.get("video") or {}).get("script")),
         }
         missing_enhanced = [resource_id for resource_id, ready in enhanced_checks.items() if not ready]
         if missing_enhanced:

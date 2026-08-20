@@ -13,6 +13,7 @@ import {
   Clock3,
   FileCheck2,
   FileText,
+  Film,
   Flag,
   Gauge,
   GitCompareArrows,
@@ -93,6 +94,7 @@ const RESOURCE_META = {
   mindmap: { title: "思维导图", icon: Network, detail: "梳理岗位任务中的概念、依赖与关系" },
   reading: { title: "拓展阅读", icon: Library, detail: "补充岗位资料、论文、文档与视频" },
   code: { title: "代码案例", icon: Code2, detail: "提供适配岗位任务的可运行示例" },
+  video: { title: "可视讲解", icon: Film, detail: "MiniMax H3 生成带中文原生声音的岗位视频" },
 } as const
 
 const ADVANCED_CHALLENGE_THRESHOLD = 0.666
@@ -223,7 +225,13 @@ export function CompetencyTraining() {
     ? (workspace.feedback.answered_count - workspace.feedback.wrong_items.length) / workspace.feedback.answered_count
     : null
   const advancedChallengeAvailable = submittedAccuracyRate !== null && submittedAccuracyRate >= ADVANCED_CHALLENGE_THRESHOLD
-  const resourceCount = (["doc", "guide", "quiz", "mindmap", "reading", "code"] as ResourceId[]).filter((id) => Boolean(workspace.outputs[id])).length
+  const resourceCount = (["doc", "guide", "quiz", "mindmap", "reading", "code", "video"] as ResourceId[]).filter((id) => Boolean(workspace.outputs[id])).length
+  const videoReviewScores = ["evidence_review", "practice_review", "difficulty_review"]
+    .map((id) => workspace.reviews[id]?.score)
+    .filter((score): score is number => typeof score === "number")
+  const videoReviewScore = videoReviewScores.length
+    ? Math.round(videoReviewScores.reduce((sum, score) => sum + score, 0) / videoReviewScores.length)
+    : undefined
   const completedSteps = [Boolean(role), diagnosisReady, Boolean(plan), released, reportGenerated, Boolean(workspace.feedback)].filter(Boolean).length
   const agentDone = workspace.agents.filter((agent) => agent.status === "done").length
   const agentProgress = workspace.agents.length ? Math.round(agentDone / workspace.agents.length * 100) : 0
@@ -333,7 +341,7 @@ export function CompetencyTraining() {
               <Metric value={`${completedSteps}/6`} label="闭环阶段" detail="每一步均保留证据" accent />
               <Metric value={`${profileScore}%`} label="画像完整度" detail={profileReady ? `画像 v${profile?.version ?? 1} 已参与决策` : "还需补充目标与实践证据"} />
               <Metric value={workspace.agents.length ? `${agentDone}/${workspace.agents.length}` : "11"} label="协同 Agent" detail={workspace.status === "running" ? `协作进度 ${agentProgress}%` : "分工、交叉审核与仲裁"} />
-              <Metric value={`${resourceCount}/6`} label="岗位训练资源" detail={released ? "已越过发布门禁" : "裁决通过后开放"} />
+              <Metric value={`${resourceCount}/7`} label="岗位训练资源" detail={released ? "已越过发布门禁" : "裁决通过后开放"} />
             </div>
           </div>
         </section>
@@ -343,7 +351,7 @@ export function CompetencyTraining() {
             <FlowStep index="01" label="选择岗位" detail={role.name} status="done" />
             <FlowStep index="02" label="画像诊断" detail={!profileReady ? "等待补充画像证据" : theoryCompleted ? `理论基线 ${theoryGate.assessment?.score ?? theoryEvidence?.score ?? "—"} 分` : "等待首次理论测评"} status={diagnosisReady ? "done" : "active"} />
             <FlowStep index="03" label="协同决策" detail={plan ? `第 ${plan.cycle} 轮计划已形成` : workspace.status === "running" ? "Agent 协商中" : "等待启动"} status={plan ? "done" : diagnosisReady ? "active" : "idle"} />
-            <FlowStep index="04" label="资源训练" detail={released ? "6 类资源已发布" : "等待质量门禁"} status={released ? "done" : plan ? "active" : "idle"} />
+            <FlowStep index="04" label="资源训练" detail={released ? "7 类资源已发布" : "等待质量门禁"} status={released ? "done" : plan ? "active" : "idle"} />
             <FlowStep index="05" label="匹配报告" detail={reportGenerated ? "学习决策已生成" : released ? "等待生成报告" : "等待资源发布"} status={reportGenerated ? "done" : released ? "active" : "idle"} />
             <FlowStep index="06" label="成果验收" detail={workspace.feedback ? "结果已进入下一轮" : attempts.length ? `已完成 ${attempts.length} 项验证` : "等待测试证据"} status={workspace.feedback ? "done" : reportGenerated ? "active" : "idle"} last />
           </div>
@@ -416,9 +424,9 @@ export function CompetencyTraining() {
         </section>
 
         <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
-          <div className="flex flex-wrap items-end justify-between gap-3"><SectionTitle icon={Layers3} eyebrow="03 · 个性化资源" title="六类资源围绕同一个岗位任务呼应" description={plan?.rationale || `本轮候选任务：${nextTopic}`} /><span className={cn("rounded-full px-3 py-1.5 text-[10px] font-bold", released ? "bg-[#E5F6F0] text-[#18745E]" : "bg-[#EEF3FA] text-[#61738D]")}>{released ? `质量门禁通过 · ${workspace.decision?.quality_score ?? 0} 分` : workspace.status === "running" ? "生成与审核进行中" : "等待协同计划"}</span></div>
+          <div className="flex flex-wrap items-end justify-between gap-3"><SectionTitle icon={Layers3} eyebrow="03 · 个性化资源" title="七类资源围绕同一个岗位任务呼应" description={plan?.rationale || `本轮候选任务：${nextTopic}`} /><span className={cn("rounded-full px-3 py-1.5 text-[10px] font-bold", released ? "bg-[#E5F6F0] text-[#18745E]" : "bg-[#EEF3FA] text-[#61738D]")}>{released ? `质量门禁通过 · ${workspace.decision?.quality_score ?? 0} 分` : workspace.status === "running" ? "生成与审核进行中" : "等待协同计划"}</span></div>
           <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {(["doc", "guide", "quiz", "mindmap", "reading", "code"] as ResourceId[]).map((id, index) => <ResourceCard key={id} id={id} index={index} plan={plan} ready={Boolean(workspace.outputs[id])} released={released} reviewScore={id === "doc" || id === "mindmap" || id === "reading" ? workspace.reviews.evidence_review?.score : id === "guide" || id === "code" ? workspace.reviews.practice_review?.score : workspace.reviews.difficulty_review?.score} />)}
+            {(["doc", "guide", "quiz", "mindmap", "reading", "code", "video"] as ResourceId[]).map((id, index) => <ResourceCard key={id} id={id} index={index} plan={plan} ready={Boolean(workspace.outputs[id])} released={released} reviewScore={id === "video" ? videoReviewScore : id === "doc" || id === "mindmap" || id === "reading" ? workspace.reviews.evidence_review?.score : id === "guide" || id === "code" ? workspace.reviews.practice_review?.score : workspace.reviews.difficulty_review?.score} videoStatus={id === "video" ? workspace.outputs.video?.status : undefined} />)}
           </div>
         </section>
 
@@ -637,7 +645,7 @@ function AgentAudit({ workspace, progress }: { workspace: WorkspaceState; progre
       <AgentCollaborationFlow workspace={workspace} />
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-[#DFE6EF] bg-[#F8FAFD] p-4">
-          <strong className="text-[11px] text-[#334B68]">六类资源 · 三项交叉审核</strong>
+          <strong className="text-[11px] text-[#334B68]">七类资源 · 三项交叉审核</strong>
           {reviews.length ? <div className="mt-3 space-y-2">{reviews.map(([key, review]) => <div key={key} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-[10px]"><span className="text-[#62748B]">{review.reviewer || key}</span><span className={cn("font-black", review.status === "pass" ? "text-[#1A8067]" : review.status === "fail" ? "text-[#B4523B]" : "text-[#A06C24]")}>{review.score} 分 · {reviewStatusLabel(review.status)}</span></div>)}</div> : <p className="mt-2 text-[10px] leading-5 text-[#7A899D]">等待事实来源、实操规范与难度覆盖审核。</p>}
         </div>
         <div className={cn("rounded-2xl border p-4", decision?.decision === "publish" ? "border-[#BFDCCF] bg-[#F3FAF7]" : decision?.decision === "rework" || decision?.decision === "failed" ? "border-[#E8CDBE] bg-[#FFF7F2]" : "border-[#DFE6EF] bg-[#F8FAFD]")}>
@@ -662,7 +670,7 @@ function AgentAudit({ workspace, progress }: { workspace: WorkspaceState; progre
 
 function ReworkTimeline({ workspace }: { workspace: WorkspaceState }) {
   if (!workspace.reworkHistory.length) return <div className="mt-3 rounded-2xl border border-dashed border-[#D8E2ED] bg-[#FBFCFE] px-4 py-3 text-[10px] text-[#748399]">当前尚未发生返工。若审核发现问题，这里会按轮次展示返工目标与修改要求。</div>
-  const labels: Record<string, string> = { doc: "定制讲义", guide: "实操指南", quiz: "分阶测试" }
+  const labels: Record<string, string> = { doc: "定制讲义", guide: "实操指南", quiz: "分阶测试", mindmap: "思维导图", reading: "拓展阅读", code: "代码案例", video: "可视讲解" }
   return <div className="mt-3 rounded-2xl border border-[#E7D2C3] bg-[#FFF9F5] p-4"><div className="flex items-center gap-2 text-[11px] font-bold text-[#9A5B35]"><RefreshCw className={cn("size-3.5", workspace.status === "running" && "animate-spin")} />自动返工记录 · 已发生 {workspace.reworkHistory.length} 次</div><div className="mt-3 grid gap-2 md:grid-cols-2">{workspace.reworkHistory.slice(-4).reverse().map((record) => <div key={`${record.generationRound}-${record.createdAt}`} className="rounded-xl border border-[#ECDDD2] bg-white px-3 py-2.5"><div className="flex items-center justify-between text-[9px] font-bold"><span className="text-[#9A5B35]">第 {record.generationRound} 轮退回</span><span className="text-[#7B8797]">{record.targets.map((id) => labels[id] || id).join("、")}</span></div><p className="mt-1.5 line-clamp-2 text-[9px] leading-4 text-[#6F7886]">{record.requiredFixes.join("；") || "依据交叉审核结果重新生成并再次送审"}</p></div>)}</div></div>
 }
 
@@ -702,11 +710,12 @@ function Position({ label, text, tone }: { label: string; text: string; tone: "b
   return <div className={cn("rounded-2xl border p-3.5", tone === "blue" ? "border-[#D4E2F4] bg-[#F4F8FE]" : "border-[#CFE8E4] bg-[#F3FAF8]")}><strong className={cn("text-[10px]", tone === "blue" ? "text-[#376CA9]" : "text-[#237768]")}>{label}</strong><p className="mt-1 text-[11px] leading-5 text-[#5F7087]">{text}</p></div>
 }
 
-function ResourceCard({ id, index, plan, ready, released, reviewScore }: { id: ResourceId; index: number; plan?: PersonalizedTrainingPlan; ready: boolean; released: boolean; reviewScore?: number }) {
+function ResourceCard({ id, index, plan, ready, released, reviewScore, videoStatus }: { id: ResourceId; index: number; plan?: PersonalizedTrainingPlan; ready: boolean; released: boolean; reviewScore?: number; videoStatus?: string }) {
   const meta = RESOURCE_META[id]
   const Icon = meta.icon
   const stage = plan?.stages[index]
-  return <article className={cn("rounded-[20px] border p-4", released && ready ? "border-[#BFDCCF] bg-[#F7FCFA]" : ready ? "border-[#C8D9ED] bg-[#F8FBFF]" : "border-[#E0E7F0] bg-[#FBFCFE]")}><div className="flex items-start justify-between gap-3"><span className="grid size-10 place-items-center rounded-xl bg-white text-[#3369B4] shadow-sm"><Icon className="size-4.5" /></span><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", released && ready ? "bg-[#DDF2E9] text-[#18745E]" : ready ? "bg-[#E6F0FD] text-[#3568A9]" : "bg-[#EDF1F6] text-[#7B899B]")}>{released && ready ? `审核 ${reviewScore ?? "—"} 分` : ready ? "等待发布门禁" : "等待生成"}</span></div><h3 className="mt-3 text-sm font-bold text-[#20344E]">{meta.title}</h3><p className="mt-1 text-[10px] leading-4 text-[#738298]">{stage?.goal || meta.detail}</p><div className="mt-3 rounded-xl bg-white/90 px-3 py-2 text-[9px] leading-4 text-[#63758D]">成果证据：{stage?.evidence || "由训练计划确定"}</div>{released && ready ? <Link to={`/workspace/r/${id}`} className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#2864BA]">打开资源<ArrowRight className="size-3" /></Link> : <span className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#8794A5]"><ShieldCheck className="size-3" />裁决通过后开放</span>}</article>
+  const videoReadyLabel = videoStatus === "succeeded" ? `审核 ${reviewScore ?? "—"} 分` : videoStatus === "unconfigured" ? "脚本已审 · 待配置 Key" : videoStatus === "segments_ready" ? "片段已生成 · 待合成" : videoStatus === "failed" || videoStatus === "partial_failed" ? "生成失败 · 需返工" : `审核 ${reviewScore ?? "—"} 分`
+  return <article className={cn("rounded-[20px] border p-4", released && ready ? "border-[#BFDCCF] bg-[#F7FCFA]" : ready ? "border-[#C8D9ED] bg-[#F8FBFF]" : "border-[#E0E7F0] bg-[#FBFCFE]")}><div className="flex items-start justify-between gap-3"><span className="grid size-10 place-items-center rounded-xl bg-white text-[#3369B4] shadow-sm"><Icon className="size-4.5" /></span><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", released && ready ? "bg-[#DDF2E9] text-[#18745E]" : ready ? "bg-[#E6F0FD] text-[#3568A9]" : "bg-[#EDF1F6] text-[#7B899B]")}>{released && ready ? (id === "video" ? videoReadyLabel : `审核 ${reviewScore ?? "—"} 分`) : ready ? "等待发布门禁" : "等待生成"}</span></div><h3 className="mt-3 text-sm font-bold text-[#20344E]">{meta.title}</h3><p className="mt-1 text-[10px] leading-4 text-[#738298]">{stage?.goal || meta.detail}</p><div className="mt-3 rounded-xl bg-white/90 px-3 py-2 text-[9px] leading-4 text-[#63758D]">成果证据：{stage?.evidence || "由训练计划确定"}</div>{released && ready ? <Link to={`/workspace/r/${id}`} className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#2864BA]">打开资源<ArrowRight className="size-3" /></Link> : <span className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#8794A5]"><ShieldCheck className="size-3" />裁决通过后开放</span>}</article>
 }
 
 function ResultMetric({ label, value, detail }: { label: string; value: string; detail: string }) {

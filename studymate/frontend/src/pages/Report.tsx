@@ -275,6 +275,7 @@ export function Report() {
     Boolean(ws.outputs.reading?.items?.length),
     Boolean(ws.outputs.code?.code),
     Boolean(ws.outputs.guide?.content),
+    Boolean(ws.outputs.video?.script),
   ].filter(Boolean).length, [ws.outputs])
 
   const availableResources = useMemo(() => [
@@ -284,6 +285,7 @@ export function Report() {
     ws.outputs.reading?.items?.length ? "reading" : null,
     ws.outputs.code?.code ? "code" : null,
     ws.outputs.guide?.content ? "guide" : null,
+    ws.outputs.video?.script ? "video" : null,
     ws.topic ? "concept" : null,
   ].filter((resource): resource is string => Boolean(resource)), [ws.outputs, ws.topic])
 
@@ -1214,9 +1216,9 @@ function WorkspaceGenerationState({ resourceCount }: { resourceCount: number }) 
           <span className="absolute -right-1 -top-1 size-3 animate-pulse rounded-full border-2 border-[#FFFEFA] bg-[#B85C3E]" />
         </span>
         <h2 className="mt-4 text-lg font-bold text-[#18232D]">学习资源包仍在后台生成</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#66717B]">当前已有 {resourceCount} / 6 类 Agent 资源返回。为保证报告证据完整，资源全部生成后才开放评估。</p>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#66717B]">当前已有 {resourceCount} / 7 类 Agent 资源返回。为保证报告证据完整，资源全部生成后才开放评估。</p>
         <div className="mx-auto mt-5 h-2 max-w-sm overflow-hidden rounded-full bg-[#DCE4E8]">
-          <motion.div initial={false} animate={{ width: `${Math.min(100, (resourceCount / 6) * 100)}%` }} className="h-full rounded-full bg-[#315E83]" />
+          <motion.div initial={false} animate={{ width: `${Math.min(100, (resourceCount / 7) * 100)}%` }} className="h-full rounded-full bg-[#315E83]" />
         </div>
         <div className="mt-5 flex flex-wrap justify-center gap-2">
           <Link to="/competency" className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-xs font-bold text-[#FFFEFA] transition-colors hover:bg-[#193B50]">查看训练进度<ArrowRight className="size-3.5" /></Link>
@@ -1232,7 +1234,7 @@ function WorkspaceGenerationBanner({ resourceCount }: { resourceCount: number })
     <div role="status" className="mb-4 flex flex-col gap-3 rounded-[20px] border border-[#D9CFB7] bg-[#F4ECD8] p-4 text-[#72551F] sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-start gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[#D9CFB7] bg-[#FFFEFA]"><Layers3 className="size-4" /></span>
-        <div><strong className="block text-sm">新资源仍在生成，暂不重新评估</strong><p className="mt-0.5 text-[11px] leading-5 text-[#816A3D]">已返回 {resourceCount} / 6 类资源；下方旧报告保持可读，完整后再生成新版。</p></div>
+        <div><strong className="block text-sm">新资源仍在生成，暂不重新评估</strong><p className="mt-0.5 text-[11px] leading-5 text-[#816A3D]">已返回 {resourceCount} / 7 类资源；下方旧报告保持可读，完整后再生成新版。</p></div>
       </div>
       <Link to="/competency" className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-xl border border-[#CDBF9E] bg-[#FFFEFA] px-3 text-[11px] font-bold transition-colors hover:bg-[#F8F1E2]">查看进度<ArrowRight className="size-3" /></Link>
     </div>

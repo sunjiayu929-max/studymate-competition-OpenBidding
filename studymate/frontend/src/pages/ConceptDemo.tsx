@@ -5,7 +5,7 @@
  *   命中手写动画放精品；没命中 → AI 现编排通用模板动画（GenericConceptAnim）。
  * 底部：动画库入口 → 跳独立页 /concept/library 慢慢逛（不在本页抢搜索的戏）。
  */
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { ArrowLeft, Film, Sparkles, Send, Loader2, Library, ChevronRight, PlayCircle, Layers3, MessageCircleMore } from "lucide-react"
 import { AppTopbar } from "@/components/AppTopbar"
@@ -14,7 +14,7 @@ import { useCurrentUser } from "@/store/user"
 import { useTargetRole } from "@/store/targetRole"
 import { CONCEPT_ANIMS } from "@/components/concepts/registry"
 import { ConceptResultView } from "@/components/concepts/ConceptResultView"
-import { explainConcept, type ExplainResult } from "@/lib/concept"
+import { explainConcept, type ConceptRoleContext, type ExplainResult } from "@/lib/concept"
 
 const EXAMPLES = [
   "梯度下降是怎么工作的",
@@ -30,6 +30,14 @@ export function ConceptDemo() {
   const user = useCurrentUser()
   const targetRole = useTargetRole()
   const USER_ID = user?.user_id ?? 0
+  const roleContext = useMemo<ConceptRoleContext | undefined>(() => targetRole
+    ? {
+        target_role: targetRole.name,
+        role_summary: targetRole.summary,
+        core_competencies: targetRole.skills,
+        sample_tasks: targetRole.sampleTasks,
+      }
+    : undefined, [targetRole])
   const examples = Array.from(new Set([
     ...(targetRole?.sampleTasks?.slice(0, 2) || []),
     ...(targetRole?.skills?.slice(0, 2) || []),
@@ -66,20 +74,20 @@ export function ConceptDemo() {
       setResult(null)
       setLastQuery(text)
       try {
-        const r = await explainConcept(text, USER_ID)
+        const r = await explainConcept(text, USER_ID, roleContext)
         setResult(r)
       } finally {
         setLoading(false)
       }
     },
-    [loading, USER_ID]
+    [loading, USER_ID, roleContext]
   )
 
   // 动画库已有条目走 anim，直接进入播放器；未命中搜索走 q，让 AI 现编兜底。
   useEffect(() => {
     if (!initialNeedsExplain) return
     let cancelled = false
-    void explainConcept(initialQuery, USER_ID)
+    void explainConcept(initialQuery, USER_ID, roleContext)
       .then((nextResult) => {
         if (!cancelled) setResult(nextResult)
       })
@@ -89,7 +97,7 @@ export function ConceptDemo() {
     return () => {
       cancelled = true
     }
-  }, [USER_ID, initialNeedsExplain, initialQuery])
+  }, [USER_ID, initialNeedsExplain, initialQuery, roleContext])
 
   return (
     <div className="app-page paper-theme">
@@ -119,7 +127,7 @@ export function ConceptDemo() {
               <div className="pointer-events-none absolute -right-20 -top-28 size-64 rounded-full border border-[#DDD4BF]" />
               <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] text-[#6F8A69]"><Sparkles className="size-3.5 text-[#B1842C]" />岗位能力可视化引擎</span>
               <h2 className="relative mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D] sm:text-2xl">把岗位能力与任务原理，变成可以播放的过程</h2>
-              <p className="relative mt-2 text-sm leading-6 text-[#66717B]">输入岗位能力点、任务步骤或技术概念，系统会匹配精品动画或现场编排分步讲解，并推荐真人教学视频作为补充。</p>
+              <p className="relative mt-2 text-sm leading-6 text-[#66717B]">输入岗位能力点、任务步骤或技术概念，系统会自动选择合适的讲解方式；遇到需要展示岗位流程的问题，可确认生成带声音的视频。</p>
 
         {/* Agent 提问框 */}
         <form
@@ -134,7 +142,7 @@ export function ConceptDemo() {
             <input
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="输入岗位能力点或任务原理，我用动画讲给你看…"
+              placeholder="输入岗位能力点或任务原理，我来讲给你看…"
               className="h-11 w-full bg-transparent pl-9 pr-3 text-sm text-[#18232D] outline-none placeholder:text-[#929792]"
             />
           </div>
@@ -163,7 +171,7 @@ export function ConceptDemo() {
 
         {/* Agent 结果 —— 与多 Agent 工作台「可视讲解」卡共用同一渲染 */}
         <div className="mt-5 flex-1">
-          <ConceptResultView result={result} loading={loading} lastQuery={lastQuery} />
+          <ConceptResultView result={result} loading={loading} lastQuery={lastQuery} roleContext={roleContext} />
           {!result && !loading && (
             <div className="grid gap-3 md:grid-cols-3">
               <CapabilityCard icon={PlayCircle} title="分步动画" description="控制播放节奏，逐步观察算法、系统和网络过程。" tone="blue" />

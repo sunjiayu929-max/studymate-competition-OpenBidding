@@ -1033,6 +1033,7 @@ export function Home() {
     Boolean(workspace.outputs.reading?.items?.length),
     Boolean(workspace.outputs.code?.code),
     Boolean(workspace.outputs.guide?.content),
+    Boolean(workspace.outputs.video?.script),
   ].filter(Boolean).length
   const todayKey = shanghaiDayKey(new Date())
   const todaySubmittedQuizzes = submittedQuizzes.filter((quiz) => shanghaiDayKey(quiz.submitted_at) === todayKey)
@@ -1119,7 +1120,7 @@ export function Home() {
       rows.push({
         key: `pulse-workspace-${workspaceTimestamp}`,
         to: "/competency",
-        title: workspace.status === "running" ? "14 个协作节点正在协作" : workspace.status === "done" ? "Agent 训练资源已完成" : workspace.status === "error" || workspace.status === "interrupted" ? "Agent 任务需要关注" : "岗位训练中心已更新",
+        title: workspace.status === "running" ? "15 个协作节点正在协作" : workspace.status === "done" ? "Agent 训练资源已完成" : workspace.status === "error" || workspace.status === "interrupted" ? "Agent 任务需要关注" : "岗位训练中心已更新",
         detail: compactTopic(workspace.logs.at(-1) || workspace.topic, 26),
         timestamp: workspaceTimestamp,
         tone: workspace.status === "error" || workspace.status === "interrupted" ? "#B97B65" : "#91A98C",
@@ -1552,10 +1553,10 @@ function LearningLoopPanel({
       number: "02",
       title: "资源生成",
       detail: workspaceStatus === "running"
-        ? "14 个协作节点正在协作"
+        ? "15 个协作节点正在协作"
         : generationNeedsAttention
           ? generatedResourceCount ? `生成已中断 · 保留 ${generatedResourceCount} 类资源` : "生成中断，点击继续处理"
-          : generatedResourceCount ? `${generatedResourceCount} / 6 类岗位训练资源已就绪` : "等待生成训练资源",
+          : generatedResourceCount ? `${generatedResourceCount} / 7 类岗位训练资源已就绪` : "等待生成训练资源",
       to: "/competency",
       icon: Sparkles,
       color: "#6F8A69",
