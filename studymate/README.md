@@ -107,6 +107,16 @@ docker compose --env-file .deploy.env --profile public --profile code-runner up 
 docker compose --profile extras up -d
 ```
 
+生产环境启用独立 AI 面试服务时，使用统一编排脚本。它会先启动主项目创建共享网络，再启动相邻的 `../ai-interview` Compose 项目；不会把面试 MySQL 合并到主系统：
+
+```bash
+# .deploy.env 设置 AI_INTERVIEW_ENABLED=1 后执行
+bash scripts/deploy.sh preflight
+bash scripts/deploy.sh up
+```
+
+浏览器入口固定为 `https://matropic.cn/interview/`。完整的服务器目录、环境变量、备份和验收步骤见 [`docs/AI面试部署指南.md`](docs/AI面试部署指南.md)。
+
 当前业务基线仍使用 SQLite。`extras` 中的 PostgreSQL、Redis、Chroma 是扩展服务，不代表应用已经切换到这些存储。
 
 ## 数据库与演示种子
@@ -165,6 +175,7 @@ PYTHONDONTWRITEBYTECODE=1 python scripts/check_workspace_structure.py
 - [`docs/接口说明.md`](docs/接口说明.md)：接口分组、认证方式和角色边界。
 - [`docs/开发与验收指南.md`](docs/开发与验收指南.md)：开发规范与交付前核查。
 - [`docs/Ubuntu部署指南.md`](docs/Ubuntu部署指南.md)：服务器部署、升级、备份和排障。
+- [`docs/AI面试部署指南.md`](docs/AI面试部署指南.md)：同域 AI 面试服务部署、验收与备份。
 - [`docs/密钥管理指南.md`](docs/密钥管理指南.md)：密钥配置、轮换和泄露处理。
 - [`frontend/README.md`](frontend/README.md)：前端开发和截图工具。
 - [`backend/README.md`](backend/README.md)：后端模块和运行说明。
