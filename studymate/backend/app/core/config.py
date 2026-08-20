@@ -84,7 +84,8 @@ class Settings(BaseSettings):
     MINIMAX_VIDEO_WATERMARK: bool = True
     MINIMAX_VIDEO_REQUEST_TIMEOUT_SECONDS: float = 30.0
     MINIMAX_VIDEO_POLL_INTERVAL_SECONDS: float = 3.0
-    MINIMAX_VIDEO_POLL_ATTEMPTS: int = 100
+    # H3 视频生成可能超过 5 分钟；最多等待约 12 分钟，避免过早把仍在运行的任务判失败。
+    MINIMAX_VIDEO_POLL_ATTEMPTS: int = 240
     # 合成后的短视频文件目录；Docker 中位于持久化 data volume。
     VIDEO_MEDIA_DIR: str = "./data/video_media"
 

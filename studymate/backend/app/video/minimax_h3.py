@@ -85,8 +85,7 @@ async def generate_h3_video(
         for attempt in range(settings.MINIMAX_VIDEO_POLL_ATTEMPTS):
             await asyncio.sleep(settings.MINIMAX_VIDEO_POLL_INTERVAL_SECONDS if attempt else 0)
             query = await client.get(
-                f"{_base_url()}/v2/query/video_generation",
-                params={"task_id": task_id},
+                f"{_base_url()}/v2/query/video_generation/{task_id}",
                 headers={"Authorization": _headers()["Authorization"]},
             )
             if query.status_code >= 400:
