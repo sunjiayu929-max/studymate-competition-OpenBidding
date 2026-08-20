@@ -19,6 +19,7 @@ StudyMate 是面向高校计算机类课程的个性化学习平台，将学习�
 - 外部学习资源：支持哔哩哔哩、讯飞人才呀，以及论文、图书和技术博客真实详情页解析。
 - 在线编程：可选接入 Piston，运行 Python、C11 和 C++17。
 - 独立 AI 面试：通过岗位空间进入独立部署的 AI 面试服务，复用原项目的简历分析、实时面试、面试报告和企业管理能力。
+- 独立在线判题：通过 StudyMate 入口进入 Hydro OJ；题库、提交记录、MongoDB 和 HydroJudge 保持独立部署。
 
 ## 快速启动
 
@@ -70,6 +71,7 @@ docker compose --profile code-runner up -d --build
 ```text
 .
 ├── docs/                     # 赛事资料、项目资料和交付文档
+├── oj/                       # Hydro OJ Git Submodule（main）
 └── studymate/                # 可独立运行的应用
     ├── backend/              # FastAPI、Agent、RAG、数据库和外部集成
     ├── frontend/             # React 前端
@@ -92,6 +94,7 @@ docker compose --profile code-runner up -d --build
 - [Ubuntu 部署指南](studymate/docs/Ubuntu部署指南.md)
 - [密钥管理指南](studymate/docs/密钥管理指南.md)
 - [AI 面试服务接入说明](docs/AI面试服务接入说明.md)
+- [OJ 服务接入说明](studymate/docs/OJ服务接入说明.md)
 - [竞赛资料索引](docs/README.md)
 
 ## 安全说明
