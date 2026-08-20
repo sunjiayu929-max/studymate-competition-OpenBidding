@@ -31,6 +31,16 @@ python -m pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+岗位视频片段合成依赖宿主机的 `ffmpeg`。Ubuntu/Debian 裸跑后端前安装：
+
+```bash
+sudo apt-get update
+sudo apt-get install -y ffmpeg
+ffmpeg -version
+```
+
+使用 `docker compose` 部署时不需要单独安装；`backend/Dockerfile` 会在镜像构建阶段自动安装 `ffmpeg`。
+
 验证：
 
 ```bash
