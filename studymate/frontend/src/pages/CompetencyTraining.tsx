@@ -20,13 +20,11 @@ import {
   Code2,
   Library,
   Layers3,
-  ListTree,
   Lock,
   Loader2,
   Map as MapIcon,
   Network,
   RefreshCw,
-  Route,
   Rocket,
   ShieldCheck,
   Sparkles,
@@ -135,7 +133,6 @@ export function CompetencyTraining() {
   const [profileError, setProfileError] = useState("")
   const [feedbackBusy, setFeedbackBusy] = useState(false)
   const [feedbackError, setFeedbackError] = useState("")
-  const [mapMode, setMapMode] = useState<"tree" | "route">("tree")
   const [selectedCapabilityId, setSelectedCapabilityId] = useState("")
   const [capabilityEvidence, setCapabilityEvidence] = useState<Record<string, CapabilityEvidence>>({})
   const [theoryGate, setTheoryGate] = useState<TheoryGateState>({ loading: false, completed: false, required: false, assessment: null, error: "" })
@@ -358,13 +355,7 @@ export function CompetencyTraining() {
         </section>
 
         <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <SectionTitle icon={MapIcon} eyebrow="岗位全景 · 两种可视化对比" title={`${role.name}要学什么、学多少、学到哪里`} description="能力树强调岗位范围与层级，训练路径地图强调先后依赖与当前位置；切换视图不会改变训练数据。" />
-            <div className="inline-flex w-fit rounded-xl border border-[#D8E2EE] bg-[#F3F6FA] p-1">
-              <button type="button" aria-pressed={mapMode === "tree"} onClick={() => setMapMode("tree")} className={cn("inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[11px] font-bold transition", mapMode === "tree" ? "bg-white text-[#285FAF] shadow-sm" : "text-[#718097]")}><ListTree className="size-3.5" />视图 A · 能力树</button>
-              <button type="button" aria-pressed={mapMode === "route"} onClick={() => setMapMode("route")} className={cn("inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[11px] font-bold transition", mapMode === "route" ? "bg-white text-[#285FAF] shadow-sm" : "text-[#718097]")}><Route className="size-3.5" />视图 B · 路径地图</button>
-            </div>
-          </div>
+          <SectionTitle icon={MapIcon} eyebrow="岗位全景 · 训练路径地图" title={`${role.name}要学什么、学多少、学到哪里`} description="训练路径地图展示岗位能力之间的先后依赖、当前进度与最终验收节点。" />
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <ResultMetric label="岗位必修范围" value={`${capabilityNodes.length} 项`} detail="范围由当前目标岗位决定" />
@@ -375,9 +366,7 @@ export function CompetencyTraining() {
           <p className="mt-2 text-[10px] leading-5 text-[#718096]">进度规则：完成测试并提交本轮验收后才更新能力等级；浏览讲义或实操指南不会自动增加进度。</p>
 
           <div className="mt-5">
-            {mapMode === "tree"
-              ? <CompetencyTree map={capabilityMap} nodes={capabilityNodes} selectedId={selectedCapability?.id} onSelect={setSelectedCapabilityId} />
-              : <TrainingRouteMap map={capabilityMap} nodes={capabilityNodes} selectedId={selectedCapability?.id} onSelect={setSelectedCapabilityId} />}
+            <TrainingRouteMap map={capabilityMap} nodes={capabilityNodes} selectedId={selectedCapability?.id} onSelect={setSelectedCapabilityId} />
           </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -513,33 +502,6 @@ function resolveCapabilityNodes(map: RoleCompetencyMap, evidence: Record<string,
     else state = "locked"
     return { ...node, level, state, score: record?.score }
   })
-}
-
-function CompetencyTree({ map, nodes, selectedId, onSelect }: { map: RoleCompetencyMap; nodes: CapabilityViewNode[]; selectedId?: string; onSelect: (id: string) => void }) {
-  const finalReady = nodes.every((node) => node.level === 3)
-  return (
-    <div className="overflow-hidden rounded-[22px] border border-[#DCE5F0] bg-[linear-gradient(180deg,#F8FBFF_0%,#FFFFFF_100%)] p-4 sm:p-6">
-      <div className="mx-auto max-w-6xl">
-        <div className="mx-auto w-fit rounded-2xl border border-[#BFD4ED] bg-[#EAF3FF] px-5 py-3 text-center shadow-sm">
-          <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#234E84]"><BriefcaseBusiness className="size-4" />{map.roleName}</div>
-          <p className="mt-1 text-[9px] text-[#66809F]">岗位目标 · {nodes.length} 项必修能力</p>
-        </div>
-        <div className="mx-auto h-6 w-px bg-[#B9CAE0]" />
-        <div className="relative grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <div className="pointer-events-none absolute left-[10%] right-[10%] top-0 hidden h-px bg-[#B9CAE0] xl:block" />
-          {nodes.map((node) => {
-            const meta = CAPABILITY_STATE_META[node.state]
-            return <div key={node.id} className="relative pt-0 xl:pt-5"><span className="pointer-events-none absolute left-1/2 top-0 hidden h-5 w-px -translate-x-1/2 bg-[#B9CAE0] xl:block" /><button type="button" onClick={() => onSelect(node.id)} className={cn("h-full w-full rounded-2xl border bg-white p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md", selectedId === node.id ? "border-[#4E84CE] ring-2 ring-[#4E84CE]/15" : "border-[#DBE4EF]")}><div className="flex items-start justify-between gap-2"><span className="grid size-8 place-items-center rounded-xl text-[11px] font-black" style={{ backgroundColor: meta.fill, color: meta.stroke }}>L{node.level}</span><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", meta.badge)}>{meta.label}</span></div><strong className="mt-3 block text-xs text-[#233A57]">{node.name}</strong><p className="mt-1 line-clamp-2 text-[9px] leading-4 text-[#75859A]">{node.description}</p></button></div>
-          })}
-        </div>
-        <div className="mx-auto h-6 w-px bg-[#B9CAE0]" />
-        <div className={cn("mx-auto max-w-sm rounded-2xl border px-5 py-3 text-center", finalReady ? "border-[#A8D6C6] bg-[#EAF8F3]" : "border-[#D9DDE5] bg-[#F5F6F8]")}>
-          <div className={cn("flex items-center justify-center gap-2 text-xs font-bold", finalReady ? "text-[#1D745E]" : "text-[#6F7988]")}>{finalReady ? <Flag className="size-4" /> : <Lock className="size-4" />}{map.finalAssessment.name}</div>
-          <p className="mt-1 text-[9px] text-[#7B8797]">{finalReady ? "全部前置能力已达 L3，可以进入最终验收" : `还需 ${nodes.filter((node) => node.level < 3).length} 项能力达到 L3`}</p>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 const ROUTE_COORDINATES = [
