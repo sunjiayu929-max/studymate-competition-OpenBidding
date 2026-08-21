@@ -47,12 +47,13 @@ interface FlowEdgeDefinition {
   from: string
   to: string
   bend?: number
+  parallel?: boolean
 }
 
 const NODE_WIDTH = 160
 const NODE_HEIGHT = 124
 const CANVAS_WIDTH = 1585
-const CANVAS_HEIGHT = 760
+const CANVAS_HEIGHT = 800
 
 const FLOW_COLUMNS = [
   { x: 18, width: 125, step: "输入", title: "训练任务", detail: "岗位目标与画像" },
@@ -70,13 +71,14 @@ const FLOW_NODES: FlowNodeDefinition[] = [
   { id: "domain_expert", x: 365, y: 120, width: NODE_WIDTH, height: NODE_HEIGHT, group: "提出专业观点", icon: BriefcaseBusiness, fallbackName: "领域专家 Agent", fallbackDescription: "提出专业覆盖与验收要求" },
   { id: "learning_strategy", x: 365, y: 410, width: NODE_WIDTH, height: NODE_HEIGHT, group: "提出约束质疑", icon: Gauge, fallbackName: "教学策略 Agent", fallbackDescription: "平衡时间预算、难度与认知负荷" },
   { id: "plan_arbiter", x: 560, y: 265, width: NODE_WIDTH, height: NODE_HEIGHT, group: "回应与仲裁", icon: GitCompareArrows, fallbackName: "训练计划仲裁 Agent", fallbackDescription: "解决分歧并形成个性化训练合同" },
-  { id: "doc", x: 755, y: 120, width: NODE_WIDTH, height: NODE_HEIGHT, group: "生成方陈述", icon: FileText, fallbackName: "定制讲义生成 Agent", fallbackDescription: "生成带领域来源的岗位讲义" },
-  { id: "guide", x: 755, y: 265, width: NODE_WIDTH, height: NODE_HEIGHT, group: "生成方陈述", icon: Wrench, fallbackName: "实操指南生成 Agent", fallbackDescription: "生成可执行、可验收的实操指南" },
-  { id: "quiz", x: 755, y: 410, width: NODE_WIDTH, height: NODE_HEIGHT, group: "生成方陈述", icon: BookOpenCheck, fallbackName: "分阶测试生成 Agent", fallbackDescription: "生成匹配学情的分阶测试" },
-  { id: "mindmap", x: 925, y: 120, width: NODE_WIDTH, height: NODE_HEIGHT, group: "生成方陈述", icon: Network, fallbackName: "思维导图生成 Agent", fallbackDescription: "梳理岗位任务中的概念、依赖与关系" },
-  { id: "reading", x: 925, y: 265, width: NODE_WIDTH, height: NODE_HEIGHT, group: "生成方陈述", icon: Library, fallbackName: "拓展阅读生成 Agent", fallbackDescription: "推荐与岗位任务相关的可追溯材料" },
-  { id: "code", x: 925, y: 410, width: NODE_WIDTH, height: NODE_HEIGHT, group: "生成方陈述", icon: Code2, fallbackName: "代码案例生成 Agent", fallbackDescription: "生成适配岗位任务的代码或示例" },
-  { id: "video", x: 925, y: 555, width: NODE_WIDTH, height: NODE_HEIGHT, group: "生成方陈述", icon: Film, fallbackName: "可视讲解生成 Agent", fallbackDescription: "生成带中文原生声音的岗位适配视频" },
+  // 七个生成 Agent 属于同一阶段，统一排成一列，避免连线被误读为资源之间的依赖。
+  { id: "doc", x: 755, y: 126, width: NODE_WIDTH, height: 86, group: "生成方陈述", icon: FileText, fallbackName: "定制讲义生成 Agent", fallbackDescription: "生成带领域来源的岗位讲义" },
+  { id: "guide", x: 755, y: 218, width: NODE_WIDTH, height: 86, group: "生成方陈述", icon: Wrench, fallbackName: "实操指南生成 Agent", fallbackDescription: "生成可执行、可验收的实操指南" },
+  { id: "quiz", x: 755, y: 310, width: NODE_WIDTH, height: 86, group: "生成方陈述", icon: BookOpenCheck, fallbackName: "分阶测试生成 Agent", fallbackDescription: "生成匹配学情的分阶测试" },
+  { id: "mindmap", x: 755, y: 402, width: NODE_WIDTH, height: 86, group: "生成方陈述", icon: Network, fallbackName: "思维导图生成 Agent", fallbackDescription: "梳理岗位任务中的概念、依赖与关系" },
+  { id: "reading", x: 755, y: 494, width: NODE_WIDTH, height: 86, group: "生成方陈述", icon: Library, fallbackName: "拓展阅读生成 Agent", fallbackDescription: "推荐与岗位任务相关的可追溯材料" },
+  { id: "code", x: 755, y: 586, width: NODE_WIDTH, height: 86, group: "生成方陈述", icon: Code2, fallbackName: "代码案例生成 Agent", fallbackDescription: "生成适配岗位任务的代码或示例" },
+  { id: "video", x: 755, y: 678, width: NODE_WIDTH, height: 86, group: "生成方陈述", icon: Film, fallbackName: "可视讲解生成 Agent", fallbackDescription: "生成带中文原生声音的岗位适配视频" },
   { id: "evidence_review", x: 1095, y: 120, width: NODE_WIDTH, height: NODE_HEIGHT, group: "审核方质询", icon: SearchCheck, fallbackName: "事实与来源审核 Agent", fallbackDescription: "交叉核对七类资源的专业依据与来源" },
   { id: "practice_review", x: 1095, y: 265, width: NODE_WIDTH, height: NODE_HEIGHT, group: "审核方质询", icon: ShieldCheck, fallbackName: "实操规范审核 Agent", fallbackDescription: "交叉检查步骤、代码、异常与安全边界" },
   { id: "difficulty_review", x: 1095, y: 410, width: NODE_WIDTH, height: NODE_HEIGHT, group: "审核方质询", icon: FileCheck2, fallbackName: "难度与覆盖审核 Agent", fallbackDescription: "交叉校准七类资源的难度与岗位覆盖" },
@@ -89,13 +91,13 @@ const FLOW_EDGES: FlowEdgeDefinition[] = [
   { from: "diagnosis", to: "learning_strategy" },
   { from: "domain_expert", to: "plan_arbiter" },
   { from: "learning_strategy", to: "plan_arbiter" },
-  { from: "plan_arbiter", to: "doc" },
-  { from: "plan_arbiter", to: "guide" },
-  { from: "plan_arbiter", to: "quiz" },
-  { from: "plan_arbiter", to: "mindmap" },
-  { from: "plan_arbiter", to: "reading" },
-  { from: "plan_arbiter", to: "code" },
-  { from: "plan_arbiter", to: "video" },
+  { from: "plan_arbiter", to: "doc", parallel: true },
+  { from: "plan_arbiter", to: "guide", parallel: true },
+  { from: "plan_arbiter", to: "quiz", parallel: true },
+  { from: "plan_arbiter", to: "mindmap", parallel: true },
+  { from: "plan_arbiter", to: "reading", parallel: true },
+  { from: "plan_arbiter", to: "code", parallel: true },
+  { from: "plan_arbiter", to: "video", parallel: true },
   { from: "doc", to: "evidence_review" },
   { from: "guide", to: "evidence_review" },
   { from: "guide", to: "practice_review" },
@@ -154,13 +156,17 @@ function pointFor(id: string) {
   return node
 }
 
-function connectorPath(from: string, to: string) {
+function connectorPath(from: string, to: string, parallel = false) {
   const source = pointFor(from)
   const target = pointFor(to)
   const startX = source.x + source.width
   const startY = source.y + source.height / 2
   const endX = target.x
   const endY = target.y + target.height / 2
+  if (parallel) {
+    const controlOffset = Math.max(24, (endX - startX) * 0.55)
+    return `M ${startX} ${startY} C ${startX + controlOffset} ${startY}, ${endX - controlOffset} ${endY}, ${endX} ${endY}`
+  }
   const middleX = startX + (endX - startX) / 2
   return Math.abs(startY - endY) < 2
     ? `M ${startX} ${startY} H ${endX}`
@@ -238,7 +244,7 @@ export function AgentCollaborationFlow({ workspace }: { workspace: WorkspaceStat
           <div className="agent-flow-grid pointer-events-none absolute inset-0" />
 
           <DebateZone x={348} width={392} label="第1轮辩论" detail="专业观点 × 教学约束 × 计划仲裁" active={planningDebateActive} />
-          <DebateZone x={738} width={370} label="第2轮辩论" detail="七类资源陈述 × 审核质询" active={resourceDebateActive} />
+          <DebateZone x={738} width={517} label="第2轮辩论" detail="七类资源并行陈述 × 审核质询" active={resourceDebateActive} />
 
           {FLOW_COLUMNS.map((column) => (
             <div key={column.title} className="absolute top-5 z-[3] text-center" style={{ left: column.x, width: column.width }}>
@@ -262,7 +268,7 @@ export function AgentCollaborationFlow({ workspace }: { workspace: WorkspaceStat
               return (
                 <path
                   key={`${edge.from}-${edge.to}`}
-                  d={connectorPath(edge.from, edge.to)}
+                  d={connectorPath(edge.from, edge.to, edge.parallel)}
                   fill="none"
                   stroke={style.color}
                   strokeWidth={style.width}
@@ -366,28 +372,31 @@ function FlowLegend({ color, label, dashed = false, active = false }: { color: s
 
 function DebateZone({ x, width, label, detail, active }: { x: number; width: number; label: string; detail: string; active: boolean }) {
   return (
-    <div
-      className={cn("agent-debate-zone pointer-events-none absolute top-[72px] z-[1] h-[630px] rounded-[24px] border border-[#BFD7F1] bg-[#EAF4FF]/70", active && "agent-debate-zone--active")}
-      style={{ left: x, width }}
-      aria-hidden="true"
-    >
-      <div className="absolute left-3 top-2 flex items-center gap-2 rounded-full border border-[#B5D1EE] bg-[#F7FBFF] px-3 py-1 shadow-sm">
+    <>
+      <div
+        className={cn("agent-debate-zone pointer-events-none absolute top-[72px] z-[1] h-[704px] rounded-[24px] border border-[#BFD7F1] bg-[#EAF4FF]/70", active && "agent-debate-zone--active")}
+        style={{ left: x, width }}
+        aria-hidden="true"
+      />
+      <div className="pointer-events-none absolute z-[20] flex items-center gap-2 rounded-full border border-[#B5D1EE] bg-[#F7FBFF] px-3 py-1 shadow-sm" style={{ left: x + 12, top: 82 }} aria-hidden="true">
         <GitCompareArrows className="size-3 text-[#3372B8]" />
         <strong className="text-[9px] text-[#245C99]">{label}</strong>
         <span className="text-[8px] text-[#6D87A5]">{detail}</span>
       </div>
-    </div>
+    </>
   )
 }
 
 function AgentFlowNode({ definition, agent, description }: { definition: FlowNodeDefinition; agent?: WorkspaceAgent; description: string }) {
   const status = agent?.status ?? "pending"
   const active = isActive(status)
+  const compact = definition.group === "生成方陈述"
   const Icon = definition.icon
   return (
     <article
       className={cn(
-        "absolute z-10 overflow-hidden rounded-2xl border bg-white px-3.5 pb-3 pt-3 shadow-[0_8px_22px_rgba(53,76,105,.08)] transition-[border-color,box-shadow,transform] duration-300",
+        "absolute z-10 overflow-hidden rounded-2xl border bg-white shadow-[0_8px_22px_rgba(53,76,105,.08)] transition-[border-color,box-shadow,transform] duration-300",
+        compact ? "px-2.5 pb-2 pt-2" : "px-3.5 pb-3 pt-3",
         status === "done" && "border-[#8DCAB8] shadow-[0_8px_24px_rgba(44,150,119,.12)]",
         active && "agent-flow-node--active -translate-y-0.5 border-[#5B91DC] shadow-[0_12px_30px_rgba(46,114,210,.20)]",
         status === "error" && "border-[#D99A89] bg-[#FFFDFC] shadow-[0_10px_26px_rgba(195,91,67,.13)]",
@@ -398,16 +407,16 @@ function AgentFlowNode({ definition, agent, description }: { definition: FlowNod
     >
       <span className={cn("absolute inset-x-0 top-0 h-1", status === "done" ? "bg-[#2C9677]" : active ? "bg-[#2E72D2]" : status === "error" ? "bg-[#C35B43]" : "bg-[#D7E0EA]")} />
       <div className="flex items-start gap-2.5">
-        <span className={cn("grid size-8 shrink-0 place-items-center rounded-xl", status === "done" ? "bg-[#E4F4EE] text-[#247E64]" : active ? "bg-[#E8F1FF] text-[#2E72D2]" : status === "error" ? "bg-[#FBECE7] text-[#B4513C]" : "bg-[#EEF3F8] text-[#6E8299]")}>
-          <Icon className="size-4" />
+        <span className={cn(compact ? "grid size-7 shrink-0 place-items-center rounded-lg" : "grid size-8 shrink-0 place-items-center rounded-xl", status === "done" ? "bg-[#E4F4EE] text-[#247E64]" : active ? "bg-[#E8F1FF] text-[#2E72D2]" : status === "error" ? "bg-[#FBECE7] text-[#B4513C]" : "bg-[#EEF3F8] text-[#6E8299]")}>
+          <Icon className={compact ? "size-3.5" : "size-4"} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[8px] font-extrabold tracking-[.1em] text-[#8291A4]">{definition.group}</span>
-          <strong className="mt-0.5 block line-clamp-2 text-[10px] leading-4 text-[#263C57]">{agent?.meta.name || definition.fallbackName}</strong>
+          <span className={cn("block font-extrabold tracking-[.1em] text-[#8291A4]", compact ? "text-[7px]" : "text-[8px]")}>{definition.group}</span>
+          <strong className={cn("mt-0.5 block line-clamp-2 text-[#263C57]", compact ? "text-[9px] leading-3.5" : "text-[10px] leading-4")}>{agent?.meta.name || definition.fallbackName}</strong>
         </span>
       </div>
-      <p className="mt-2 line-clamp-2 text-[8px] leading-3.5 text-[#75859A]">{description}</p>
-      <div className="absolute bottom-2.5 left-3.5 right-3.5 flex items-center justify-between text-[8px] font-bold">
+      <p className={cn("line-clamp-1 text-[#75859A]", compact ? "mt-1 text-[7px] leading-3" : "mt-2 text-[8px] leading-3.5")}>{description}</p>
+      <div className={cn("absolute flex items-center justify-between font-bold", compact ? "bottom-2 left-2.5 right-2.5 text-[7px]" : "bottom-2.5 left-3.5 right-3.5 text-[8px]")}>
         <span className={cn("inline-flex items-center gap-1", status === "done" ? "text-[#247E64]" : active ? "text-[#2E72D2]" : status === "error" ? "text-[#B4513C]" : "text-[#8A97A7]")}>
           {status === "done" ? <Check className="size-3" /> : active ? <Loader2 className="size-3 animate-spin" /> : status === "error" ? <CircleDashed className="size-3" /> : <CircleDashed className="size-3" />}
           {statusLabel(status)}
