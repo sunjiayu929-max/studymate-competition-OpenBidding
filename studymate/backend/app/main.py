@@ -2,7 +2,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 import json
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pwdlib import PasswordHash
 from pwdlib.exceptions import UnknownHashError
@@ -13,7 +14,8 @@ from app.db.session import engine, Base
 # 导入 models 让 Base 知道所有表
 from app.db import models  # noqa: F401
 from app.deps import require_admin, require_user
-from app.api import health, profile, rag, workspace, tutor, eval as eval_api, tests as tests_api, courses as courses_api, notes as notes_api, events as events_api, feedback as feedback_api, auth as auth_api, voice as voice_api, quiz_sessions as quiz_sessions_api, theory_assessments as theory_assessments_api, run as run_api, concept as concept_api, bili as bili_api, ocr as ocr_api, rencaiya as rencaiya_api, careers as careers_api, reading as reading_api, knowledge as knowledge_api, ppt as ppt_api, interviews as interviews_api
+from app.api import health, profile, rag, workspace, tutor, eval as eval_api, tests as tests_api, courses as courses_api, notes as notes_api, events as events_api, feedback as feedback_api, auth as auth_api, voice as voice_api, quiz_sessions as quiz_sessions_api, theory_assessments as theory_assessments_api, run as run_api, concept as concept_api, bili as bili_api, ocr as ocr_api, rencaiya as rencaiya_api, careers as careers_api, reading as reading_api, knowledge as knowledge_api, ppt as ppt_api
+from app.video.assembler import VideoAssemblyError, media_file_path
 
 
 _seed_password_hash = PasswordHash.recommended()
@@ -407,6 +409,20 @@ app.include_router(knowledge_api.router, prefix="/api", dependencies=user_requir
 app.include_router(ppt_api.router, prefix="/api", dependencies=user_required)
 app.include_router(interviews_api.router, prefix="/api", dependencies=user_required)
 app.include_router(interviews_api.internal_router, prefix="/api")
+
+
+@app.get("/api/media/video/{user_id}/{file_id}")
+async def get_video_media(user_id: int, file_id: str, user=Depends(require_user)):
+    """Serve only an assembled video belonging to the signed-in user."""
+    if user.id != user_id:
+        raise HTTPException(status_code=404, detail="视频不存在")
+    try:
+        path = media_file_path(user_id, file_id)
+    except VideoAssemblyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="视频不存在")
+    return FileResponse(path, media_type="video/mp4", filename=f"study-video-{file_id}.mp4")
 
 
 @app.get("/")

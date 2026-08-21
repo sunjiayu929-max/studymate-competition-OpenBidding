@@ -10,8 +10,12 @@ from sse_starlette.sse import EventSourceResponse
 from app.agents.arbiter_agent import ArbiterAgent
 from app.agents.diagnosis_agent import DiagnosisAgent
 from app.agents.doc_agent import DocAgent
+from app.agents.mindmap_agent import MindMapAgent
 from app.agents.practice_guide_agent import PracticeGuideAgent
 from app.agents.quiz_agent import QuizAgent, generate_quiz_batch
+from app.agents.reading_agent import ReadingAgent
+from app.agents.code_agent import CodeAgent
+from app.agents.video_agent import VideoAgent
 from app.agents.orchestrator import TrainingLoopOrchestrator, serialize_event
 from app.agents.planning_agents import DomainExpertAgent, LearningStrategyAgent, PlanArbiterAgent
 from app.agents.review_agents import EvidenceReviewAgent, PracticeReviewAgent, DifficultyReviewAgent
@@ -36,7 +40,16 @@ def _build_orchestrator() -> TrainingLoopOrchestrator:
         diagnosis_agent=DiagnosisAgent(),
         planning_agents=[DomainExpertAgent(), LearningStrategyAgent()],
         plan_arbiter=PlanArbiterAgent(),
-        generators=[DocAgent(), PracticeGuideAgent(), QuizAgent()],
+        # 七类岗位资源统一进入审核与发布门禁；不恢复独立学习路径生成器。
+        generators=[
+            DocAgent(),
+            PracticeGuideAgent(),
+            QuizAgent(),
+            MindMapAgent(),
+            ReadingAgent(),
+            CodeAgent(),
+            VideoAgent(),
+        ],
         reviewers=[EvidenceReviewAgent(), PracticeReviewAgent(), DifficultyReviewAgent()],
         arbiter=ArbiterAgent(),
     )
@@ -164,6 +177,34 @@ async def generate(req: GenerateRequest, user: User = Depends(require_user)):
                                 "expected_output": out.get("expected_output", ""),
                             }, ensure_ascii=False)
                             citations = []
+                        elif out_type == "video":
+                            content_str = json.dumps({
+                                "provider": out.get("provider", "minimax"),
+                                "model": out.get("model", "MiniMax-H3"),
+                                "status": out.get("status", "unconfigured"),
+                                "message": out.get("message", ""),
+                                "video_url": out.get("video_url", ""),
+                                "assembled_video_url": out.get("assembled_video_url", ""),
+                                "task_id": out.get("task_id", ""),
+                                "resolution": out.get("resolution", "768P"),
+                                "duration": out.get("duration", 0),
+                                "ratio": out.get("ratio", "16:9"),
+                                "has_audio": bool(out.get("has_audio", True)),
+                                "script": out.get("script", {}),
+                                "usage": out.get("usage", {}),
+                                "complexity": out.get("complexity", "workflow"),
+                                "scope": out.get("scope", "岗位流程片段"),
+                                "duration_reason": out.get("duration_reason", "按任务内容自动选择片段时长"),
+                                "estimated_cost_rmb": out.get("estimated_cost_rmb", 0),
+                                "actual_cost_rmb": out.get("actual_cost_rmb", 0),
+                                "segments": out.get("segments", []),
+                                "segment_urls": out.get("segment_urls", []),
+                                "segment_count": out.get("segment_count", 0),
+                                "completed_segments": out.get("completed_segments", 0),
+                                "total_duration": out.get("total_duration", out.get("duration", 0)),
+                                "assembly_status": out.get("assembly_status", "pending"),
+                            }, ensure_ascii=False)
+                            citations = (out.get("script") or {}).get("citations", [])
                         else:
                             content_str = out.get("content", "")
                             citations = out.get("citations", [])

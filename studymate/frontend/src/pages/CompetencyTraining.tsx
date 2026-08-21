@@ -13,15 +13,18 @@ import {
   Clock3,
   FileCheck2,
   FileText,
+  Film,
   Flag,
   Gauge,
   GitCompareArrows,
+  Code2,
+  Library,
   Layers3,
   Lock,
   Loader2,
   Map as MapIcon,
+  Network,
   RefreshCw,
-  Route,
   Rocket,
   ShieldCheck,
   Sparkles,
@@ -86,6 +89,10 @@ const RESOURCE_META = {
   doc: { title: "定制讲义", icon: FileText, detail: "建立岗位任务模型与专业边界" },
   guide: { title: "实操指南", icon: Wrench, detail: "完成可复现、可验收的岗位交付物" },
   quiz: { title: "分阶测试", icon: BookOpenCheck, detail: "验证理解、场景判断与迁移能力" },
+  mindmap: { title: "思维导图", icon: Network, detail: "梳理岗位任务中的概念、依赖与关系" },
+  reading: { title: "拓展阅读", icon: Library, detail: "补充岗位资料、论文、文档与视频" },
+  code: { title: "代码案例", icon: Code2, detail: "提供适配岗位任务的可运行示例" },
+  video: { title: "可视讲解", icon: Film, detail: "先看动画讲解，再看 MiniMax H3 岗位视频" },
 } as const
 
 const ADVANCED_CHALLENGE_THRESHOLD = 0.666
@@ -215,10 +222,13 @@ export function CompetencyTraining() {
     ? (workspace.feedback.answered_count - workspace.feedback.wrong_items.length) / workspace.feedback.answered_count
     : null
   const advancedChallengeAvailable = submittedAccuracyRate !== null && submittedAccuracyRate >= ADVANCED_CHALLENGE_THRESHOLD
-  const resourceCount = (["doc", "guide", "quiz"] as ResourceId[]).filter((id) => Boolean(workspace.outputs[id])).length
-  const degraded = Boolean(workspace.decision?.max_reworks_reached && resourceCount > 0)
-  const learnable = released || degraded
-  const fallbackScore = workspace.decision?.fallback?.score ?? (degraded ? 90 : undefined)
+  const resourceCount = (["doc", "guide", "quiz", "mindmap", "reading", "code", "video"] as ResourceId[]).filter((id) => Boolean(workspace.outputs[id])).length
+  const videoReviewScores = ["evidence_review", "practice_review", "difficulty_review"]
+    .map((id) => workspace.reviews[id]?.score)
+    .filter((score): score is number => typeof score === "number")
+  const videoReviewScore = videoReviewScores.length
+    ? Math.round(videoReviewScores.reduce((sum, score) => sum + score, 0) / videoReviewScores.length)
+    : undefined
   const completedSteps = [Boolean(role), diagnosisReady, Boolean(plan), released, reportGenerated, Boolean(workspace.feedback)].filter(Boolean).length
   const agentDone = workspace.agents.filter((agent) => agent.status === "done").length
   const agentProgress = workspace.agents.length ? Math.round(agentDone / workspace.agents.length * 100) : 0
@@ -335,10 +345,10 @@ export function CompetencyTraining() {
               {!course && <p className="mt-3 text-[11px] text-[#F5D9A0]">该岗位专属知识库尚未接入，当前可先完成画像；资源生成需选择已开放的 FDE 岗位。</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Metric value={`${completedSteps}/6`} label="训练进度" detail="完成一步，记录一步" accent />
-              <Metric value={`${profileScore}%`} label="画像完整度" detail={profileReady ? `画像 v${profile?.version ?? 1} 已用于制定计划` : "还需补充目标与实践经历"} />
-              <Metric value={workspace.agents.length ? `${agentDone}/${workspace.agents.length}` : "11"} label="计划处理" detail={workspace.status === "running" ? `当前进度 ${agentProgress}%` : "生成、检查与确认"} />
-              <Metric value={`${resourceCount}/3`} label="训练资源" detail={released ? "已通过审核" : "审核后开放"} />
+              <Metric value={`${completedSteps}/6`} label="闭环阶段" detail="每一步均保留证据" accent />
+              <Metric value={`${profileScore}%`} label="画像完整度" detail={profileReady ? `画像 v${profile?.version ?? 1} 已参与决策` : "还需补充目标与实践证据"} />
+              <Metric value={workspace.agents.length ? `${agentDone}/${workspace.agents.length}` : "11"} label="协同 Agent" detail={workspace.status === "running" ? `协作进度 ${agentProgress}%` : "分工、交叉审核与仲裁"} />
+              <Metric value={`${resourceCount}/7`} label="岗位训练资源" detail={released ? "已越过发布门禁" : "裁决通过后开放"} />
             </div>
           </div>
         </section>
@@ -347,36 +357,15 @@ export function CompetencyTraining() {
           <div className="grid gap-2 md:grid-cols-6">
             <FlowStep index="01" label="选择岗位" detail={role.name} status="done" />
             <FlowStep index="02" label="画像诊断" detail={!profileReady ? "等待补充画像证据" : theoryCompleted ? `理论基线 ${theoryGate.assessment?.score ?? theoryEvidence?.score ?? "—"} 分` : "等待首次理论测评"} status={diagnosisReady ? "done" : "active"} />
-            <FlowStep index="03" label="制定计划" detail={plan ? `第 ${plan.cycle} 轮计划已生成` : workspace.status === "running" ? "计划生成中" : "等待开始"} status={plan ? "done" : diagnosisReady ? "active" : "idle"} />
-            <FlowStep index="04" label="资源训练" detail={released ? "3 类资源已就绪" : "等待审核"} status={released ? "done" : plan ? "active" : "idle"} />
-            <FlowStep index="05" label="学习报告" detail={reportGenerated ? "报告已生成" : released ? "等待生成报告" : "等待训练资源"} status={reportGenerated ? "done" : released ? "active" : "idle"} />
+            <FlowStep index="03" label="协同决策" detail={plan ? `第 ${plan.cycle} 轮计划已形成` : workspace.status === "running" ? "Agent 协商中" : "等待启动"} status={plan ? "done" : diagnosisReady ? "active" : "idle"} />
+            <FlowStep index="04" label="资源训练" detail={released ? "7 类资源已发布" : "等待质量门禁"} status={released ? "done" : plan ? "active" : "idle"} />
+            <FlowStep index="05" label="匹配报告" detail={reportGenerated ? "学习决策已生成" : released ? "等待生成报告" : "等待资源发布"} status={reportGenerated ? "done" : released ? "active" : "idle"} />
             <FlowStep index="06" label="成果验收" detail={workspace.feedback ? "结果已进入下一轮" : attempts.length ? `已完成 ${attempts.length} 项验证` : "等待测试证据"} status={workspace.feedback ? "done" : reportGenerated ? "active" : "idle"} last />
           </div>
         </section>
 
         <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
-          <SectionTitle icon={MapIcon} eyebrow="岗位学习路线" title={`${role.name}：要学、已学和本轮重点`} description="查看必修能力、学习顺序和当前进度。点击能力可查看任务与成果要求。" />
-
-          <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,.75fr)]">
-            <div className="rounded-[20px] border border-[#C9D9ED] bg-[linear-gradient(135deg,#F4F8FE_0%,#F5FBF9_100%)] p-4 sm:p-5">
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <span className="text-[10px] font-extrabold tracking-[.12em] text-[#6D829E]">岗位能力总进度</span>
-                  <div className="mt-1 flex items-baseline gap-2"><strong className="text-3xl font-black text-[#245FAE]">{capabilityProgress}%</strong><span className="text-[10px] font-bold text-[#718096]">{verifiedCapabilityCount}/{capabilityNodes.length} 项已独立胜任</span></div>
-                </div>
-                <span className="rounded-full bg-white px-3 py-1.5 text-[10px] font-bold text-[#55708F] shadow-sm">第 {cycle} 轮</span>
-              </div>
-              <div className="mt-4 h-3 overflow-hidden rounded-full bg-white shadow-inner" role="progressbar" aria-label="岗位能力总进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={capabilityProgress}>
-                <div className="h-full rounded-full bg-gradient-to-r from-[#2E6EC8] via-[#537ED1] to-[#22A38A] transition-[width] duration-500" style={{ width: `${capabilityProgress}%` }} />
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <ProgressStat label="总共要学" value={`${capabilityNodes.length} 项`} tone="blue" />
-                <ProgressStat label="已经学过" value={`${learnedCapabilityCount} 项`} tone="green" />
-                <ProgressStat label="本轮学习" value={`${currentFocusNodes.length} 项`} tone="violet" />
-                <ProgressStat label="尚未胜任" value={`${unfinishedCapabilityCount} 项`} tone="gray" />
-              </div>
-              <p className="mt-3 text-[10px] leading-5 text-[#718096]">完成测试并提交验收后更新进度；仅浏览资源不会计为已掌握。</p>
-            </div>
+          <SectionTitle icon={MapIcon} eyebrow="岗位全景 · 训练路径地图" title={`${role.name}要学什么、学多少、学到哪里`} description="训练路径地图展示岗位能力之间的先后依赖、当前进度与最终验收节点。" />
 
             <div className="rounded-[20px] border border-[#D7CCF2] bg-[#F8F5FF] p-4 sm:p-5">
               <div className="flex items-center justify-between gap-3"><span className="inline-flex items-center gap-2 text-xs font-bold text-[#563F9E]"><Target className="size-4" />{currentCapabilityNodes.length ? "这一轮正在学习" : "下一步建议学习"}</span><span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-bold text-[#7359BF]">第 {cycle} 轮重点</span></div>
@@ -389,7 +378,7 @@ export function CompetencyTraining() {
           </div>
 
           <div className="mt-5">
-            <LearningRoadmap map={capabilityMap} nodes={capabilityNodes} selectedId={selectedCapability?.id} onSelect={setSelectedCapabilityId} />
+            <TrainingRouteMap map={capabilityMap} nodes={capabilityNodes} selectedId={selectedCapability?.id} onSelect={setSelectedCapabilityId} />
           </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -436,9 +425,9 @@ export function CompetencyTraining() {
         </section>
 
         <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
-          <div className="flex flex-wrap items-end justify-between gap-3"><SectionTitle icon={Layers3} eyebrow="03 · 训练资源" title="文档、实操和测验围绕同一任务" description={plan?.rationale || `本轮任务：${nextTopic}`} /><span className={cn("rounded-full px-3 py-1.5 text-[10px] font-bold", released ? "bg-[#E5F6F0] text-[#18745E]" : degraded ? "bg-[#FFF0E5] text-[#A45A36]" : "bg-[#EEF3FA] text-[#61738D]")}>{released ? `审核通过 · ${workspace.decision?.quality_score ?? 0} 分` : degraded ? "临时学习包 · 待审核" : workspace.status === "running" ? "正在生成并检查" : "等待训练计划"}</span></div>
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            {(["doc", "guide", "quiz"] as ResourceId[]).map((id, index) => <ResourceCard key={id} id={id} index={index} plan={plan} ready={Boolean(workspace.outputs[id])} released={released} learnable={learnable} reviewScore={id === "doc" ? workspace.reviews.evidence_review?.score : id === "guide" ? workspace.reviews.practice_review?.score : workspace.reviews.difficulty_review?.score} />)}
+          <div className="flex flex-wrap items-end justify-between gap-3"><SectionTitle icon={Layers3} eyebrow="03 · 个性化资源" title="七类资源围绕同一个岗位任务呼应" description={plan?.rationale || `本轮候选任务：${nextTopic}`} /><span className={cn("rounded-full px-3 py-1.5 text-[10px] font-bold", released ? "bg-[#E5F6F0] text-[#18745E]" : "bg-[#EEF3FA] text-[#61738D]")}>{released ? `质量门禁通过 · ${workspace.decision?.quality_score ?? 0} 分` : workspace.status === "running" ? "生成与审核进行中" : "等待协同计划"}</span></div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {(["doc", "guide", "quiz", "mindmap", "reading", "code", "video"] as ResourceId[]).map((id, index) => <ResourceCard key={id} id={id} index={index} plan={plan} ready={Boolean(workspace.outputs[id])} released={released} reviewScore={id === "video" ? videoReviewScore : id === "doc" || id === "mindmap" || id === "reading" ? workspace.reviews.evidence_review?.score : id === "guide" || id === "code" ? workspace.reviews.practice_review?.score : workspace.reviews.difficulty_review?.score} videoStatus={id === "video" ? workspace.outputs.video?.status : undefined} />)}
           </div>
           {degraded && <div className="mt-4 rounded-2xl border border-[#E8CDBE] bg-[#FFF7F2] p-4 text-[#7D513F]"><div className="flex flex-wrap items-center justify-between gap-3"><div><strong className="text-xs">当前提供临时学习包</strong><p className="mt-1 text-[10px] leading-5">内容尚未通过正式审核，可以先学习并查看审核结果。</p></div><span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-bold">可用性评分 {fallbackScore ?? "--"} 分</span></div></div>}
         </section>
@@ -528,18 +517,18 @@ function resolveCapabilityNodes(map: RoleCompetencyMap, evidence: Record<string,
   })
 }
 
-function ProgressStat({ label, value, tone }: { label: string; value: string; tone: "blue" | "green" | "violet" | "gray" }) {
-  const tones = {
-    blue: "border-[#D4E2F5] bg-[#F4F8FE] text-[#2D65B7]",
-    green: "border-[#CFE7DC] bg-[#F2FAF6] text-[#20775F]",
-    violet: "border-[#DDD3F2] bg-[#F8F5FF] text-[#674CAE]",
-    gray: "border-[#E0E5EC] bg-[#F7F8FA] text-[#68778B]",
-  }
-  return <div className={cn("rounded-xl border px-3 py-2.5", tones[tone])}><span className="block text-[9px] font-bold opacity-75">{label}</span><strong className="mt-0.5 block text-sm font-black">{value}</strong></div>
-}
+const ROUTE_COORDINATES = [
+  { x: 130, y: 130 },
+  { x: 130, y: 390 },
+  { x: 430, y: 260 },
+  { x: 700, y: 130 },
+  { x: 700, y: 390 },
+]
 
-function LearningRoadmap({ map, nodes, selectedId, onSelect }: { map: RoleCompetencyMap; nodes: CapabilityViewNode[]; selectedId?: string; onSelect: (id: string) => void }) {
-  const nodeNames = new Map(nodes.map((node) => [node.id, node.name]))
+function TrainingRouteMap({ map, nodes, selectedId, onSelect }: { map: RoleCompetencyMap; nodes: CapabilityViewNode[]; selectedId?: string; onSelect: (id: string) => void }) {
+  const coordinates = nodes.map((_, index) => ROUTE_COORDINATES[index] ?? { x: 700, y: 130 + index * 70 })
+  const finalPoint = { x: 930, y: 260 }
+  const nodeById = new Map(nodes.map((node, index) => [node.id, { node, point: coordinates[index] }]))
   const finalReady = nodes.every((node) => node.level === 3)
   return (
     <div className="overflow-hidden rounded-[22px] border border-[#DCE5F0] bg-[linear-gradient(180deg,#F8FBFF_0%,#FFFFFF_100%)]">
@@ -640,8 +629,8 @@ function AgentAudit({ workspace, progress }: { workspace: WorkspaceState; progre
       <AgentCollaborationFlow workspace={workspace} />
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-[#DFE6EF] bg-[#F8FAFD] p-4">
-          <strong className="text-[11px] text-[#334B68]">三项内容检查</strong>
-          {reviews.length ? <div className="mt-3 space-y-2">{reviews.map(([key, review]) => <div key={key} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-[10px]"><span className="text-[#62748B]">{review.reviewer || key}</span><span className={cn("font-black", review.status === "pass" ? "text-[#1A8067]" : review.status === "fail" ? "text-[#B4523B]" : "text-[#A06C24]")}>{review.score} 分 · {reviewStatusLabel(review.status)}</span></div>)}</div> : <p className="mt-2 text-[10px] leading-5 text-[#7A899D]">等待来源、实操内容和难度检查。</p>}
+          <strong className="text-[11px] text-[#334B68]">七类资源 · 三项交叉审核</strong>
+          {reviews.length ? <div className="mt-3 space-y-2">{reviews.map(([key, review]) => <div key={key} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-[10px]"><span className="text-[#62748B]">{review.reviewer || key}</span><span className={cn("font-black", review.status === "pass" ? "text-[#1A8067]" : review.status === "fail" ? "text-[#B4523B]" : "text-[#A06C24]")}>{review.score} 分 · {reviewStatusLabel(review.status)}</span></div>)}</div> : <p className="mt-2 text-[10px] leading-5 text-[#7A899D]">等待事实来源、实操规范与难度覆盖审核。</p>}
         </div>
         <div className={cn("rounded-2xl border p-4", decision?.decision === "publish" ? "border-[#BFDCCF] bg-[#F3FAF7]" : decision?.decision === "rework" || decision?.decision === "failed" ? "border-[#E8CDBE] bg-[#FFF7F2]" : "border-[#DFE6EF] bg-[#F8FAFD]")}>
           <strong className="flex items-center gap-2 text-[11px] text-[#334B68]"><ShieldCheck className="size-3.5" />审核结果</strong>
@@ -664,9 +653,9 @@ function AgentAudit({ workspace, progress }: { workspace: WorkspaceState; progre
 }
 
 function ReworkTimeline({ workspace }: { workspace: WorkspaceState }) {
-  if (!workspace.reworkHistory.length) return <div className="mt-3 rounded-2xl border border-dashed border-[#D8E2ED] bg-[#FBFCFE] px-4 py-3 text-[10px] text-[#748399]">暂无修改记录。审核发现问题后，这里会显示修改要求。</div>
-  const labels: Record<string, string> = { doc: "定制讲义", guide: "实操指南", quiz: "分阶测试" }
-  return <div className="mt-3 rounded-2xl border border-[#E7D2C3] bg-[#FFF9F5] p-4"><div className="flex items-center gap-2 text-[11px] font-bold text-[#9A5B35]"><RefreshCw className={cn("size-3.5", workspace.status === "running" && "animate-spin")} />修改记录 · 共 {workspace.reworkHistory.length} 次</div><div className="mt-3 grid gap-2 md:grid-cols-2">{workspace.reworkHistory.slice(-4).reverse().map((record) => <div key={`${record.generationRound}-${record.createdAt}`} className="rounded-xl border border-[#ECDDD2] bg-white px-3 py-2.5"><div className="flex items-center justify-between text-[9px] font-bold"><span className="text-[#9A5B35]">第 {record.generationRound} 轮修改</span><span className="text-[#7B8797]">{record.targets.map((id) => labels[id] || id).join("、")}</span></div><p className="mt-1.5 line-clamp-2 text-[9px] leading-4 text-[#6F7886]">{record.requiredFixes.join("；") || "根据检查结果修改后再次审核"}</p></div>)}</div></div>
+  if (!workspace.reworkHistory.length) return <div className="mt-3 rounded-2xl border border-dashed border-[#D8E2ED] bg-[#FBFCFE] px-4 py-3 text-[10px] text-[#748399]">当前尚未发生返工。若审核发现问题，这里会按轮次展示返工目标与修改要求。</div>
+  const labels: Record<string, string> = { doc: "定制讲义", guide: "实操指南", quiz: "分阶测试", mindmap: "思维导图", reading: "拓展阅读", code: "代码案例", video: "可视讲解" }
+  return <div className="mt-3 rounded-2xl border border-[#E7D2C3] bg-[#FFF9F5] p-4"><div className="flex items-center gap-2 text-[11px] font-bold text-[#9A5B35]"><RefreshCw className={cn("size-3.5", workspace.status === "running" && "animate-spin")} />自动返工记录 · 已发生 {workspace.reworkHistory.length} 次</div><div className="mt-3 grid gap-2 md:grid-cols-2">{workspace.reworkHistory.slice(-4).reverse().map((record) => <div key={`${record.generationRound}-${record.createdAt}`} className="rounded-xl border border-[#ECDDD2] bg-white px-3 py-2.5"><div className="flex items-center justify-between text-[9px] font-bold"><span className="text-[#9A5B35]">第 {record.generationRound} 轮退回</span><span className="text-[#7B8797]">{record.targets.map((id) => labels[id] || id).join("、")}</span></div><p className="mt-1.5 line-clamp-2 text-[9px] leading-4 text-[#6F7886]">{record.requiredFixes.join("；") || "依据交叉审核结果重新生成并再次送审"}</p></div>)}</div></div>
 }
 
 function stageLabel(stage: string) {
@@ -705,11 +694,12 @@ function Position({ label, text, tone }: { label: string; text: string; tone: "b
   return <div className={cn("rounded-2xl border p-3.5", tone === "blue" ? "border-[#D4E2F4] bg-[#F4F8FE]" : "border-[#CFE8E4] bg-[#F3FAF8]")}><strong className={cn("text-[10px]", tone === "blue" ? "text-[#376CA9]" : "text-[#237768]")}>{label}</strong><p className="mt-1 text-[11px] leading-5 text-[#5F7087]">{text}</p></div>
 }
 
-function ResourceCard({ id, index, plan, ready, released, learnable, reviewScore }: { id: ResourceId; index: number; plan?: PersonalizedTrainingPlan; ready: boolean; released: boolean; learnable: boolean; reviewScore?: number }) {
+function ResourceCard({ id, index, plan, ready, released, reviewScore, videoStatus }: { id: ResourceId; index: number; plan?: PersonalizedTrainingPlan; ready: boolean; released: boolean; reviewScore?: number; videoStatus?: string }) {
   const meta = RESOURCE_META[id]
   const Icon = meta.icon
   const stage = plan?.stages[index]
-  return <article className={cn("rounded-[20px] border p-4", released && ready ? "border-[#BFDCCF] bg-[#F7FCFA]" : learnable && ready ? "border-[#E8CDBE] bg-[#FFF9F5]" : ready ? "border-[#C8D9ED] bg-[#F8FBFF]" : "border-[#E0E7F0] bg-[#FBFCFE]")}><div className="flex items-start justify-between gap-3"><span className="grid size-10 place-items-center rounded-xl bg-white text-[#3369B4] shadow-sm"><Icon className="size-4.5" /></span><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", released && ready ? "bg-[#DDF2E9] text-[#18745E]" : learnable && ready ? "bg-[#FFF0E5] text-[#A45A36]" : ready ? "bg-[#E6F0FD] text-[#3568A9]" : "bg-[#EDF1F6] text-[#7B899B]")}>{released && ready ? `审核 ${reviewScore ?? "—"} 分` : learnable && ready ? "临时可用" : ready ? "等待审核" : "等待生成"}</span></div><h3 className="mt-3 text-sm font-bold text-[#20344E]">{meta.title}</h3><p className="mt-1 text-[10px] leading-4 text-[#738298]">{stage?.goal || meta.detail}</p><div className="mt-3 rounded-xl bg-white/90 px-3 py-2 text-[9px] leading-4 text-[#63758D]">成果要求：{stage?.evidence || "由训练计划确定"}</div>{learnable && ready ? <Link to={`/workspace/r/${id}`} className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#2864BA]">打开资源<ArrowRight className="size-3" /></Link> : <span className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#8794A5]"><ShieldCheck className="size-3" />审核通过后开放</span>}</article>
+  const videoReadyLabel = videoStatus === "succeeded" ? `审核 ${reviewScore ?? "—"} 分` : videoStatus === "unconfigured" ? "脚本已审 · 待配置 Key" : videoStatus === "segments_ready" ? "片段已生成 · 待合成" : videoStatus === "failed" || videoStatus === "partial_failed" ? "生成失败 · 需返工" : `审核 ${reviewScore ?? "—"} 分`
+  return <article className={cn("rounded-[20px] border p-4", released && ready ? "border-[#BFDCCF] bg-[#F7FCFA]" : ready ? "border-[#C8D9ED] bg-[#F8FBFF]" : "border-[#E0E7F0] bg-[#FBFCFE]")}><div className="flex items-start justify-between gap-3"><span className="grid size-10 place-items-center rounded-xl bg-white text-[#3369B4] shadow-sm"><Icon className="size-4.5" /></span><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", released && ready ? "bg-[#DDF2E9] text-[#18745E]" : ready ? "bg-[#E6F0FD] text-[#3568A9]" : "bg-[#EDF1F6] text-[#7B899B]")}>{released && ready ? (id === "video" ? videoReadyLabel : `审核 ${reviewScore ?? "—"} 分`) : ready ? "等待发布门禁" : "等待生成"}</span></div><h3 className="mt-3 text-sm font-bold text-[#20344E]">{meta.title}</h3><p className="mt-1 text-[10px] leading-4 text-[#738298]">{stage?.goal || meta.detail}</p><div className="mt-3 rounded-xl bg-white/90 px-3 py-2 text-[9px] leading-4 text-[#63758D]">成果证据：{stage?.evidence || "由训练计划确定"}</div>{released && ready ? <Link to={`/workspace/r/${id}`} className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#2864BA]">打开资源<ArrowRight className="size-3" /></Link> : <span className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#8794A5]"><ShieldCheck className="size-3" />裁决通过后开放</span>}</article>
 }
 
 function ResultMetric({ label, value, detail }: { label: string; value: string; detail: string }) {

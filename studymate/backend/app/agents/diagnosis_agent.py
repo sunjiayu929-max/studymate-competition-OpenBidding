@@ -116,10 +116,10 @@ class DiagnosisAgent(AgentBase):
             "training_contract": {
                 "topic": topic,
                 "target_role": target_role,
-                "required_resources": ["定制讲义", "实操指南", "分阶测试"],
+                "required_resources": ["定制讲义", "实操指南", "分阶测试", "思维导图", "拓展阅读", "代码案例", "可视讲解"],
                 "core_competencies": competencies,
                 "target_difficulty": target_difficulty,
-                "release_gate": "三项审核通过并由总裁决 Agent 批准",
+            "release_gate": "七类资源通过三项交叉审核并由总裁决 Agent 批准",
             },
         }
         await emit("diagnosis", output)

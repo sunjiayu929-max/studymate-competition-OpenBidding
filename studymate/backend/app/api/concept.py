@@ -7,11 +7,19 @@
 - 每步脚本天然就是一句旁白，是后续「讲课模式 + 讯飞 TTS 连播」的原料。
 - 无 LLM Key 或外部调用异常时，退回通用骨架脚本，保证页面不空白。
 """
+import asyncio
 import json
+import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from app.agents.video_agent import (
+    VideoAgent,
+    _build_script as _build_video_script,
+    preview_video_plan,
+)
+from app.deps import require_user
 from app.llm import get_llm_client, has_llm_key
 
 router = APIRouter(prefix="/concept", tags=["concept"])
@@ -29,9 +37,38 @@ class ConceptItem(BaseModel):
 
 class ExplainRequest(BaseModel):
     user_id: int = 1
-    question: str
+    question: str = Field(min_length=1, max_length=500)
     concepts: list[ConceptItem] = Field(default_factory=list)
     matched_key: str | None = None  # 前端关键词初筛结果（可选）
+    target_role: str | None = Field(default=None, max_length=120)
+    role_summary: str | None = Field(default=None, max_length=500)
+    core_competencies: list[str] = Field(default_factory=list, max_length=8)
+    sample_tasks: list[str] = Field(default_factory=list, max_length=8)
+
+
+class VideoRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+    target_role: str = Field(min_length=1, max_length=120)
+    role_summary: str = Field(default="", max_length=500)
+    core_competencies: list[str] = Field(default_factory=list, max_length=8)
+    sample_tasks: list[str] = Field(default_factory=list, max_length=8)
+
+
+# 即时岗位视频只在进程内保存任务状态；正式资源包仍由工作台数据库持久化。
+_VIDEO_JOBS: dict[str, dict] = {}
+_VIDEO_JOB_LIMIT = 100
+
+
+def _video_context(req: VideoRequest, user_id: int) -> dict:
+    return {
+        "user_id": user_id,
+        "topic": req.question,
+        "target_role": req.target_role,
+        "role_summary": req.role_summary,
+        "core_competencies": req.core_competencies,
+        "sample_tasks": req.sample_tasks,
+        "generation_round": 1,
+    }
 
 
 def _title_of(concepts: list[ConceptItem], key: str) -> str:
@@ -168,6 +205,14 @@ async def explain(req: ExplainRequest):
 
     # —— LLM 分类：先尝试命中手写动画 ——
     catalog = "\n".join(f"- {c.key}：{c.title}（{c.course}）" for c in req.concepts)
+    role_context = ""
+    if req.target_role:
+        role_context = (
+            f"\n当前目标岗位：{req.target_role}。"
+            f"岗位简介：{req.role_summary or '未提供'}。"
+            f"核心能力：{'、'.join(req.core_competencies[:8]) or '未提供'}。"
+            "如果问题描述的是岗位任务，要优先判断它是否属于岗位流程，而不是强行匹配一个泛化概念动画。"
+        )
     sys = (
         "你是「动画讲解」调度助手。根据学生的问题，从下列已有概念动画里选出最匹配的一个。\n"
         f"可选概念：\n{catalog}\n\n"
@@ -181,7 +226,7 @@ async def explain(req: ExplainRequest):
         raw = await llm.chat_structured(
             messages=[
                 {"role": "system", "content": sys},
-                {"role": "user", "content": req.question + hint},
+                {"role": "user", "content": req.question + role_context + hint},
             ]
         )
         data = json.loads(raw)
@@ -221,3 +266,91 @@ async def explain(req: ExplainRequest):
         "generated": True,
         "mock": False,
     }
+
+
+async def _silent_emit(_event: str, _data: dict) -> None:
+    """即时讲解不需要把后台 Agent 事件暴露成工作台 SSE。"""
+
+
+def _video_job_initial(context: dict, job_id: str) -> dict:
+    script = _build_video_script(context)
+    return {
+        "job_id": job_id,
+        "type": "video",
+        "title": script["title"],
+        "provider": "minimax",
+        "model": "MiniMax-H3",
+        "status": "queued",
+        "message": "视频任务已提交，正在排队生成。",
+        "video_url": "",
+        "assembled_video_url": "",
+        "task_id": "",
+        "resolution": "768P",
+        "duration": script["duration"],
+        "total_duration": script["total_duration"],
+        "segment_count": script["segment_count"],
+        "completed_segments": 0,
+        "segment_urls": [],
+        "segments": script["segments"],
+        "assembly_status": "pending",
+        "has_audio": True,
+        "ratio": "16:9",
+        "script": script,
+        "usage": {},
+        "complexity": script["complexity"],
+        "scope": script["scope"],
+        "duration_reason": script["duration_reason"],
+        "estimated_cost_rmb": script["estimated_cost_rmb"],
+        "actual_cost_rmb": 0,
+    }
+
+
+async def _run_video_job(job_id: str, context: dict) -> None:
+    async def progress(output: dict) -> None:
+        job = _VIDEO_JOBS.get(job_id)
+        if job is not None:
+            job["output"] = {**job["output"], **output, "job_id": job_id}
+
+    context = {**context, "_video_progress": progress}
+    try:
+        output = await VideoAgent().run(context, _silent_emit)
+        job = _VIDEO_JOBS.get(job_id)
+        if job is not None:
+            job["output"] = {**job["output"], **output, "job_id": job_id}
+    except Exception:  # 后台任务必须把异常转成可轮询的失败状态
+        job = _VIDEO_JOBS.get(job_id)
+        if job is not None:
+            job["output"] = {
+                **job["output"],
+                "status": "failed",
+                "message": "视频后台任务失败，请查看服务日志。",
+                "job_id": job_id,
+            }
+
+
+@router.post("/video")
+async def generate_concept_video(req: VideoRequest, user=Depends(require_user)):
+    """提交岗位视频后台任务；即时结果不进入正式资源包和审核链。"""
+    context = _video_context(req, user.id)
+    job_id = str(uuid.uuid4())
+    initial = _video_job_initial(context, job_id)
+    _VIDEO_JOBS[job_id] = {"user_id": user.id, "output": initial}
+    while len(_VIDEO_JOBS) > _VIDEO_JOB_LIMIT:
+        _VIDEO_JOBS.pop(next(iter(_VIDEO_JOBS)))
+    asyncio.create_task(_run_video_job(job_id, context))
+    return initial
+
+
+@router.post("/video/preview")
+async def preview_concept_video(req: VideoRequest, user=Depends(require_user)):
+    """生成前预估时长与成本；此接口不调用外部模型，也不扣费。"""
+    return preview_video_plan(_video_context(req, user.id))
+
+
+@router.get("/video/{job_id}")
+async def get_concept_video_job(job_id: str, user=Depends(require_user)):
+    """查询即时岗位视频后台任务；只允许任务所属用户访问。"""
+    job = _VIDEO_JOBS.get(job_id)
+    if job is None or job["user_id"] != user.id:
+        raise HTTPException(status_code=404, detail="视频任务不存在或已过期")
+    return job["output"]

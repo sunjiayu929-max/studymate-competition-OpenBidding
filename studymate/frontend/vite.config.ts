@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
 
+const backendTarget = process.env.STUDYMATE_BACKEND_URL || 'http://localhost:8000'
+
 export default defineConfig({
   plugins: [
     react(),
@@ -26,7 +28,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: backendTarget,
         changeOrigin: true,
         timeout: 300_000,
         proxyTimeout: 300_000,
