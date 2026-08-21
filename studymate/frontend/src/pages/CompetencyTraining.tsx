@@ -94,7 +94,7 @@ const RESOURCE_META = {
   mindmap: { title: "思维导图", icon: Network, detail: "梳理岗位任务中的概念、依赖与关系" },
   reading: { title: "拓展阅读", icon: Library, detail: "补充岗位资料、论文、文档与视频" },
   code: { title: "代码案例", icon: Code2, detail: "提供适配岗位任务的可运行示例" },
-  video: { title: "可视讲解", icon: Film, detail: "MiniMax H3 生成带中文原生声音的岗位视频" },
+  video: { title: "可视讲解", icon: Film, detail: "先看动画讲解，再看 MiniMax H3 岗位视频" },
 } as const
 
 const ADVANCED_CHALLENGE_THRESHOLD = 0.666

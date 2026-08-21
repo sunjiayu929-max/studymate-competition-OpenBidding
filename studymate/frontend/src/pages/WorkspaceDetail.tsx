@@ -18,6 +18,7 @@ import { FeedbackThumb } from "@/components/FeedbackThumb"
 import { MindMapView } from "@/components/MindMapView"
 import { ReadingList, type ReadingItem } from "@/components/ReadingList"
 import { CodeBlock } from "@/components/CodeBlock"
+import { ConceptAutoExplain } from "@/components/concepts/ConceptAutoExplain"
 
 // 资源详情共用一条路由，但每次只展示一种资源；重组件按实际分支加载，避免一次下载全部渲染器。
 const Markdown = lazy(() => import("@/components/Markdown").then((module) => ({ default: module.Markdown })))
@@ -541,7 +542,7 @@ export function WorkspaceDetail() {
 
             {agentId === "video" && (
               outputs.video?.script ? (
-                <VideoResource output={outputs.video} />
+                <VideoResource output={outputs.video} topic={topic} userId={user?.user_id ?? 0} />
               ) : (
                 <EmptyHint icon={Icon} label="可视讲解生成 Agent 还未输出" />
               )
@@ -669,7 +670,7 @@ function ResourceEvidenceBar({
   )
 }
 
-function VideoResource({ output }: { output: NonNullable<WorkspaceOutputs["video"]> }) {
+function VideoResource({ output, topic, userId }: { output: NonNullable<WorkspaceOutputs["video"]>; topic: string; userId: number }) {
   const script = output.script
   const isReady = output.status === "succeeded" && Boolean(output.video_url)
   const isFailed = output.status === "failed" || output.status === "partial_failed"
@@ -677,6 +678,31 @@ function VideoResource({ output }: { output: NonNullable<WorkspaceOutputs["video
 
   return (
     <div className="space-y-5">
+      <section className="overflow-hidden rounded-[20px] border border-[#D7D1C4] bg-[#FBF9F4] p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Film className="size-4" /></span>
+          <div>
+            <p className="text-[10px] font-bold tracking-[0.12em] text-[#8E6925]">第一步 · 先看动画讲解</p>
+            <h2 className="mt-1 text-base font-bold text-[#18232D]">先用动画理解原理，再看岗位视频</h2>
+            <p className="mt-1 text-[11px] leading-5 text-[#66717B]">系统会优先匹配动画库；没有对应动画时，自动生成分步动画或黑板讲解。动画不消耗岗位视频额度。</p>
+          </div>
+        </div>
+        <div className="mt-4">
+          <ConceptAutoExplain topic={topic} userId={userId} />
+        </div>
+      </section>
+
+      <div className="border-t border-[#C7D8D4] pt-5">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#BFD7D1] bg-[#E2F0ED] text-[#287F8D]"><Film className="size-4" /></span>
+          <div>
+            <p className="text-[10px] font-bold tracking-[0.12em] text-[#287F8D]">第二步 · 岗位适配视频</p>
+            <h2 className="mt-1 text-base font-bold text-[#183E46]">岗位流程视频与分镜</h2>
+            <p className="mt-1 text-[11px] leading-5 text-[#527077]">下面保留 MiniMax H3 生成的视频、片段状态、旁白和分镜，负责补充岗位任务中的流程演示。</p>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-5">
       {isReady ? (
         <div className="overflow-hidden rounded-[20px] border border-[#C7D2D8] bg-[#18232D] shadow-[0_12px_28px_rgba(24,35,45,.12)]">
           <video className="aspect-video w-full bg-black object-contain" controls preload="metadata" src={output.video_url}>
@@ -735,6 +761,8 @@ function VideoResource({ output }: { output: NonNullable<WorkspaceOutputs["video
       </section>
 
       {output.task_id && <p className="text-[10px] text-[#7A817F]">MiniMax 任务 ID：{output.task_id}</p>}
+        </div>
+      </div>
     </div>
   )
 }
