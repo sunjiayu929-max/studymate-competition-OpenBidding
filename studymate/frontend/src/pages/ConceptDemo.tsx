@@ -114,7 +114,7 @@ export function ConceptDemo() {
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Film className="size-4" /></span>
               <div className="min-w-0">
                 <h1 className="text-[15px] font-bold text-[#18232D]">StudyMate 可视讲解</h1>
-                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">将岗位能力点转化为分步动画、黑板推演与真人视频，帮助你看清任务原理与执行过程</p>
+        <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">用动画、推演和视频理解岗位知识</p>
               </div>
             </div>
             <Link to="/concept/library" className="inline-flex h-9 w-full shrink-0 items-center justify-center gap-1.5 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#F4ECD8] hover:text-[#8E6925] sm:w-auto">
@@ -194,7 +194,7 @@ export function ConceptDemo() {
               浏览动画库
             </span>
             <span className="block text-xs text-[var(--muted-foreground)]">
-              {CONCEPT_ANIMS.length} 个精品动画与分步讲解 · 机器学习及 408 四科各 60 个，可搜索、单步拆解
+            {CONCEPT_ANIMS.length} 个分步动画 · 支持搜索、暂停和单步查看
             </span>
           </span>
           <ChevronRight className="size-5 text-[#8A8172] transition-all group-hover:translate-x-0.5 group-hover:text-[#B1842C]" />

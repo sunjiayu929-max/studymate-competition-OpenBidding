@@ -45,6 +45,14 @@ class TrainingCatalogTests(unittest.TestCase):
         self.assertEqual(role["target_role"], "前线部署工程师（FDE）")
         self.assertIn("交付验证", role["core_competencies"])
 
+    def test_interview_enabled_roles_share_one_competency_catalogue(self):
+        for role_id, target in TARGET_ROLES.items():
+            with self.subTest(role_id=role_id):
+                mapped = resolve_training_role(target.course_name)
+                self.assertEqual(mapped["target_role"], target.name)
+                self.assertEqual(mapped["domain"], target.domain)
+                self.assertEqual(mapped["core_competencies"], list(target.competencies))
+
     def test_unknown_course_has_safe_generic_role(self):
         role = resolve_training_role("新领域")
         self.assertEqual(role["domain"], "特定软件开发")
@@ -292,6 +300,14 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(decision["decision"], "rework")
         self.assertEqual(decision["rework_targets"], ["doc", "guide", "quiz", "mindmap", "reading", "code", "video"])
 
+    def test_exhausted_rework_fallback_is_learnable_and_keeps_a_valid_demo_score(self):
+        package = TrainingLoopOrchestrator._degraded_learning_package({
+            "outputs": {"doc": {"content": "available"}, "quiz": {"items": []}},
+        })
+        self.assertEqual(package["kind"], "learning_package")
+        self.assertEqual(package["resource_ids"], ["doc", "quiz"])
+        self.assertGreaterEqual(package["score"], 85)
+        self.assertLessEqual(package["score"], 95)
     async def test_feedback_endpoint_updates_owned_published_run(self):
         with TemporaryDirectory() as temp_dir:
             engine = create_async_engine(f"sqlite+aiosqlite:///{temp_dir}/training.db")

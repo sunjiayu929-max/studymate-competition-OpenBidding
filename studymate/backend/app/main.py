@@ -182,6 +182,7 @@ async def _ensure_columns(conn):
         ("2026.07.29-base", "开发期轻量迁移基线"),
         ("2026.07.29-private-knowledge-jobs", "私有知识库后台任务、原文件校验、OCR 状态与安全重试"),
         ("2026.08.13-auto-rework", "移除人工复核状态，未通过裁决统一进入自动返工闭环"),
+        ("2026.08.20-ai-interview", "AI 面试启动票据、报告回传与岗位画像证据"),
     )
     for version, description in migrations:
         await conn.execute(
@@ -406,6 +407,8 @@ app.include_router(careers_api.router, prefix="/api", dependencies=user_required
 app.include_router(reading_api.router, prefix="/api", dependencies=user_required)
 app.include_router(knowledge_api.router, prefix="/api", dependencies=user_required)
 app.include_router(ppt_api.router, prefix="/api", dependencies=user_required)
+app.include_router(interviews_api.router, prefix="/api", dependencies=user_required)
+app.include_router(interviews_api.internal_router, prefix="/api")
 
 
 @app.get("/api/media/video/{user_id}/{file_id}")

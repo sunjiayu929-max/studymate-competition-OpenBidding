@@ -27,6 +27,7 @@ from app.db.models import QuizSession, QuizSessionItem, Profile
 from app.courses import get_course_by_id
 from app.agents.quiz_agent import generate_quiz_batch, judge_code_with_llm
 from app.quiz import adaptive_error_tags, effective_error_tags, summarize_error_focus
+from app.rag.service import get_rag_service
 
 
 router = APIRouter(prefix="/quiz-sessions", tags=["quiz-sessions"])
@@ -42,6 +43,57 @@ class CreateRequest(BaseModel):
     difficulty: int = Field(default=2, ge=1, le=4)
     mode: Literal["exam", "quest"] = "exam"
     code_grading: Literal["llm", "self"] = "llm"
+
+
+def _unique_texts(values: list[object], *, limit: int = 10) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        text = str(value or "").strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        result.append(text)
+        if len(result) >= limit:
+            break
+    return result
+
+
+def _role_quiz_context(
+    *,
+    profile_dims: dict,
+    course_id: int | None,
+    course_name: str,
+    materials: list[dict],
+) -> tuple[str, list[str]]:
+    """从岗位理论测评、画像和检索片段中恢复角色名称与能力范围。"""
+    target_role = course_name.removesuffix(" 岗位知识库")
+    evidence_values = list((profile_dims.get("theory_assessments") or {}).values())
+    matching_evidence = next(
+        (
+            item for item in evidence_values
+            if isinstance(item, dict) and item.get("course_id") == course_id
+        ),
+        None,
+    )
+    if matching_evidence:
+        target_role = str(matching_evidence.get("role_name") or target_role)
+
+    material_topics = [
+        (item.get("meta") or {}).get("topic")
+        for item in materials
+        if isinstance(item.get("meta"), dict)
+    ]
+    evidence_competencies = list((matching_evidence or {}).get("competency_scores", {}).keys())
+    goals = profile_dims.get("goals") or {}
+    weak_points = profile_dims.get("weak_points") or {}
+    competencies = _unique_texts([
+        *evidence_competencies,
+        *(weak_points.get("topics") or []),
+        *(goals.get("target_topics") or []),
+        *material_topics,
+    ])
+    return target_role or "目标岗位", competencies
 
 
 def _item_to_dict(it: QuizSessionItem) -> dict:
@@ -142,11 +194,39 @@ async def create_session(req: CreateRequest, db: AsyncSession = Depends(get_db))
     q = await db.execute(select(Profile).where(Profile.user_id == req.user_id))
     p = q.scalar_one_or_none()
     profile_dims = p.dims if p else {}
-    _ = profile_dims  # 画像仍用于后续扩展；本轮先把近期错题能力标签注入出题。
     error_focus = await _recent_error_focus(
         db,
         user_id=req.user_id,
         course_id=req.course_id,
+    )
+
+    # 目标岗位测验必须先检索当前课程的知识片段，禁止失败后串到默认机器学习题库。
+    initial_competencies = _unique_texts([
+        *((profile_dims.get("weak_points") or {}).get("topics") or []),
+        *((profile_dims.get("goals") or {}).get("target_topics") or []),
+        *course_cfg.sample_topics,
+        *[item["tag"] for item in error_focus],
+    ])
+    query = " ".join([
+        course_cfg.name,
+        req.topic,
+        course_cfg.syllabus_hint,
+        *initial_competencies,
+    ])
+    reference_materials: list[dict] = []
+    if req.course_id is not None:
+        reference_materials = await get_rag_service().search(
+            query,
+            k=max(8, min(16, total)),
+            course_id=req.course_id,
+        )
+    if course_cfg.name.endswith("岗位知识库") and not reference_materials:
+        raise HTTPException(409, "当前目标岗位知识库没有可用于出题的内容，请先导入岗位资料")
+    target_role, competencies = _role_quiz_context(
+        profile_dims=profile_dims,
+        course_id=req.course_id,
+        course_name=course_cfg.name,
+        materials=reference_materials,
     )
 
     # 创建 session（先 generating）
@@ -177,6 +257,9 @@ async def create_session(req: CreateRequest, db: AsyncSession = Depends(get_db))
             fill_count=req.fill_count,
             code_count=req.code_count,
             focus_tags=[item["tag"] for item in error_focus],
+            target_role=target_role,
+            competencies=competencies,
+            reference_materials=reference_materials,
         )
     except asyncio.CancelledError:
         session.status = "error"
@@ -191,6 +274,10 @@ async def create_session(req: CreateRequest, db: AsyncSession = Depends(get_db))
     db_items: list[QuizSessionItem] = []
     for i, it in enumerate(items):
         ans_val = it.get("answer")
+        explanation = str(it.get("explanation") or "").strip()
+        source = str(it.get("source") or "").strip()
+        if source and source not in explanation:
+            explanation = f"{explanation}\n知识来源：{source}".strip()
         db_items.append(
             QuizSessionItem(
                 session_id=session.id,
@@ -200,7 +287,7 @@ async def create_session(req: CreateRequest, db: AsyncSession = Depends(get_db))
                 options=it.get("options") or [],
                 starter=it.get("starter") or "",
                 answer_key={"value": ans_val},
-                explanation=it.get("explanation") or "",
+                explanation=explanation,
                 difficulty=int(it.get("difficulty") or req.difficulty),
             )
         )

@@ -306,7 +306,7 @@ export function ReadingList({ items, topic = "" }: { items: ReadingItem[]; topic
     <div className="space-y-5">
       <div className="flex items-start gap-2 rounded-2xl border border-[#C9D1CB] bg-[#E9EEE6] px-3.5 py-3 text-[11px] leading-5 text-[#557052]">
         <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-        <span>已优先展示可验证的官方原文、岗位能力点或能力方向匹配的人才呀课程和真实 B站视频，并尝试匹配论文、书籍和博客的详情页；未可靠匹配的资源仍会明确标记为搜索入口。</span>
+        <span>优先展示有明确来源的课程、视频和文档；无法直达的结果会标为搜索入口。</span>
       </div>
       {externalLoading && <div role="status" className="inline-flex items-center gap-1.5 text-[11px] text-[#66717B]"><Loader2 className="size-3.5 animate-spin" />正在匹配人才呀课程…</div>}
       {videoLoading && <div role="status" className="inline-flex items-center gap-1.5 text-[11px] text-[#66717B]"><Loader2 className="size-3.5 animate-spin" />正在匹配 B站真实视频…</div>}

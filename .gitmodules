@@ -1,0 +1,3 @@
+[submodule "ai-interview"]
+	path = ai-interview
+	url = git@github.com:studymate-team/ai-interview.git

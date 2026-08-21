@@ -18,6 +18,7 @@ StudyMate 是面向高校计算机类课程的个性化学习平台，将学习�
 - 可视化讲解：覆盖机器学习、数据结构与算法、操作系统、计算机网络和计算机组成原理。
 - 外部学习资源：支持哔哩哔哩、讯飞人才呀，以及论文、图书和技术博客真实详情页解析。
 - 在线编程：可选接入 Piston，运行 Python、C11 和 C++17。
+- 独立 AI 面试：通过岗位空间进入独立部署的 AI 面试服务，复用原项目的简历分析、实时面试、面试报告和企业管理能力。
 
 ## 快速启动
 
@@ -90,6 +91,7 @@ docker compose --profile code-runner up -d --build
 - [开发与验收指南](studymate/docs/开发与验收指南.md)
 - [Ubuntu 部署指南](studymate/docs/Ubuntu部署指南.md)
 - [密钥管理指南](studymate/docs/密钥管理指南.md)
+- [AI 面试服务接入说明](docs/AI面试服务接入说明.md)
 - [竞赛资料索引](docs/README.md)
 
 ## 安全说明
