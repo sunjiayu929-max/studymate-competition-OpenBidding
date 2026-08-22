@@ -4,6 +4,7 @@ import { Link } from "react-router-dom"
 import { AlertCircle, BookOpen, CircleHelp, Database, ExternalLink, FileSearch, FileText, Hash, Loader2, Search, ShieldCheck, Sparkles } from "lucide-react"
 
 import { PageHeader } from "@/components/PageHeader"
+import { Markdown } from "@/components/Markdown"
 import { apiGet } from "@/lib/api"
 import { formatSourceLabel, sourceLink, visibleMetadata } from "@/lib/ragSource"
 import { useTrackPage } from "@/lib/useTrackPage"
@@ -44,7 +45,8 @@ interface Stats {
   per_course?: Record<string, number>
 }
 
-const RESULT_LIMIT = 8
+const DEFAULT_RESULT_LIMIT = 8
+const FDE_RESULT_LIMIT = 12
 
 export function RagDemo() {
   useTrackPage("rag")
@@ -58,6 +60,7 @@ export function RagDemo() {
     : course
       ? fallbackSamplesFor(course.name).topics
       : DEFAULT_SAMPLE_TOPICS
+  const resultLimit = targetRole?.id === "fde" ? FDE_RESULT_LIMIT : DEFAULT_RESULT_LIMIT
   const [q, setQ] = useState(sampleQueries[0] || "如何拆解岗位任务与验收标准")
   const [stats, setStats] = useState<Stats | null>(null)
   const [resp, setResp] = useState<SearchResp | null>(null)
@@ -74,7 +77,7 @@ export function RagDemo() {
     setLoading(true)
     setError("")
     try {
-      const base = `/rag/search?q=${encodeURIComponent(query)}&k=${RESULT_LIMIT}`
+      const base = `/rag/search?q=${encodeURIComponent(query)}&k=${resultLimit}`
       const url = course ? `${base}&course_id=${course.id}` : base
       setResp(await apiGet<SearchResp>(url))
     } catch (searchError) {
@@ -193,7 +196,7 @@ export function RagDemo() {
                         {result.relevance_percent == null ? `排序分 ${result.score.toFixed(4)}` : `相对匹配 ${result.relevance_percent}%`}
                       </span>
                     </div>
-                    <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-[#27343D]">{result.content}</p>
+                    <Markdown content={result.content} wrapLongContent className="mt-4 text-sm leading-7 text-[#27343D] [&_table]:text-left [&_th]:whitespace-nowrap [&_td]:align-top" />
                     {visibleMetadata(result.meta).length > 0 && <div className="mt-4 flex flex-wrap gap-1.5">{visibleMetadata(result.meta).map(([key, value]) => <span key={key} className="rounded-lg bg-[#F1EDE4] px-2 py-1 text-[10px] text-[#66717B]">{key}={String(value)}</span>)}</div>}
                   </motion.article>
                 ))}

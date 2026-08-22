@@ -179,7 +179,7 @@ class PlanArbiterAgent(AgentBase):
                 "resolution": f"本轮保留 {'、'.join(selected) or '当前核心任务'}；{'、'.join(deferred) if deferred else '其余能力'}进入后续轮次，并以测试结果决定升阶或补强",
                 "decision": decision,
             },
-            "release_gate": "三类资源必须通过事实来源、实操规范、难度覆盖审核后方可发布",
+            "release_gate": "七类资源必须通过事实来源、实操规范、难度覆盖审核后方可发布",
             "next_round_rule": "低于 60 分先修复前置能力，60–84 分进行错因专项训练，85 分及以上进入更复杂岗位场景",
         }
         await emit("plan", result)

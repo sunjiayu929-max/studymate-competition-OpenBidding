@@ -51,6 +51,51 @@ export interface WorkspaceOutputs {
   path?: { type: string; title: string; nodes: PathNode[]; edges: PathEdge[]; count: number }
   reading?: { type: string; title: string; items: ReadingItem[]; count: number }
   code?: CodeOutput & { type: string; title: string }
+  video?: {
+    type: string
+    title: string
+    provider: string
+    model: string
+    status: "unconfigured" | "succeeded" | "failed" | string
+    message?: string
+    video_url: string
+    assembled_video_url?: string
+    task_id?: string
+    resolution: string
+    duration: number
+    ratio: string
+    has_audio: boolean
+    script: {
+      title: string
+      voiceover: string
+      prompt: string
+      shots: Array<{ duration: number; description: string }>
+      citations?: Citation[]
+    }
+    usage?: Record<string, unknown>
+    version?: number
+    complexity?: "focused" | "workflow" | "complex" | string
+    scope?: string
+    duration_reason?: string
+    estimated_cost_rmb?: number
+    actual_cost_rmb?: number
+    total_duration?: number
+    segment_count?: number
+    completed_segments?: number
+    assembly_status?: string
+    segment_urls?: string[]
+    segments?: Array<{
+      index: number
+      title: string
+      purpose: string
+      voiceover: string
+      duration: number
+      status: string
+      task_id?: string
+      video_url?: string
+      message?: string
+    }>
+  }
 }
 
 export interface TrainingProposal {
@@ -93,7 +138,7 @@ export interface PersonalizedTrainingPlan {
   next_round_rule: string
 }
 
-export type StreamMap = { doc: string; guide: string; mindmap: string; quiz: string; path: string; reading: string; code: string }
+export type StreamMap = { doc: string; guide: string; mindmap: string; quiz: string; path: string; reading: string; code: string; video: string }
 export type RunStatus = "idle" | "running" | "done" | "error" | "interrupted"
 
 export interface TrainingDiagnosis {
@@ -150,6 +195,12 @@ export interface TrainingDecision {
   profile_difficulty_accuracy?: number
   core_knowledge_coverage?: number
   max_reworks_reached?: boolean
+  fallback?: {
+    kind: "learning_package"
+    score: number
+    score_label: string
+    resource_ids: string[]
+  }
   release_gate: {
     review_count: number
     blocker_count: number
@@ -252,7 +303,7 @@ export interface WorkspaceState {
 
 const STORAGE_KEY = "sm:workspace-state"
 
-const EMPTY_STREAM: StreamMap = { doc: "", guide: "", mindmap: "", quiz: "", path: "", reading: "", code: "" }
+const EMPTY_STREAM: StreamMap = { doc: "", guide: "", mindmap: "", quiz: "", path: "", reading: "", code: "", video: "" }
 
 function settleActiveAgents(agents: AgentState[], message: string): AgentState[] {
   return agents.map((agent) => agent.status === "running" || agent.status === "streaming"

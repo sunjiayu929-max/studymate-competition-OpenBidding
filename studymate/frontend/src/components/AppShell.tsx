@@ -56,16 +56,6 @@ type NavItem = {
 
 const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavItem[] }> = [
   {
-    id: "learn",
-    label: "学习中心",
-    icon: GraduationCap,
-    items: [
-      { label: "岗位空间", to: "/courses", icon: Library },
-      { label: "岗位能力画像", to: "/profile", icon: GraduationCap },
-      { label: "AI 面试", to: "/ai-interview", icon: MessageSquare },
-    ],
-  },
-  {
     id: "ai",
     label: "AI 学习工具",
     icon: Bot,
@@ -97,11 +87,12 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
   },
   {
     id: "discover",
-    label: "发现与拓展",
+    label: "职业发展",
     icon: Compass,
     items: [
       { label: "学习资源", to: "/resources", icon: Compass },
       { label: "职业探索", to: "/career", icon: GraduationCap },
+      { label: "AI 面试", to: "/ai-interview", icon: MessageSquare },
     ],
   },
 ]
@@ -207,6 +198,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     workspace.outputs.doc?.content,
     workspace.outputs.guide?.content,
     workspace.outputs.quiz?.items?.length,
+    workspace.outputs.mindmap?.content,
+    workspace.outputs.reading?.items?.length,
+    workspace.outputs.code?.code,
   ].filter(Boolean).length
 
   return (
@@ -265,6 +259,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <nav className="nav-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3" aria-label="主功能">
           <ShellLink item={{ label: "今日学习", to: "/", icon: Home, exact: true }} compact={effectiveCollapsed} pathname={pathname} />
+          <ShellLink item={{ label: "目标岗位", to: "/courses", icon: Library }} compact={effectiveCollapsed} pathname={pathname} />
+          <ShellLink item={{ label: "岗位能力画像", to: "/profile", icon: GraduationCap }} compact={effectiveCollapsed} pathname={pathname} />
           <ShellLink
             item={{ label: "岗位训练中心", to: "/competency", icon: ShieldCheck, exact: true }}
             compact={effectiveCollapsed}
@@ -272,7 +268,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             trailing={!effectiveCollapsed ? (
               <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-[#F4ECD8] px-1.5 py-0.5 text-[9px] font-extrabold text-[#8E6925]">
                 {workspace.status === "running" && <span className="size-1.5 animate-pulse rounded-full bg-[#B1842C]" />}
-                {workspace.status === "running" ? `${readyResources}/3` : "11 Agents"}
+                {workspace.status === "running" ? `${readyResources}/6` : "14 Agents"}
               </span>
             ) : undefined}
           />

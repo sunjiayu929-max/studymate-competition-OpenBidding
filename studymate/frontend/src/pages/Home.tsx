@@ -133,11 +133,11 @@ const SOURCE_LABEL: Record<NoteSource, string> = {
 const AGENT_DEFINITIONS = [
   { id: "retriever", name: "Retriever", role: "知识检索" },
   { id: "doc", name: "Doc", role: "讲解文档" },
+  { id: "guide", name: "Guide", role: "实操指南" },
   { id: "mindmap", name: "MindMap", role: "思维导图" },
   { id: "quiz", name: "Quiz", role: "智能测验" },
   { id: "reading", name: "Reading", role: "拓展阅读" },
   { id: "code", name: "Code", role: "代码案例" },
-  { id: "path", name: "Path", role: "学习路径" },
 ] as const
 
 interface UniverseMetric {
@@ -356,7 +356,7 @@ function LearningUniverse(props: LearningUniverseProps) {
     knowledge: { value: formatPlatformChunkCount(platform.chunkCount), detail: "平台知识片段" },
     quiz: { value: String(quizCount), detail: "个人测验记录" },
     notes: { value: String(noteCount), detail: "个人笔记" },
-    workspace: { value: `${generatedResourceCount}/7`, detail: workspace.status === "running" ? "正在生成" : "Agent 资源" },
+    workspace: { value: `${generatedResourceCount}/6`, detail: workspace.status === "running" ? "正在生成" : "资源类型" },
     report: { value: String(reportCount), detail: "阶段评估" },
     course: { value: courseSelected ? (courseChunkCount ? String(courseChunkCount) : "目录") : "待选", detail: courseSelected ? (courseChunkCount ? "当前岗位知识片段" : "前端岗位目录预览") : "选择目标岗位" },
   }
@@ -384,7 +384,7 @@ function LearningUniverse(props: LearningUniverseProps) {
       data-active={active ? "true" : "false"}
       data-intro={firstEntrance && !reduceMotion ? "true" : "false"}
       data-testid="learning-universe-command-center"
-      aria-label="StudyMate 学习宇宙实时指挥舱"
+      aria-label="StudyMate 学习总览"
     >
       <div ref={farLayerRef} className="pointer-events-none absolute inset-0 transition-transform duration-300 ease-out" aria-hidden="true"><div className="universe-stars universe-stars-far" /></div>
       <div ref={midLayerRef} className="pointer-events-none absolute inset-0 transition-transform duration-300 ease-out" aria-hidden="true"><div className="universe-stars universe-stars-mid" /></div>
@@ -419,10 +419,10 @@ function LearningUniverse(props: LearningUniverseProps) {
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[10px] font-bold tracking-[.16em] text-[#C9B581]">
               <Orbit className="size-3.5" />
-              STUDYMATE LEARNING UNIVERSE
+              STUDYMATE
             </div>
             <h1 className="mt-0.5 text-[clamp(16px,1.55vw,23px)] font-semibold tracking-[-.035em] text-[#F1EFE9]">
-              学习宇宙 · 实时指挥舱
+              学习总览
             </h1>
           </div>
           <div className="flex items-center gap-3 sm:gap-5">
@@ -464,8 +464,8 @@ function LearningUniverse(props: LearningUniverseProps) {
             <div className="universe-panel-divider" />
             <div className="flex items-center justify-between gap-2">
               <div>
-                <span className="universe-kicker">PLATFORM · CAPABILITY</span>
-                <h3 className="mt-0.5 text-[12px] font-semibold text-[#E5E3DD]">平台基础能力</h3>
+                <span className="universe-kicker">平台内容</span>
+                <h3 className="mt-0.5 text-[12px] font-semibold text-[#E5E3DD]">可用学习内容</h3>
               </div>
               <span className="rounded-full border border-white/10 px-2 py-1 text-[8px] text-[#8D98A6]">
                 {platform.source === "live" ? "实时汇总" : "产品基线"}
@@ -479,19 +479,19 @@ function LearningUniverse(props: LearningUniverseProps) {
             </div>
             {!courseSelected && (
               <Link to="/courses" className="universe-secondary-cta">
-                选择领域与岗位，建立个人训练场景 <ArrowRight className="size-3.5" />
+                选择目标岗位 <ArrowRight className="size-3.5" />
               </Link>
             )}
           </aside>
 
-          <main ref={stageLayerRef} className="universe-glass-panel universe-core-panel transition-transform duration-300 ease-out" aria-label="中央学习宇宙">
+          <main ref={stageLayerRef} className="universe-glass-panel universe-core-panel transition-transform duration-300 ease-out" aria-label="学习入口">
             <UniversePulseFrame className="universe-module-pulse-core" />
             <div className="universe-core-heading">
               <div>
-                <span className="universe-kicker">LEARNER CORE · LIVE ORBIT</span>
-                <h2>中央学习星球</h2>
+                <span className="universe-kicker">学习入口</span>
+                <h2>从这里开始</h2>
               </div>
-              <span className="text-right text-[9px] leading-4 text-[#7F8A98]">七项能力围绕同一学习者<br />点击星球进入真实页面</span>
+              <span className="text-right text-[9px] leading-4 text-[#7F8A98]">点击入口<br />进入对应页面</span>
             </div>
             <div className="universe-orbit-stage">
               <span className="universe-radar-scan" aria-hidden="true" />
@@ -1032,8 +1032,8 @@ export function Home() {
     Boolean(workspace.outputs.quiz?.items?.length),
     Boolean(workspace.outputs.reading?.items?.length),
     Boolean(workspace.outputs.code?.code),
-    Boolean(workspace.outputs.path?.nodes?.length),
-    Boolean(workspace.topic),
+    Boolean(workspace.outputs.guide?.content),
+    Boolean(workspace.outputs.video?.script),
   ].filter(Boolean).length
   const todayKey = shanghaiDayKey(new Date())
   const todaySubmittedQuizzes = submittedQuizzes.filter((quiz) => shanghaiDayKey(quiz.submitted_at) === todayKey)
@@ -1120,7 +1120,7 @@ export function Home() {
       rows.push({
         key: `pulse-workspace-${workspaceTimestamp}`,
         to: "/competency",
-        title: workspace.status === "running" ? "11 Agents 正在协作" : workspace.status === "done" ? "Agent 训练资源已完成" : workspace.status === "error" || workspace.status === "interrupted" ? "Agent 任务需要关注" : "岗位训练中心已更新",
+        title: workspace.status === "running" ? "15 个协作节点正在协作" : workspace.status === "done" ? "Agent 训练资源已完成" : workspace.status === "error" || workspace.status === "interrupted" ? "Agent 任务需要关注" : "岗位训练中心已更新",
         detail: compactTopic(workspace.logs.at(-1) || workspace.topic, 26),
         timestamp: workspaceTimestamp,
         tone: workspace.status === "error" || workspace.status === "interrupted" ? "#B97B65" : "#91A98C",
@@ -1231,7 +1231,7 @@ export function Home() {
                 <div className="min-w-0">
                   <div className="text-[10px] font-bold tracking-[0.12em] text-[#8E6925]">目录展示岗位</div>
                   <h2 className="mt-1 text-[15px] font-bold text-[#18232D]">当前正在浏览《{course?.name}》</h2>
-                  <p className="mt-1 text-xs leading-5 text-[#66717B]">该岗位目前只展示目录信息，不会调用后端知识库、RAG 或生成接口。</p>
+                  <p className="mt-1 text-xs leading-5 text-[#66717B]">该岗位暂时只能查看目录，训练功能尚未开放。</p>
                 </div>
               </div>
               <Link to="/courses" className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] hover:bg-[#193B50]">浏览岗位目录<ArrowRight className="size-3.5" /></Link>
@@ -1248,7 +1248,7 @@ export function Home() {
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#244C66] text-[#F0D6A4]"><GraduationCap className="size-[18px]" /></span>
                 <div className="min-w-0">
                   <div className="text-[10px] font-bold tracking-[0.12em] text-[#8E6925]">开始第一次学习</div>
-                  <h2 className="mt-1 text-[15px] font-bold text-[#18232D]">先完成两个准备动作，后面的内容才真正属于你</h2>
+                  <h2 className="mt-1 text-[15px] font-bold text-[#18232D]">完成两步准备，开始个性化学习</h2>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold ${hasTargetRole ? "border-[#C9D1CB] bg-[#E9EEE6] text-[#557052]" : "border-[#D8C9A8] bg-[#FFFEFA] text-[#8E6925]"}`}>
                       {hasTargetRole ? <CheckCircle2 className="size-3" /> : <span className="size-1.5 rounded-full bg-[#B1842C]" />}
@@ -1376,8 +1376,8 @@ export function Home() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <span className="text-[11px] font-bold tracking-[0.12em] text-[#6F8A69]">常用学习能力</span>
-                  <h2 className="mt-1.5 text-xl font-bold tracking-[-0.035em] text-[#18232D]">你的学习能力星图</h2>
-                  <p className="mt-1.5 text-xs leading-5 text-[#66717B]">画像、目标岗位与学习工具围绕同一个求职目标持续协作。</p>
+                  <h2 className="mt-1.5 text-xl font-bold tracking-[-0.035em] text-[#18232D]">常用学习入口</h2>
+                  <p className="mt-1.5 text-xs leading-5 text-[#66717B]">从岗位目标出发，继续完善画像、训练和测验。</p>
                 </div>
                 <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D7D1C4] bg-[#FFFEFA] text-[#244C66]"><Orbit className="size-[17px]" /></span>
               </div>
@@ -1394,7 +1394,7 @@ export function Home() {
               </div>
 
               <Link to="/competency" className="group mt-3 flex h-10 items-center justify-between rounded-xl border border-[#C9C2B4] bg-[#FFFEFA] px-4 text-xs font-bold text-[#244C66] transition-colors hover:bg-[#F1EDE4]">
-                让智能体生成一次完整学习内容
+                进入岗位训练中心
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
             </motion.aside>
@@ -1408,7 +1408,7 @@ export function Home() {
           >
             <div className="flex flex-col gap-1 border-b border-[#DDD7CB] bg-[#F8F6F0] px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2"><Sparkles className="size-4 text-[#B1842C]" /><strong className="text-xs text-[#18232D]">常用工具，一条学习路径</strong></div>
-              <span className="text-[11px] tracking-[0.05em] text-[#7A817F]">从理解到练习，所有环节保持连接</span>
+              <span className="text-[11px] tracking-[0.05em] text-[#7A817F]">按需要进入对应工具</span>
             </div>
             <div className="grid grid-cols-2 gap-px bg-[#DDD7CB] sm:grid-cols-3 xl:grid-cols-7">
               {MODULES.map(({ to, label, detail, icon: Icon, color, wash }) => (
@@ -1463,7 +1463,7 @@ export function Home() {
               ) : (
                 <div className="mt-5 flex flex-col items-start gap-4 rounded-2xl border border-dashed border-[#C9C2B4] bg-[#F8F6F0] p-5 sm:flex-row sm:items-center">
                   <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#E7EDF3] text-[#355C8A]"><GraduationCap className="size-5" /></span>
-                  <div className="flex-1"><strong className="text-sm text-[#18232D]">你的学习记录会从这里生长</strong><p className="mt-1 text-xs leading-5 text-[#66717B]">完成一次讲解、保存一条笔记或参加测验，这里就会留下真实足迹。</p></div>
+                  <div className="flex-1"><strong className="text-sm text-[#18232D]">这里会显示最近学习记录</strong><p className="mt-1 text-xs leading-5 text-[#66717B]">完成讲解、保存笔记或参加测验后即可查看。</p></div>
                   <Link to={hasTargetRole ? "/workspace" : "/courses"} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[#244C66] px-4 text-[11px] font-bold text-white">{hasTargetRole ? "开始第一次岗位训练" : "选择目标岗位"}<ArrowRight className="size-3.5" /></Link>
                 </div>
               )}
@@ -1503,7 +1503,7 @@ export function Home() {
                 <div className="mt-5 rounded-2xl border border-dashed border-[#C9C2B4] bg-[#FFFEFA] p-5 text-center">
                   <span className="mx-auto grid size-11 place-items-center rounded-full bg-[#E8ECEE] text-[#315E83]"><UserRoundSearch className="size-5" /></span>
                   <strong className="mt-3 block text-sm text-[#18232D]">先让 StudyMate 认识你</strong>
-                  <p className="mx-auto mt-1 max-w-sm text-[11px] leading-5 text-[#66717B]">聊几句话补充岗位目标、节奏和薄弱能力点，今日路线就会更贴合你。</p>
+                  <p className="mx-auto mt-1 max-w-sm text-[11px] leading-5 text-[#66717B]">补充岗位目标、学习时间和待提升能力，获得更合适的训练安排。</p>
                   <Link to="/profile" className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-[#315E83] hover:underline">开始建立画像 <ArrowRight className="size-3" /></Link>
                 </div>
               )}
@@ -1553,10 +1553,10 @@ function LearningLoopPanel({
       number: "02",
       title: "资源生成",
       detail: workspaceStatus === "running"
-        ? "11 个核心 Agent 正在协作"
+        ? "15 个协作节点正在协作"
         : generationNeedsAttention
           ? generatedResourceCount ? `生成已中断 · 保留 ${generatedResourceCount} 类资源` : "生成中断，点击继续处理"
-          : generatedResourceCount ? `${Math.min(generatedResourceCount, 3)} / 3 类核心训练资源已就绪` : "等待生成训练资源",
+          : generatedResourceCount ? `${generatedResourceCount} / 7 类岗位训练资源已就绪` : "等待生成训练资源",
       to: "/competency",
       icon: Sparkles,
       color: "#6F8A69",
@@ -1606,12 +1606,12 @@ function LearningLoopPanel({
     >
       <div className="flex flex-col gap-2 border-b border-[#DDD7CB] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-[11px] font-bold tracking-[0.11em] text-[#8E6925]"><Route className="size-3.5" />学习闭环证据</div>
-          <h2 className="mt-1 text-lg font-bold tracking-[-0.025em] text-[#18232D]">每一次学习，都留下可以继续使用的结果</h2>
+          <div className="flex items-center gap-2 text-[11px] font-bold tracking-[0.11em] text-[#8E6925]"><Route className="size-3.5" />学习记录</div>
+          <h2 className="mt-1 text-lg font-bold tracking-[-0.025em] text-[#18232D]">查看每个学习环节的进度</h2>
         </div>
         <div className="flex items-center gap-2">
           <span className="rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-1.5 text-[11px] font-bold text-[#59636B]">{doneCount} / 5 个环节已有记录</span>
-          <span className="hidden rounded-full bg-[#E9EEE6] px-3 py-1.5 text-[11px] font-bold text-[#557052] md:inline">报告完成后画像形成新版本</span>
+          <span className="hidden rounded-full bg-[#E9EEE6] px-3 py-1.5 text-[11px] font-bold text-[#557052] md:inline">完成报告后更新画像</span>
         </div>
       </div>
 
