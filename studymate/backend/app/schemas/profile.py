@@ -92,18 +92,18 @@ class TheoryAssessmentEvidence(BaseModel):
     completed_at: str
 
 
-class InterviewAssessmentEvidence(BaseModel):
-    """Latest completed simulated-interview evidence for one target role."""
-    attempt_id: str
-    role_id: str
-    role_name: str
-    course_id: int | None = None
-    overall_score: float = Field(ge=0, le=100)
-    role_match_score: float = Field(ge=0, le=100)
-    general_score: float = Field(ge=0, le=100)
-    competency_scores: dict[str, float] = Field(default_factory=dict)
-    weak_competencies: list[str] = Field(default_factory=list)
-    completed_at: str
+class TrainingRoundEvidence(BaseModel):
+    """某目标岗位一次训练闭环验收后的学习证据，随每轮反馈回写画像。"""
+    run_id: str
+    domain: str = ""
+    target_role: str = ""
+    topic: str = ""
+    accuracy: float | None = None
+    answered_count: int = 0
+    wrong_count: int = 0
+    next_action: str = ""
+    difficulty_delta: int = 0
+    completed_at: str = ""
 
 
 class ProfileDims(BaseModel):
@@ -121,9 +121,9 @@ class ProfileDims(BaseModel):
         default_factory=dict,
         description="按目标岗位 role_id 保存的理论基线证据",
     )
-    interview_assessments: dict[str, InterviewAssessmentEvidence] = Field(
-        default_factory=dict,
-        description="按目标岗位 role_id 保存的模拟面试证据",
+    training_rounds: list[TrainingRoundEvidence] = Field(
+        default_factory=list,
+        description="岗位训练闭环逐轮学习证据，最新一轮在前",
     )
 
 
