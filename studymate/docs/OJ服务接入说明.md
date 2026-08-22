@@ -4,7 +4,13 @@ StudyMate 的在线判题是独立 Hydro 服务，不复用 StudyMate SQLite，�
 
 ## 代码边界
 
-主仓库使用 `merge-competition`，`ai-interview` 使用 `main`，`oj` 使用 `main`。OJ 代码位于主仓库的 `oj/` Git Submodule。修改 OJ 时先在 OJ 仓库提交，再在主仓库提交新的 Submodule revision；服务器不单独拉取子模块。
+本地开发在主仓库 `yuanshicong` 分支进行，审核通过后快进或合并到部署基线 `merge-competition`；`ai-interview` 使用 `main`，`oj` 使用 `main`。OJ 代码位于主仓库的 `oj/` Git Submodule。修改 OJ 时先在 OJ 仓库提交，再在主仓库提交新的 Submodule revision；服务器不单独拉取子模块。
+
+首次检出或更新 revision 后必须递归初始化子模块，因为 HydroJudge 还锁定了 `testlib` 嵌套子模块：
+
+```bash
+git submodule update --init --recursive
+```
 
 ## 访问与单点登录
 

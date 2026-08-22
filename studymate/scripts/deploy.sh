@@ -186,6 +186,12 @@ preflight_oj() {
   oj_enabled || return 0
   require_oj_project
 
+  if [[ ! -f "$OJ_DIR/packages/hydrojudge/vendor/testlib/testlib.h" ]]; then
+    echo "HydroJudge testlib submodule is missing: $OJ_DIR/packages/hydrojudge/vendor/testlib/testlib.h" >&2
+    echo "Initialize all submodules before deployment: git submodule update --init --recursive" >&2
+    exit 1
+  fi
+
   local oj_env_file="$OJ_DIR/.env"
   if [[ ! -f "$BACKEND_ENV_FILE" || ! -f "$oj_env_file" ]]; then
     echo "OJ deployment requires $BACKEND_ENV_FILE and $oj_env_file." >&2
