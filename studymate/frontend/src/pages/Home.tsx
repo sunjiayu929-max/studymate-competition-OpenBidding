@@ -133,11 +133,11 @@ const SOURCE_LABEL: Record<NoteSource, string> = {
 const AGENT_DEFINITIONS = [
   { id: "retriever", name: "Retriever", role: "知识检索" },
   { id: "doc", name: "Doc", role: "讲解文档" },
+  { id: "guide", name: "Guide", role: "实操指南" },
   { id: "mindmap", name: "MindMap", role: "思维导图" },
   { id: "quiz", name: "Quiz", role: "智能测验" },
   { id: "reading", name: "Reading", role: "拓展阅读" },
   { id: "code", name: "Code", role: "代码案例" },
-  { id: "path", name: "Path", role: "学习路径" },
 ] as const
 
 interface UniverseMetric {
@@ -356,7 +356,7 @@ function LearningUniverse(props: LearningUniverseProps) {
     knowledge: { value: formatPlatformChunkCount(platform.chunkCount), detail: "平台知识片段" },
     quiz: { value: String(quizCount), detail: "个人测验记录" },
     notes: { value: String(noteCount), detail: "个人笔记" },
-    workspace: { value: `${generatedResourceCount}/7`, detail: workspace.status === "running" ? "正在生成" : "Agent 资源" },
+    workspace: { value: `${generatedResourceCount}/6`, detail: workspace.status === "running" ? "正在生成" : "资源类型" },
     report: { value: String(reportCount), detail: "阶段评估" },
     course: { value: courseSelected ? (courseChunkCount ? String(courseChunkCount) : "目录") : "待选", detail: courseSelected ? (courseChunkCount ? "当前岗位知识片段" : "前端岗位目录预览") : "选择目标岗位" },
   }
@@ -1032,8 +1032,8 @@ export function Home() {
     Boolean(workspace.outputs.quiz?.items?.length),
     Boolean(workspace.outputs.reading?.items?.length),
     Boolean(workspace.outputs.code?.code),
-    Boolean(workspace.outputs.path?.nodes?.length),
-    Boolean(workspace.topic),
+    Boolean(workspace.outputs.guide?.content),
+    Boolean(workspace.outputs.video?.script),
   ].filter(Boolean).length
   const todayKey = shanghaiDayKey(new Date())
   const todaySubmittedQuizzes = submittedQuizzes.filter((quiz) => shanghaiDayKey(quiz.submitted_at) === todayKey)
@@ -1120,7 +1120,7 @@ export function Home() {
       rows.push({
         key: `pulse-workspace-${workspaceTimestamp}`,
         to: "/competency",
-        title: workspace.status === "running" ? "11 Agents 正在协作" : workspace.status === "done" ? "Agent 训练资源已完成" : workspace.status === "error" || workspace.status === "interrupted" ? "Agent 任务需要关注" : "岗位训练中心已更新",
+        title: workspace.status === "running" ? "15 个协作节点正在协作" : workspace.status === "done" ? "Agent 训练资源已完成" : workspace.status === "error" || workspace.status === "interrupted" ? "Agent 任务需要关注" : "岗位训练中心已更新",
         detail: compactTopic(workspace.logs.at(-1) || workspace.topic, 26),
         timestamp: workspaceTimestamp,
         tone: workspace.status === "error" || workspace.status === "interrupted" ? "#B97B65" : "#91A98C",
@@ -1553,10 +1553,10 @@ function LearningLoopPanel({
       number: "02",
       title: "资源生成",
       detail: workspaceStatus === "running"
-        ? "11 个核心 Agent 正在协作"
+        ? "15 个协作节点正在协作"
         : generationNeedsAttention
           ? generatedResourceCount ? `生成已中断 · 保留 ${generatedResourceCount} 类资源` : "生成中断，点击继续处理"
-          : generatedResourceCount ? `${Math.min(generatedResourceCount, 3)} / 3 类核心训练资源已就绪` : "等待生成训练资源",
+          : generatedResourceCount ? `${generatedResourceCount} / 7 类岗位训练资源已就绪` : "等待生成训练资源",
       to: "/competency",
       icon: Sparkles,
       color: "#6F8A69",

@@ -17,19 +17,26 @@ const AGENT_LABELS: Record<string, string> = {
   doc: "讲义生成 Agent",
   guide: "指南生成 Agent",
   quiz: "测试生成 Agent",
+  mindmap: "思维导图生成 Agent",
+  reading: "拓展阅读生成 Agent",
+  code: "代码案例生成 Agent",
+  video: "可视讲解生成 Agent",
   evidence_review: "事实审核 Agent",
   practice_review: "实操审核 Agent",
   difficulty_review: "难度审核 Agent",
 }
 
-const RESOURCE_PAIRS = [
-  ["doc", "evidence_review"],
-  ["guide", "practice_review"],
-  ["quiz", "difficulty_review"],
-] as const
+const RESOURCE_REVIEWERS = {
+  doc: ["evidence_review"],
+  guide: ["evidence_review", "practice_review"],
+  quiz: ["evidence_review", "difficulty_review"],
+  mindmap: ["evidence_review", "difficulty_review"],
+  reading: ["evidence_review", "difficulty_review"],
+  code: ["practice_review", "difficulty_review"],
+  video: ["evidence_review", "practice_review", "difficulty_review"],
+} as const
 
-type ResourceGenerator = (typeof RESOURCE_PAIRS)[number][0]
-type ResourceReviewer = (typeof RESOURCE_PAIRS)[number][1]
+type ResourceGenerator = keyof typeof RESOURCE_REVIEWERS
 
 export function DebateQualityPanel({ workspace }: { workspace: WorkspaceState }) {
   const planningRound = 1 + workspace.reworkHistory.filter((item) => item.phase === "planning").length
@@ -98,17 +105,17 @@ function PlanningDebate({ workspace, debate, planningRound }: { workspace: Works
 }
 
 function ResourceDebate({ workspace, debate }: { workspace: WorkspaceState; debate?: DebateRecord }) {
-  const exchanges = RESOURCE_PAIRS.map(([generator, reviewer]) => buildLiveExchange(workspace, debate, generator, reviewer))
+  const exchanges = (Object.keys(RESOURCE_REVIEWERS) as ResourceGenerator[]).map((generator) => buildLiveExchanges(workspace, debate, generator))
   const activeStep = resourceActiveStep(workspace.stage)
 
   return (
     <article className="rounded-2xl border border-[#C9DCF1] bg-white p-4 shadow-[0_10px_28px_rgba(58,104,153,.07)]">
-      <DebateHeader number="第2轮辩论" title="三组资源生成与审核质询" description={`当前第 ${workspace.generationRound} 轮资源 · 三组生成 Agent 分别接受审核 Agent 质询，审核方独立决定接受或返工。`} debate={debate} />
+      <DebateHeader number="第2轮辩论" title="七类资源生成与审核质询" description={`当前第 ${workspace.generationRound} 轮资源 · 七个生成 Agent 并行陈述，三组审核 Agent 交叉质询并独立决定接受或返工。`} debate={debate} />
       <DebateSequence labels={["资源陈述", "审核质询", "生成回应", "审核决定"]} activeStep={activeStep} completed={Boolean(debate)} />
 
-      <div className="mt-4 grid gap-3 xl:grid-cols-3">
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {exchanges.map((item, index) => (
-          <ExchangeCard key={`${item.exchange.generator}-${item.exchange.reviewer}`} exchange={item.exchange} index={index} activeStep={activeStep} outputReady={item.outputReady} reviewReady={item.reviewReady} />
+          <ExchangeCard key={item.generator} exchanges={item.exchanges} index={index} activeStep={activeStep} outputReady={item.outputReady} reviewReady={item.reviewReady} />
         ))}
       </div>
     </article>
@@ -163,30 +170,52 @@ function DecisionBox({ agent, text, decision, active }: { agent: string; text: s
   )
 }
 
-function ExchangeCard({ exchange, index, activeStep, outputReady, reviewReady }: { exchange: DebateExchange; index: number; activeStep: number; outputReady: boolean; reviewReady: boolean }) {
-  const challenge = exchange.reviewer_challenges.length
-    ? `${exchange.reviewer_challenges[0].message}${exchange.reviewer_challenges.length > 1 ? `（另有 ${exchange.reviewer_challenges.length - 1} 项）` : ""}`
-    : reviewReady ? "审核接受本轮资源，未发现需要返工的问题。" : "等待审核 Agent 发起专业质询。"
-  const response = exchange.generator_response.length
-    ? `针对上轮意见：${exchange.generator_response.join("；")}`
-    : exchange.reviewer_challenges.length
-      ? "审核意见已进入返工队列，等待生成方下一轮回应。"
-      : reviewReady ? "确认接受本轮审核结论。" : "等待审核意见后作出回应。"
+function ExchangeCard({ exchanges, index, activeStep, outputReady, reviewReady }: { exchanges: DebateExchange[]; index: number; activeStep: number; outputReady: boolean; reviewReady: boolean }) {
+  const primary = exchanges[0]
+  const reviewerCount = exchanges.length
+  const isExchangeReady = (exchange: DebateExchange) => exchange.review_score > 0 || exchange.reviewer_challenges.length > 0
+  const readyCount = exchanges.filter(isExchangeReady).length
+  const challenges = exchanges.flatMap((exchange) => exchange.reviewer_challenges)
+  const response = exchanges.flatMap((exchange) => exchange.generator_response)
+  const hasRework = exchanges.some((exchange) => isExchangeReady(exchange) && exchange.reviewer_decision === "rework")
 
   return (
     <div className="rounded-2xl border border-[#D4E2F1] bg-[#FBFDFF] p-3">
       <div className="flex items-center justify-between gap-2 border-b border-[#E1EAF4] pb-2">
-        <strong className="text-[10px] text-[#355A84]">第 {index + 1} 组辩论</strong>
-        <span className="text-[8px] font-bold text-[#7990A9]">{reviewReady ? `${exchange.review_score} 分` : outputReady ? "资源已提交" : "正在生成"}</span>
+        <strong className="text-[10px] text-[#355A84]">第 {index + 1} 类资源</strong>
+        <span className="text-[8px] font-bold text-[#7990A9]">{reviewReady ? `${readyCount}/${reviewerCount} 组审核` : outputReady ? "资源已提交" : "正在生成"}</span>
       </div>
       <div className="mt-3 space-y-2">
-        <SpeechBubble agent={AGENT_LABELS[exchange.generator] || exchange.generator} action="资源陈述" text={exchange.generator_position} side="left" compact active={activeStep === 0} muted={!outputReady} />
-        <SpeechBubble agent={AGENT_LABELS[exchange.reviewer] || exchange.reviewer} action="发起质疑" text={challenge} side="right" compact active={activeStep === 1} muted={!reviewReady} />
-        <SpeechBubble agent={AGENT_LABELS[exchange.generator] || exchange.generator} action="回应质疑" text={response} side="left" compact active={activeStep === 2} muted={!outputReady} />
+        <SpeechBubble agent={AGENT_LABELS[primary.generator] || primary.generator} action="资源陈述" text={primary.generator_position} side="left" compact active={activeStep === 0} muted={!outputReady} />
+        <SpeechBubble
+          agent={`${reviewerCount} 组审核 Agent`}
+          action="发起质询"
+          text={challenges.length ? `${challenges[0].message}${challenges.length > 1 ? `（另有 ${challenges.length - 1} 项）` : ""}` : reviewReady ? "审核接受本轮资源，未发现需要返工的问题。" : "等待审核 Agent 发起专业质询。"}
+          side="right"
+          compact
+          active={activeStep === 1}
+          muted={!reviewReady}
+        />
+        <SpeechBubble
+          agent={AGENT_LABELS[primary.generator] || primary.generator}
+          action="回应质询"
+          text={response.length ? `针对审核意见：${response.join("；")}` : challenges.length ? "审核意见已进入返工队列，等待生成方下一轮回应。" : reviewReady ? "确认接受本轮审核结论。" : "等待审核意见后作出回应。"}
+          side="left"
+          compact
+          active={activeStep === 2}
+          muted={!outputReady}
+        />
       </div>
-      <div className={cn("mt-2 flex items-center justify-between rounded-xl border px-2.5 py-2 text-[9px]", exchange.reviewer_decision === "accept" && reviewReady ? "border-[#C7E0D6] bg-[#F1F9F5] text-[#23745E]" : exchange.reviewer_decision === "rework" && reviewReady ? "border-[#E6CBBB] bg-[#FFF6F1] text-[#A3573D]" : "border-[#DCE5EF] bg-white text-[#8291A4]", activeStep === 3 && "debate-bubble--active")}>
-        <span className="font-bold">{AGENT_LABELS[exchange.reviewer] || exchange.reviewer} · 审核决定</span>
-        {reviewReady ? <DecisionBadge decision={exchange.reviewer_decision} /> : <span>待决定</span>}
+      <div className={cn("mt-2 rounded-xl border px-2.5 py-2 text-[9px]", hasRework && reviewReady ? "border-[#E6CBBB] bg-[#FFF6F1] text-[#A3573D]" : reviewReady ? "border-[#C7E0D6] bg-[#F1F9F5] text-[#23745E]" : "border-[#DCE5EF] bg-white text-[#8291A4]", activeStep === 3 && "debate-bubble--active")}>
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-bold">审核汇总结论</span>
+          {reviewReady ? <DecisionBadge decision={hasRework ? "rework" : "accept"} /> : <span>待决定</span>}
+        </div>
+        <div className="mt-1 flex flex-wrap gap-1">
+          {exchanges.map((exchange) => (
+            <span key={exchange.reviewer} className="rounded-full bg-white/80 px-1.5 py-0.5 text-[8px]">{AGENT_LABELS[exchange.reviewer] || exchange.reviewer} · {isExchangeReady(exchange) ? `${exchange.review_score} 分` : "等待"}</span>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -196,29 +225,35 @@ function DecisionBadge({ decision, round }: { decision: "accept" | "rework"; rou
   return <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[8px] font-bold", decision === "accept" ? "bg-[#E1F2EB] text-[#20755F]" : "bg-[#FFEDE4] text-[#A9573D]")}>{decision === "accept" ? <CheckCircle2 className="size-3" /> : <RotateCcw className="size-3" />}{round ? `第 ${round} 轮 · ` : ""}{decision === "accept" ? "通过" : "返工"}</span>
 }
 
-function buildLiveExchange(workspace: WorkspaceState, debate: DebateRecord | undefined, generator: ResourceGenerator, reviewer: ResourceReviewer) {
-  const completed = debate?.exchanges?.find((item) => item.generator === generator && item.reviewer === reviewer)
+function buildLiveExchanges(workspace: WorkspaceState, debate: DebateRecord | undefined, generator: ResourceGenerator) {
   const output = workspace.outputs[generator]
-  const review = workspace.reviews[reviewer]
+  const outputMeta = output as ({ title?: string; version?: number; revision_response?: string[] } | undefined)
   const lastResourceRework = [...workspace.reworkHistory].reverse().find((item) => item.phase === "resource")
-  const outputVersion = Number(output?.version ?? (output ? 1 : 0))
+  const outputVersion = Number(outputMeta?.version ?? (output ? 1 : 0))
   const waitingForTargetRetry = workspace.stage === "generation"
     && Boolean(lastResourceRework?.targets.includes(generator))
     && outputVersion < workspace.generationRound
-  const outputReady = Boolean(completed || (output && !waitingForTargetRetry))
-  const reviewReady = Boolean(completed || review)
-  const exchange: DebateExchange = completed ?? {
-    generator,
-    reviewer,
-    generator_position: outputReady && output
-      ? `${output.title} · 第 ${outputVersion || workspace.generationRound} 轮资源陈述`
-      : `正在生成第 ${workspace.generationRound} 轮资源，完成后将立即陈述设计与知识依据。`,
-    generator_response: outputReady ? (output?.revision_response ?? []) : [],
-    reviewer_challenges: review?.findings ?? [],
-    reviewer_decision: review?.decision ?? (review?.status === "pass" ? "accept" : "rework"),
-    review_score: review?.score ?? 0,
-  }
-  return { exchange, outputReady, reviewReady }
+  const outputReady = Boolean(output && !waitingForTargetRetry)
+  const exchanges = RESOURCE_REVIEWERS[generator].map((reviewer) => {
+    const completed = debate?.exchanges?.find((item) => item.generator === generator && item.reviewer === reviewer)
+    const review = workspace.reviews[reviewer]
+    const reviewReady = Boolean(completed || review)
+    return completed ?? {
+      generator,
+      reviewer,
+      generator_position: outputReady && output
+        ? `${outputMeta?.title || generator} · 第 ${outputVersion || workspace.generationRound} 轮资源陈述`
+        : `正在生成第 ${workspace.generationRound} 轮资源，完成后将立即陈述设计与知识依据。`,
+      generator_response: outputReady ? (outputMeta?.revision_response ?? []) : [],
+      reviewer_challenges: review?.findings?.filter((finding) => finding.target_agent === generator) ?? [],
+      reviewer_decision: review?.decision ?? (review?.status === "pass" ? "accept" : "rework"),
+      review_score: reviewReady ? review?.score ?? 0 : 0,
+    } satisfies DebateExchange
+  })
+  const reviewReady = RESOURCE_REVIEWERS[generator].some((reviewer) => Boolean(
+    debate?.exchanges?.some((item) => item.generator === generator && item.reviewer === reviewer) || workspace.reviews[reviewer],
+  ))
+  return { generator, exchanges, outputReady, reviewReady }
 }
 
 function planningActiveStep(stage: string): number {
@@ -241,8 +276,8 @@ function liveStageLabel(stage: string) {
     retrieval: "检索专业证据",
     planning: "双方正在提出观点",
     plan_decision: "计划仲裁正在回应与裁决",
-    generation: "三组生成方正在陈述",
-    review: "三组审核方正在质询",
+    generation: "七类生成方正在并行陈述",
+    review: "三组审核方正在交叉质询",
     rework: "生成方正在回应并返工",
     decision: "审核结论正在汇总",
     publishing: "裁决通过，准备发布",

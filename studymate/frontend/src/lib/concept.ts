@@ -44,6 +44,70 @@ export interface ExplainResult {
   mock: boolean
 }
 
+export interface ConceptRoleContext {
+  target_role: string
+  role_summary?: string
+  core_competencies?: string[]
+  sample_tasks?: string[]
+}
+
+export interface ConceptVideoResult {
+  type: "video"
+  title: string
+  provider: string
+  model: string
+  status: "unconfigured" | "succeeded" | "failed" | string
+  job_id?: string
+  message?: string
+  video_url: string
+  assembled_video_url?: string
+  task_id?: string
+  resolution: string
+  duration: number
+  ratio: string
+  has_audio: boolean
+  script: {
+    title: string
+    voiceover: string
+    prompt: string
+    shots: Array<{ duration: number; description: string }>
+  }
+  complexity?: "focused" | "workflow" | "complex" | string
+  scope?: string
+  duration_reason?: string
+  estimated_cost_rmb?: number
+  actual_cost_rmb?: number
+  total_duration?: number
+  segment_count?: number
+  completed_segments?: number
+  assembly_status?: "pending" | "assembled" | "unavailable" | "failed" | "not_started" | string
+  segment_urls?: string[]
+  segments?: Array<{
+    index: number
+    title: string
+    purpose: string
+    voiceover: string
+    duration: number
+    status: string
+    task_id?: string
+    video_url?: string
+    message?: string
+  }>
+}
+
+export interface ConceptVideoPlan {
+  duration: number
+  resolution: string
+  ratio: string
+  complexity: "focused" | "workflow" | "complex" | string
+  scope: string
+  duration_reason: string
+  estimated_cost_rmb: number
+  total_duration: number
+  segment_count: number
+  segments: Array<{ index: number; title: string; purpose: string; voiceover: string; duration: number; status: string }>
+}
+
 interface ExplainCacheEntry {
   promise: Promise<ExplainResult>
   expiresAt: number
@@ -59,8 +123,9 @@ function normalizeQuestion(question: string): string {
   return question.trim().replace(/\s+/g, " ").toLocaleLowerCase("zh-CN")
 }
 
-function cacheKey(question: string, userId: number): string {
-  return `${CONCEPT_CATALOG_VERSION}:${userId}:${normalizeQuestion(question)}`
+function cacheKey(question: string, userId: number, roleContext?: ConceptRoleContext): string {
+  const roleKey = roleContext?.target_role ? normalizeQuestion(roleContext.target_role) : ""
+  return `${CONCEPT_CATALOG_VERSION}:${userId}:${roleKey}:${normalizeQuestion(question)}`
 }
 
 function trimExplainCache() {
@@ -112,8 +177,8 @@ function fallbackExplainResult(question: string): ExplainResult {
   }
 }
 
-function requestConcept(question: string, userId: number): Promise<ExplainResult> {
-  const key = cacheKey(question, userId)
+function requestConcept(question: string, userId: number, roleContext?: ConceptRoleContext): Promise<ExplainResult> {
+  const key = cacheKey(question, userId, roleContext)
   const now = Date.now()
   const cached = explainCache.get(key)
   if (cached && cached.expiresAt > now) {
@@ -132,6 +197,7 @@ function requestConcept(question: string, userId: number): Promise<ExplainResult
       question,
       concepts,
       matched_key: matched?.key ?? null,
+      ...roleContext,
     }).then((result) => {
       entry.expiresAt = Date.now() + (result.mock ? MOCK_CACHE_TTL : EXPLAIN_CACHE_TTL)
       return result
@@ -154,11 +220,11 @@ export function prefetchConcept(question: string, userId: number): Promise<void>
   return requestConcept(normalized, userId).then(() => undefined).catch(() => undefined)
 }
 
-export async function explainConcept(question: string, userId: number): Promise<ExplainResult> {
+export async function explainConcept(question: string, userId: number, roleContext?: ConceptRoleContext): Promise<ExplainResult> {
   const normalized = question.trim()
   if (!normalized) return fallbackExplainResult(question)
   try {
-    return await requestConcept(normalized, userId)
+    return await requestConcept(normalized, userId, roleContext)
   } catch {
     // 后端不可用 → 纯前端兜底，保证可视讲解不空白。
     return fallbackExplainResult(normalized)
