@@ -26,6 +26,7 @@ import {
   Network,
   RefreshCw,
   Rocket,
+  Route,
   ShieldCheck,
   Sparkles,
   Target,
@@ -229,6 +230,9 @@ export function CompetencyTraining() {
   const videoReviewScore = videoReviewScores.length
     ? Math.round(videoReviewScores.reduce((sum, score) => sum + score, 0) / videoReviewScores.length)
     : undefined
+  const degraded = Boolean(workspace.decision?.fallback)
+  const fallbackScore = workspace.decision?.fallback?.score
+  const learnable = released || degraded
   const completedSteps = [Boolean(role), diagnosisReady, Boolean(plan), released, reportGenerated, Boolean(workspace.feedback)].filter(Boolean).length
   const agentDone = workspace.agents.filter((agent) => agent.status === "done").length
   const agentProgress = workspace.agents.length ? Math.round(agentDone / workspace.agents.length * 100) : 0
@@ -375,7 +379,6 @@ export function CompetencyTraining() {
               <p className="mt-3 text-[10px] leading-5 text-[#706589]">{plan?.rationale || currentFocusNodes[0]?.task || "完成画像和理论测评后，这里会显示本轮重点。"}</p>
               {currentFocusNodes[0] && <div className="mt-3 rounded-xl border border-white bg-white/75 px-3 py-2.5"><span className="text-[9px] font-bold text-[#8977B5]">本轮成果</span><p className="mt-1 text-[10px] leading-4 text-[#554B6D]">{currentFocusNodes[0].deliverable}</p></div>}
             </div>
-          </div>
 
           <div className="mt-5">
             <TrainingRouteMap map={capabilityMap} nodes={capabilityNodes} selectedId={selectedCapability?.id} onSelect={setSelectedCapabilityId} />
@@ -529,6 +532,7 @@ function TrainingRouteMap({ map, nodes, selectedId, onSelect }: { map: RoleCompe
   const coordinates = nodes.map((_, index) => ROUTE_COORDINATES[index] ?? { x: 700, y: 130 + index * 70 })
   const finalPoint = { x: 930, y: 260 }
   const nodeById = new Map(nodes.map((node, index) => [node.id, { node, point: coordinates[index] }]))
+  const nodeNames = new Map(nodes.map((node) => [node.id, node.name]))
   const finalReady = nodes.every((node) => node.level === 3)
   return (
     <div className="overflow-hidden rounded-[22px] border border-[#DCE5F0] bg-[linear-gradient(180deg,#F8FBFF_0%,#FFFFFF_100%)]">
