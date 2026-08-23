@@ -79,7 +79,7 @@ const RESOURCE_DEFS: ResourceDefinition[] = [
   { id: "reading", title: "拓展阅读", detail: "岗位资料、论文、博客与视频", icon: Library, color: "#6F8A69", wash: "#E8EDE5" },
   { id: "code", title: "代码案例", detail: "适配岗位任务场景的可运行示例", icon: Code2, color: "#7E6B83", wash: "#EEE9EF" },
   { id: "concept", title: "动画 / 黑板讲解", detail: "保留旧课程动画库与黑板讲解入口", icon: Film, color: "#9B7429", wash: "#F7F0DA" },
-  { id: "video", title: "可视讲解", detail: "先看动画讲解，再看 MiniMax H3 岗位视频", icon: Film, color: "#287F8D", wash: "#E2F0F1" },
+  { id: "video", title: "可视讲解", detail: "先看动画讲解，再看岗位视频", icon: Film, color: "#287F8D", wash: "#E2F0F1" },
 ]
 
 const AGENT_TONES: Record<string, { icon: LucideIcon; color: string; wash: string }> = {
@@ -251,7 +251,7 @@ export function Workspace() {
       case "video": {
         const video = outputs.video
         if (!video?.script) return "等待可视讲解生成"
-        return video.status === "succeeded" && video.video_url ? "H3 视频已合成 · 含中文声音" : video.status === "segments_ready" ? "片段已生成 · 待合成最终视频" : video.status === "failed" || video.status === "partial_failed" ? "脚本保留 · 视频片段生成失败" : "脚本已审 · 待配置 H3 Key"
+        return video.status === "succeeded" && video.video_url ? "岗位视频已合成 · 含中文声音" : video.status === "segments_ready" ? "片段已生成 · 待合成最终视频" : video.status === "failed" || video.status === "partial_failed" ? "脚本保留 · 视频片段生成失败" : "脚本已审 · 待配置视频生成服务"
       }
       default: return "等待资源生成"
     }

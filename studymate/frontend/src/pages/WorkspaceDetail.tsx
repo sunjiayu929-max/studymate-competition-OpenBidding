@@ -698,7 +698,7 @@ function VideoResource({ output, topic, userId }: { output: NonNullable<Workspac
           <div>
             <p className="text-[10px] font-bold tracking-[0.12em] text-[#287F8D]">第二步 · 岗位适配视频</p>
             <h2 className="mt-1 text-base font-bold text-[#183E46]">岗位流程视频与分镜</h2>
-            <p className="mt-1 text-[11px] leading-5 text-[#527077]">下面保留 MiniMax H3 生成的视频、片段状态、旁白和分镜，负责补充岗位任务中的流程演示。</p>
+            <p className="mt-1 text-[11px] leading-5 text-[#527077]">下面保留岗位视频、片段状态、旁白和分镜，负责补充岗位任务中的流程演示。</p>
           </div>
         </div>
 
@@ -714,7 +714,7 @@ function VideoResource({ output, topic, userId }: { output: NonNullable<Workspac
           <div className="flex items-start gap-3">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-current/20 bg-white/70"><Settings2 className="size-4" /></span>
             <div className="min-w-0">
-              <strong className="block text-sm">{isFailed ? "视频片段生成失败，脚本仍可复核" : output.status === "segments_ready" ? "片段已生成，当前环境暂未合成最终视频" : "脚本已通过审核，等待配置 MiniMax H3 API Key"}</strong>
+              <strong className="block text-sm">{isFailed ? "视频片段生成失败，脚本仍可复核" : output.status === "segments_ready" ? "片段已生成，当前环境暂未合成最终视频" : "脚本已通过审核，等待配置视频生成服务"}</strong>
               <p className="mt-1 text-[11px] leading-5">{output.message || "配置后重新运行岗位训练，即可生成带声音的视频文件。"}</p>
             </div>
           </div>
@@ -722,7 +722,7 @@ function VideoResource({ output, topic, userId }: { output: NonNullable<Workspac
       )}
 
       <div className="grid gap-3 sm:grid-cols-4">
-        <VideoMeta icon={Film} label="模型" value={output.model || "MiniMax-H3"} />
+        <VideoMeta icon={Film} label="视频服务" value="岗位视频生成" />
         <VideoMeta icon={Clock3} label="片段与总时长" value={`${output.completed_segments || 0}/${output.segment_count || segments.length} · ${output.total_duration || output.duration || "—"} 秒`} />
         <VideoMeta icon={Volume2} label="声音" value={output.has_audio ? "中文原生声音" : "无音频"} />
         <VideoMeta icon={Settings2} label="规格" value={`${output.resolution || "768P"} · ${output.ratio || "16:9"}`} />
@@ -760,7 +760,7 @@ function VideoResource({ output, topic, userId }: { output: NonNullable<Workspac
         </div>
       </section>
 
-      {output.task_id && <p className="text-[10px] text-[#7A817F]">MiniMax 任务 ID：{output.task_id}</p>}
+      {output.task_id && <p className="text-[10px] text-[#7A817F]">视频任务 ID：{output.task_id}</p>}
         </div>
       </div>
     </div>

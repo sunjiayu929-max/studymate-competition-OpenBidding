@@ -20,6 +20,7 @@ from pathlib import Path
 
 APPROVED_EMAILS = (
     "admin@studymate.com",
+    "admin@pramate.com",
     *(f"judge{number:02d}@studymate.com" for number in range(1, 11)),
     *(f"test{number}@studymate.com" for number in range(1, 16)),
     "sunjiayu@studymate.com",
@@ -30,6 +31,14 @@ APPROVED_EMAILS = (
     "zhouxiang@studymate.com",
     "tianyixin@studymate.com",
     "liufei@studymate.com",
+    "sunjiayu@pramate.com",
+    "baixinyue@pramate.com",
+    "yuanshicong@pramate.com",
+    "chenzhuo@pramate.com",
+    "lijiayi@pramate.com",
+    "zhouxiang@pramate.com",
+    "tianyixin@pramate.com",
+    "liufei@pramate.com",
 )
 
 # Current seeds use course IDs 1-5 as the five active courses. Keep this map
