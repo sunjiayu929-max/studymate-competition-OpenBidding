@@ -2,7 +2,7 @@
 
 本文针对当前服务器和域名：`deploy@121.40.64.199`、`matropic.cn`。AI 面试保留独立 Flask + MySQL Compose 项目，但通过 StudyMate 的同一 Caddy 入口发布，不需要新增域名、DNS 记录、证书或公网端口。
 
-> 当前服务器实况（2026-08-21）：Caddy 容器暂时将宿主机 `8088/8443` 映射到容器 `80/443`，宿主机 `80/443` 没有监听。公网是否已由云安全组、负载均衡或 NAT 完成 `80 -> 8088`、`443 -> 8443` 转发仍需确认；确认前不要把生产环境端口改回 `80/443`。当前学习者入口是带一次性 ticket 的 `/interview/integrations/studymate/launch?...`，`/interview/` 根路径按白名单可能返回 `404`，不要把它作为已验收的首页。
+> 当前服务器实况（2026-08-23）：Caddy 已恢复宿主机标准 `80/443` 映射，公网 `https://matropic.cn/`、`/api/ping` 和 `/interview/health` 已验收通过。学习者入口是带一次性 ticket 的 `/interview/integrations/studymate/launch?...`，`/interview/` 根路径按白名单可能返回 `404`，不要把它作为已验收的首页。
 
 ## 发布边界
 

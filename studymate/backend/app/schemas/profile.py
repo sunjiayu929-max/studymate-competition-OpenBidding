@@ -106,6 +106,20 @@ class InterviewAssessmentEvidence(BaseModel):
     completed_at: str
 
 
+class TrainingRoundEvidence(BaseModel):
+    """某目标岗位一次训练闭环验收后的学习证据，随每轮反馈回写画像。"""
+    run_id: str
+    domain: str = ""
+    target_role: str = ""
+    topic: str = ""
+    accuracy: float | None = None
+    answered_count: int = 0
+    wrong_count: int = 0
+    next_action: str = ""
+    difficulty_delta: int = 0
+    completed_at: str = ""
+
+
 class ProfileDims(BaseModel):
     """完整画像。和 db.models.Profile.dims 一一对应。"""
     knowledge_base: KnowledgeBase = Field(default_factory=KnowledgeBase)
@@ -124,6 +138,10 @@ class ProfileDims(BaseModel):
     interview_assessments: dict[str, InterviewAssessmentEvidence] = Field(
         default_factory=dict,
         description="按目标岗位 role_id 保存的模拟面试证据",
+    )
+    training_rounds: list[TrainingRoundEvidence] = Field(
+        default_factory=list,
+        description="岗位训练闭环逐轮学习证据，最新一轮在前",
     )
 
 

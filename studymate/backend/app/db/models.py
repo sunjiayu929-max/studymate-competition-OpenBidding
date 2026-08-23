@@ -470,6 +470,17 @@ class InterviewLaunchTicket(Base, TimestampMixin):
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class OJLaunchTicket(Base, TimestampMixin):
+    """One-time browser credential for the independently deployed Hydro OJ."""
+    __tablename__ = "oj_launch_tickets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class TestCase(Base, TimestampMixin):
     """挑战杯交付物：典型测试 case + 准确性论证。
 

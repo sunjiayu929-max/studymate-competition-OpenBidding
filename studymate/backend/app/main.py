@@ -14,7 +14,7 @@ from app.db.session import engine, Base
 # 导入 models 让 Base 知道所有表
 from app.db import models  # noqa: F401
 from app.deps import require_admin, require_user
-from app.api import health, profile, rag, workspace, tutor, eval as eval_api, tests as tests_api, courses as courses_api, notes as notes_api, events as events_api, feedback as feedback_api, auth as auth_api, voice as voice_api, quiz_sessions as quiz_sessions_api, theory_assessments as theory_assessments_api, run as run_api, concept as concept_api, bili as bili_api, ocr as ocr_api, rencaiya as rencaiya_api, careers as careers_api, reading as reading_api, knowledge as knowledge_api, ppt as ppt_api, interviews as interviews_api, enterprise as enterprise_api
+from app.api import health, profile, rag, workspace, tutor, eval as eval_api, tests as tests_api, courses as courses_api, notes as notes_api, events as events_api, feedback as feedback_api, auth as auth_api, voice as voice_api, quiz_sessions as quiz_sessions_api, theory_assessments as theory_assessments_api, run as run_api, concept as concept_api, bili as bili_api, ocr as ocr_api, rencaiya as rencaiya_api, careers as careers_api, reading as reading_api, knowledge as knowledge_api, ppt as ppt_api, interviews as interviews_api, enterprise as enterprise_api, oj as oj_api
 from app.video.assembler import VideoAssemblyError, media_file_path
 
 
@@ -212,6 +212,7 @@ async def _ensure_columns(conn):
         ("2026.07.29-private-knowledge-jobs", "私有知识库后台任务、原文件校验、OCR 状态与安全重试"),
         ("2026.08.13-auto-rework", "移除人工复核状态，未通过裁决统一进入自动返工闭环"),
         ("2026.08.20-ai-interview", "AI 面试启动票据、报告回传与岗位画像证据"),
+        ("2026.08.21-oj", "Hydro OJ 单点登录启动票据"),
     )
     for version, description in migrations:
         await conn.execute(
@@ -573,6 +574,8 @@ app.include_router(ppt_api.router, prefix="/api", dependencies=user_required)
 app.include_router(interviews_api.router, prefix="/api", dependencies=user_required)
 app.include_router(interviews_api.internal_router, prefix="/api")
 app.include_router(enterprise_api.router, prefix="/api", dependencies=user_required)
+app.include_router(oj_api.router, prefix="/api")
+app.include_router(oj_api.internal_router, prefix="/api")
 
 
 @app.get("/api/media/video/{user_id}/{file_id}")

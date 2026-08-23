@@ -18,4 +18,3 @@ class VideoAssemblerTests(unittest.TestCase):
 
     def test_srt_timestamp_rounds_to_milliseconds(self):
         self.assertEqual(_srt_timestamp(1.2345), "00:00:01,234")
-

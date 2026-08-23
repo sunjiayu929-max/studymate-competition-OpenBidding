@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
+  Code2,
   Compass,
   Database,
   GraduationCap,
@@ -53,6 +54,7 @@ type NavItem = {
   to: string
   icon: typeof Home
   exact?: boolean
+  external?: boolean
 }
 
 const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavItem[] }> = [
@@ -84,6 +86,7 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
     items: [
       { label: "智能测验", to: "/quiz", icon: BookOpenCheck },
       { label: "实时学习报告", to: "/report", icon: BarChart3 },
+      { label: "在线判题", to: "/api/oj/launch", icon: Code2, external: true },
     ],
   },
   {
@@ -99,6 +102,7 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
 ]
 
 function matches(pathname: string, item: NavItem) {
+  if (item.external) return false
   if (item.exact) return pathname === item.to
   return pathname === item.to || pathname.startsWith(`${item.to}/`)
 }
@@ -408,22 +412,20 @@ function ShellLink({
 }) {
   const Icon = item.icon
   const active = matches(pathname, item)
-  return (
-    <Link
-      to={item.to}
-      title={item.label}
-      aria-current={active ? "page" : undefined}
-      className={cn(
-        "group relative mb-0.5 flex h-11 items-center rounded-xl text-xs font-semibold transition-colors",
-        compact ? "justify-center" : "gap-2.5 px-2.5",
-        active ? "bg-[#E7EDF3] text-[#244C66]" : "text-[#59636B] hover:bg-[#ECE8DE] hover:text-[#244C66]",
-      )}
-    >
+  const className = cn(
+    "group relative mb-0.5 flex h-11 items-center rounded-xl text-xs font-semibold transition-colors",
+    compact ? "justify-center" : "gap-2.5 px-2.5",
+    active ? "bg-[#E7EDF3] text-[#244C66]" : "text-[#59636B] hover:bg-[#ECE8DE] hover:text-[#244C66]",
+  )
+  const content = <>
       {active && <span className="absolute -left-3 h-5 w-1 rounded-r-full bg-[#315E83]" />}
       <Icon className="size-4 shrink-0" />
       {!compact && <span className="truncate">{item.label}</span>}
       {trailing}
       {!compact && !trailing && active && <ChevronRight className="ml-auto size-3.5" />}
-    </Link>
-  )
+  </>
+  if (item.external) {
+    return <a href={item.to} title={item.label} className={className}>{content}</a>
+  }
+  return <Link to={item.to} title={item.label} aria-current={active ? "page" : undefined} className={className}>{content}</Link>
 }

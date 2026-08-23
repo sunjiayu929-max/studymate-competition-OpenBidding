@@ -131,6 +131,13 @@ class Settings(BaseSettings):
     AI_INTERVIEW_TICKET_TTL_SECONDS: int = 120
     AI_INTERVIEW_SIGNATURE_TTL_SECONDS: int = 300
 
+    # Independent Hydro OJ integration. The secret is server-only and must
+    # match STUDYMATE_SERVICE_SECRET in the OJ service environment.
+    OJ_PUBLIC_URL: str = ""
+    OJ_SERVICE_SECRET: str = ""
+    OJ_TICKET_TTL_SECONDS: int = 120
+    OJ_SIGNATURE_TTL_SECONDS: int = 300
+
     @model_validator(mode="after")
     def disable_external_services_in_safe_offline(self):
         """即使父进程仍带有凭据，安全离线模式也把所有外部能力视为未配置。"""
