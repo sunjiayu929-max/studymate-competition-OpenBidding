@@ -1,28 +1,44 @@
-<view class="page page-narrow auth-page">
-  <view class="brand-row">
-    <view class="brand-mark">SM</view>
-    <view>
-      <text class="eyebrow">STUDYMATE · 从业者端</text>
-      <text class="page-title">登录</text>
+<view class="auth-page">
+  <view class="auth-topbar">
+    <view class="brand-row">
+      <view class="brand-mark">SM</view>
+      <view class="brand-copy">
+        <text class="brand-name">StudyMate</text>
+        <text class="brand-subtitle">INTELLIGENT LEARNING STUDIO</text>
+      </view>
     </view>
+    <view class="online-status"><view class="online-dot"></view><text>7 个智能体在线</text></view>
   </view>
 
-  <view class="auth-intro">
-    <text class="auth-title">继续接收岗位任务</text>
-    <text class="auth-detail">使用网页端已有账号登录，企业任务和学习进度保持同步。</text>
-  </view>
+  <view class="auth-shell">
+    <view class="auth-hero">
+      <view class="hero-badge"><view class="hero-dot"></view><text>为每个目标组织一支 AI 学习团队</text></view>
+      <text class="hero-title">让学习路径清晰可见</text>
+      <text class="hero-title hero-title-accent">让每一步都有回应</text>
+    </view>
 
-  <view class="card auth-card">
-    <text class="field-label">邮箱</text>
-    <input class="input" type="text" value="{{email}}" placeholder="请输入邮箱" placeholder-class="input-placeholder" bindinput="onEmailInput" />
-    <text class="field-label">密码</text>
-    <input class="input" password value="{{password}}" placeholder="请输入密码" placeholder-class="input-placeholder" bindinput="onPasswordInput" />
-    <view wx:if="{{error}}" class="error-box">{{error}}</view>
-    <button class="primary-button auth-submit" loading="{{loading}}" disabled="{{loading}}" bindtap="login">登录</button>
-  </view>
+    <view class="auth-panel">
+      <view class="panel-heading">
+        <view class="panel-kicker"><view class="panel-dot"></view><text>安全邮箱登录</text><text class="panel-symbol">✦</text></view>
+        <text class="panel-title">继续你的学习旅程</text>
+        <text class="panel-detail">使用邮箱和密码进入 StudyMate</text>
+      </view>
 
-  <view class="auth-footer">
-    <text class="muted">还没有账号？</text>
-    <text class="link-text" bindtap="openRegister">注册从业者账号</text>
+      <view class="auth-tabs">
+        <view class="auth-tab active">登录</view>
+        <view class="auth-tab" bindtap="openRegister">注册</view>
+      </view>
+
+      <view class="auth-form">
+        <text class="form-label">邮箱地址</text>
+        <view class="field-shell"><text class="field-symbol">@</text><input class="field-input" type="text" value="{{email}}" placeholder="例如 name@example.com" placeholder-class="input-placeholder" bindinput="onEmailInput" /></view>
+        <text class="form-label">密码</text>
+        <view class="field-shell"><text class="field-symbol">●</text><input class="field-input" type="{{showPassword ? 'text' : 'password'}}" value="{{password}}" placeholder="输入你的密码" placeholder-class="input-placeholder" bindinput="onPasswordInput" /><text class="password-toggle" bindtap="togglePassword">{{showPassword ? '隐藏' : '显示'}}</text></view>
+        <view wx:if="{{error}}" class="auth-error">{{error}}</view>
+        <button class="auth-submit" loading="{{loading}}" disabled="{{loading}}" bindtap="login">进入 StudyMate <text class="submit-arrow">→</text></button>
+      </view>
+
+      <view class="auth-security"><text class="security-symbol">✓</text><text>安全邮箱验证 · 认证信息加密保护</text></view>
+    </view>
   </view>
 </view>

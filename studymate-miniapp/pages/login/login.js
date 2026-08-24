@@ -4,6 +4,7 @@ Page({
   data: {
     email: "",
     password: "",
+    showPassword: false,
     loading: false,
     error: "",
   },
@@ -14,6 +15,10 @@ Page({
 
   onPasswordInput(event) {
     this.setData({ password: event.detail.value, error: "" })
+  },
+
+  togglePassword() {
+    this.setData({ showPassword: !this.data.showPassword })
   },
 
   async login() {
