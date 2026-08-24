@@ -21,11 +21,15 @@
 }
 
 .logout-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  width: 96rpx;
-  height: 68rpx;
-  min-height: 68rpx;
+  width: 108rpx;
+  height: 72rpx;
+  min-height: 72rpx;
   padding: 0;
+  font-size: 26rpx;
   line-height: 1;
   text-align: center;
 }
