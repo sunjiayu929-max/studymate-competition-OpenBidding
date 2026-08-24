@@ -1,0 +1,28 @@
+<view class="page page-narrow auth-page">
+  <view class="brand-row">
+    <view class="brand-mark">SM</view>
+    <view>
+      <text class="eyebrow">STUDYMATE · 从业者端</text>
+      <text class="page-title">登录</text>
+    </view>
+  </view>
+
+  <view class="auth-intro">
+    <text class="auth-title">继续接收岗位任务</text>
+    <text class="auth-detail">使用网页端已有账号登录，企业任务和学习进度保持同步。</text>
+  </view>
+
+  <view class="card auth-card">
+    <text class="field-label">邮箱</text>
+    <input class="input" type="text" value="{{email}}" placeholder="请输入邮箱" placeholder-class="input-placeholder" bindinput="onEmailInput" />
+    <text class="field-label">密码</text>
+    <input class="input" password value="{{password}}" placeholder="请输入密码" placeholder-class="input-placeholder" bindinput="onPasswordInput" />
+    <view wx:if="{{error}}" class="error-box">{{error}}</view>
+    <button class="primary-button auth-submit" loading="{{loading}}" disabled="{{loading}}" bindtap="login">登录</button>
+  </view>
+
+  <view class="auth-footer">
+    <text class="muted">还没有账号？</text>
+    <text class="link-text" bindtap="openRegister">注册从业者账号</text>
+  </view>
+</view>

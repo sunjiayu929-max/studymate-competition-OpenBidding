@@ -1,0 +1,40 @@
+<view class="page page-narrow auth-page">
+  <view class="brand-row">
+    <view class="brand-mark">SM</view>
+    <view>
+      <text class="eyebrow">STUDYMATE · 从业者端</text>
+      <text class="page-title">注册</text>
+    </view>
+  </view>
+
+  <view class="auth-intro">
+    <text class="auth-title">创建从业者账号</text>
+    <text class="auth-detail">注册后可加入企业，接收岗位训练和普通阅读任务。</text>
+  </view>
+
+  <view class="card auth-card">
+    <text class="field-label">姓名</text>
+    <input class="input" value="{{name}}" placeholder="请输入姓名" placeholder-class="input-placeholder" bindinput="onNameInput" />
+    <text class="field-label">邮箱</text>
+    <input class="input" type="text" value="{{email}}" placeholder="请输入邮箱" placeholder-class="input-placeholder" bindinput="onEmailInput" />
+    <view class="code-row">
+      <view class="code-input-wrap">
+        <text class="field-label">邮箱验证码</text>
+        <input class="input" type="number" maxlength="6" value="{{code}}" placeholder="6 位验证码" placeholder-class="input-placeholder" bindinput="onCodeInput" />
+      </view>
+      <button class="code-button" disabled="{{codeLoading || countdown > 0}}" bindtap="sendCode">{{countdown > 0 ? countdown + ' 秒后重发' : '发送验证码'}}</button>
+    </view>
+    <text class="field-label">设置密码</text>
+    <input class="input" password value="{{password}}" placeholder="至少 8 位密码" placeholder-class="input-placeholder" bindinput="onPasswordInput" />
+    <text class="field-label">目标岗位（可选）</text>
+    <input class="input" value="{{targetRole}}" placeholder="例如：前线部署工程师" placeholder-class="input-placeholder" bindinput="onTargetRoleInput" />
+    <view class="helper-text">注册账号默认按从业者身份创建，加入企业后即可接收企业任务。</view>
+    <view wx:if="{{error}}" class="error-box">{{error}}</view>
+    <button class="primary-button auth-submit" loading="{{loading}}" disabled="{{loading}}" bindtap="register">完成注册</button>
+  </view>
+
+  <view class="auth-footer">
+    <text class="muted">已有账号？</text>
+    <text class="link-text" bindtap="backToLogin">返回登录</text>
+  </view>
+</view>

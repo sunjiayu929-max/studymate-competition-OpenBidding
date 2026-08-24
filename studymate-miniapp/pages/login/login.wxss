@@ -1,0 +1,43 @@
+.auth-intro {
+  margin: 72rpx 8rpx 28rpx;
+}
+
+.auth-title {
+  display: block;
+  color: #293d2a;
+  font-size: 38rpx;
+  font-weight: 800;
+}
+
+.auth-detail {
+  display: block;
+  margin-top: 14rpx;
+  color: #738071;
+  font-size: 25rpx;
+  line-height: 1.7;
+}
+
+.auth-card {
+  padding: 12rpx 28rpx 30rpx;
+}
+
+.auth-submit {
+  margin-top: 36rpx;
+}
+
+.auth-footer {
+  display: flex;
+  justify-content: center;
+  gap: 10rpx;
+  margin-top: 32rpx;
+  font-size: 24rpx;
+}
+
+.link-text {
+  color: #52704d;
+  font-weight: 800;
+}
+
+.input-placeholder {
+  color: #9aa598;
+}
