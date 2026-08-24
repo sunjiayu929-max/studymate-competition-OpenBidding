@@ -31,6 +31,9 @@ const LearningResources = lazy(() => import("@/pages/LearningResources").then((m
 const CareerExplorer = lazy(() => import("@/pages/CareerExplorer").then((m) => ({ default: m.CareerExplorer })))
 const CompetencyTraining = lazy(() => import("@/pages/CompetencyTraining").then((m) => ({ default: m.CompetencyTraining })))
 const AIInterview = lazy(() => import("@/pages/AIInterview").then((m) => ({ default: m.AIInterview })))
+const EnterpriseHub = lazy(() => import("@/pages/EnterpriseHub").then((m) => ({ default: m.EnterpriseHub })))
+const EnterpriseDashboard = lazy(() => import("@/pages/EnterpriseDashboard").then((m) => ({ default: m.EnterpriseDashboard })))
+const EnterpriseTaskRead = lazy(() => import("@/pages/EnterpriseTaskRead").then((m) => ({ default: m.EnterpriseTaskRead })))
 const Login = lazy(() => import("@/pages/Login").then((m) => ({ default: m.Login })))
 const NotFound = lazy(() => import("@/pages/NotFound").then((m) => ({ default: m.NotFound })))
 const TutorBubble = lazy(() => import("@/components/TutorBubble").then((m) => ({ default: m.TutorBubble })))
@@ -89,6 +92,15 @@ function RootEntry() {
 
 function ProtectedPage({ children }: { children: ReactNode }) {
   return <RequireAuth><AppShell>{children}</AppShell></RequireAuth>
+}
+
+function EnterpriseDashboardEntry() {
+  const user = useCurrentUser()
+  if (!user) return <RequireAuth><div /></RequireAuth>
+  if (user.role !== "enterprise_admin" && user.role !== "admin") {
+    return <Navigate to="/enterprise" replace />
+  }
+  return <AppShell><EnterpriseDashboard /></AppShell>
 }
 
 function RouteFallback() {
@@ -157,7 +169,13 @@ export default function App() {
           <Route path="/resources" element={<ProtectedPage><LearningResources /></ProtectedPage>} />
           <Route path="/career" element={<ProtectedPage><CareerExplorer /></ProtectedPage>} />
           <Route path="/competency" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
+          <Route path="/competency/resources" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
+          <Route path="/competency/audit" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
+          <Route path="/competency/report" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
           <Route path="/ai-interview" element={<ProtectedPage><AIInterview /></ProtectedPage>} />
+          <Route path="/enterprise" element={<ProtectedPage><EnterpriseHub /></ProtectedPage>} />
+          <Route path="/enterprise/dashboard" element={<EnterpriseDashboardEntry />} />
+          <Route path="/enterprise/tasks/:taskId/read" element={<ProtectedPage><EnterpriseTaskRead /></ProtectedPage>} />
           <Route path="/workspace" element={<Navigate to="/competency" replace />} />
           <Route path="/workspace/r/:agentId" element={<ProtectedPage><WorkspaceDetail /></ProtectedPage>} />
           <Route path="/tutor" element={<ProtectedPage><TutorChat /></ProtectedPage>} />

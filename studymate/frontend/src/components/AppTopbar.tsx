@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useCurrentCourse } from "@/store/course"
 import { useTargetRole } from "@/store/targetRole"
+import { useCurrentUser } from "@/store/user"
 
 export type PageId =
   | "home"
@@ -81,12 +82,16 @@ export function AppTopbar({
 }: AppTopbarProps) {
   const course = useCurrentCourse()
   const targetRole = useTargetRole()
+  const user = useCurrentUser()
   const meta = PAGE_META[current]
   const Icon = meta.icon
   const paper = appearance === "paper"
   const label = labelOverride ?? meta.label
   const group = groupOverride ?? meta.group
   const roleSelectionPath = current === "workspace" ? "/courses?returnTo=%2Fworkspace" : "/courses"
+  const identityDetail = user?.role === "enterprise_admin"
+    ? `${user.name} · 企业管理员`
+    : [user?.name, user?.learner_type === "worker" ? user.company || "从业者" : user?.study_stage || "学习者", user?.target_role || targetRole?.name || course?.name].filter(Boolean).join(" · ")
 
   return (
     <header
@@ -107,6 +112,7 @@ export function AppTopbar({
           {group}
         </div>
         <h1 className="truncate text-[14px] font-bold tracking-[-.02em] text-[#18232D]">{label}</h1>
+        {identityDetail && <p className="mt-0.5 truncate text-[10px] font-medium text-[#7A817E]">{identityDetail}</p>}
       </div>
       <Link
         to={roleSelectionPath}

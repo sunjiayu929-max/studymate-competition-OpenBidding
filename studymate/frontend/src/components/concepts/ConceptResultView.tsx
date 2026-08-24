@@ -225,12 +225,12 @@ function ConceptVideoCard({ video }: { video: ConceptVideoResult }) {
       ) : (
         <div className={`flex items-start gap-2 rounded-xl border px-3 py-3 text-[11px] leading-5 ${failed ? "border-[#DFC8BE] bg-[#FCF7F4] text-[#9A4E35]" : "border-[#D9CFB7] bg-[#F4ECD8] text-[#72551F]"}`}>
           {failed ? <AlertCircle className="mt-0.5 size-3.5 shrink-0" /> : <Settings2 className="mt-0.5 size-3.5 shrink-0" />}
-          <span>{failed ? `${failureDetails.length > 0 ? failureDetails.join("；") : "部分视频片段生成失败"}，下面保留已完成片段供复核。` : video.status === "segments_ready" ? "视频片段已生成，但当前环境暂未合成最终视频。" : video.status === "queued" || video.status === "running" ? (video.message || "视频正在后台生成，页面会自动更新进度。") : "尚未配置 MiniMax H3 API Key，已保留岗位视频脚本。"}</span>
+          <span>{failed ? `${failureDetails.length > 0 ? failureDetails.join("；") : "部分视频片段生成失败"}，下面保留已完成片段供复核。` : video.status === "segments_ready" ? "视频片段已生成，但当前环境暂未合成最终视频。" : video.status === "queued" || video.status === "running" ? (video.message || "视频正在后台生成，页面会自动更新进度。") : "尚未配置视频生成服务，已保留岗位视频脚本。"}</span>
         </div>
       )}
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-[#527077]">
-        <span className="inline-flex items-center gap-1"><CheckCircle2 className="size-3.5 text-[#287F8D]" />{video.model || "MiniMax-H3"}</span>
+        <span className="inline-flex items-center gap-1"><CheckCircle2 className="size-3.5 text-[#287F8D]" />岗位视频生成</span>
         <span>{video.resolution || "768P"} · {video.completed_segments || 0}/{video.segment_count || segments.length} 个片段 · 合计 {video.total_duration || video.duration || "—"} 秒 · {video.ratio || "16:9"}</span>
         <span className="inline-flex items-center gap-1"><Volume2 className="size-3.5 text-[#287F8D]" />{video.has_audio ? "含中文声音" : "无音频"}</span>
       </div>

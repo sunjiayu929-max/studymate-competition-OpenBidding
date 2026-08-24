@@ -14,7 +14,7 @@ from app.db.session import engine, Base
 # 导入 models 让 Base 知道所有表
 from app.db import models  # noqa: F401
 from app.deps import require_admin, require_user
-from app.api import health, profile, rag, workspace, tutor, eval as eval_api, tests as tests_api, courses as courses_api, notes as notes_api, events as events_api, feedback as feedback_api, auth as auth_api, voice as voice_api, quiz_sessions as quiz_sessions_api, theory_assessments as theory_assessments_api, run as run_api, concept as concept_api, bili as bili_api, ocr as ocr_api, rencaiya as rencaiya_api, careers as careers_api, reading as reading_api, knowledge as knowledge_api, ppt as ppt_api, interviews as interviews_api, oj as oj_api
+from app.api import health, profile, rag, workspace, tutor, eval as eval_api, tests as tests_api, courses as courses_api, notes as notes_api, events as events_api, feedback as feedback_api, auth as auth_api, voice as voice_api, quiz_sessions as quiz_sessions_api, theory_assessments as theory_assessments_api, run as run_api, concept as concept_api, bili as bili_api, ocr as ocr_api, rencaiya as rencaiya_api, careers as careers_api, reading as reading_api, knowledge as knowledge_api, ppt as ppt_api, interviews as interviews_api, enterprise as enterprise_api, oj as oj_api
 from app.video.assembler import VideoAssemblyError, media_file_path
 
 
@@ -30,6 +30,23 @@ _DEFAULT_STUDENT_NAMES = (
     "tianyixin",
     "liufei",
 )
+
+_PRAMATE_MEMBER_NAMES = {
+    "sunjiayu": "孙佳玉",
+    "baixinyue": "白新悦",
+    "yuanshicong": "袁士聪",
+    "chenzhuo": "陈卓",
+    "lijiayi": "李佳怡",
+    "zhouxiang": "周翔",
+    "tianyixin": "田一新",
+    "liufei": "刘飞",
+}
+
+_PRAMATE_DEMO_ADMIN_EMAIL = "admin@pramate.com"
+_PRAMATE_DEMO_ADMIN_PASSWORD = "a123456"
+_PRAMATE_DEMO_ENTERPRISE_NAME = "郑州澜善科技有限公司"
+_PRAMATE_DEMO_INVITE_CODE = "PRAMATE-DEMO"
+_PRAMATE_STUDENT_PASSWORD = "p123456"
 
 
 def _seed_password_matches(password: str, stored_hash: str | None) -> bool:
@@ -69,6 +86,18 @@ async def _ensure_columns(conn):
         await conn.execute(text("ALTER TABLE users ADD COLUMN email_verified_at DATETIME"))
     if cols and "is_active" not in cols:
         await conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1"))
+    if cols and "learner_type" not in cols:
+        await conn.execute(text("ALTER TABLE users ADD COLUMN learner_type VARCHAR(16) DEFAULT 'student'"))
+    if cols and "study_stage" not in cols:
+        await conn.execute(text("ALTER TABLE users ADD COLUMN study_stage VARCHAR(32) DEFAULT ''"))
+    if cols and "company" not in cols:
+        await conn.execute(text("ALTER TABLE users ADD COLUMN company VARCHAR(128) DEFAULT ''"))
+    if cols and "target_role" not in cols:
+        await conn.execute(text("ALTER TABLE users ADD COLUMN target_role VARCHAR(128) DEFAULT ''"))
+    rows = await conn.execute(text("PRAGMA table_info(enterprise_knowledge_bases)"))
+    cols = {r[1] for r in rows.fetchall()}
+    if cols and "source_course_id" not in cols:
+        await conn.execute(text("ALTER TABLE enterprise_knowledge_bases ADD COLUMN source_course_id INTEGER"))
     # 检查 knowledge_chunks.embedding（混合检索语义向量列）
     rows = await conn.execute(text("PRAGMA table_info(knowledge_chunks)"))
     cols = {r[1] for r in rows.fetchall()}
@@ -305,7 +334,7 @@ async def _ensure_seed_user(
 
 
 async def _ensure_seed_users(conn):
-    """Provision the fixed admin, judge, and default student accounts idempotently."""
+    """Provision fixed system, enterprise-demo, judge, and student accounts idempotently."""
     verified_at = datetime.utcnow()
     await _ensure_seed_user(
         conn,
@@ -314,6 +343,14 @@ async def _ensure_seed_users(conn):
         password="admin123456",
         name="管理员",
         role="admin",
+        verified_at=verified_at,
+    )
+    await _ensure_seed_user(
+        conn,
+        email=_PRAMATE_DEMO_ADMIN_EMAIL,
+        password=_PRAMATE_DEMO_ADMIN_PASSWORD,
+        name="企业演示管理员",
+        role="enterprise_admin",
         verified_at=verified_at,
     )
     # 兼容早期普通用户邮箱拼写错误，保留原用户 ID 及其学习数据。
@@ -354,6 +391,131 @@ async def _ensure_seed_users(conn):
             verified_at=verified_at,
         )
 
+    for name in _DEFAULT_STUDENT_NAMES:
+        display_name = _PRAMATE_MEMBER_NAMES[name]
+        await _ensure_seed_user(
+            conn,
+            email=f"{name}@pramate.com",
+            password=_PRAMATE_STUDENT_PASSWORD,
+            name=display_name,
+            role="student",
+            verified_at=verified_at,
+        )
+
+    # @pramate.com 是企业演示账号组，按从业者身份展示岗位信息；旧的
+    # @studymate.com 测试账号继续保留学生学习者身份。
+    await conn.execute(
+        text(
+            "UPDATE users SET learner_type = 'worker', company = :company, "
+            "target_role = :target_role WHERE lower(email) LIKE '%@pramate.com' "
+            "AND lower(email) != :admin_email"
+        ),
+        {
+            "company": _PRAMATE_DEMO_ENTERPRISE_NAME,
+            "target_role": "前线部署工程师（FDE）",
+            "admin_email": _PRAMATE_DEMO_ADMIN_EMAIL,
+        },
+    )
+
+
+async def _ensure_pramate_demo_enterprise(conn):
+    """Bind the fixed enterprise demo administrator to the demo organization."""
+    admin = (
+        await conn.execute(
+            text("SELECT id FROM users WHERE lower(email) = :email LIMIT 1"),
+            {"email": _PRAMATE_DEMO_ADMIN_EMAIL},
+        )
+    ).fetchone()
+    if admin is None:
+        return
+
+    enterprise = (
+        await conn.execute(
+            text("SELECT id FROM enterprises WHERE invite_code = :invite_code LIMIT 1"),
+            {"invite_code": _PRAMATE_DEMO_INVITE_CODE},
+        )
+    ).fetchone()
+    if enterprise is None:
+        await conn.execute(
+            text(
+                "INSERT INTO enterprises (name, invite_code, owner_id, status, created_at) "
+                "VALUES (:name, :invite_code, :owner_id, 'active', :created_at)"
+            ),
+            {
+                "name": _PRAMATE_DEMO_ENTERPRISE_NAME,
+                "invite_code": _PRAMATE_DEMO_INVITE_CODE,
+                "owner_id": admin[0],
+                "created_at": datetime.utcnow(),
+            },
+        )
+        enterprise = (
+            await conn.execute(
+                text("SELECT id FROM enterprises WHERE invite_code = :invite_code LIMIT 1"),
+                {"invite_code": _PRAMATE_DEMO_INVITE_CODE},
+            )
+        ).fetchone()
+
+    membership = (
+        await conn.execute(
+            text("SELECT id FROM enterprise_memberships WHERE user_id = :user_id LIMIT 1"),
+            {"user_id": admin[0]},
+        )
+    ).fetchone()
+    if membership is None:
+        await conn.execute(
+            text(
+                "INSERT INTO enterprise_memberships "
+                "(enterprise_id, user_id, member_role, job_title, status, created_at) "
+                "VALUES (:enterprise_id, :user_id, 'owner', '企业管理员', 'active', :created_at)"
+            ),
+            {
+                "enterprise_id": enterprise[0],
+                "user_id": admin[0],
+                "created_at": datetime.utcnow(),
+            },
+        )
+
+    for name in _DEFAULT_STUDENT_NAMES:
+        learner = (
+            await conn.execute(
+                text("SELECT id FROM users WHERE lower(email) = :email LIMIT 1"),
+                {"email": f"{name}@pramate.com"},
+            )
+        ).fetchone()
+        if learner is None:
+            continue
+        await conn.execute(
+            text(
+                "UPDATE users SET name = :name, learner_type = 'worker', company = :company, "
+                "target_role = :target_role WHERE id = :user_id"
+            ),
+            {
+                "name": _PRAMATE_MEMBER_NAMES[name],
+                "company": _PRAMATE_DEMO_ENTERPRISE_NAME,
+                "target_role": "前线部署工程师（FDE）",
+                "user_id": learner[0],
+            },
+        )
+        learner_membership = (
+            await conn.execute(
+                text("SELECT id FROM enterprise_memberships WHERE user_id = :user_id LIMIT 1"),
+                {"user_id": learner[0]},
+            )
+        ).fetchone()
+        if learner_membership is None:
+            await conn.execute(
+                text(
+                    "INSERT INTO enterprise_memberships "
+                    "(enterprise_id, user_id, member_role, job_title, status, created_at) "
+                    "VALUES (:enterprise_id, :user_id, 'learner', '前线部署工程师（FDE）', 'active', :created_at)"
+                ),
+                {
+                    "enterprise_id": enterprise[0],
+                    "user_id": learner[0],
+                    "created_at": datetime.utcnow(),
+                },
+            )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -362,6 +524,7 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
         await _ensure_columns(conn)
         await _ensure_seed_users(conn)
+        await _ensure_pramate_demo_enterprise(conn)
     await knowledge_api.mark_interrupted_tasks_failed()
     yield
     await engine.dispose()
@@ -410,6 +573,7 @@ app.include_router(knowledge_api.router, prefix="/api", dependencies=user_requir
 app.include_router(ppt_api.router, prefix="/api", dependencies=user_required)
 app.include_router(interviews_api.router, prefix="/api", dependencies=user_required)
 app.include_router(interviews_api.internal_router, prefix="/api")
+app.include_router(enterprise_api.router, prefix="/api", dependencies=user_required)
 app.include_router(oj_api.router, prefix="/api")
 app.include_router(oj_api.internal_router, prefix="/api")
 

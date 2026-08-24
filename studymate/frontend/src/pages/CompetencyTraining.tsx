@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 import {
   ArrowRight,
   BadgeCheck,
@@ -93,7 +93,7 @@ const RESOURCE_META = {
   mindmap: { title: "思维导图", icon: Network, detail: "梳理岗位任务中的概念、依赖与关系" },
   reading: { title: "拓展阅读", icon: Library, detail: "补充岗位资料、论文、文档与视频" },
   code: { title: "代码案例", icon: Code2, detail: "提供适配岗位任务的可运行示例" },
-  video: { title: "可视讲解", icon: Film, detail: "先看动画讲解，再看 MiniMax H3 岗位视频" },
+  video: { title: "可视讲解", icon: Film, detail: "先看动画讲解，再看岗位视频" },
 } as const
 
 const ADVANCED_CHALLENGE_THRESHOLD = 0.666
@@ -125,6 +125,8 @@ const CAPABILITY_STATE_META: Record<CapabilityState, { label: string; short: str
 
 export function CompetencyTraining() {
   useTrackPage("competency_training")
+  const { pathname } = useLocation()
+  const view = pathname === "/competency/resources" ? "resources" : pathname === "/competency/audit" ? "audit" : pathname === "/competency/report" ? "report" : "overview"
   const role = useTargetRole()
   const user = useCurrentUser()
   const course = useCurrentCourse()
@@ -289,8 +291,7 @@ export function CompetencyTraining() {
   return (
     <main className="app-page paper-theme min-h-dvh pb-12">
       <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <AppTopbar current="courses" appearance="paper" labelOverride="岗位训练中心" groupOverride="岗位胜任力闭环" selectionLabel={role.name} />
-
+        <AppTopbar current="courses" appearance="paper" labelOverride={view === "overview" ? "岗位训练中心" : view === "resources" ? "训练资源" : view === "audit" ? "协作审计链" : "学习决策报告"} groupOverride="岗位胜任力闭环" selectionLabel={role.name} />
         {user?.user_id && course && <TheoryAssessmentModal
           enabled={profileReady}
           userId={user.user_id}
@@ -323,7 +324,7 @@ export function CompetencyTraining() {
                 ) : !theoryCompleted ? (
                   <button type="button" onClick={() => setTheoryPromptSignal((value) => value + 1)} disabled={!course || theoryGate.loading} className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69] shadow-[0_10px_26px_rgba(0,0,0,.15)] disabled:cursor-not-allowed disabled:opacity-50">{theoryGate.loading ? <Loader2 className="size-4 animate-spin" /> : <BookOpenCheck className="size-4" />}{theoryGate.loading ? "正在组织岗位试卷" : "完成理论基线测评"}</button>
                 ) : workspace.status === "running" ? (
-                  <a href="#agent-collaboration" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69]"><Loader2 className="size-4 animate-spin" />查看计划生成进度</a>
+                  <Link to="/competency/audit" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69]"><Loader2 className="size-4 animate-spin" />查看计划生成进度</Link>
                 ) : workspace.feedback ? (
                   <button type="button" onClick={startRound} disabled={!course} className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69] disabled:opacity-50"><RefreshCw className="size-4" />启动第 {cycle + 1} 轮训练</button>
                 ) : workspace.decision?.decision === "rework" ? (
@@ -337,7 +338,7 @@ export function CompetencyTraining() {
                 ) : learnable ? (
                   <Link to="/workspace/r/doc" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69]"><BookOpenCheck className="size-4" />查看降级学习包<ArrowRight className="size-4" /></Link>
                 ) : (
-                  <a href="#agent-collaboration" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69]"><ShieldCheck className="size-4" />查看审核结果</a>
+                  <Link to="/competency/audit" className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#163A69]"><ShieldCheck className="size-4" />查看审核结果</Link>
                 )}
                 <Link to="/courses?returnTo=%2Fcompetency" className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/20 bg-white/8 px-4 text-sm font-bold text-white hover:bg-white/14">切换目标岗位<ChevronRight className="size-4" /></Link>
               </div>
@@ -352,7 +353,16 @@ export function CompetencyTraining() {
           </div>
         </section>
 
-        <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-4 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-5">
+        <nav className="mt-3 flex flex-wrap items-center gap-2" aria-label="岗位训练中心视图">
+          {[
+            ["/competency", "能力路径", view === "overview"],
+            ["/competency/audit", "协作审计", view === "audit"],
+            ["/competency/resources", "训练资源", view === "resources"],
+            ["/competency/report", "学习报告", view === "report"],
+          ].map(([to, label, active]) => <Link key={to as string} to={to as string} className={cn("inline-flex h-9 items-center rounded-lg border px-3 text-[10px] font-bold transition", active ? "border-[#315E83] bg-[#E7EDF3] text-[#244C66]" : "border-[#DCE5F1] bg-white text-[#708198] hover:bg-[#F4F8FC]")}>{label as string}</Link>)}
+        </nav>
+
+        {view === "overview" && <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-4 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-5">
           <div className="grid gap-2 md:grid-cols-6">
             <FlowStep index="01" label="选择岗位" detail={role.name} status="done" />
             <FlowStep index="02" label="画像诊断" detail={!profileReady ? "等待补充画像证据" : theoryCompleted ? `理论基线 ${theoryGate.assessment?.score ?? theoryEvidence?.score ?? "—"} 分` : "等待首次理论测评"} status={diagnosisReady ? "done" : "active"} />
@@ -361,9 +371,9 @@ export function CompetencyTraining() {
             <FlowStep index="05" label="匹配报告" detail={reportGenerated ? "学习决策已生成" : released ? "等待生成报告" : "等待资源发布"} status={reportGenerated ? "done" : released ? "active" : "idle"} />
             <FlowStep index="06" label="成果验收" detail={workspace.feedback ? "结果已进入下一轮" : attempts.length ? `已完成 ${attempts.length} 项验证` : "等待测试证据"} status={workspace.feedback ? "done" : reportGenerated ? "active" : "idle"} last />
           </div>
-        </section>
+        </section>}
 
-        <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
+        {view === "overview" && <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
           <SectionTitle icon={MapIcon} eyebrow="岗位全景 · 训练路径地图" title={`${role.name}要学什么、学多少、学到哪里`} description="训练路径地图展示岗位能力之间的先后依赖、当前进度与最终验收节点。" />
 
             <div className="rounded-[20px] border border-[#D7CCF2] bg-[#F8F5FF] p-4 sm:p-5">
@@ -388,9 +398,9 @@ export function CompetencyTraining() {
               </ul>
             </div>
           </div>
-        </section>
+        </section>}
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(380px,.95fr)]">
+        {view === "overview" && <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(380px,.95fr)]">
           <section className="rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
             <SectionTitle icon={UserRoundSearch} eyebrow="01 · 岗位画像" title="确认你的训练起点" description="目标决定方向，项目、实习和作品经历用于判断已有能力。" />
             {profileLoading ? <LoadingBlock text="正在读取画像证据…" /> : profileError ? <Notice text={profileError} tone="error" /> : profile ? (
@@ -411,26 +421,26 @@ export function CompetencyTraining() {
               <div className="mt-5 rounded-2xl border border-dashed border-[#CBD8E8] bg-[#F8FBFF] p-5 text-center"><BrainCircuit className="mx-auto size-6 text-[#5D7FAA]" /><p className="mt-3 text-xs font-bold text-[#334B69]">完成画像后即可生成训练计划</p><p className="mt-1 text-[10px] leading-5 text-[#718096]">你可以查看计划依据和审核结果。</p></div>
             )}
           </section>
-        </div>
+        </div>}
 
-        <section id="agent-collaboration" className="mt-4 scroll-mt-24 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
+        {view === "audit" && <section id="agent-collaboration" className="mt-4 scroll-mt-24 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <SectionTitle icon={BrainCircuit} eyebrow="计划生成记录" title="查看本轮计划如何形成" description="这里保留建议、检查和最终结果，方便核对。" />
             {workspace.status === "running" && <button type="button" onClick={() => workspaceStore.cancel()} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#E1C9C2] bg-[#FFF8F5] px-3 text-[11px] font-bold text-[#A5523A]">停止本轮协作</button>}
           </div>
           <AgentAudit workspace={workspace} progress={agentProgress} />
           <DebateQualityPanel workspace={workspace} />
-        </section>
+        </section>}
 
-        <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
+        {view === "resources" && <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
           <div className="flex flex-wrap items-end justify-between gap-3"><SectionTitle icon={Layers3} eyebrow="03 · 个性化资源" title="七类资源围绕同一个岗位任务呼应" description={plan?.rationale || `本轮候选任务：${nextTopic}`} /><span className={cn("rounded-full px-3 py-1.5 text-[10px] font-bold", released ? "bg-[#E5F6F0] text-[#18745E]" : "bg-[#EEF3FA] text-[#61738D]")}>{released ? `质量门禁通过 · ${workspace.decision?.quality_score ?? 0} 分` : workspace.status === "running" ? "生成与审核进行中" : "等待协同计划"}</span></div>
           <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {(["doc", "guide", "quiz", "mindmap", "reading", "code", "video"] as ResourceId[]).map((id, index) => <ResourceCard key={id} id={id} index={index} plan={plan} ready={Boolean(workspace.outputs[id])} released={released} reviewScore={id === "video" ? videoReviewScore : id === "doc" || id === "mindmap" || id === "reading" ? workspace.reviews.evidence_review?.score : id === "guide" || id === "code" ? workspace.reviews.practice_review?.score : workspace.reviews.difficulty_review?.score} videoStatus={id === "video" ? workspace.outputs.video?.status : undefined} />)}
           </div>
           {degraded && <div className="mt-4 rounded-2xl border border-[#E8CDBE] bg-[#FFF7F2] p-4 text-[#7D513F]"><div className="flex flex-wrap items-center justify-between gap-3"><div><strong className="text-xs">当前提供临时学习包</strong><p className="mt-1 text-[10px] leading-5">内容尚未通过正式审核，可以先学习并查看审核结果。</p></div><span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-bold">可用性评分 {fallbackScore ?? "--"} 分</span></div></div>}
-        </section>
+        </section>}
 
-        <LearnerMatchReport
+        {view === "report" && <LearnerMatchReport
           released={released}
           generated={reportGenerated}
           onGenerate={generateLearnerReport}
@@ -447,9 +457,9 @@ export function CompetencyTraining() {
             { id: "guide", title: RESOURCE_META.guide.title, reviewScore: workspace.reviews.practice_review?.score ?? 0, ready: Boolean(workspace.outputs.guide) },
             { id: "quiz", title: RESOURCE_META.quiz.title, reviewScore: workspace.reviews.difficulty_review?.score ?? 0, ready: Boolean(workspace.outputs.quiz) },
           ]}
-        />
+        />}
 
-        <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
+        {view === "report" && <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start">
             <div>
               <SectionTitle icon={FileCheck2} eyebrow="05 · 本轮验收" title="查看结果并决定下一步" description="提交本轮结果后，系统会继续补强薄弱项或进入更难任务。" />
@@ -468,12 +478,12 @@ export function CompetencyTraining() {
                 {released && attempts.length > 0 && !workspace.feedback && <button type="button" onClick={() => void submitFeedback()} disabled={feedbackBusy} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#2468CE] px-3 text-[11px] font-bold text-white disabled:opacity-50">{feedbackBusy ? <Loader2 className="size-3.5 animate-spin" /> : <FileCheck2 className="size-3.5" />}提交本轮验收</button>}
                 {advancedChallengeAvailable && <Link to={challengeHref} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#6D50C7] px-3 text-[11px] font-bold text-white shadow-[0_7px_16px_rgba(109,80,199,.18)] hover:bg-[#5940AD]"><Rocket className="size-3.5" />进阶挑战任务<ArrowRight className="size-3.5" /></Link>}
                 {workspace.feedback && <button type="button" onClick={startRound} disabled={!course || workspace.status === "running"} className={cn("inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[11px] font-bold disabled:opacity-50", advancedChallengeAvailable ? "border border-[#C9D9ED] bg-white text-[#315E83] hover:bg-[#F1F6FC]" : "bg-[#2468CE] text-white")}><RefreshCw className="size-3.5" />{advancedChallengeAvailable ? "启动下一轮" : "降维解释"}</button>}
-                <a href="#agent-collaboration" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D4DFEB] bg-white px-3 text-[11px] font-bold text-[#5D718D]">查看计划记录</a>
+                <Link to="/competency/audit" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D4DFEB] bg-white px-3 text-[11px] font-bold text-[#5D718D]">查看计划记录</Link>
               </div>
               {feedbackError && <p role="alert" className="mt-2 text-[10px] text-[#A85138]">{feedbackError}</p>}
             </div>
           </div>
-        </section>
+        </section>}
       </div>
     </main>
   )

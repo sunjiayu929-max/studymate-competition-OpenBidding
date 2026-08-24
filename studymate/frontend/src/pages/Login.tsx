@@ -4,9 +4,11 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import {
   AlertCircle,
   ArrowRight,
+  ChevronDown,
   CheckCircle2,
   Eye,
   EyeOff,
+  GraduationCap,
   KeyRound,
   Loader2,
   Mail,
@@ -51,6 +53,11 @@ export function Login() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [name, setName] = useState("")
+  const [accountType, setAccountType] = useState<"learner" | "enterprise_admin">("learner")
+  const [learnerType, setLearnerType] = useState<"student" | "worker">("student")
+  const [studyStage, setStudyStage] = useState("")
+  const [company, setCompany] = useState("")
+  const [targetRole, setTargetRole] = useState("")
   const [code, setCode] = useState("")
   const [loading, setLoading] = useState(false)
   const [sending, setSending] = useState(false)
@@ -71,6 +78,7 @@ export function Login() {
 
   const switchMode = (next: Mode) => {
     setMode(next)
+    if (next === "login") setAccountType("learner")
     setError(null)
     setNotice(null)
   }
@@ -100,8 +108,22 @@ export function Login() {
         ? await apiPost<AuthResponse>("/auth/login", { email: email.trim(), password })
         : await apiPost<AuthResponse>("/auth/register", {
             email: email.trim(), password, name: name.trim(), code: code.trim(),
+            account_type: accountType,
+            learner_type: learnerType,
+            study_stage: studyStage.trim(),
+            company: company.trim(),
+            target_role: targetRole.trim(),
           })
-      setCurrentUser({ user_id: result.user_id, name: result.name, email: result.email, role: result.role })
+      setCurrentUser({
+        user_id: result.user_id,
+        name: result.name,
+        email: result.email,
+        role: result.role,
+        learner_type: result.learner_type,
+        study_stage: result.study_stage,
+        company: result.company,
+        target_role: result.target_role,
+      })
       navigate(from, { replace: true })
     } catch (err) {
       setError(messageOf(err))
@@ -212,6 +234,40 @@ export function Login() {
                     </motion.div>
                   )}
                 </AnimatePresence>
+
+                {mode === "register" && (
+                  <div className="rounded-xl border border-[#DED8CC] bg-[#F7F3EA] p-3">
+                    <span className="mb-2 block text-[11px] font-bold text-[#394950]">注册身份</span>
+                    <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="注册身份">
+                      <button type="button" onClick={() => setAccountType("learner")} className={`h-9 rounded-lg text-xs font-bold transition ${accountType === "learner" ? "bg-[#244C66] text-white shadow-sm" : "bg-white text-[#69736F] hover:bg-[#EFEAE0]"}`}>学习者</button>
+                      <button type="button" onClick={() => setAccountType("enterprise_admin")} className={`h-9 rounded-lg text-xs font-bold transition ${accountType === "enterprise_admin" ? "bg-[#B85C3E] text-white shadow-sm" : "bg-white text-[#69736F] hover:bg-[#EFEAE0]"}`}>企业管理员</button>
+                    </div>
+                    {accountType === "learner" ? (
+                      <>
+                        <div className="mt-3 grid grid-cols-2 gap-2" role="tablist" aria-label="学习者类型">
+                          <button type="button" onClick={() => setLearnerType("student")} className={`h-9 rounded-lg border text-xs font-bold transition ${learnerType === "student" ? "border-[#9FB1BC] bg-[#E7EDF3] text-[#244C66]" : "border-[#DED8CC] bg-white text-[#69736F]"}`}>学生</button>
+                          <button type="button" onClick={() => setLearnerType("worker")} className={`h-9 rounded-lg border text-xs font-bold transition ${learnerType === "worker" ? "border-[#A8C8B0] bg-[#E7F0E8] text-[#356A46]" : "border-[#DED8CC] bg-white text-[#69736F]"}`}>从业者</button>
+                        </div>
+                        {learnerType === "student" ? (
+                          <label className="mt-3 block">
+                            <span className="mb-1.5 block text-[11px] font-bold text-[#394950]">学习阶段</span>
+                            <span className="group relative flex h-[50px] items-center rounded-xl border border-[#D7D1C4] bg-white transition-[border-color,box-shadow,background] focus-within:border-[#244C66] focus-within:shadow-[0_0_0_3px_rgba(197,212,217,.7)]">
+                              <span className="ml-3.5 grid size-5 shrink-0 place-items-center text-[#8A918F] transition-colors group-focus-within:text-[#244C66]"><GraduationCap className="size-4" /></span>
+                              <select value={studyStage} onChange={(event) => setStudyStage(event.target.value)} className={`h-full min-w-0 flex-1 appearance-none bg-transparent px-3 pr-9 text-sm outline-none ${studyStage ? "text-[#24323A]" : "text-[#9A9F9C]"}`} required>
+                                <option value="" disabled>请选择学习阶段</option>
+                                <option value="本科">本科</option>
+                                <option value="研究生">研究生</option>
+                                <option value="博士">博士</option>
+                              </select>
+                              <ChevronDown className="pointer-events-none absolute right-3 size-4 text-[#8A918F]" />
+                            </span>
+                          </label>
+                        ) : <Field label="所在公司" icon={<UserRound />} value={company} onChange={setCompany} placeholder="例如：星河科技" autoComplete="organization" />}
+                        <Field label={learnerType === "worker" ? "当前岗位" : "目标岗位（可稍后补充）"} icon={<Sparkles />} value={targetRole} onChange={setTargetRole} placeholder="例如：前线部署工程师" required={learnerType === "worker"} />
+                      </>
+                    ) : <Field label="企业名称" icon={<ShieldCheck />} value={company} onChange={setCompany} placeholder="例如：企业名称" autoComplete="organization" />}
+                  </div>
+                )}
 
                 <Field label="邮箱地址" icon={<Mail />} value={email} onChange={setEmail} placeholder="例如 name@example.com" type="email" autoComplete="email" />
 
