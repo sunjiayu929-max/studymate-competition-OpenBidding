@@ -5,7 +5,6 @@ import type { LucideIcon } from "lucide-react"
 import { AppTopbar } from "@/components/AppTopbar"
 import { Markdown } from "@/components/Markdown"
 import { ProfileRadar } from "@/components/ProfileRadar"
-import { CareerRecommendations } from "@/components/CareerRecommendations"
 import { MicButton } from "@/components/MicButton"
 import { SpeakerButton } from "@/components/SpeakerButton"
 import { VoiceSelector } from "@/components/VoiceSelector"
@@ -481,9 +480,6 @@ export function ProfileChat() {
             )}
           </aside>
         </main>
-        <div className="mt-4">
-          <CareerRecommendations profileVersion={profile?.version || 0} />
-        </div>
       </div>
     </div>
   )
