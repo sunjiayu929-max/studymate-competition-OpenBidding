@@ -44,7 +44,7 @@ _PRAMATE_MEMBER_NAMES = {
 
 _PRAMATE_DEMO_ADMIN_EMAIL = "admin@pramate.com"
 _PRAMATE_DEMO_ADMIN_PASSWORD = "a123456"
-_PRAMATE_DEMO_ENTERPRISE_NAME = "郑州澜善科技有限公司"
+_PRAMATE_DEMO_ENTERPRISE_NAME = "河南本线商贸有限公司"
 _PRAMATE_DEMO_INVITE_CODE = "PRAMATE-DEMO"
 _PRAMATE_STUDENT_PASSWORD = "p123456"
 
@@ -336,6 +336,14 @@ async def _ensure_seed_user(
 async def _ensure_seed_users(conn):
     """Provision fixed system, enterprise-demo, judge, and student accounts idempotently."""
     verified_at = datetime.utcnow()
+    # 保留既有演示邀请码，只同步演示企业名称，避免旧数据库继续展示历史名称。
+    await conn.execute(
+        text(
+            "UPDATE enterprises SET name = :name "
+            "WHERE invite_code IN ('PRAMATE-DEMO', 'SM-DEMO')"
+        ),
+        {"name": _PRAMATE_DEMO_ENTERPRISE_NAME},
+    )
     await _ensure_seed_user(
         conn,
         user_id=1,
@@ -454,6 +462,12 @@ async def _ensure_pramate_demo_enterprise(conn):
                 {"invite_code": _PRAMATE_DEMO_INVITE_CODE},
             )
         ).fetchone()
+    else:
+        # 演示企业改名时同步已有数据库记录，避免旧名称继续出现在企业端。
+        await conn.execute(
+            text("UPDATE enterprises SET name = :name WHERE id = :enterprise_id"),
+            {"name": _PRAMATE_DEMO_ENTERPRISE_NAME, "enterprise_id": enterprise[0]},
+        )
 
     membership = (
         await conn.execute(

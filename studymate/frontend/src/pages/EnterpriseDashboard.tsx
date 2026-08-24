@@ -111,7 +111,7 @@ export function EnterpriseDashboard() {
   return (
     <main className="app-page paper-theme min-h-dvh pb-12">
       <div className="mx-auto max-w-[1440px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <AppTopbar current="home" appearance="paper" labelOverride="企业运营看板" groupOverride="企业培训协作" selectionLabel={data?.enterprise.name || "郑州澜善科技有限公司"} />
+        <AppTopbar current="home" appearance="paper" labelOverride="企业运营看板" groupOverride="企业培训协作" selectionLabel={data?.enterprise.name || "河南本线商贸有限公司"} />
         <header className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-[24px] border border-[#D6E2D4] bg-[#F4F9F2] p-5 shadow-[0_14px_38px_rgba(59,92,58,.08)] sm:p-7">
           <div>
             <Link to="/enterprise" className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#668064] hover:text-[#365A38]"><ArrowLeft className="size-3.5" />返回企业工作台</Link>

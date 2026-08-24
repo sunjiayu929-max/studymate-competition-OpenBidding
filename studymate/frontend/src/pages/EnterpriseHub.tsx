@@ -187,7 +187,7 @@ export function EnterpriseHub() {
   return (
     <main className="app-page paper-theme min-h-dvh pb-12">
       <div className="mx-auto max-w-[1440px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <AppTopbar current="home" appearance="paper" labelOverride={isAdmin ? "企业管理员工作台" : "企业任务中心"} groupOverride="企业培训协作" selectionLabel={context?.enterprise?.name || (isAdmin ? "郑州澜善科技有限公司" : "尚未加入企业")} />
+        <AppTopbar current="home" appearance="paper" labelOverride={isAdmin ? "企业管理员工作台" : "企业任务中心"} groupOverride="企业培训协作" selectionLabel={context?.enterprise?.name || (isAdmin ? "河南本线商贸有限公司" : "尚未加入企业")} />
         <section className="mt-4 overflow-hidden rounded-[26px] border border-[#D6E2D4] bg-[#F4F9F2] p-5 shadow-[0_14px_38px_rgba(59,92,58,.08)] sm:p-7">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="max-w-2xl"><span className="inline-flex items-center gap-2 text-[10px] font-extrabold tracking-[.14em] text-[#5B7658]"><BriefcaseBusiness className="size-4" />{isAdmin ? "企业组织 · 任务与资料" : "学习者入口 · 企业任务"}</span><h1 className="mt-2 text-2xl font-bold tracking-[-.04em] text-[#243827] sm:text-3xl">{isAdmin ? "把岗位训练发布给正确的人" : context?.enterprise ? `今天先完成 ${context.enterprise.name} 的任务` : "接入企业任务，继续岗位训练"}</h1><p className="mt-2 text-sm leading-6 text-[#657661]">{isAdmin ? "企业管理员可以按岗位发布训练任务或普通阅读资料，并复用同一套岗位知识库。" : "企业任务与个人岗位训练中心相互衔接；培训任务进入能力路径，阅读任务保留独立资料页。"}</p></div>
