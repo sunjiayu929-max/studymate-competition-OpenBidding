@@ -70,7 +70,7 @@ export function CareerRecommendations({ profileVersion = 0, compact = false }: {
     return (
       <a href="http://rencaiya.vip/college/postcourse" target="_blank" rel="noreferrer noopener" className="flex items-center gap-3 rounded-[22px] border border-[#C7D2D8] bg-[#E7EDF3] p-4 hover:bg-[#DCE6EC]">
         <span className="grid size-10 place-items-center rounded-xl bg-[#244C66] text-[#F2C968]"><BriefcaseBusiness className="size-5" /></span>
-        <span className="min-w-0 flex-1"><strong className="block text-sm text-[#18232D]">查看讯飞人才呀岗位课程</strong><span className="mt-0.5 block text-xs text-[#596A75]">岗位推荐暂时不可用，可前往外部平台浏览</span></span>
+        <span className="min-w-0 flex-1"><strong className="block text-sm text-[#18232D]">查看岗位课程</strong><span className="mt-0.5 block text-xs text-[#596A75]">岗位推荐暂时不可用，可前往外部平台浏览</span></span>
         <ExternalLink className="size-4 text-[#315E83]" />
       </a>
     )
@@ -80,7 +80,7 @@ export function CareerRecommendations({ profileVersion = 0, compact = false }: {
     <section className="rounded-[24px] border border-[#C7D2D8] bg-[#F5F8FA] p-4 shadow-[0_10px_28px_rgba(36,76,102,.06)] sm:p-5" aria-label="就业岗位推荐">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.12em] text-[#315E83]"><Sparkles className="size-3.5" />讯飞人才呀 · 就业导向</span>
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.12em] text-[#315E83]"><Sparkles className="size-3.5" />就业导向</span>
           <h2 className="mt-1 text-base font-bold text-[#18232D]">围绕「{targetRole?.name || data.current_course}」校准岗位适配度</h2>
           <p className="mt-1 max-w-2xl text-[11px] leading-5 text-[#66717B]">{data.evidence_note}</p>
         </div>
@@ -110,7 +110,7 @@ export function CareerRecommendations({ profileVersion = 0, compact = false }: {
               <CareerLine icon={Target} label="已有优势" values={item.strengths} empty="等待画像补充" tone="green" />
               <CareerLine icon={Route} label="建议补齐" values={item.gaps} empty="继续积累岗位能力证据" tone="gold" />
             </div>
-            <p className="mt-3 text-[10px] text-[#8A8172]">人才呀包含 {item.course_count} 门岗位课程{item.project_count > 0 ? ` · ${item.project_count} 个实训项目` : ""}</p>
+            <p className="mt-3 text-[10px] text-[#8A8172]">包含 {item.course_count} 门岗位课程{item.project_count > 0 ? ` · ${item.project_count} 个实训项目` : ""}</p>
           </a>
         ))}
       </div>
