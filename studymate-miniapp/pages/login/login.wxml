@@ -33,7 +33,7 @@
         <text class="form-label">邮箱地址</text>
         <view class="field-shell"><text class="field-symbol">@</text><input class="field-input" type="text" value="{{email}}" placeholder="例如 name@example.com" placeholder-class="input-placeholder" bindinput="onEmailInput" /></view>
         <text class="form-label">密码</text>
-        <view class="field-shell"><text class="field-symbol">●</text><input class="field-input" type="{{showPassword ? 'text' : 'password'}}" value="{{password}}" placeholder="输入你的密码" placeholder-class="input-placeholder" bindinput="onPasswordInput" /><text class="password-toggle" bindtap="togglePassword">{{showPassword ? '隐藏' : '显示'}}</text></view>
+        <view class="field-shell"><text class="field-symbol">●</text><input wx:if="{{showPassword}}" class="field-input" type="text" value="{{password}}" placeholder="输入你的密码" placeholder-class="input-placeholder" bindinput="onPasswordInput" /><input wx:else class="field-input" type="password" value="{{password}}" placeholder="输入你的密码" placeholder-class="input-placeholder" bindinput="onPasswordInput" /><text class="password-toggle" bindtap="togglePassword">{{showPassword ? '隐藏' : '显示'}}</text></view>
         <view wx:if="{{error}}" class="auth-error">{{error}}</view>
         <button class="auth-submit" loading="{{loading}}" disabled="{{loading}}" bindtap="login">进入 StudyMate <text class="submit-arrow">→</text></button>
       </view>
