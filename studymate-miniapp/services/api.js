@@ -53,7 +53,10 @@ function request(path, method = "GET", data) {
         reject(new Error(errorMessage(response.statusCode, response.data, path)))
       },
       fail() {
-        reject(new Error(errorMessage(0, null, path)))
+        const usesLocalhost = /localhost|127\.0\.0\.1/.test(API_BASE_URL)
+        reject(new Error(usesLocalhost
+          ? "当前使用的是 localhost，真机请将 services/config.js 改为电脑的局域网 IPv4 地址后重试"
+          : errorMessage(0, null, path)))
       },
     })
   })

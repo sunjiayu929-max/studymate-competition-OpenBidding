@@ -92,15 +92,21 @@
 }
 
 .code-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 190rpx;
   min-height: 100rpx;
   margin: 0;
+  padding: 0 12rpx;
   border: 1rpx solid #d7d1c4;
   border-radius: 16rpx;
   background: #fffefa;
   color: #415966;
-  font-size: 21rpx;
+  font-size: 24rpx;
   font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
 }
 
 .code-button[disabled] {

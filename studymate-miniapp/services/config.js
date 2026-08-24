@@ -1,5 +1,5 @@
-// 微信开发者工具本地调试时，后端默认通过 localhost:8000 提供服务。
-// 若后端运行在 WSL 且 Windows 无法访问 localhost，请替换为 WSL 的局域网 IP。
+// 模拟器调试可使用 localhost；真机调试必须改成运行后端电脑的局域网 IPv4。
+// 示例：const API_BASE_URL = "http://192.168.1.100:8000/api"
 const API_BASE_URL = "http://localhost:8000/api"
 
 module.exports = { API_BASE_URL }

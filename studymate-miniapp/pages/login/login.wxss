@@ -264,10 +264,47 @@ page {
 }
 
 .password-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 72rpx;
+  width: 72rpx;
+  height: 72rpx;
   flex-shrink: 0;
   margin-right: 22rpx;
   color: #8a918f;
-  font-size: 22rpx;
+}
+
+.eye-icon {
+  position: relative;
+  width: 34rpx;
+  height: 22rpx;
+  border: 3rpx solid #8a918f;
+  border-radius: 50% / 65%;
+}
+
+.eye-icon::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 9rpx;
+  height: 9rpx;
+  border-radius: 50%;
+  background: #8a918f;
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+.eye-hidden .eye-icon::before {
+  position: absolute;
+  top: 8rpx;
+  left: -7rpx;
+  width: 48rpx;
+  height: 3rpx;
+  background: #8a918f;
+  content: "";
+  transform: rotate(-35deg);
 }
 
 .input-placeholder,

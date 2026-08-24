@@ -10,9 +10,10 @@
 
 1. 用 VS Code 打开 `studymate-miniapp` 目录进行开发。
 2. 用微信开发者工具导入本目录，项目类型选择“小程序”，AppID 开发阶段可使用测试号或团队提供的 AppID。
-3. 当前 `services/config.js` 默认请求 `http://localhost:8000/api`。
-4. 如果后端运行在 WSL 且 Windows 微信开发者工具无法访问 `localhost`，将配置改为 WSL 可访问的局域网 IP，例如 `http://172.xx.xx.xx:8000/api`。
-5. 本地调试时可以在微信开发者工具的项目设置中关闭“校验合法域名、业务域名、TLS 版本以及 HTTPS 证书”。提交体验版前必须改用 HTTPS 合法域名。
+3. 当前 `services/config.js` 默认请求 `http://localhost:8000/api`，适合电脑上的模拟器调试。
+4. 真机调试时，手机上的 `localhost` 指向手机自身。请在 Windows 执行 `ipconfig`，找到电脑当前网络适配器的 IPv4 地址，将配置改为例如 `http://192.168.1.100:8000/api`。
+5. 后端必须监听 `0.0.0.0:8000`，并允许 Windows 防火墙和 WSL 转发访问 8000 端口；手机和电脑要连接同一局域网。
+6. 本地调试时可以在微信开发者工具的项目设置中关闭“校验合法域名、业务域名、TLS 版本以及 HTTPS 证书”。提交体验版前必须改用 HTTPS 合法域名。
 
 ## 演示账号
 
