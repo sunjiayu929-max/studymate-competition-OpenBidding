@@ -11,8 +11,27 @@
   flex: 1;
 }
 
+.worker-label {
+  display: block;
+  margin-top: 4rpx;
+  color: #6d8269;
+  font-size: 20rpx;
+  font-weight: 800;
+  letter-spacing: 2rpx;
+}
+
 .logout-button {
   flex-shrink: 0;
+  width: 96rpx;
+  height: 68rpx;
+  min-height: 68rpx;
+  padding: 0;
+  line-height: 1;
+  text-align: center;
+}
+
+.logout-button::after {
+  border: 0;
 }
 
 .enterprise-hero,

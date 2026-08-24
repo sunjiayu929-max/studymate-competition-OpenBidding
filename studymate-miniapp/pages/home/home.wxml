@@ -2,7 +2,8 @@
   <view class="brand-row home-topbar">
     <view class="brand-mark">SM</view>
     <view class="home-heading">
-      <text class="eyebrow">STUDYMATE · 从业者端</text>
+      <text class="eyebrow">STUDYMATE</text>
+      <text class="worker-label">从业者端</text>
       <text class="page-title">今日任务</text>
     </view>
     <button class="ghost-button logout-button" bindtap="logout">退出</button>
