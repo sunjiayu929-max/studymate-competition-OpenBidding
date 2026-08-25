@@ -46,7 +46,7 @@ _PRAMATE_MEMBER_NAMES = {
 
 _PRAMATE_DEMO_ADMIN_EMAIL = "admin@pramate.com"
 _PRAMATE_DEMO_ADMIN_PASSWORD = "a123456"
-_PRAMATE_DEMO_ENTERPRISE_NAME = "郑州澜善科技有限公司"
+_PRAMATE_DEMO_ENTERPRISE_NAME = "河南本线商贸有限公司"
 _PRAMATE_DEMO_INVITE_CODE = "PRAMATE-DEMO"
 _PRAMATE_STUDENT_PASSWORD = "p123456"
 
@@ -342,6 +342,14 @@ async def _ensure_seed_user(
 async def _ensure_seed_users(conn):
     """Provision fixed system, enterprise-demo, judge, and student accounts idempotently."""
     verified_at = datetime.utcnow()
+    # 保留既有演示邀请码，只同步演示企业名称，避免旧数据库继续展示历史名称。
+    await conn.execute(
+        text(
+            "UPDATE enterprises SET name = :name "
+            "WHERE invite_code IN ('PRAMATE-DEMO', 'SM-DEMO')"
+        ),
+        {"name": _PRAMATE_DEMO_ENTERPRISE_NAME},
+    )
     await _ensure_seed_user(
         conn,
         user_id=1,
@@ -460,6 +468,12 @@ async def _ensure_pramate_demo_enterprise(conn):
                 {"invite_code": _PRAMATE_DEMO_INVITE_CODE},
             )
         ).fetchone()
+    else:
+        # 演示企业改名时同步已有数据库记录，避免旧名称继续出现在企业端。
+        await conn.execute(
+            text("UPDATE enterprises SET name = :name WHERE id = :enterprise_id"),
+            {"name": _PRAMATE_DEMO_ENTERPRISE_NAME, "enterprise_id": enterprise[0]},
+        )
 
     membership = (
         await conn.execute(
@@ -698,6 +712,44 @@ async def _ensure_demo_quiz_history(conn):
                 course_id=course_id,
                 course_name=str(course_name),
             )
+
+
+async def _ensure_role_knowledge_catalog() -> None:
+    """补齐 SQLite 本地库中缺失的岗位课程与检索切片。
+
+    Docker 种子库只携带基础课程目录；岗位资料作为可审阅源文件独立维护。
+    因此裸跑首次解压种子库后，需要在应用启动时做一次幂等导入，否则前端
+    会把目录中的岗位标为可用，却无法为它找到对应的 course_id。
+    """
+    if not settings.DATABASE_URL.startswith("sqlite:"):
+        return
+
+    from app.courses import list_course_names
+
+    expected = {name for name in list_course_names() if name.endswith("岗位知识库")}
+    if not expected:
+        return
+
+    async with engine.connect() as conn:
+        rows = await conn.execute(
+            text(
+                "SELECT courses.name, COUNT(knowledge_chunks.id) "
+                "FROM courses LEFT JOIN knowledge_chunks "
+                "ON knowledge_chunks.course_id = courses.id "
+                "WHERE courses.name LIKE :suffix GROUP BY courses.id"
+            ),
+            {"suffix": "%岗位知识库"},
+        )
+        imported = {name for name, chunk_count in rows if chunk_count > 0}
+
+    if expected.issubset(imported):
+        return
+
+    from scripts.import_fde_knowledge import import_catalog as import_fde_catalog
+    from scripts.import_role_knowledge import main as import_role_catalog
+
+    await import_fde_catalog()
+    await import_role_catalog()
 
 
 async def _ensure_role_knowledge_catalog() -> None:

@@ -199,7 +199,7 @@ async def register(req: RegisterRequest, response: Response, db: AsyncSession = 
     db.add(user)
     await db.flush()
     if req.account_type == "enterprise_admin":
-        enterprise_name = req.company.strip() or "郑州澜善科技有限公司"
+        enterprise_name = req.company.strip() or "河南本线商贸有限公司"
         enterprise = Enterprise(
             name=enterprise_name,
             invite_code=f"SM{user.id:04d}",
