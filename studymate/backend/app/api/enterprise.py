@@ -224,7 +224,7 @@ async def _admin_enterprise(db: AsyncSession, user: User) -> Enterprise:
     if membership and membership.member_role in {"owner", "manager"}:
         return await _enterprise(db, membership.enterprise_id)
     if user.role == "admin":
-        enterprise = Enterprise(name="郑州澜善科技有限公司", invite_code="SM-DEMO", owner_id=user.id)
+        enterprise = Enterprise(name="河南本线商贸有限公司", invite_code="SM-DEMO", owner_id=user.id)
         db.add(enterprise)
         await db.flush()
         db.add(EnterpriseMembership(
@@ -241,7 +241,7 @@ async def _admin_enterprise(db: AsyncSession, user: User) -> Enterprise:
 async def _seed_demo_enterprise(db: AsyncSession) -> Enterprise:
     enterprise = await db.scalar(select(Enterprise).where(Enterprise.invite_code == "SM-DEMO"))
     if enterprise is None:
-        enterprise = Enterprise(name="郑州澜善科技有限公司", invite_code="SM-DEMO", owner_id=1)
+        enterprise = Enterprise(name="河南本线商贸有限公司", invite_code="SM-DEMO", owner_id=1)
         db.add(enterprise)
         await db.flush()
         db.add(EnterpriseMembership(
@@ -291,6 +291,9 @@ async def _seed_demo_enterprise(db: AsyncSession) -> Enterprise:
                 due_label="阅读后确认",
             ),
         ])
+        await db.commit()
+    elif enterprise.name != "河南本线商贸有限公司":
+        enterprise.name = "河南本线商贸有限公司"
         await db.commit()
     return enterprise
 
@@ -687,7 +690,7 @@ async def _ensure_demo_tasks(db: AsyncSession, enterprise: Enterprise, knowledge
 
 async def _ensure_demo_dashboard_data(db: AsyncSession, enterprise: Enterprise) -> None:
     """补足演示规模，但所有任务、成员关系和事件仍写入真实业务表。"""
-    if enterprise.name != "郑州澜善科技有限公司":
+    if enterprise.name != "河南本线商贸有限公司":
         return
 
     async with _DEMO_SEED_LOCK:
@@ -712,7 +715,7 @@ async def _seed_demo_dashboard_data(db: AsyncSession, enterprise: Enterprise) ->
                 email=email,
                 role="student",
                 learner_type="worker",
-                company="郑州澜善科技有限公司",
+                company="河南本线商贸有限公司",
                 target_role=target_role,
                 is_active=True,
             )
@@ -763,7 +766,7 @@ async def _seed_demo_dashboard_data(db: AsyncSession, enterprise: Enterprise) ->
         if learner.email and learner.email.endswith("@pramate.com"):
             learner.name = FIXED_MEMBER_NAMES.get(email_name, learner.name)
             learner.learner_type = "worker"
-            learner.company = "郑州澜善科技有限公司"
+            learner.company = "河南本线商贸有限公司"
             learner.target_role = "前线部署工程师（FDE）"
         membership.job_title = membership.job_title or "前线部署工程师（FDE）"
 
