@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 import {
   BarChart3,
   BookOpenCheck,
+  BriefcaseBusiness,
   Bot,
   ChevronDown,
   ChevronLeft,
@@ -30,7 +31,7 @@ import {
 } from "lucide-react"
 
 import { ConfirmDialog } from "@/components/ConfirmDialog"
-import { apiPost } from "@/lib/api"
+import { apiGet, apiPost } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { useCurrentCourse } from "@/store/course"
 import { useTargetRole } from "@/store/targetRole"
@@ -137,6 +138,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [logoutBusy, setLogoutBusy] = useState(false)
   const [homeUniverseVisible, setHomeUniverseVisible] = useState(pathname === "/")
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(readGroups)
+  const [enterpriseMember, setEnterpriseMember] = useState<boolean | null>(null)
+
+  const enterpriseAdmin = user?.role === "enterprise_admin" || user?.role === "admin"
+  const enterpriseVisible = enterpriseAdmin || enterpriseMember === true
+  const learnerIdentity = enterpriseAdmin
+    ? { kind: "企业管理员", detail: user?.company || "企业工作台" }
+    : user?.learner_type === "worker"
+      ? { kind: "从业者", detail: user.company || "未填写在职公司" }
+      : { kind: "学生学习者", detail: user?.study_stage || "未填写学习阶段" }
+  const learnerTargetRole = user?.target_role || targetRole?.name || course?.name || "未选择目标岗位"
 
   const immersive = pathname === "/tutor/voice" || /^\/quiz\/[^/]+$/u.test(pathname)
   const shellHidden = pathname === "/" && homeUniverseVisible
@@ -176,6 +187,21 @@ export function AppShell({ children }: { children: ReactNode }) {
       /* storage is optional */
     }
   }, [collapsed, openGroups])
+
+  useEffect(() => {
+    if (!user?.user_id) {
+      setEnterpriseMember(null)
+      return
+    }
+    if (enterpriseAdmin) {
+      setEnterpriseMember(true)
+      return
+    }
+    setEnterpriseMember(null)
+    void apiGet<{ enterprise: unknown | null }>("/learner/context")
+      .then((context) => setEnterpriseMember(Boolean(context.enterprise)))
+      .catch(() => setEnterpriseMember(false))
+  }, [enterpriseAdmin, user?.user_id])
 
   const handleLogout = async () => {
     setLogoutBusy(true)
@@ -257,8 +283,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
           >
             <Library className="size-4 shrink-0 text-[#315E83]" />
-            {!effectiveCollapsed && <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">当前岗位</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{targetRole?.name || course?.name || "选择目标岗位"}</strong></span>}
+            {!effectiveCollapsed && <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">{learnerIdentity.kind}</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{user?.name || "学习者"}</strong><span className="mt-1 block truncate text-[10px] text-[#66717B]">{learnerIdentity.detail} · {learnerTargetRole}</span></span>}
           </Link>
+          {!effectiveCollapsed && user && enterpriseVisible && (
+            <Link to="/enterprise" className="mt-2 block rounded-2xl border border-[#DCE5D7] bg-[#F5FAF3] px-3 py-2.5 transition-colors hover:bg-[#EAF4E7]">
+              <span className="flex items-center gap-2 text-[10px] font-bold text-[#52704D]"><BriefcaseBusiness className="size-3.5" />{enterpriseAdmin ? "企业管理员工作台" : "企业任务中心"}<ChevronRight className="ml-auto size-3" /></span>
+              <span className="mt-1 block truncate text-[10px] text-[#758372]">{enterpriseAdmin ? "发布任务 · 管理岗位资料" : "查看企业下发的学习任务"}</span>
+            </Link>
+          )}
         </div>
 
         <nav className="nav-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3" aria-label="主功能">
@@ -266,7 +298,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ShellLink item={{ label: "目标岗位", to: "/courses", icon: Library }} compact={effectiveCollapsed} pathname={pathname} />
           <ShellLink item={{ label: "岗位能力画像", to: "/profile", icon: GraduationCap }} compact={effectiveCollapsed} pathname={pathname} />
           <ShellLink
-            item={{ label: "岗位训练中心", to: "/competency", icon: ShieldCheck, exact: true }}
+            item={{ label: "岗位训练中心", to: "/competency", icon: ShieldCheck }}
             compact={effectiveCollapsed}
             pathname={pathname}
             trailing={!effectiveCollapsed ? (
@@ -276,6 +308,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </span>
             ) : undefined}
           />
+          {enterpriseVisible && <ShellLink item={{ label: enterpriseAdmin ? "企业工作台" : "企业任务", to: "/enterprise", icon: BriefcaseBusiness }} compact={effectiveCollapsed} pathname={pathname} />}
 
           <div className="my-3 border-t border-[#DED8CC]" />
 
