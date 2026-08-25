@@ -31,7 +31,7 @@ class ArbiterAgent(AgentBase):
         targets = list(dict.fromkeys(
             str(item.get("target_agent"))
             for item in findings
-            if item.get("target_agent") in {"doc", "guide", "quiz", "mindmap", "reading", "code", "video"}
+            if item.get("target_agent") in {"doc", "guide", "quiz", "mindmap", "code", "video"}
         ))
         evidence_metrics = (reviews.get("evidence_review") or {}).get("metrics") or {}
         difficulty_metrics = (reviews.get("difficulty_review") or {}).get("metrics") or {}
@@ -41,11 +41,10 @@ class ArbiterAgent(AgentBase):
         difficulty_accuracy = round(float(difficulty_metrics.get("difficulty_fit", difficulty_score)), 2)
         knowledge_coverage = round(float(difficulty_metrics.get("core_coverage", difficulty_score)), 2)
         outputs = context.get("outputs") or {}
-        resource_ids = ("doc", "guide", "quiz", "mindmap", "reading", "code", "video")
+        resource_ids = ("doc", "guide", "quiz", "mindmap", "code", "video")
         missing_resources = [resource_id for resource_id in resource_ids if not outputs.get(resource_id)]
         enhanced_checks = {
             "mindmap": bool(str((outputs.get("mindmap") or {}).get("content") or "").strip()),
-            "reading": len((outputs.get("reading") or {}).get("items") or []) >= 3,
             "code": bool(str((outputs.get("code") or {}).get("code") or "").strip()),
             "video": bool((outputs.get("video") or {}).get("script")),
         }

@@ -7,13 +7,17 @@
  */
 import { useSyncExternalStore } from "react"
 
-export type UserRole = "student" | "judge" | "admin"
+export type UserRole = "student" | "worker" | "enterprise_admin" | "judge" | "admin"
 
 export interface CurrentUser {
   user_id: number
   name: string
   email?: string | null
   role: UserRole
+  learner_type?: "student" | "worker"
+  study_stage?: string
+  company?: string
+  target_role?: string
 }
 
 const STORAGE_KEY = "sm:current-user"
@@ -25,7 +29,7 @@ function loadFromStorage(): CurrentUser | null {
     if (!raw) return null
     const parsed = JSON.parse(raw) as CurrentUser
     if (typeof parsed.user_id !== "number" || !parsed.name) return null
-    const role: UserRole = parsed.role === "admin" || parsed.role === "judge" ? parsed.role : "student"
+    const role: UserRole = ["admin", "judge", "enterprise_admin", "worker"].includes(parsed.role) ? parsed.role : "student"
     return { ...parsed, role }
   } catch {
     return null

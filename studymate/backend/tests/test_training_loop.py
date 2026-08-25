@@ -56,6 +56,13 @@ class TrainingCatalogTests(unittest.TestCase):
                 self.assertEqual(mapped["domain"], target.domain)
                 self.assertEqual(mapped["core_competencies"], list(target.competencies))
 
+    def test_smart_manufacturing_roles_are_registered_with_isolated_courses(self):
+        role_ids = {"mes-engineer", "multimodal-llm", "industrial-ai-agent", "smart-manufacturing-software", "iot-specialist"}
+        self.assertTrue(role_ids.issubset(TARGET_ROLES))
+        for role_id in role_ids:
+            self.assertEqual(TARGET_ROLES[role_id].domain, "智能制造")
+            self.assertTrue(TARGET_ROLES[role_id].course_name.endswith("岗位知识库"))
+
     def test_unknown_course_has_safe_generic_role(self):
         role = resolve_training_role("新领域")
         self.assertEqual(role["domain"], "特定软件开发")

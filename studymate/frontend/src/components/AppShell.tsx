@@ -95,7 +95,7 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
     icon: Compass,
     items: [
       { label: "学习资源", to: "/resources", icon: Compass },
-      { label: "职业探索", to: "/career", icon: GraduationCap },
+      { label: "转岗培训", to: "/career", icon: GraduationCap },
       { label: "AI 面试", to: "/ai-interview", icon: MessageSquare },
     ],
   },

@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   Cpu,
   FileSearch,
+  Factory,
   GitBranch,
   MapPinned,
   MonitorCog,
@@ -27,25 +28,27 @@ import {
 } from "lucide-react"
 
 import { AppTopbar } from "@/components/AppTopbar"
-import { apiGet, apiPost } from "@/lib/api"
+import { ApiError, apiGet, apiPost } from "@/lib/api"
 import { careerDomains, type CareerDomain, type CareerRole, type DomainId } from "@/lib/domainCareerCatalog"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { setCurrentCourse, type CourseInfo } from "@/store/course"
 import { setTargetRole, useTargetRole } from "@/store/targetRole"
 import { clearWorkspaceState } from "@/store/workspace"
 
-const domainOrder: DomainId[] = ["ai", "software", "industrial"]
-const domainIcons = { ai: Sparkles, software: BriefcaseBusiness, industrial: Network }
+const domainOrder: DomainId[] = ["ai", "software", "industrial", "smart-manufacturing"]
+const domainIcons = { ai: Sparkles, software: BriefcaseBusiness, industrial: Network, "smart-manufacturing": Factory }
 const domainTones = {
   ai: { cover: "from-[#315E83] to-[#6F8A69]", chip: "bg-[#E7EDF3] text-[#315E83]" },
   software: { cover: "from-[#7E6B83] to-[#315E83]", chip: "bg-[#EEE9EF] text-[#7E6B83]" },
   industrial: { cover: "from-[#8E6925] to-[#3E7774]", chip: "bg-[#F4ECD8] text-[#8E6925]" },
+  "smart-manufacturing": { cover: "from-[#3E7774] to-[#315E83]", chip: "bg-[#E3EFEC] text-[#2F6D68]" },
 }
 
 const roleBookVisuals = {
   "ai-agent": { icon: Bot, label: "AGENT" }, "ai-infra": { icon: ServerCog, label: "INFRA" }, "embodied-ai": { icon: BrainCircuit, label: "EAI" }, "llm-security": { icon: ShieldAlert, label: "LLM SEC" }, "llm-application": { icon: PanelsTopLeft, label: "LLM APP" },
   fde: { icon: MapPinned, label: "FDE" }, devsecops: { icon: ShieldCheck, label: "DEVSEC" }, "rag-implementation": { icon: FileSearch, label: "RAG" }, mlops: { icon: GitBranch, label: "MLOPS" }, "ai-native-frontend": { icon: Cpu, label: "AI FE" },
   "industrial-architect": { icon: Network, label: "IIA" }, "industrial-data": { icon: ChartNoAxesCombined, label: "II DATA" }, "edge-ai": { icon: MonitorCog, label: "EDGE AI" }, "industrial-vision": { icon: ScanSearch, label: "VISION" }, "industrial-network": { icon: Cable, label: "II NET" },
+  "mes-engineer": { icon: Factory, label: "MES" }, "multimodal-llm": { icon: BrainCircuit, label: "MMLM" }, "industrial-ai-agent": { icon: Bot, label: "I AGENT" }, "smart-manufacturing-software": { icon: MonitorCog, label: "SM SW" }, "iot-specialist": { icon: Cable, label: "IIOT" },
 } as const
 
 interface CourseListResponse {
@@ -65,6 +68,7 @@ export function Courses() {
   const storedDomain = careerDomains.find((item) => item.roles.some((role) => role.id === storedRole?.id))?.id
   const [domainId, setDomainId] = useState<DomainId>(storedDomain ?? "ai")
   const [activationError, setActivationError] = useState("")
+  const [requiresLogin, setRequiresLogin] = useState(false)
   const [activatingRoleId, setActivatingRoleId] = useState("")
   const domain = domains.find((item) => item.id === domainId) ?? domains[0]
   const requestedReturnTo = searchParams.get("returnTo")
@@ -75,6 +79,7 @@ export function Courses() {
 
   async function selectRole(role: CareerRole) {
     setActivationError("")
+    setRequiresLogin(false)
     const roleChanged = storedRole?.id !== role.id
     setActivatingRoleId(role.id)
     try {
@@ -93,8 +98,13 @@ export function Courses() {
       }
       if (roleChanged) clearWorkspaceState()
       navigate(returnTo, { replace: true })
-    } catch {
-      setActivationError(`${role.name} 知识库暂未连接。请重新登录后刷新页面，再点击进入岗位训练。`)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        setRequiresLogin(true)
+        setActivationError("登录会话已失效，尚未读取岗位知识库。请重新登录后再选择岗位。")
+      } else {
+        setActivationError(`${role.name} 的岗位资料加载失败：${error instanceof Error ? error.message : "请稍后重试"}`)
+      }
     } finally {
       setActivatingRoleId("")
     }
@@ -128,7 +138,7 @@ export function Courses() {
 
             <section aria-labelledby="domain-heading">
               <div className="mb-3 flex items-center gap-2"><span className="grid size-6 place-items-center rounded-full bg-[#E7EDF3] text-[10px] font-bold text-[#315E83]">1</span><h2 id="domain-heading" className="text-sm font-bold text-[#18232D]">选择领域</h2></div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {domains.map((item) => {
                   const Icon = domainIcons[item.id]
                   const selected = item.id === domain.id
@@ -145,7 +155,7 @@ export function Courses() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {domain.roles.map((role, index) => <RoleBook key={role.id} role={role} domainId={domain.id} index={index} selected={storedRole?.id === role.id} activating={activatingRoleId === role.id} onSelect={() => void selectRole(role)} />)}
               </div>
-              {activationError && <p role="alert" className="mt-4 border border-[#DFC9BE] bg-[#F6ECE7] px-3 py-2 text-xs text-[#9A4E35]">{activationError}</p>}
+              {activationError && <div role="alert" className="mt-4 flex flex-wrap items-center justify-between gap-2 border border-[#DFC9BE] bg-[#F6ECE7] px-3 py-2 text-xs text-[#9A4E35]"><span>{activationError}</span>{requiresLogin && <Link to="/login" className="shrink-0 font-bold text-[#315E83] underline">前往登录</Link>}</div>}
             </section>
           </div>
         </section>

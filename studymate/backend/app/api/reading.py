@@ -21,11 +21,12 @@ class ReadingResolveItem(BaseModel):
 
 
 class ReadingResolveRequest(BaseModel):
+    topic: str = Field(default="", max_length=160)
     items: list[ReadingResolveItem] = Field(default_factory=list, max_length=12)
 
 
 @router.post("/resolve")
 async def resolve_reading_links(req: ReadingResolveRequest):
     items = [item.model_dump() for item in req.items]
-    resolved = await resolve_reading_items(items)
+    resolved = await resolve_reading_items(items, req.topic.strip())
     return {"count": len(resolved), "items": resolved}
