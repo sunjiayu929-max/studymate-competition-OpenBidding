@@ -92,13 +92,13 @@ export function AIInterview() {
               </div>
               <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
                 <button type="button" onClick={() => void startInterview()} disabled={launching || !role} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white shadow-[0_8px_18px_rgba(36,76,102,.16)] hover:bg-[#1D4058] disabled:cursor-wait disabled:opacity-60">{launching ? <LoaderCircle className="size-4 animate-spin" /> : <ExternalLink className="size-4" />}{launching ? "正在建立安全会话" : "进入独立 AI 面试"}</button>
-                <span className="text-[10px] leading-4 text-[#8A8172]">将打开独立面试页面，结束后返回查看结果。</span>
+                <span className="text-[10px] leading-4 text-[#8A8172]">将带入当前 StudyMate 账号打开独立面试页面，无需再次注册或登录。</span>
               </div>
               {error && <p className="mt-3 text-xs font-semibold text-[#9A4E35]" role="alert">{error}</p>}
             </section>
 
             <aside className="space-y-3" aria-label="面试说明">
-              <div className="rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] p-4"><ShieldCheck className="size-5 text-[#6F8A69]" /><h2 className="mt-3 text-sm font-bold text-[#18232D]">数据说明</h2><p className="mt-1.5 text-xs leading-5 text-[#66717B]">只向面试页面传递当前岗位和必要的账号信息。</p></div>
+              <div className="rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] p-4"><ShieldCheck className="size-5 text-[#6F8A69]" /><h2 className="mt-3 text-sm font-bold text-[#18232D]">账号说明</h2><p className="mt-1.5 text-xs leading-5 text-[#66717B]">使用当前 StudyMate 账号进入 AI 面试，不需要创建第二套普通用户账号。</p></div>
               <div className="rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] p-4"><FileCheck2 className="size-5 text-[#B1842C]" /><h2 className="mt-3 text-sm font-bold text-[#18232D]">成绩用途</h2><p className="mt-1.5 text-xs leading-5 text-[#66717B]">同步成绩后，训练建议会结合本次面试表现更新。</p></div>
             </aside>
           </div>
