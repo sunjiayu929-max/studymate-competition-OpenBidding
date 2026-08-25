@@ -34,7 +34,7 @@ class NoteIn(BaseModel):
     title: str = Field(..., min_length=1, max_length=256)
     content_md: str = ""
     tags: list[str] = Field(default_factory=list)
-    source: str = "manual"  # manual / doc / quiz / tutor
+    source: str = "manual"  # manual / doc / quiz / tutor / mindmap
 
 
 class NoteUpdate(BaseModel):
@@ -230,7 +230,7 @@ async def create_note(req: NoteIn, db: AsyncSession = Depends(get_db)):
         title=req.title.strip()[:256],
         content_md=req.content_md,
         tags=[t.strip()[:32] for t in req.tags if t.strip()][:16],
-        source=req.source if req.source in {"manual", "doc", "quiz", "tutor"} else "manual",
+        source=req.source if req.source in {"manual", "doc", "quiz", "tutor", "mindmap"} else "manual",
     )
     db.add(n)
     await db.commit()
