@@ -47,6 +47,11 @@ services:
       # backend_data 命名 volume 持久化数据库 + 上传文件，跨 `--build`/容器重建保留。
       # 普通重建不会覆盖数据。删除卷会永久清除用户数据，只能在明确备份后的重置场景执行。
       - backend_data:/app/data
+    # Keep an application spike from exhausting the small production VM.
+    mem_limit: "768m"
+    memswap_limit: "1536m"
+    cpus: 1.5
+    pids_limit: 512
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/ping"]
       interval: 10s
@@ -109,6 +114,10 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    mem_limit: "256m"
+    memswap_limit: "512m"
+    cpus: 0.5
+    pids_limit: 128
     logging:
       driver: local
       options:
@@ -137,6 +146,10 @@ services:
     depends_on:
       frontend:
         condition: service_healthy
+    mem_limit: "256m"
+    memswap_limit: "512m"
+    cpus: 0.5
+    pids_limit: 256
     logging:
       driver: local
       options:
