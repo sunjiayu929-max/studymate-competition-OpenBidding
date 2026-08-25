@@ -53,6 +53,11 @@ services:
       timeout: 3s
       retries: 5
       start_period: 20s
+    logging:
+      driver: local
+      options:
+        max-size: "100m"
+        max-file: "5"
 
   # 在线代码沙箱（Piston）：C / C++17 / Python 一键运行
   # ============================================================
@@ -82,6 +87,11 @@ services:
       - "127.0.0.1:2000:2000"   # 仅本机访问，公网不可达
     volumes:
       - piston_data:/piston
+    logging:
+      driver: local
+      options:
+        max-size: "100m"
+        max-file: "5"
 
   frontend:
     build:
@@ -99,6 +109,11 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    logging:
+      driver: local
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   # 公网入口：自动 HTTP -> HTTPS、申请并续期 Let's Encrypt 证书。
   # SITE_ADDRESS 默认 http://localhost；服务器上在 .deploy.env 写正式域名。
@@ -122,6 +137,11 @@ services:
     depends_on:
       frontend:
         condition: service_healthy
+    logging:
+      driver: local
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   # ===== 以下服务为顶奖版可选栈，默认不启动 =====
   # 启动方式：docker compose --profile extras up -d

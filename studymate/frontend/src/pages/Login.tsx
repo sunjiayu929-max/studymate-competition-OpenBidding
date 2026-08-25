@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useLocation, useNavigate } from "react-router-dom"
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import {
   AlertCircle,
@@ -21,7 +21,12 @@ import { setCurrentUser, useCurrentUser, type CurrentUser } from "@/store/user"
 
 type Mode = "login" | "register"
 interface AuthResponse extends CurrentUser { created: boolean }
-interface LocationState { from?: { pathname?: string } }
+interface LocationState { from?: { pathname?: string; search?: string; hash?: string } }
+
+function safeReturnTo(value: string | null): string | null {
+  if (!value || value.startsWith("//") || !value.startsWith("/api/oj/entry")) return null
+  return value
+}
 
 const ORBIT_PATHS = [
   "M320 122 m -140 0 a 140 98 0 1 0 280 0 a 140 98 0 1 0 -280 0",
@@ -44,6 +49,7 @@ function messageOf(error: unknown): string {
 export function Login() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const currentUser = useCurrentUser()
   const reduceMotion = useReducedMotion()
   const [mode, setMode] = useState<Mode>("login")
@@ -57,7 +63,11 @@ export function Login() {
   const [countdown, setCountdown] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const from = (location.state as LocationState | null)?.from?.pathname || "/"
+  const stateFrom = (location.state as LocationState | null)?.from
+  const statePath = stateFrom
+    ? `${stateFrom.pathname || "/"}${stateFrom.search || ""}${stateFrom.hash || ""}`
+    : null
+  const from = safeReturnTo(searchParams.get("return_to")) || statePath || "/"
 
   useEffect(() => {
     if (currentUser) navigate(from, { replace: true })

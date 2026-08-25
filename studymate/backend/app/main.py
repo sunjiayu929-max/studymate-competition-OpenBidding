@@ -110,6 +110,13 @@ async def _ensure_columns(conn):
         await conn.execute(
             text("CREATE INDEX IF NOT EXISTS ix_tutor_sessions_is_active ON tutor_sessions (is_active)")
         )
+    # OJ 启动票据的安全回跳路径；旧库上的列必须显式补齐。
+    rows = await conn.execute(text("PRAGMA table_info(oj_launch_tickets)"))
+    cols = {r[1] for r in rows.fetchall()}
+    if cols and "next_path" not in cols:
+        await conn.execute(
+            text("ALTER TABLE oj_launch_tickets ADD COLUMN next_path VARCHAR(512) NOT NULL DEFAULT '/oj/'")
+        )
     # 检查 quiz_session_items.error_tags（错题分类与自适应出题）
     rows = await conn.execute(text("PRAGMA table_info(quiz_session_items)"))
     cols = {r[1] for r in rows.fetchall()}
@@ -184,6 +191,7 @@ async def _ensure_columns(conn):
         ("2026.08.13-auto-rework", "移除人工复核状态，未通过裁决统一进入自动返工闭环"),
         ("2026.08.20-ai-interview", "AI 面试启动票据、报告回传与岗位画像证据"),
         ("2026.08.21-oj", "Hydro OJ 单点登录启动票据"),
+        ("2026.08.26-oj-sso", "StudyMate 严格 SSO、回跳路径和 OJ 会话退出"),
     )
     for version, description in migrations:
         await conn.execute(

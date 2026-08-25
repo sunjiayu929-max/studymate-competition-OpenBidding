@@ -14,9 +14,9 @@ git submodule update --init --recursive
 
 ## 访问与单点登录
 
-浏览器从 StudyMate 侧栏请求 `/api/oj/launch`。StudyMate 后端为当前用户创建短时一次性 ticket，并重定向到 `https://matropic.cn/oj/integrations/studymate/launch?ticket=...`。Hydro 插件通过 `studymate_edge` 调用 StudyMate `/api/internal/oj/tickets/redeem`，使用时间戳和 HMAC 签名兑换用户身份，然后创建或绑定 Hydro 用户会话。
+浏览器从 StudyMate 侧栏请求 `/api/oj/entry`。未登录用户会先回到 StudyMate `/login`，登录成功后携带安全校验过的 `return_to` 回到 OJ 入口。StudyMate 后端为当前用户创建短时一次性 ticket，并重定向到 `https://matropic.cn/oj/integrations/studymate/launch?ticket=...`。Hydro 插件通过 `studymate_edge` 调用 StudyMate `/api/internal/oj/tickets/redeem`，使用时间戳和 HMAC 签名兑换用户身份，然后创建或复用同一 Hydro 技术用户会话。
 
-ticket 只保存哈希，兑换成功后原子消费；过期、重复兑换、签名错误和停用用户都会被拒绝。StudyMate 和 Hydro 不共享密码、Cookie、数据库或认证密钥。
+ticket 只保存哈希和受限的 `/oj/...` 回跳路径，兑换成功后原子消费；过期、重复兑换、签名错误和停用用户都会被拒绝。Hydro 生产环境关闭内置登录、注册、找回密码和公开 OAuth，用户只能使用 StudyMate 身份。StudyMate `subject` 是唯一稳定映射键，不能用邮箱变更 Hydro UID，因此提交、练习、竞赛和历史记录会在重新登录后继续保留。StudyMate 和 Hydro 不共享密码、Cookie、数据库或认证密钥。
 
 ## Docker 网络
 
@@ -35,6 +35,6 @@ bash scripts/deploy.sh up
 bash scripts/deploy.sh status
 ```
 
-发布前备份 StudyMate SQLite、AI 面试 MySQL、OJ MongoDB 和 OJ 文件卷。普通升级不得执行 `docker compose down -v`。回滚使用上一组主仓库提交、Submodule revision 和已有命名卷。
+发布前使用 `scripts/backup-db.sh` 备份 StudyMate SQLite，并使用 `scripts/backup-oj.sh` 备份 OJ MongoDB 与文件卷。备份即使发现外键异常也会保留快照并输出审计报告；普通升级不得执行 `docker compose down -v`。回滚使用上一组主仓库提交、Submodule revision 和已有命名卷。
 
 验收至少包括：`/oj/` 页面、StudyMate 入口自动登录、ticket 一次性消费、Hydro Web 健康、HydroJudge 注册、Python/C++ 示例题提交，以及 `/api/run` 和 `/interview/health` 无回归。
