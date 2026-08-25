@@ -1,4 +1,4 @@
-"""将三个领域的 14 个岗位资料增量导入 StudyMate RAG 库。
+"""将四个领域的 19 个岗位资料增量导入 StudyMate RAG 库。
 
 资料位于 ``backend/resources/domain_knowledge/source_materials``。脚本支持
 Markdown 与 DOCX。正文含 [S1]/[G1] 等引用时，脚本解析同文件来源区的名称、
@@ -42,6 +42,11 @@ SUPPLEMENTAL_REFERENCES: dict[str, list[dict[str, str]]] = {
     "边缘计算 AI 工程师": [{"name": "ONNX Runtime 官方 GitHub 仓库（MIT）", "url": "https://github.com/microsoft/onnxruntime", "note": "补充核验资料"}],
     "工业 AI 视觉工程师": [{"name": "OpenCV 官方 GitHub 仓库（Apache-2.0）", "url": "https://github.com/opencv/opencv", "note": "补充核验资料"}],
     "工业互联网网络集成工程师": [{"name": "Eclipse Milo OPC UA SDK（EPL-2.0）", "url": "https://github.com/eclipse/milo", "note": "补充核验资料"}],
+    "MES工程师": [{"name": "MESA International：MES Explained", "url": "https://www.mesa.org/en/modelstrategicinitiatives/MESExplained.asp", "note": "补充核验资料"}],
+    "多模态大模型算法工程师": [{"name": "Hugging Face Transformers：视觉问答任务文档", "url": "https://huggingface.co/docs/transformers/tasks/visual_question_answering", "note": "补充核验资料"}],
+    "工业 AI Agent应用工程师": [{"name": "LangChain 官方 GitHub 仓库（MIT）", "url": "https://github.com/langchain-ai/langchain", "note": "补充核验资料"}],
+    "智能制造工程师（软件）": [{"name": "NIST：Smart Manufacturing Systems Design and Analysis", "url": "https://www.nist.gov/programs-projects/smart-manufacturing-systems-design-and-analysis", "note": "补充核验资料"}],
+    "物联网专项开发": [{"name": "OPC Foundation：OPC UA", "url": "https://opcfoundation.org/about/opc-technologies/opc-ua/", "note": "补充核验资料"}],
 }
 
 ROLE_SOURCES: tuple[tuple[str, str, str, str], ...] = (
@@ -59,6 +64,11 @@ ROLE_SOURCES: tuple[tuple[str, str, str, str], ...] = (
     ("工业互联网", "边缘计算AI工程师", "边缘计算 AI 工程师", "边缘设备、模型部署、性能与可靠性"),
     ("工业互联网", "工业AI视觉工程师", "工业 AI 视觉工程师", "缺陷数据、视觉模型、边缘部署与现场验收"),
     ("工业互联网", "工业互联网网络集成工程师", "工业互联网网络集成工程师", "工业网络、协议接入、联调、运维与安全"),
+    ("智能制造", "MES工程师", "MES工程师", "MES 建设实施、系统集成、生产追溯与运维优化"),
+    ("智能制造", "多模态大模型算法工程师", "多模态大模型算法工程师", "多模态数据、模型训练、视觉语言理解与评测部署"),
+    ("智能制造", "工业 AI Agent应用工程师", "工业 AI Agent应用工程师", "工业知识问答、Agent 工作流、工具调用与安全评测"),
+    ("智能制造", "智能制造工程师（软件）", "智能制造工程师（软件）", "工业软件、云边协同、数据集成与交付验证"),
+    ("智能制造", "物联网专项开发", "物联网专项开发", "设备接入、工业协议、边缘开发与联调运维"),
 )
 
 
@@ -375,6 +385,7 @@ def make_chunks(domain: str, folder: str, role: str) -> list[dict]:
                     "domain": domain,
                     "role": role,
                     "topic": heading,
+                    "material_path": path.relative_to(ROOT).as_posix(),
                     "citations": citations,
                     "source_status": source_status,
                     "difficulty": 2,

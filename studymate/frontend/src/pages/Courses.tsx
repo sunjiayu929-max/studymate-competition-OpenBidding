@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   Cpu,
   FileSearch,
+  Factory,
   GitBranch,
   MapPinned,
   MonitorCog,
@@ -34,18 +35,20 @@ import { setCurrentCourse, type CourseInfo } from "@/store/course"
 import { setTargetRole, useTargetRole } from "@/store/targetRole"
 import { clearWorkspaceState } from "@/store/workspace"
 
-const domainOrder: DomainId[] = ["ai", "software", "industrial"]
-const domainIcons = { ai: Sparkles, software: BriefcaseBusiness, industrial: Network }
+const domainOrder: DomainId[] = ["ai", "software", "industrial", "smart-manufacturing"]
+const domainIcons = { ai: Sparkles, software: BriefcaseBusiness, industrial: Network, "smart-manufacturing": Factory }
 const domainTones = {
   ai: { cover: "from-[#315E83] to-[#6F8A69]", chip: "bg-[#E7EDF3] text-[#315E83]" },
   software: { cover: "from-[#7E6B83] to-[#315E83]", chip: "bg-[#EEE9EF] text-[#7E6B83]" },
   industrial: { cover: "from-[#8E6925] to-[#3E7774]", chip: "bg-[#F4ECD8] text-[#8E6925]" },
+  "smart-manufacturing": { cover: "from-[#3E7774] to-[#315E83]", chip: "bg-[#E3EFEC] text-[#2F6D68]" },
 }
 
 const roleBookVisuals = {
   "ai-agent": { icon: Bot, label: "AGENT" }, "ai-infra": { icon: ServerCog, label: "INFRA" }, "embodied-ai": { icon: BrainCircuit, label: "EAI" }, "llm-security": { icon: ShieldAlert, label: "LLM SEC" }, "llm-application": { icon: PanelsTopLeft, label: "LLM APP" },
   fde: { icon: MapPinned, label: "FDE" }, devsecops: { icon: ShieldCheck, label: "DEVSEC" }, "rag-implementation": { icon: FileSearch, label: "RAG" }, mlops: { icon: GitBranch, label: "MLOPS" }, "ai-native-frontend": { icon: Cpu, label: "AI FE" },
   "industrial-architect": { icon: Network, label: "IIA" }, "industrial-data": { icon: ChartNoAxesCombined, label: "II DATA" }, "edge-ai": { icon: MonitorCog, label: "EDGE AI" }, "industrial-vision": { icon: ScanSearch, label: "VISION" }, "industrial-network": { icon: Cable, label: "II NET" },
+  "mes-engineer": { icon: Factory, label: "MES" }, "multimodal-llm": { icon: BrainCircuit, label: "MMLM" }, "industrial-ai-agent": { icon: Bot, label: "I AGENT" }, "smart-manufacturing-software": { icon: MonitorCog, label: "SM SW" }, "iot-specialist": { icon: Cable, label: "IIOT" },
 } as const
 
 interface CourseListResponse {
@@ -135,7 +138,7 @@ export function Courses() {
 
             <section aria-labelledby="domain-heading">
               <div className="mb-3 flex items-center gap-2"><span className="grid size-6 place-items-center rounded-full bg-[#E7EDF3] text-[10px] font-bold text-[#315E83]">1</span><h2 id="domain-heading" className="text-sm font-bold text-[#18232D]">选择领域</h2></div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {domains.map((item) => {
                   const Icon = domainIcons[item.id]
                   const selected = item.id === domain.id
