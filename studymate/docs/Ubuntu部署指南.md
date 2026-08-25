@@ -1,7 +1,9 @@
 # StudyMate Ubuntu 公网部署指南
 
-> 最后核对：2026-08-01。本文对应当前 `docker-compose.yml`、压缩种子库和 Caddy 部署方式。
+> 最后核对：2026-08-20。本文对应当前 `docker-compose.yml`、压缩种子库、Caddy 和独立 AI 面试服务部署方式。
 > 开始前先阅读 [`密钥管理指南.md`](密钥管理指南.md) 和 [`开发与验收指南.md`](开发与验收指南.md)。
+>
+> 当前服务器实况（2026-08-23）：生产 Caddy 已恢复宿主机标准 `80/443` 映射，公网入口已完成基本验收；历史端口切换和恢复过程见 [`部署说明与更新记录.md`](部署说明与更新记录.md)。
 
 ## 方案
 
@@ -9,12 +11,16 @@
 
 ```text
 浏览器 -> Caddy :80/:443 -> frontend nginx -> /api -> FastAPI -> SQLite/Piston
+                    └-> /interview/* -> 独立 ai-interview -> 独立 MySQL
+                    └-> /oj/* -> 独立 Hydro Web -> HydroJudge/MongoDB
 ```
 
 Caddy 自动申请、续期 HTTPS 证书。FastAPI、前端排障端口和 Piston 都只绑定
 `127.0.0.1`，云安全组无需开放这些端口。
 
 默认业务数据库是 SQLite。PostgreSQL、Redis 和 Chroma 属于 `extras` 扩展服务，当前部署不需要启动。
+AI 面试服务也不与主业务数据库共享数据，它使用同域路径 `https://matropic.cn/interview/*` 和独立 Compose 项目，学习者从带 ticket 的启动地址进入。详细配置见 [AI 面试部署指南](AI面试部署指南.md)。
+在线判题服务同样不与主业务数据库共享数据，使用 `../oj` Submodule 的独立 Compose 项目。StudyMate 侧栏通过一次性 ticket 进入 `https://matropic.cn/oj/`，Hydro Web 通过 `studymate_edge` 调用 StudyMate 内部兑换接口。OJ 的 MongoDB、HydroJudge 和测试数据只加入 OJ 私有网络。
 
 ## 1. DNS 与端口
 
@@ -128,7 +134,13 @@ mkdir -p ~/studymate
 ```bash
 rsync -az --delete --progress \
   --exclude '.git/' \
+  --exclude '.agents/' \
+  --exclude '.codex/' \
+  --exclude '__pycache__/' \
+  --exclude '*.pyc' \
+  --exclude '*.db' \
   --exclude 'frontend/node_modules/' \
+  --exclude 'frontend/test-results/' \
   --exclude 'backend/.venv/' \
   --exclude 'backend/.env' \
   --exclude 'backend/backups/' \
@@ -192,8 +204,18 @@ PRIVATE_KNOWLEDGE_DIR=./data/private_knowledge
 PRIVATE_KNOWLEDGE_OCR_MODE=unconfigured
 ```
 
+启用 AI 面试时，再按 [AI 面试部署指南](AI面试部署指南.md) 配置相邻的
+`~/ai-interview/.env`，并在 `~/studymate/.deploy.env` 增加：
+
+```dotenv
+AI_INTERVIEW_ENABLED=1
+AI_INTERVIEW_DIR=../ai-interview
+OJ_ENABLED=1
+OJ_DIR=../oj
+```
+
 如果同时使用主域名和 `www`，将两个 HTTPS 来源都写入 `CORS_ORIGINS`，逗号分隔。
-模型、语音、邮件和 Piston 变量按 `.env.example` 配置；没有启用的服务保持空值，不要复制其他环境中的旧 Key。
+模型、语音、邮件、Piston 和 OJ 变量按各自 `.env.example` 配置；没有启用的服务保持空值，不要复制其他环境中的旧 Key。
 私有知识库原文件默认保存在 `/app/data/private_knowledge`，与 SQLite 共用
 `studymate_backend_data` 命名卷，因此容器重建不会丢失。未接入 OCR 服务时应保持
 `PRIVATE_KNOWLEDGE_OCR_MODE=unconfigured`，扫描版 PDF 会进入可观察的失败状态，
@@ -210,10 +232,11 @@ PRIVATE_KNOWLEDGE_OCR_MODE=unconfigured
 
 ```bash
 cd ~/studymate
+bash scripts/deploy.sh preflight
 bash scripts/deploy.sh
 ```
 
-脚本会构建镜像、启动服务并初始化 Piston 的 Python/C/C++ runtime；Python runtime 还会按 `scripts/piston_python_libs.txt` 补齐固定版本的 `scikit-learn`、`matplotlib`、`seaborn`、`pillow`、`pandas`、`networkx`，与后端 `/api/run/capabilities` 白名单一致。
+脚本会构建镜像、启动服务并初始化 Piston 的 Python/C/C++ runtime；启用 OJ 后还会启动 `/home/deploy/oj` 的 Hydro Web、HydroJudge 和 MongoDB。Python runtime 还会按 `scripts/piston_python_libs.txt` 补齐固定版本的 `scikit-learn`、`matplotlib`、`seaborn`、`pillow`、`pandas`、`networkx`，与后端 `/api/run/capabilities` 白名单一致。
 
 如果服务器也无法访问 Docker Hub/GHCR，可先配置可信的 Docker registry mirror，
 或者把已经 `docker load` 的镜像名称写入 `.deploy.env` 中的 `CADDY_IMAGE`、
@@ -232,9 +255,12 @@ bash scripts/deploy.sh logs
 ```bash
 curl -I https://你的备案域名
 curl https://你的备案域名/api/ping
+curl https://你的备案域名/interview/health
+curl -I https://你的备案域名/oj/
 ```
 
 第一次上线还要手动检查登录、SSE 流式回答、文件上传、语音和在线代码运行。
+OJ 首次上线还要检查 StudyMate 侧栏入口、自动登录、HydroJudge 注册和至少一道 Python/C++ 题目的完整提交链路。
 
 还应检查外部资源的降级行为：
 

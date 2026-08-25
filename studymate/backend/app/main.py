@@ -518,7 +518,7 @@ async def _ensure_pramate_demo_enterprise(conn):
                     "user_id": learner[0],
                     "created_at": datetime.utcnow(),
                 },
-                )
+            )
 
 
 async def _ensure_role_knowledge_catalog() -> None:
