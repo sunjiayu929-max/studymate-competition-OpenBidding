@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { ArrowLeft, ArrowRight, Send, Loader2, Bot, RotateCw, Headphones, Paperclip, X, ShieldCheck, Sparkles, Target, AlertTriangle, Clock3, ImagePlus } from "lucide-react"
+import { ArrowLeft, ArrowRight, Send, Loader2, Bot, RotateCw, Headphones, Paperclip, X, ShieldCheck, Sparkles, Target, AlertTriangle, Clock3, ImagePlus, GraduationCap, BriefcaseBusiness, Save, UserRound, ChevronDown } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { AppTopbar } from "@/components/AppTopbar"
 import { Markdown } from "@/components/Markdown"
@@ -9,12 +9,12 @@ import { MicButton } from "@/components/MicButton"
 import { SpeakerButton } from "@/components/SpeakerButton"
 import { VoiceSelector } from "@/components/VoiceSelector"
 import { usePostSSE } from "@/hooks/usePostSSE"
-import { apiGet, apiPost } from "@/lib/api"
+import { apiGet, apiPatch, apiPost } from "@/lib/api"
 import { compressImage } from "@/lib/image"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useCurrentCourse } from "@/store/course"
 import { useTargetRole } from "@/store/targetRole"
-import { useCurrentUser } from "@/store/user"
+import { setCurrentUser, useCurrentUser } from "@/store/user"
 
 interface Msg {
   role: "user" | "assistant"
@@ -43,6 +43,15 @@ interface ProfileResp {
 
 type ProfileNotice = { tone: "success" | "info" | "warning" | "error"; message: string }
 
+type LearnerContext = {
+  name: string
+  learner_type: "student" | "worker"
+  study_stage: string
+  company: string
+  target_role: string
+  enterprise: unknown | null
+}
+
 export function ProfileChat() {
   useTrackPage("profile")
   const navigate = useNavigate()
@@ -60,6 +69,16 @@ export function ProfileChat() {
   const streamingRef = useRef("")  // 镜像 streaming，避开 StrictMode 在 setState updater 里 double-invoke 副作用
   const [lastReasoning, setLastReasoning] = useState("")
   const [profileNotice, setProfileNotice] = useState<ProfileNotice | null>(null)
+  const [identity, setIdentity] = useState<LearnerContext>({
+    name: user?.name || "",
+    learner_type: user?.learner_type || "student",
+    study_stage: user?.study_stage || "",
+    company: user?.company || "",
+    target_role: user?.target_role || "",
+    enterprise: null,
+  })
+  const [identitySaving, setIdentitySaving] = useState(false)
+  const [identityNotice, setIdentityNotice] = useState("")
   const endRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   // 用户是否「贴着底部」：只有贴底时才跟随自动滚，否则上滑看历史不被打断
@@ -167,6 +186,48 @@ export function ProfileChat() {
       active = false
     }
   }, [USER_ID, targetRole?.name])
+
+  useEffect(() => {
+    if (!USER_ID) return
+    let active = true
+    apiGet<LearnerContext>("/learner/context").then((context) => {
+      if (active) setIdentity(context)
+    }).catch(() => {
+      if (active) setIdentityNotice("身份资料暂时无法读取")
+    })
+    return () => {
+      active = false
+    }
+  }, [USER_ID])
+
+  const saveIdentity = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setIdentitySaving(true)
+    setIdentityNotice("")
+    try {
+      const next = await apiPatch<LearnerContext>("/learner/context", {
+        learner_type: identity.learner_type,
+        study_stage: identity.learner_type === "student" ? identity.study_stage.trim() : "",
+        company: identity.learner_type === "worker" ? identity.company.trim() : "",
+        target_role: identity.target_role.trim(),
+      })
+      setIdentity(next)
+      if (user) {
+        setCurrentUser({
+          ...user,
+          learner_type: next.learner_type,
+          study_stage: next.study_stage,
+          company: next.company,
+          target_role: next.target_role,
+        })
+      }
+      setIdentityNotice("身份资料已保存")
+    } catch (error) {
+      setIdentityNotice(error instanceof Error ? error.message : "身份资料保存失败，请稍后重试")
+    } finally {
+      setIdentitySaving(false)
+    }
+  }
 
   useEffect(() => {
     const scroller = scrollRef.current
@@ -415,6 +476,30 @@ export function ProfileChat() {
           </section>
 
           <aside className="space-y-3 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:pr-1 [scrollbar-color:#CFC8B9_transparent] [scrollbar-width:thin]">
+            <form onSubmit={saveIdentity} className="rounded-[22px] border border-[#CFC8B9] bg-[#F8F6F0] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-bold tracking-[0.12em] text-[#315E83]">身份资料</span>
+                  <h2 className="mt-1 text-sm font-bold tracking-[-0.02em] text-[#18232D]">随时调整学习身份</h2>
+                  <p className="mt-1 text-[10px] leading-4 text-[#7A817F]">注册后也可以修改，保存后会同步到菜单栏。</p>
+                </div>
+                <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83]"><UserRound className="size-3.5" /></span>
+              </div>
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-2.5 text-[11px] font-semibold text-[#18232D]">
+                <UserRound className="size-3.5 shrink-0 text-[#66717B]" />
+                <span className="truncate">{identity.name || user?.name || "学习者"}</span>
+              </div>
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-[#D7D1C4] bg-[#F1EDE4] px-3 py-2 text-[10px] font-bold text-[#59636B]">
+                {identity.learner_type === "student" ? <GraduationCap className="size-3.5 text-[#315E83]" /> : <BriefcaseBusiness className="size-3.5 text-[#52704D]" />}
+                <span>注册身份 · {identity.learner_type === "student" ? "学生" : "从业者"}</span>
+              </div>
+              {identity.learner_type === "student" ? (
+                <label className="mt-3 block"><span className="mb-1.5 block text-[10px] font-bold text-[#394950]">学习阶段</span><span className="group relative flex h-10 items-center rounded-xl border border-[#D7D1C4] bg-white transition-[border-color,box-shadow] focus-within:border-[#244C66] focus-within:shadow-[0_0_0_3px_rgba(197,212,217,.55)]"><GraduationCap className="ml-3 size-3.5 shrink-0 text-[#8A918F] transition-colors group-focus-within:text-[#244C66]" /><select value={identity.study_stage} onChange={(event) => setIdentity((current) => ({ ...current, study_stage: event.target.value }))} className={`h-full min-w-0 flex-1 appearance-none bg-transparent px-2.5 pr-8 text-xs outline-none ${identity.study_stage ? "text-[#293D2A]" : "text-[#9A9F9C]"}`}><option value="">暂不填写</option><option value="本科">本科</option><option value="研究生">研究生</option><option value="博士">博士</option></select><ChevronDown className="pointer-events-none absolute right-3 size-3.5 text-[#8A918F]" /></span></label>
+              ) : (
+                <label className="mt-3 block"><span className="mb-1.5 block text-[10px] font-bold text-[#394950]">在职公司</span><span className="flex h-10 items-center rounded-xl border border-[#D7D1C4] bg-white px-3 focus-within:border-[#52704D]"><BriefcaseBusiness className="mr-2 size-3.5 shrink-0 text-[#8A918F]" /><input value={identity.company} onChange={(event) => setIdentity((current) => ({ ...current, company: event.target.value }))} placeholder="例如：星河科技" className="min-w-0 flex-1 bg-transparent text-xs text-[#293D2A] outline-none placeholder:text-[#9AA598]" /></span></label>
+              )}
+              <div className="mt-3 flex items-center justify-between gap-2"><span role={identityNotice.includes("失败") || identityNotice.includes("无法") ? "alert" : "status"} className={`min-w-0 truncate text-[10px] ${identityNotice.includes("失败") || identityNotice.includes("无法") ? "text-[#9A4E35]" : "text-[#557052]"}`}>{identityNotice}</span><button type="submit" disabled={identitySaving} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[#244C66] px-3 text-[10px] font-bold text-white disabled:opacity-50">{identitySaving ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}保存资料</button></div>
+            </form>
             <section className="rounded-[22px] border border-[#CFC8B9] bg-[#F8F6F0] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>

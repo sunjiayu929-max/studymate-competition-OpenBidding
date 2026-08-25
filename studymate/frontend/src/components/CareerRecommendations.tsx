@@ -32,7 +32,7 @@ function sameAbility(a: string, b: string): boolean {
   return ABILITY_GROUPS.some((group) => group.some((word) => a.includes(word)) && group.some((word) => b.includes(word)))
 }
 
-function transferScore(current: CareerRole, candidate: CareerRole, sameDomain: boolean): TransferRole {
+function transferScore(current: CareerRole, candidate: CareerRole, domainId: DomainId, sameDomain: boolean): TransferRole {
   const sharedSkills = candidate.skills.filter((skill) => current.skills.some((currentSkill) => sameAbility(skill, currentSkill)))
   const gaps = candidate.skills.filter((skill) => !sharedSkills.includes(skill))
   const skillRate = candidate.skills.length ? sharedSkills.length / candidate.skills.length : 0
@@ -40,7 +40,7 @@ function transferScore(current: CareerRole, candidate: CareerRole, sameDomain: b
     ? candidate.baseCourses.filter((course) => current.baseCourses.includes(course)).length / candidate.baseCourses.length
     : 0
   const score = Math.min(98, Math.round(20 + skillRate * 48 + baseRate * 20 + (sameDomain ? 12 : 0)))
-  return { role: candidate, domainId: "ai", score, sharedSkills, gaps }
+  return { role: candidate, domainId, score, sharedSkills, gaps }
 }
 
 function recruitmentLinks(role: CareerRole) {
@@ -62,7 +62,7 @@ export function CareerRecommendations({ profileVersion: _profileVersion = 0, com
     const currentDomainId = careerDomains.find((item) => item.roles.some((current) => current.id === currentRole.id))?.id
     return careerDomains.flatMap((domain) => domain.roles
       .filter((role) => role.id !== currentRole.id && role.knowledgeBaseState === "ready")
-      .map((role) => ({ ...transferScore(currentRole, role, domain.id === currentDomainId), domainId: domain.id })))
+      .map((role) => transferScore(currentRole, role, domain.id, domain.id === currentDomainId)))
       .sort((a, b) => b.score - a.score)
       .slice(0, compact ? 2 : 4)
   }, [compact, currentRole])
