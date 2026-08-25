@@ -29,7 +29,7 @@ const FALLBACK: ModelInfo[] = [
   { id: "mimo", label: "MiMo", description: "自然对话与总结", configured: false, recommended: false },
 ]
 
-export function ModelSelector({ compact = false }: { compact?: boolean }) {
+export function ModelSelector({ compact = false, expanded = false }: { compact?: boolean; expanded?: boolean }) {
   const value = useTutorModelProvider()
   const [items, setItems] = useState<ModelInfo[]>(FALLBACK)
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading")
@@ -52,6 +52,21 @@ export function ModelSelector({ compact = false }: { compact?: boolean }) {
   }, [])
 
   const current = items.find((item) => item.id === value) || items[0]
+
+  if (expanded) {
+    return (
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4" aria-label="选择生成模型">
+        {items.map((item) => {
+          const selected = item.id === value
+          const unavailable = status === "ready" && !item.configured
+          return <button key={item.id} type="button" onClick={() => setTutorModelProvider(item.id)} disabled={unavailable} className={`min-h-16 rounded-xl border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${selected ? "border-[#315E83] bg-[#E7EDF3] text-[#244C66]" : "border-[#D7D1C4] bg-[#FFFEFA] text-[#59636B] hover:border-[#9FB1BC] hover:bg-[#F8F6F0]"}`}>
+            <span className="flex items-center gap-1.5 text-xs font-bold"><Bot className="size-3.5 text-[#B1842C]" />{item.label}{item.recommended && <span className="rounded-full bg-[#F4ECD8] px-1.5 py-0.5 text-[8px] text-[#8E6925]">推荐</span>}</span>
+            <span className="mt-1 block text-[10px] leading-4 text-[#7A817F]">{unavailable ? "未配置" : item.description}</span>
+          </button>
+        })}
+      </div>
+    )
+  }
 
   return (
     <label

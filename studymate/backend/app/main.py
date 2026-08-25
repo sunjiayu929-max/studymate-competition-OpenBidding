@@ -280,15 +280,19 @@ async def _ensure_seed_user(
             "password_hash": _seed_password_hash.hash(password),
             "verified_at": verified_at,
             "created_at": verified_at,
+            "learner_type": "student",
+            "study_stage": "",
+            "company": "",
+            "target_role": "",
         }
         if user_id is None:
             await conn.execute(
                 text(
                     "INSERT INTO users "
                     "(name, role, email, password_hash, email_verified_at, "
-                    "is_active, created_at) VALUES "
+                    "is_active, created_at, learner_type, study_stage, company, target_role) VALUES "
                     "(:name, :role, :email, :password_hash, :verified_at, "
-                    "1, :created_at)"
+                    "1, :created_at, :learner_type, :study_stage, :company, :target_role)"
                 ),
                 values,
             )
@@ -297,9 +301,9 @@ async def _ensure_seed_user(
                 text(
                     "INSERT INTO users "
                     "(id, name, role, email, password_hash, email_verified_at, "
-                    "is_active, created_at) VALUES "
+                    "is_active, created_at, learner_type, study_stage, company, target_role) VALUES "
                     "(:user_id, :name, :role, :email, :password_hash, "
-                    ":verified_at, 1, :created_at)"
+                    ":verified_at, 1, :created_at, :learner_type, :study_stage, :company, :target_role)"
                 ),
                 {"user_id": user_id, **values},
             )
@@ -531,12 +535,52 @@ async def _ensure_pramate_demo_enterprise(conn):
             )
 
 
+async def _ensure_role_knowledge_catalog() -> None:
+    """补齐 SQLite 本地库中缺失的岗位课程与检索切片。
+
+    Docker 种子库只携带基础课程目录；岗位资料作为可审阅源文件独立维护。
+    因此裸跑首次解压种子库后，需要在应用启动时做一次幂等导入，否则前端
+    会把目录中的岗位标为可用，却无法为它找到对应的 course_id。
+    """
+    if not settings.DATABASE_URL.startswith("sqlite:"):
+        return
+
+    from app.courses import list_course_names
+
+    expected = {name for name in list_course_names() if name.endswith("岗位知识库")}
+    if not expected:
+        return
+
+    async with engine.connect() as conn:
+        rows = await conn.execute(
+            text(
+                "SELECT courses.name, COUNT(knowledge_chunks.id) "
+                "FROM courses LEFT JOIN knowledge_chunks "
+                "ON knowledge_chunks.course_id = courses.id "
+                "WHERE courses.name LIKE :suffix GROUP BY courses.id"
+            ),
+            {"suffix": "%岗位知识库"},
+        )
+        imported = {name for name, chunk_count in rows if chunk_count > 0}
+
+    if expected.issubset(imported):
+        return
+
+    from scripts.import_fde_knowledge import import_catalog as import_fde_catalog
+    from scripts.import_role_knowledge import main as import_role_catalog
+
+    await import_fde_catalog()
+    await import_role_catalog()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 启动时：建表（开发用，正式上 alembic）
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await _ensure_columns(conn)
+    await _ensure_role_knowledge_catalog()
+    async with engine.begin() as conn:
         await _ensure_seed_users(conn)
         await _ensure_pramate_demo_enterprise(conn)
     await knowledge_api.mark_interrupted_tasks_failed()

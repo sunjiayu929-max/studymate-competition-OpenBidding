@@ -27,7 +27,7 @@ import {
 } from "lucide-react"
 
 import { AppTopbar } from "@/components/AppTopbar"
-import { apiGet, apiPost } from "@/lib/api"
+import { ApiError, apiGet, apiPost } from "@/lib/api"
 import { careerDomains, type CareerDomain, type CareerRole, type DomainId } from "@/lib/domainCareerCatalog"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { setCurrentCourse, type CourseInfo } from "@/store/course"
@@ -65,6 +65,7 @@ export function Courses() {
   const storedDomain = careerDomains.find((item) => item.roles.some((role) => role.id === storedRole?.id))?.id
   const [domainId, setDomainId] = useState<DomainId>(storedDomain ?? "ai")
   const [activationError, setActivationError] = useState("")
+  const [requiresLogin, setRequiresLogin] = useState(false)
   const [activatingRoleId, setActivatingRoleId] = useState("")
   const domain = domains.find((item) => item.id === domainId) ?? domains[0]
   const requestedReturnTo = searchParams.get("returnTo")
@@ -75,6 +76,7 @@ export function Courses() {
 
   async function selectRole(role: CareerRole) {
     setActivationError("")
+    setRequiresLogin(false)
     const roleChanged = storedRole?.id !== role.id
     setActivatingRoleId(role.id)
     try {
@@ -93,8 +95,13 @@ export function Courses() {
       }
       if (roleChanged) clearWorkspaceState()
       navigate(returnTo, { replace: true })
-    } catch {
-      setActivationError(`${role.name} 知识库暂未连接。请重新登录后刷新页面，再点击进入岗位训练。`)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        setRequiresLogin(true)
+        setActivationError("登录会话已失效，尚未读取岗位知识库。请重新登录后再选择岗位。")
+      } else {
+        setActivationError(`${role.name} 的岗位资料加载失败：${error instanceof Error ? error.message : "请稍后重试"}`)
+      }
     } finally {
       setActivatingRoleId("")
     }
@@ -145,7 +152,7 @@ export function Courses() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {domain.roles.map((role, index) => <RoleBook key={role.id} role={role} domainId={domain.id} index={index} selected={storedRole?.id === role.id} activating={activatingRoleId === role.id} onSelect={() => void selectRole(role)} />)}
               </div>
-              {activationError && <p role="alert" className="mt-4 border border-[#DFC9BE] bg-[#F6ECE7] px-3 py-2 text-xs text-[#9A4E35]">{activationError}</p>}
+              {activationError && <div role="alert" className="mt-4 flex flex-wrap items-center justify-between gap-2 border border-[#DFC9BE] bg-[#F6ECE7] px-3 py-2 text-xs text-[#9A4E35]"><span>{activationError}</span>{requiresLogin && <Link to="/login" className="shrink-0 font-bold text-[#315E83] underline">前往登录</Link>}</div>}
             </section>
           </div>
         </section>

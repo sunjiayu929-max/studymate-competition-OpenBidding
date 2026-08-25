@@ -51,7 +51,7 @@ const PAGE_META: Record<PageId, { label: string; group: string; icon: typeof Hom
   knowledge: { label: "自建知识库", group: "知识与笔记", icon: Database },
   ppt: { label: "PPT 生成", group: "AI 学习工具", icon: Presentation },
   resources: { label: "学习资源", group: "发现与拓展", icon: Compass },
-  career: { label: "职业探索", group: "发现与拓展", icon: GraduationCap },
+  career: { label: "转岗培训", group: "发现与拓展", icon: GraduationCap },
   report: { label: "实时学习报告", group: "练习与成长", icon: BarChart3 },
   tests: { label: "测试管理", group: "辅助入口", icon: ClipboardCheck },
   courses: { label: "岗位空间", group: "求职准备", icon: Library },
