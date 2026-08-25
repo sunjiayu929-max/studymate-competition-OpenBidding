@@ -23,9 +23,11 @@ interface Props {
   initialTopic?: string
   /** 岗位训练验收达标后进入的进阶挑战预设。 */
   challengePreset?: boolean
+  /** 直接嵌入页面使用，显示全部设置而不是弹出遮罩层。 */
+  embedded?: boolean
 }
 
-export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", challengePreset = false }: Props) {
+export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", challengePreset = false, embedded = false }: Props) {
   const user = useCurrentUser()
   const USER_ID = user?.user_id ?? 0
   const course = useCurrentCourse()
@@ -49,7 +51,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
   const [recommendation, setRecommendation] = useState<QuizRecommendation | null>(null)
 
   useEffect(() => {
-    if (!open) return
+    if (!open || embedded) return
     const frame = window.requestAnimationFrame(() => {
       setTopic(initialTopic.trim() || "综合复习")
       setDifficulty(challengePreset ? 3 : 2)
@@ -72,7 +74,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
 
   // ESC 关闭
   useEffect(() => {
-    if (!open) return
+    if (!open || embedded) return
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = "hidden"
     const onKey = (e: KeyboardEvent) => {
@@ -83,7 +85,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
       document.body.style.overflow = previousOverflow
       window.removeEventListener("keydown", onKey)
     }
-  }, [open, submitting, onClose])
+  }, [embedded, open, submitting, onClose])
 
   const total = mcq + fill + code
 
@@ -125,12 +127,12 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#18232D]/35 p-3 backdrop-blur-[2px] sm:p-4" role="dialog" aria-modal="true" aria-labelledby="new-quiz-title" onMouseDown={(event) => { if (event.target === event.currentTarget && !submitting) onClose() }}>
+    <div className={embedded ? "w-full" : "fixed inset-0 z-50 flex items-center justify-center bg-[#18232D]/35 p-3 backdrop-blur-[2px] sm:p-4"} role="dialog" aria-modal={!embedded} aria-labelledby="new-quiz-title" onMouseDown={embedded ? undefined : (event) => { if (event.target === event.currentTarget && !submitting) onClose() }}>
       <motion.div
         initial={{ opacity: 0, y: 16, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 380, damping: 26 }}
-        className="flex max-h-[min(92dvh,780px)] w-full max-w-lg flex-col overflow-hidden rounded-[24px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_24px_70px_rgba(24,35,45,.18)]"
+        className={`flex max-h-[min(92dvh,780px)] w-full ${embedded ? "max-w-none rounded-[22px] shadow-[0_10px_28px_rgba(24,35,45,.06)]" : "max-w-lg rounded-[24px] shadow-[0_24px_70px_rgba(24,35,45,.18)]"} flex-col overflow-hidden border border-[#CFC8B9] bg-[#FFFEFA]`}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-[#D7D1C4] bg-[#F8F6F0] px-5 py-3.5">
           <div className="flex items-center gap-2 min-w-0">
@@ -147,7 +149,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
               </div>
             </div>
           </div>
-          <button
+          {!embedded && <button
             type="button"
             onClick={() => !submitting && onClose()}
             disabled={submitting}
@@ -155,7 +157,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
             aria-label="关闭"
           >
             <X className="size-4" />
-          </button>
+          </button>}
         </div>
 
         <div className="min-h-0 space-y-4 overflow-y-auto px-5 py-4">
@@ -268,9 +270,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
             {challengePreset ? "已按本轮任务点预填，并将难度设为进阶" : "结合当前岗位与能力画像生成"}
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>
-              取消
-            </Button>
+            {!embedded && <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>取消</Button>}
             <Button size="sm" onClick={handleStart} disabled={submitting || total === 0 || !course}>
               {submitting ? (
                 <>

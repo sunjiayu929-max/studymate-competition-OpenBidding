@@ -44,11 +44,9 @@ function transferScore(current: CareerRole, candidate: CareerRole, sameDomain: b
 }
 
 function recruitmentLinks(role: CareerRole) {
-  const keyword = encodeURIComponent(role.name.trim())
   return [
-    { label: "BOSS 直聘", url: `https://www.zhipin.com/web/geek/job?query=${keyword}&city=100010000`, event: "boss_jobs" },
-    { label: "智联招聘", url: `https://sou.zhaopin.com/?jl=530&kw=${keyword}&kt=3`, event: "zhaopin_jobs" },
-    { label: "前程无忧", url: `https://we.51job.com/pc/search?keyword=${keyword}&searchType=2`, event: "51job_jobs" },
+    { label: "BOSS 直聘", url: "https://www.zhipin.com/zhaopin/", event: "boss_jobs" },
+    { label: "智联招聘", url: "https://www.zhaopin.com/zhaopin/", event: "zhaopin_jobs" },
   ].map((item) => ({ ...item, query: role.name }))
 }
 
@@ -131,7 +129,7 @@ export function CareerRecommendations({ profileVersion: _profileVersion = 0, com
               <span className="text-[9px] font-semibold text-[#557052]">知识库已导入</span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2 border-t border-[#E3DED3] pt-3">
-              {recruitmentLinks(item.role).map((link) => <a key={link.label} href={link.url} target="_blank" rel="noreferrer noopener" onClick={() => track("external_resource_open", link.event, link.query)} className="inline-flex items-center gap-1.5 rounded-xl border border-[#D7D1C4] bg-[#F8F6F0] px-3 py-1.5 text-[10px] font-bold text-[#59636B] hover:border-[#9FB1BC] hover:text-[#315E83]">在{link.label}查看需求<ExternalLink className="size-3" /></a>)}
+              {recruitmentLinks(item.role).map((link) => <a key={link.label} href={link.url} target="_blank" rel="noreferrer noopener" onClick={() => track("external_resource_open", link.event, link.query)} className="inline-flex items-center gap-1 rounded-lg border border-[#D7D1C4] bg-[#F8F6F0] px-2 py-1 text-[9px] font-bold text-[#59636B] hover:border-[#9FB1BC] hover:text-[#315E83]">在{link.label}查看需求<ExternalLink className="size-2.5" /></a>)}
             </div>
           </article>
         ))}
