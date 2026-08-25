@@ -1,0 +1,59 @@
+<view class="page home-page">
+  <view class="brand-row home-topbar">
+    <view class="brand-mark">SM</view>
+    <view class="home-heading">
+      <text class="eyebrow">STUDYMATE</text>
+      <text class="worker-label">从业者端</text>
+      <text class="page-title">今日任务</text>
+    </view>
+    <button class="ghost-button logout-button" bindtap="logout">退出</button>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-box top-space">正在同步企业任务...</view>
+  <block wx:else>
+    <view wx:if="{{error}}" class="error-box top-space">
+      <text>{{error}}</text>
+      <button class="secondary-button retry-button" bindtap="loadData">重新加载</button>
+    </view>
+
+    <view wx:if="{{!error && hasEnterprise}}" class="card enterprise-hero top-space">
+      <text class="hero-kicker">企业培训协作</text>
+      <text class="hero-title">{{context.enterprise.name}}</text>
+      <text class="hero-detail">{{context.name}} · {{context.target_role || "从业者"}}</text>
+      <view class="hero-rule"></view>
+      <view class="stats-row">
+        <view class="stat-item"><text class="stat-number">{{stats.total}}</text><text class="stat-label">全部任务</text></view>
+        <view class="stat-item"><text class="stat-number">{{stats.pending}}</text><text class="stat-label">待处理</text></view>
+        <view class="stat-item"><text class="stat-number">{{stats.completed}}</text><text class="stat-label">已完成</text></view>
+      </view>
+    </view>
+
+    <view wx:if="{{!error && !hasEnterprise}}" class="card join-card top-space">
+      <text class="hero-kicker">还未加入企业</text>
+      <text class="section-title join-title">输入邀请码，接收岗位任务</text>
+      <text class="section-detail">加入后只能属于一个企业，管理员发布的训练和阅读任务会出现在这里。</text>
+      <input class="input join-input" value="{{inviteCode}}" placeholder="请输入企业邀请码" placeholder-class="input-placeholder" bindinput="onInviteInput" />
+      <button class="primary-button" loading="{{joinLoading}}" disabled="{{joinLoading}}" bindtap="joinEnterprise">加入企业</button>
+      <text class="demo-hint">演示环境可使用企业管理员提供的邀请码</text>
+    </view>
+
+    <view wx:if="{{!error && hasEnterprise}}" class="task-section">
+      <view class="section-heading-row">
+        <view><text class="section-title">我的企业任务</text><text class="section-detail">优先处理待接受和进行中的任务</text></view>
+        <text class="task-count">{{tasks.length}} 项</text>
+      </view>
+      <view wx:if="{{tasks.length}}" class="task-list">
+        <view wx:for="{{tasks}}" wx:key="id" class="card task-card" bindtap="openTask" data-id="{{item.id}}">
+          <view class="task-head">
+            <text class="type-pill {{item.task_type}}">{{item.typeLabel}}</text>
+            <text class="status-pill">{{item.statusLabel}}</text>
+          </view>
+          <text class="task-title">{{item.title}}</text>
+          <text class="task-description">{{item.description}}</text>
+          <view class="task-foot"><text>{{item.target_role || "全员任务"}} · {{item.due_label}}</text><text class="task-action">{{item.actionLabel}} ></text></view>
+        </view>
+      </view>
+      <view wx:else class="empty-box">企业管理员还没有发布任务。<text class="empty-subtitle">发布后会在这里同步显示。</text></view>
+    </view>
+  </block>
+</view>
