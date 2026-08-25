@@ -1,6 +1,6 @@
 """
 多 Agent 编排器。
-状态机风格：retrieve → [doc, guide, quiz, mindmap, reading, code]（并发）→ done
+状态机风格：retrieve → [doc, guide, quiz, mindmap, code, video]（并发）→ done
 
 事件协议（推送给前端 SSE）：
   meta            首次发，包含所有 Agent 元数据
@@ -404,9 +404,9 @@ class TrainingLoopOrchestrator:
         reviews = ctx.get("reviews") or {}
         outputs = ctx.get("outputs") or {}
         reviewer_targets = {
-            "evidence_review": ("doc", "guide", "quiz", "mindmap", "reading", "video"),
+            "evidence_review": ("doc", "guide", "quiz", "mindmap", "video"),
             "practice_review": ("guide", "code"),
-            "difficulty_review": ("quiz", "mindmap", "reading", "code", "video"),
+            "difficulty_review": ("quiz", "mindmap", "code", "video"),
         }
         exchanges = []
         for reviewer_id, resource_ids in reviewer_targets.items():
@@ -431,7 +431,7 @@ class TrainingLoopOrchestrator:
             "round": int(ctx.get("generation_round", 1)),
             "title": "第二次辩论 · 资源生成与审核质询",
             "participants": [
-                "doc", "guide", "quiz", "mindmap", "reading", "code", "video",
+                "doc", "guide", "quiz", "mindmap", "code", "video",
                 *reviewer_targets.keys(),
             ],
             "exchanges": exchanges,
@@ -517,7 +517,7 @@ class TrainingLoopOrchestrator:
     @staticmethod
     def _feedback_by_target(reviews: dict) -> dict[str, list[dict]]:
         feedback: dict[str, list[dict]] = {
-            "doc": [], "guide": [], "quiz": [], "mindmap": [], "reading": [], "code": [], "video": [],
+            "doc": [], "guide": [], "quiz": [], "mindmap": [], "code": [], "video": [],
         }
         for review in reviews.values():
             for finding in review.get("findings", []):

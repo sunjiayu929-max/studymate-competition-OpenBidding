@@ -282,7 +282,7 @@ export function KnowledgeBase() {
             <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D7D1C4] bg-[#F8F6F0] px-4 py-4 sm:px-5">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h1 className="truncate text-base font-bold text-[#18232D]">{selected?.name || "创建第一个私有知识库"}</h1>
+                  <h1 className="truncate text-base font-bold text-[#18232D]">{selected?.name || "创建私有知识库"}</h1>
                   {selected && selectedId === selected.id && <span className="rounded-full bg-[#E9EEE6] px-2 py-1 text-[9px] font-bold text-[#557052]">助教已选用</span>}
                 </div>
                 <p className="mt-1 text-[11px] text-[#66717B]">{selected?.bound_course_id ? `已绑定岗位 ID ${selected.bound_course_id}` : "可绑定当前岗位，也可在任意助教会话中使用"}</p>
@@ -340,10 +340,12 @@ export function KnowledgeBase() {
                       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#FFFEFA] text-[#315E83] shadow-sm"><FileText className="size-4.5" /></span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2"><strong className="truncate text-[11px] text-[#18232D]">{document.filename}</strong><span className={`shrink-0 rounded-full px-2 py-0.5 text-[8px] font-bold ${document.status === "ready" ? "bg-[#E9EEE6] text-[#557052]" : document.status === "ready_keyword" ? "bg-[#F4ECD8] text-[#8E6925]" : document.status === "error" ? "bg-[#F4E8E2] text-[#9A4E35]" : "bg-[#E7EDF3] text-[#315E83]"}`}>{document.status === "ready" ? "向量检索就绪" : document.status === "ready_keyword" ? "关键词检索就绪" : document.status === "error" ? "处理失败" : document.status === "queued" ? "等待后台处理" : document.status === "vectorizing" ? "正在向量化" : "正在解析"}</span></div>
-                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                          <Progress label="解析" value={document.parse_progress} />
-                          <Progress label="向量化" value={document.vector_progress} />
-                        </div>
+                        {["queued", "parsing", "vectorizing"].includes(document.status) && (
+                          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                            <Progress label="解析" value={document.parse_progress} />
+                            <Progress label="向量化" value={document.vector_progress} />
+                          </div>
+                        )}
                         <p className={`mt-1.5 text-[9px] ${document.status === "error" ? "text-[#9A4E35]" : "text-[#7A817F]"}`}>{document.page_count ? `${document.page_count} 页 · ` : ""}{document.error_detail || `${Math.ceil(document.size / 1024)} KB`}</p>
                         {document.ocr_status === "required_unconfigured" && <p className="mt-1 text-[9px] font-semibold text-[#8E6925]">OCR 状态：扫描 PDF 路径可插拔但当前未配置；不会伪装解析成功。</p>}
                       </div>

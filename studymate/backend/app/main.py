@@ -16,6 +16,8 @@ from app.db import models  # noqa: F401
 from app.deps import require_admin, require_user
 from app.api import health, profile, rag, workspace, tutor, eval as eval_api, tests as tests_api, courses as courses_api, notes as notes_api, events as events_api, feedback as feedback_api, auth as auth_api, voice as voice_api, quiz_sessions as quiz_sessions_api, theory_assessments as theory_assessments_api, run as run_api, concept as concept_api, bili as bili_api, ocr as ocr_api, rencaiya as rencaiya_api, careers as careers_api, reading as reading_api, knowledge as knowledge_api, ppt as ppt_api, interviews as interviews_api, enterprise as enterprise_api, oj as oj_api
 from app.video.assembler import VideoAssemblyError, media_file_path
+from app.demo_private_knowledge import ensure_demo_private_libraries
+from app.demo_notes import ensure_demo_notes_for_users
 
 
 _seed_password_hash = PasswordHash.recommended()
@@ -280,15 +282,19 @@ async def _ensure_seed_user(
             "password_hash": _seed_password_hash.hash(password),
             "verified_at": verified_at,
             "created_at": verified_at,
+            "learner_type": "student",
+            "study_stage": "",
+            "company": "",
+            "target_role": "",
         }
         if user_id is None:
             await conn.execute(
                 text(
                     "INSERT INTO users "
                     "(name, role, email, password_hash, email_verified_at, "
-                    "is_active, created_at) VALUES "
+                    "is_active, created_at, learner_type, study_stage, company, target_role) VALUES "
                     "(:name, :role, :email, :password_hash, :verified_at, "
-                    "1, :created_at)"
+                    "1, :created_at, :learner_type, :study_stage, :company, :target_role)"
                 ),
                 values,
             )
@@ -297,9 +303,9 @@ async def _ensure_seed_user(
                 text(
                     "INSERT INTO users "
                     "(id, name, role, email, password_hash, email_verified_at, "
-                    "is_active, created_at) VALUES "
+                    "is_active, created_at, learner_type, study_stage, company, target_role) VALUES "
                     "(:user_id, :name, :role, :email, :password_hash, "
-                    ":verified_at, 1, :created_at)"
+                    ":verified_at, 1, :created_at, :learner_type, :study_stage, :company, :target_role)"
                 ),
                 {"user_id": user_id, **values},
             )
@@ -514,7 +520,222 @@ async def _ensure_pramate_demo_enterprise(conn):
                     "user_id": learner[0],
                     "created_at": datetime.utcnow(),
                 },
+                )
+
+
+async def _ensure_private_demo_knowledge(conn):
+    """建立左侧可见的私有知识库入口，不伪造上传任务。"""
+    if not settings.DATABASE_URL.startswith("sqlite:"):
+        return
+    users = (await conn.execute(text("SELECT id FROM users"))).all()
+    for (user_id,) in users:
+        existing = await conn.execute(
+            text(
+                "SELECT id FROM user_knowledge_bases "
+                "WHERE user_id = :user_id AND name = :name LIMIT 1"
+            ),
+            {"user_id": user_id, "name": "岗位转岗公开资料库"},
+        )
+        library_id = existing.scalar_one_or_none()
+        if library_id is not None:
+            # 旧版本曾自动插入一份演示文档，清掉它以恢复右侧原本的空资料排版。
+            seeded_documents = (
+                await conn.execute(
+                    text(
+                        "SELECT id FROM user_knowledge_documents "
+                        "WHERE knowledge_base_id = :library_id "
+                        "AND filename = :filename AND source_path = ''"
+                    ),
+                    {"library_id": library_id, "filename": "岗位转岗公开资料.md"},
+                )
+            ).all()
+            for (document_id,) in seeded_documents:
+                await conn.execute(
+                    text("DELETE FROM user_knowledge_chunks WHERE document_id = :document_id"),
+                    {"document_id": document_id},
+                )
+                await conn.execute(
+                    text("DELETE FROM user_knowledge_documents WHERE id = :document_id"),
+                    {"document_id": document_id},
+                )
+            continue
+
+        now = datetime.utcnow()
+        await conn.execute(
+            text(
+                "INSERT INTO user_knowledge_bases "
+                "(user_id, name, description, bound_course_id, created_at, updated_at) "
+                "VALUES (:user_id, :name, :description, NULL, :created_at, :updated_at)"
+            ),
+            {
+                "user_id": user_id,
+                "name": "岗位转岗公开资料库",
+                "description": "StudyMate 自动建立的私有起点，可继续上传自己的岗位资料。",
+                "created_at": now,
+                "updated_at": now,
+            },
+        )
+
+
+async def _insert_demo_quiz_history(conn, *, user_id: int, course_id: int, course_name: str):
+    existing = await conn.execute(
+        text("SELECT id FROM quiz_sessions WHERE user_id = :user_id AND course_id = :course_id LIMIT 1"),
+        {"user_id": user_id, "course_id": course_id},
+    )
+    if existing.first() is not None:
+        return
+
+    role_name = str(course_name).removesuffix(" 岗位知识库")
+    now = datetime.utcnow()
+    await conn.execute(
+        text(
+            "INSERT INTO quiz_sessions "
+            "(user_id, course_id, topic, mcq_count, fill_count, code_count, difficulty, "
+            "mode, code_grading, status, score, duration_ms, submitted_at, created_at) "
+            "VALUES (:user_id, :course_id, :topic, 2, 1, 0, 2, 'exam', 'llm', "
+            "'submitted', 86, 420000, :submitted_at, :created_at)"
+        ),
+        {
+            "user_id": user_id,
+            "course_id": course_id,
+            "topic": f"{role_name} 岗位基础复习",
+            "submitted_at": now,
+            "created_at": now,
+        },
+    )
+    session_id = (await conn.execute(text("SELECT last_insert_rowid()"))).scalar_one()
+    items = [
+        {
+            "idx": 0,
+            "type": "mcq",
+            "question": f"进入{role_name}岗位交付前，最先需要确认哪项内容？",
+            "options": ["需求与验收标准", "只看代码行数", "跳过风险检查", "直接上线"],
+            "answer": 0,
+            "user_answer": 0,
+            "explanation": "先对齐需求、范围和验收标准，再安排实现与交付。",
+        },
+        {
+            "idx": 1,
+            "type": "mcq",
+            "question": "遇到线上异常时，哪种做法最有利于后续复盘？",
+            "options": ["记录现象、影响、原因和修复动作", "只口头描述", "直接删除日志", "等待问题自然消失"],
+            "answer": 0,
+            "user_answer": 0,
+            "explanation": "可追溯的事件记录能把排障过程沉淀为下一次可复用的证据。",
+        },
+        {
+            "idx": 2,
+            "type": "fill",
+            "question": "把现象、影响、根因和修复动作整理在一起的记录通常称为？",
+            "options": [],
+            "answer": "故障复盘",
+            "user_answer": "故障复盘",
+            "explanation": "故障复盘用于还原问题链路并沉淀改进动作。",
+        },
+    ]
+    for item in items:
+        await conn.execute(
+            text(
+                "INSERT INTO quiz_session_items "
+                "(session_id, idx, type, question, options, starter, answer_key, explanation, "
+                "difficulty, user_answer, is_correct, score, judge_reason, error_tags, created_at) "
+                "VALUES (:session_id, :idx, :type, :question, :options, '', :answer_key, "
+                ":explanation, 2, :user_answer, 1, 100, '', :error_tags, :created_at)"
+            ),
+            {
+                "session_id": session_id,
+                "idx": item["idx"],
+                "type": item["type"],
+                "question": item["question"],
+                "options": json.dumps(item["options"], ensure_ascii=False),
+                "answer_key": json.dumps({"value": item["answer"]}, ensure_ascii=False),
+                "explanation": item["explanation"],
+                "user_answer": json.dumps({"value": item["user_answer"]}, ensure_ascii=False),
+                "error_tags": "[]",
+                "created_at": now,
+            },
+        )
+
+
+async def _ensure_demo_quiz_history(conn):
+    """为本地演示账号准备一组可回顾的历史题目。"""
+    if not settings.DATABASE_URL.startswith("sqlite:"):
+        return
+
+    courses = (
+        await conn.execute(
+            text("SELECT id, name FROM courses WHERE name LIKE :suffix ORDER BY id"),
+            {"suffix": "%岗位知识库"},
+        )
+    ).all()
+    if not courses:
+        return
+
+    users = (await conn.execute(text("SELECT id, target_role, role FROM users"))).all()
+    for user_id, target_role, user_role in users:
+        if user_role == "enterprise_admin":
+            continue
+        role_text = str(target_role or "").strip()
+        if role_text:
+            selected = next(
+                (
+                    course for course in courses
+                    if role_text in str(course[1])
+                    or str(course[1]).removesuffix(" 岗位知识库") in role_text
+                    or ("FDE" in role_text and "FDE" in str(course[1]))
+                ),
+                courses[0],
             )
+            selected_courses = [selected]
+        else:
+            # 未绑定目标岗位的演示账号可能在浏览器里切换任意岗位，给每个岗位
+            # 准备一组独立历史题，避免右侧因 course_id 过滤再次为空。
+            selected_courses = courses
+        for course_id, course_name in selected_courses:
+            await _insert_demo_quiz_history(
+                conn,
+                user_id=user_id,
+                course_id=course_id,
+                course_name=str(course_name),
+            )
+
+
+async def _ensure_role_knowledge_catalog() -> None:
+    """补齐 SQLite 本地库中缺失的岗位课程与检索切片。
+
+    Docker 种子库只携带基础课程目录；岗位资料作为可审阅源文件独立维护。
+    因此裸跑首次解压种子库后，需要在应用启动时做一次幂等导入，否则前端
+    会把目录中的岗位标为可用，却无法为它找到对应的 course_id。
+    """
+    if not settings.DATABASE_URL.startswith("sqlite:"):
+        return
+
+    from app.courses import list_course_names
+
+    expected = {name for name in list_course_names() if name.endswith("岗位知识库")}
+    if not expected:
+        return
+
+    async with engine.connect() as conn:
+        rows = await conn.execute(
+            text(
+                "SELECT courses.name, COUNT(knowledge_chunks.id) "
+                "FROM courses LEFT JOIN knowledge_chunks "
+                "ON knowledge_chunks.course_id = courses.id "
+                "WHERE courses.name LIKE :suffix GROUP BY courses.id"
+            ),
+            {"suffix": "%岗位知识库"},
+        )
+        imported = {name for name, chunk_count in rows if chunk_count > 0}
+
+    if expected.issubset(imported):
+        return
+
+    from scripts.import_fde_knowledge import import_catalog as import_fde_catalog
+    from scripts.import_role_knowledge import main as import_role_catalog
+
+    await import_fde_catalog()
+    await import_role_catalog()
 
 
 @asynccontextmanager
@@ -523,8 +744,13 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await _ensure_columns(conn)
+    await _ensure_role_knowledge_catalog()
+    async with engine.begin() as conn:
         await _ensure_seed_users(conn)
         await _ensure_pramate_demo_enterprise(conn)
+        await _ensure_demo_quiz_history(conn)
+    await ensure_demo_private_libraries()
+    await ensure_demo_notes_for_users()
     await knowledge_api.mark_interrupted_tasks_failed()
     yield
     await engine.dispose()

@@ -19,6 +19,8 @@ from app.core.mailer import send_verification_code
 from app.db import get_db
 from app.db.models import EmailVerificationCode, Enterprise, EnterpriseMembership, User, UserSession
 from app.deps import current_user
+from app.demo_private_knowledge import ensure_demo_private_library
+from app.demo_notes import ensure_demo_notes
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 password_hash = PasswordHash.recommended()
@@ -212,6 +214,8 @@ async def register(req: RegisterRequest, response: Response, db: AsyncSession = 
             job_title="企业管理员",
         ))
     await _create_session(db, user, response)
+    await ensure_demo_private_library(user.id)
+    await ensure_demo_notes(user.id)
     return _user_out(user, created=True)
 
 

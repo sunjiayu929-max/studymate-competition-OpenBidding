@@ -14,7 +14,6 @@ from app.agents.doc_agent import DocAgent
 from app.agents.mindmap_agent import MindMapAgent
 from app.agents.practice_guide_agent import PracticeGuideAgent
 from app.agents.quiz_agent import QuizAgent, generate_quiz_batch
-from app.agents.reading_agent import ReadingAgent
 from app.agents.code_agent import CodeAgent
 from app.agents.video_agent import VideoAgent
 from app.agents.orchestrator import TrainingLoopOrchestrator, serialize_event
@@ -42,13 +41,12 @@ def _build_orchestrator() -> TrainingLoopOrchestrator:
         diagnosis_agent=DiagnosisAgent(),
         planning_agents=[DomainExpertAgent(), LearningStrategyAgent()],
         plan_arbiter=PlanArbiterAgent(),
-        # 七类岗位资源统一进入审核与发布门禁；不恢复独立学习路径生成器。
+        # 学习资源在独立资源页呈现；工作台只生成六项训练产物。
         generators=[
             DocAgent(),
             PracticeGuideAgent(),
             QuizAgent(),
             MindMapAgent(),
-            ReadingAgent(),
             CodeAgent(),
             VideoAgent(),
         ],

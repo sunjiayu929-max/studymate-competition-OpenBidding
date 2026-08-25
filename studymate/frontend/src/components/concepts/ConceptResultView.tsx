@@ -196,7 +196,7 @@ export function ConceptResultView({
         </div>
       )}
 
-      {/* B 站 + 讯飞人才呀 —— 自产讲解之外的外部资源补充 */}
+      {/* B 站与公开学习资源 —— 自产讲解之外的外部资源补充 */}
       {!loading && result && lastQuery && (
         <ExternalLearningResources
           keyword={lastQuery}

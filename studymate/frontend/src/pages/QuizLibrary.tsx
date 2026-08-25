@@ -9,7 +9,6 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { motion } from "framer-motion"
 import {
   BookOpen,
-  Plus,
   Sparkles,
   Clock,
   CheckCircle2,
@@ -21,7 +20,6 @@ import {
   Library,
   RefreshCw,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { AppTopbar } from "@/components/AppTopbar"
 import { NewQuizModal } from "@/components/NewQuizModal"
 import { useTrackPage } from "@/lib/useTrackPage"
@@ -43,7 +41,6 @@ export function QuizLibrary() {
   const [sessions, setSessions] = useState<QuizSession[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
   const [modalTopic, setModalTopic] = useState("")
   const [challengePreset, setChallengePreset] = useState(false)
 
@@ -54,7 +51,6 @@ export function QuizLibrary() {
     const frame = window.requestAnimationFrame(() => {
       setModalTopic(requestedTopic)
       setChallengePreset(requestedChallenge)
-      setModalOpen(true)
       const next = new URLSearchParams(searchParams)
       next.delete("create")
       next.delete("topic")
@@ -123,9 +119,9 @@ export function QuizLibrary() {
               </div>
             </div>
             {course ? (
-              <button type="button" onClick={() => { setModalTopic(""); setChallengePreset(false); setModalOpen(true) }} className="inline-flex h-9 w-fit shrink-0 items-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] shadow-[0_7px_16px_rgba(36,76,102,.18)] transition-all hover:-translate-y-0.5 hover:bg-[#193B50]">
-                <Plus className="size-3.5" />新建测验
-              </button>
+              <span className="inline-flex h-9 w-fit shrink-0 items-center gap-1.5 rounded-xl border border-[#B9C9D3] bg-[#E7EDF3] px-3 text-[11px] font-bold text-[#315E83]">
+                <Sparkles className="size-3.5" />左侧设置已展开
+              </span>
             ) : (
               <Link to={targetRole ? "/workspace" : "/courses?returnTo=%2Fquiz"} className="inline-flex h-9 w-fit shrink-0 items-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] shadow-[0_7px_16px_rgba(36,76,102,.18)] transition-all hover:-translate-y-0.5 hover:bg-[#193B50]">
                 <Library className="size-3.5" />{targetRole ? "查看岗位状态" : "选择目标岗位"}
@@ -138,6 +134,19 @@ export function QuizLibrary() {
               <CourseRequiredState targetRoleName={targetRole?.name} />
             ) : (
               <>
+            <div className="grid gap-4 lg:grid-cols-[minmax(300px,420px)_minmax(0,1fr)]">
+              <aside className="min-w-0">
+                <NewQuizModal
+                  open
+                  embedded
+                  onClose={() => undefined}
+                  initialTopic={modalTopic}
+                  challengePreset={challengePreset}
+                  onCreated={(s) => navigate(`/quiz/${s.id}`)}
+                />
+              </aside>
+              <section className="min-w-0">
+            <div className="mb-3 flex items-end justify-between gap-2"><div><span className="text-[10px] font-bold tracking-[.12em] text-[#6F8A69]">QUIZ ARCHIVE</span><h2 className="mt-1 text-base font-bold text-[#18232D]">历史测验题</h2></div><span className="text-[10px] text-[#7A817F]">点击题组卡片继续作答或查看解析</span></div>
             <div className="mb-5 grid overflow-hidden rounded-[22px] border border-[#CFC8B9] bg-[#F8F6F0] sm:grid-cols-3">
               <StatCard label="累计测验" value={stats.total} icon={Sparkles} tone="blue" />
               <StatCard label="已完成" value={stats.submitted} icon={CheckCircle2} tone="green" />
@@ -157,7 +166,7 @@ export function QuizLibrary() {
             <Loader2 className="size-5 animate-spin mr-2" /> 加载中...
           </div>
         ) : sessions.length === 0 ? (
-          <EmptyHint onCreate={() => { setModalTopic(""); setChallengePreset(false); setModalOpen(true) }} />
+          <EmptyHint />
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {sessions.map((s, i) => (
@@ -170,22 +179,14 @@ export function QuizLibrary() {
             ))}
           </div>
         )}
+              </section>
+            </div>
               </>
             )}
           </div>
         </section>
       </div>
 
-      <NewQuizModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        initialTopic={modalTopic}
-        challengePreset={challengePreset}
-        onCreated={(s) => {
-          setModalOpen(false)
-          navigate(`/quiz/${s.id}`)
-        }}
-      />
     </div>
   )
 }
@@ -295,18 +296,16 @@ function SessionCard({
   )
 }
 
-function EmptyHint({ onCreate }: { onCreate: () => void }) {
+function EmptyHint() {
   return (
     <div className="flex flex-1 items-center justify-center rounded-[24px] border border-dashed border-[#C9C2B4] bg-[#F8F6F0] px-4 py-12 text-center">
       <div>
         <span className="mx-auto mb-4 grid size-12 place-items-center rounded-2xl border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><BookOpen className="size-5" /></span>
-        <div className="mb-1 text-base font-bold text-[#18232D]">开始你的第一次系统测验</div>
+        <div className="mb-1 text-base font-bold text-[#18232D]">暂无历史测验题</div>
         <div className="mx-auto mb-4 max-w-xl text-sm leading-6 text-[#66717B]">
-          自定义题型、数量与难度，提交后自动评分；错题可以直接保存到智能笔记继续复习。
+          在左侧完成一次测验设置后，题组、得分和错题解析会自动归档到这里，之后可以随时继续作答或回顾。
         </div>
-        <Button onClick={onCreate}>
-          <Plus className="size-3.5" /> 新建测验
-        </Button>
+        <div className="inline-flex items-center gap-1.5 rounded-xl border border-[#B9C9D3] bg-[#E7EDF3] px-3 py-2 text-[11px] font-bold text-[#315E83]">请在左侧设置后开始</div>
       </div>
     </div>
   )
