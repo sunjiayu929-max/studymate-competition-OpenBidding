@@ -15,6 +15,15 @@ fi
 
 ACTION="${1:-up}"
 
+DEPLOY_LOCK_FILE="${DEPLOY_LOCK_FILE:-${TMPDIR:-/tmp}/studymate-deploy.lock}"
+if [[ "$ACTION" == "up" || "$ACTION" == "down" ]]; then
+  exec 9>"$DEPLOY_LOCK_FILE"
+  if ! flock -n 9; then
+    echo "Another StudyMate deployment is already running." >&2
+    exit 1
+  fi
+fi
+
 dotenv_value() {
   local env_file="$1"
   local wanted_key="$2"
@@ -57,6 +66,12 @@ OJ_DIR="${OJ_DIR:-../oj}"
 if [[ "$OJ_DIR" != /* ]]; then
   OJ_DIR="$PROJECT_DIR/$OJ_DIR"
 fi
+REQUIRE_DEPLOY_BRANCH="${REQUIRE_DEPLOY_BRANCH:-$(dotenv_value "$DEPLOY_ENV_FILE" REQUIRE_DEPLOY_BRANCH)}"
+REQUIRE_DEPLOY_BRANCH="${REQUIRE_DEPLOY_BRANCH:-0}"
+REQUIRE_BACKUP="${REQUIRE_BACKUP:-$(dotenv_value "$DEPLOY_ENV_FILE" REQUIRE_BACKUP)}"
+REQUIRE_BACKUP="${REQUIRE_BACKUP:-0}"
+BACKUP_SCRIPT="${BACKUP_SCRIPT:-$(dotenv_value "$DEPLOY_ENV_FILE" BACKUP_SCRIPT)}"
+BACKUP_SCRIPT="${BACKUP_SCRIPT:-/home/deploy/studymate-ops/backup-db.sh}"
 
 case "$AI_INTERVIEW_ENABLED" in
   0|1) ;;
@@ -93,6 +108,39 @@ oj_compose() {
     cd "$OJ_DIR"
     docker compose "$@"
   )
+}
+
+preflight_repository() {
+  local root branch
+  root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  [[ -n "$root" ]] || return 0
+
+  if [[ "$REQUIRE_DEPLOY_BRANCH" == "1" ]]; then
+    branch="$(git -C "$root" symbolic-ref --short HEAD 2>/dev/null || true)"
+    if [[ "$branch" != "merge-competition" ]]; then
+      echo "Production deployment must run from merge-competition (received: ${branch:-detached})." >&2
+      exit 1
+    fi
+  fi
+  if [[ -f "$root/.gitmodules" ]]; then
+    if git -C "$root" submodule status --recursive | grep -qE '^[+-]'; then
+      echo "One or more Git submodules are uninitialized or at an unexpected revision." >&2
+      git -C "$root" submodule status --recursive >&2 || true
+      exit 1
+    fi
+    [[ -f "$root/ai-interview/docker-compose.yml" ]] || { echo "ai-interview submodule is missing." >&2; exit 1; }
+    [[ -f "$root/oj/docker-compose.yml" ]] || { echo "oj submodule is missing." >&2; exit 1; }
+  fi
+}
+
+backup_gate() {
+  [[ "$REQUIRE_BACKUP" == "1" ]] || return 0
+  [[ -x "$BACKUP_SCRIPT" ]] || {
+    echo "Required backup script is missing or not executable: $BACKUP_SCRIPT" >&2
+    exit 1
+  }
+  echo "Running deployment backup gate: $BACKUP_SCRIPT"
+  "$BACKUP_SCRIPT"
 }
 
 require_ai_project() {
@@ -208,6 +256,7 @@ preflight_oj() {
   require_config_value "$oj_env_file" MONGO_ROOT_PASSWORD >/dev/null
   require_config_value "$oj_env_file" HYDRO_MONGO_USERNAME >/dev/null
   require_config_value "$oj_env_file" HYDRO_MONGO_PASSWORD >/dev/null
+  sso_only="$(require_config_value "$oj_env_file" STUDYMATE_SSO_ONLY)"
 
   local expected_public="https://${site_address%/}/oj"
   local expected_hydro="${expected_public}/"
@@ -221,6 +270,10 @@ preflight_oj() {
   fi
   if [[ "$backend_secret" != "$oj_secret" ]]; then
     echo "StudyMate and OJ service secrets do not match." >&2
+    exit 1
+  fi
+  if [[ "$sso_only" != "1" ]]; then
+    echo "STUDYMATE_SSO_ONLY in $oj_env_file must be 1 for production." >&2
     exit 1
   fi
 }
@@ -291,8 +344,10 @@ start_oj() {
 
 case "$ACTION" in
   up)
+    preflight_repository
     preflight_ai
     preflight_oj
+    backup_gate
     "${COMPOSE[@]}" up -d --build --remove-orphans
     if [[ "${SKIP_PISTON_INIT:-0}" != "1" ]] \
       && "${COMPOSE[@]}" ps --status running --services | grep -qx piston-api; then
@@ -311,6 +366,7 @@ case "$ACTION" in
     fi
     ;;
   preflight)
+    preflight_repository
     preflight_ai
     preflight_oj
     echo "Deployment preflight passed."

@@ -86,7 +86,7 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
     items: [
       { label: "智能测验", to: "/quiz", icon: BookOpenCheck },
       { label: "实时学习报告", to: "/report", icon: BarChart3 },
-      { label: "在线判题", to: "/api/oj/launch", icon: Code2, external: true },
+      { label: "在线判题", to: "/api/oj/entry", icon: Code2, external: true },
     ],
   },
   {
@@ -207,6 +207,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     setLogoutBusy(true)
     discardPendingEventsForLogout()
     try {
+      // Hydro owns a separate /oj-scoped browser session. Clear it before the
+      // StudyMate session so one browser logout signs out of both services.
+      await fetch("/oj/integrations/studymate/logout", {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => undefined)
       await apiPost("/auth/logout", {})
     } finally {
       logoutUser()
