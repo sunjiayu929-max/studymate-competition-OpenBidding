@@ -21,6 +21,8 @@ docker exec "$MONGO_CONTAINER" sh -c \
    --password "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin' \
   > "$BACKUP_DIR/oj-hydro-${STAMP}.archive.gz"
 
+ARTIFACTS=("$BACKUP_DIR/oj-hydro-${STAMP}.archive.gz")
+
 for volume in oj_oj_file oj_oj_hydro; do
   name="${volume#oj_}"
   docker run --rm \
@@ -28,9 +30,17 @@ for volume in oj_oj_file oj_oj_hydro; do
     -v "${BACKUP_DIR}:/backup" \
     "$BACKUP_TOOL_IMAGE" \
     tar czf "/backup/oj-${name}-${STAMP}.tar.gz" -C /source .
+  ARTIFACTS+=("$BACKUP_DIR/oj-${name}-${STAMP}.tar.gz")
 done
 
-sha256sum "$BACKUP_DIR"/*"$STAMP"* > "$BACKUP_DIR/oj-${STAMP}.sha256"
+MANIFEST="$BACKUP_DIR/oj-${STAMP}.sha256"
+sha256sum "${ARTIFACTS[@]}" > "$MANIFEST"
 find "$BACKUP_DIR" -maxdepth 1 -type f -mtime "+$RETENTION_DAYS" -delete
-chmod 600 "$BACKUP_DIR"/*"$STAMP"*
+for generated in "${ARTIFACTS[@]}"; do
+  if ! chmod 600 "$generated" 2>/dev/null; then
+    sudo -n chown "$(id -u):$(id -g)" "$generated"
+    chmod 600 "$generated"
+  fi
+done
+chmod 600 "$MANIFEST"
 echo "OJ backups written to $BACKUP_DIR (stamp=$STAMP)"

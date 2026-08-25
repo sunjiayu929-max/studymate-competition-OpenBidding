@@ -348,7 +348,13 @@ case "$ACTION" in
     preflight_ai
     preflight_oj
     backup_gate
-    "${COMPOSE[@]}" up -d --build --remove-orphans
+    compose_up_args=(-d --remove-orphans)
+    if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
+      compose_up_args+=(--build)
+    else
+      echo "Main image build skipped (SKIP_BUILD=1)."
+    fi
+    "${COMPOSE[@]}" up "${compose_up_args[@]}"
     if [[ "${SKIP_PISTON_INIT:-0}" != "1" ]] \
       && "${COMPOSE[@]}" ps --status running --services | grep -qx piston-api; then
       bash scripts/init-piston.sh

@@ -57,7 +57,9 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
-      start_period: 20s
+      # 首次启动会重建岗位知识索引，可能超过两分钟；给应用足够的
+      # 启动宽限期，避免 Compose 在服务即将就绪时误判为失败。
+      start_period: 180s
     logging:
       driver: local
       options:
