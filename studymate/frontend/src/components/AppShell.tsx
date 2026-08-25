@@ -3,11 +3,13 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 import {
   BarChart3,
   BookOpenCheck,
+  BriefcaseBusiness,
   Bot,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
+  Code2,
   Compass,
   Database,
   GraduationCap,
@@ -29,7 +31,7 @@ import {
 } from "lucide-react"
 
 import { ConfirmDialog } from "@/components/ConfirmDialog"
-import { apiPost } from "@/lib/api"
+import { apiGet, apiPost } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { useCurrentCourse } from "@/store/course"
 import { useTargetRole } from "@/store/targetRole"
@@ -52,6 +54,7 @@ type NavItem = {
   to: string
   icon: typeof Home
   exact?: boolean
+  external?: boolean
 }
 
 const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavItem[] }> = [
@@ -83,6 +86,7 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
     items: [
       { label: "智能测验", to: "/quiz", icon: BookOpenCheck },
       { label: "实时学习报告", to: "/report", icon: BarChart3 },
+      { label: "在线判题", to: "/api/oj/launch", icon: Code2, external: true },
     ],
   },
   {
@@ -91,13 +95,14 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
     icon: Compass,
     items: [
       { label: "学习资源", to: "/resources", icon: Compass },
-      { label: "职业探索", to: "/career", icon: GraduationCap },
+      { label: "转岗培训", to: "/career", icon: GraduationCap },
       { label: "AI 面试", to: "/ai-interview", icon: MessageSquare },
     ],
   },
 ]
 
 function matches(pathname: string, item: NavItem) {
+  if (item.external) return false
   if (item.exact) return pathname === item.to
   return pathname === item.to || pathname.startsWith(`${item.to}/`)
 }
@@ -133,6 +138,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [logoutBusy, setLogoutBusy] = useState(false)
   const [homeUniverseVisible, setHomeUniverseVisible] = useState(pathname === "/")
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(readGroups)
+  const [enterpriseMember, setEnterpriseMember] = useState<boolean | null>(null)
+
+  const enterpriseAdmin = user?.role === "enterprise_admin" || user?.role === "admin"
+  const enterpriseVisible = enterpriseAdmin || enterpriseMember === true
 
   const immersive = pathname === "/tutor/voice" || /^\/quiz\/[^/]+$/u.test(pathname)
   const shellHidden = pathname === "/" && homeUniverseVisible
@@ -173,6 +182,21 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [collapsed, openGroups])
 
+  useEffect(() => {
+    if (!user?.user_id) {
+      setEnterpriseMember(null)
+      return
+    }
+    if (enterpriseAdmin) {
+      setEnterpriseMember(true)
+      return
+    }
+    setEnterpriseMember(null)
+    void apiGet<{ enterprise: unknown | null }>("/learner/context")
+      .then((context) => setEnterpriseMember(Boolean(context.enterprise)))
+      .catch(() => setEnterpriseMember(false))
+  }, [enterpriseAdmin, user?.user_id])
+
   const handleLogout = async () => {
     setLogoutBusy(true)
     discardPendingEventsForLogout()
@@ -198,6 +222,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     workspace.outputs.doc?.content,
     workspace.outputs.guide?.content,
     workspace.outputs.quiz?.items?.length,
+    workspace.outputs.mindmap?.content,
+    workspace.outputs.reading?.items?.length,
+    workspace.outputs.code?.code,
   ].filter(Boolean).length
 
   return (
@@ -252,6 +279,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Library className="size-4 shrink-0 text-[#315E83]" />
             {!effectiveCollapsed && <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">当前岗位</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{targetRole?.name || course?.name || "选择目标岗位"}</strong></span>}
           </Link>
+          {!effectiveCollapsed && user && enterpriseVisible && (
+            <Link to="/enterprise" className="mt-2 block rounded-2xl border border-[#DCE5D7] bg-[#F5FAF3] px-3 py-2.5 transition-colors hover:bg-[#EAF4E7]">
+              <span className="flex items-center gap-2 text-[10px] font-bold text-[#52704D]"><BriefcaseBusiness className="size-3.5" />{enterpriseAdmin ? "企业管理员工作台" : "企业任务中心"}<ChevronRight className="ml-auto size-3" /></span>
+              <span className="mt-1 block truncate text-[10px] text-[#758372]">{enterpriseAdmin ? "发布任务 · 管理岗位资料" : "查看企业下发的学习任务"}</span>
+            </Link>
+          )}
         </div>
 
         <nav className="nav-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3" aria-label="主功能">
@@ -259,16 +292,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ShellLink item={{ label: "目标岗位", to: "/courses", icon: Library }} compact={effectiveCollapsed} pathname={pathname} />
           <ShellLink item={{ label: "岗位能力画像", to: "/profile", icon: GraduationCap }} compact={effectiveCollapsed} pathname={pathname} />
           <ShellLink
-            item={{ label: "岗位训练中心", to: "/competency", icon: ShieldCheck, exact: true }}
+            item={{ label: "岗位训练中心", to: "/competency", icon: ShieldCheck }}
             compact={effectiveCollapsed}
             pathname={pathname}
             trailing={!effectiveCollapsed ? (
               <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-[#F4ECD8] px-1.5 py-0.5 text-[9px] font-extrabold text-[#8E6925]">
                 {workspace.status === "running" && <span className="size-1.5 animate-pulse rounded-full bg-[#B1842C]" />}
-                {workspace.status === "running" ? `${readyResources}/3` : "11 Agents"}
+                {workspace.status === "running" ? `${readyResources}/6` : "14 Agents"}
               </span>
             ) : undefined}
           />
+          {enterpriseVisible && <ShellLink item={{ label: enterpriseAdmin ? "企业工作台" : "企业任务", to: "/enterprise", icon: BriefcaseBusiness }} compact={effectiveCollapsed} pathname={pathname} />}
 
           <div className="my-3 border-t border-[#DED8CC]" />
 
@@ -378,22 +412,20 @@ function ShellLink({
 }) {
   const Icon = item.icon
   const active = matches(pathname, item)
-  return (
-    <Link
-      to={item.to}
-      title={item.label}
-      aria-current={active ? "page" : undefined}
-      className={cn(
-        "group relative mb-0.5 flex h-11 items-center rounded-xl text-xs font-semibold transition-colors",
-        compact ? "justify-center" : "gap-2.5 px-2.5",
-        active ? "bg-[#E7EDF3] text-[#244C66]" : "text-[#59636B] hover:bg-[#ECE8DE] hover:text-[#244C66]",
-      )}
-    >
+  const className = cn(
+    "group relative mb-0.5 flex h-11 items-center rounded-xl text-xs font-semibold transition-colors",
+    compact ? "justify-center" : "gap-2.5 px-2.5",
+    active ? "bg-[#E7EDF3] text-[#244C66]" : "text-[#59636B] hover:bg-[#ECE8DE] hover:text-[#244C66]",
+  )
+  const content = <>
       {active && <span className="absolute -left-3 h-5 w-1 rounded-r-full bg-[#315E83]" />}
       <Icon className="size-4 shrink-0" />
       {!compact && <span className="truncate">{item.label}</span>}
       {trailing}
       {!compact && !trailing && active && <ChevronRight className="ml-auto size-3.5" />}
-    </Link>
-  )
+  </>
+  if (item.external) {
+    return <a href={item.to} title={item.label} className={className}>{content}</a>
+  }
+  return <Link to={item.to} title={item.label} aria-current={active ? "page" : undefined} className={className}>{content}</Link>
 }

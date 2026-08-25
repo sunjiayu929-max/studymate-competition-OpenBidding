@@ -50,7 +50,9 @@ async function ensureOk(r: Response, path: string): Promise<void> {
       : r.status === 403
         ? "当前账号没有执行此操作的权限"
         : r.status === 404
-          ? "请求的内容不存在或已被移除"
+          ? path.startsWith("/concept/video")
+            ? "视频接口未加载，请重启当前项目的后端服务后重试"
+            : "请求的内容不存在或已被移除"
           : r.status === 422
             ? "请求参数格式不正确，请返回上一页后重试"
           : r.status >= 500

@@ -77,6 +77,18 @@ class Settings(BaseSettings):
     # 例：COSYVOICE_API_KEYS=sk-aaa,sk-bbb
     COSYVOICE_API_KEYS: str = ""
 
+    # MiniMax H3 岗位可视讲解。留空时资源链保留可审核的脚本占位，不调用外部 API。
+    MINIMAX_API_KEY: str = ""
+    MINIMAX_BASE_URL: str = "https://api.minimaxi.com"
+    MINIMAX_VIDEO_MODEL: str = "MiniMax-H3"
+    MINIMAX_VIDEO_WATERMARK: bool = True
+    MINIMAX_VIDEO_REQUEST_TIMEOUT_SECONDS: float = 30.0
+    MINIMAX_VIDEO_POLL_INTERVAL_SECONDS: float = 3.0
+    # H3 视频生成可能超过 5 分钟；最多等待约 12 分钟，避免过早把仍在运行的任务判失败。
+    MINIMAX_VIDEO_POLL_ATTEMPTS: int = 240
+    # 合成后的短视频文件目录；Docker 中位于持久化 data volume。
+    VIDEO_MEDIA_DIR: str = "./data/video_media"
+
     # 讯飞 TTS 子模式：online=在线语音合成(v2/tts)；oral=超拟人语音合成(v1 oral，音质更高)
     # 切超拟人只需把 XFYUN_TTS_MODE 设 oral 并填下面三项（凭据来自讯飞控制台「超拟人合成」服务）
     XFYUN_TTS_MODE: str = "online"
@@ -119,6 +131,13 @@ class Settings(BaseSettings):
     AI_INTERVIEW_TICKET_TTL_SECONDS: int = 120
     AI_INTERVIEW_SIGNATURE_TTL_SECONDS: int = 300
 
+    # Independent Hydro OJ integration. The secret is server-only and must
+    # match STUDYMATE_SERVICE_SECRET in the OJ service environment.
+    OJ_PUBLIC_URL: str = ""
+    OJ_SERVICE_SECRET: str = ""
+    OJ_TICKET_TTL_SECONDS: int = 120
+    OJ_SIGNATURE_TTL_SECONDS: int = 300
+
     @model_validator(mode="after")
     def disable_external_services_in_safe_offline(self):
         """即使父进程仍带有凭据，安全离线模式也把所有外部能力视为未配置。"""
@@ -134,6 +153,7 @@ class Settings(BaseSettings):
             "XFYUN_API_SECRET",
             "XFYUN_ORAL_TTS_URL",
             "COSYVOICE_API_KEYS",
+            "MINIMAX_API_KEY",
             "SMTP_USERNAME",
             "SMTP_PASSWORD",
             "SMTP_FROM_EMAIL",

@@ -28,6 +28,7 @@ from app.api.interviews import (
 from app.core.config import settings
 from app.db.models import Course, InterviewAttempt, InterviewLaunchTicket, User
 from app.db.session import Base
+from app.schemas.profile import ProfileDims
 
 
 def _signed_request(
@@ -96,6 +97,30 @@ class InterviewScoreTests(unittest.TestCase):
         with self.assertRaises(HTTPException) as raised:
             _validate_report_scores(attempt, self._report(overall=99, role=80, general=70))
         self.assertEqual(raised.exception.status_code, 422)
+
+    def test_profile_keeps_interview_and_training_evidence(self):
+        dims = ProfileDims.model_validate({
+            "interview_assessments": {
+                "fde": {
+                    "attempt_id": "attempt-1",
+                    "role_id": "fde",
+                    "role_name": "FDE",
+                    "overall_score": 76,
+                    "role_match_score": 80,
+                    "general_score": 70,
+                    "completed_at": "2026-08-22T10:00:00",
+                }
+            },
+            "training_rounds": [{
+                "run_id": "run-1",
+                "topic": "系统集成",
+                "accuracy": 80,
+            }],
+        })
+
+        persisted = dims.model_dump()
+        self.assertEqual(persisted["interview_assessments"]["fde"]["attempt_id"], "attempt-1")
+        self.assertEqual(persisted["training_rounds"][0]["run_id"], "run-1")
 
 
 class InterviewTicketTests(unittest.IsolatedAsyncioTestCase):

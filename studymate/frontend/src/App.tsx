@@ -31,12 +31,15 @@ const LearningResources = lazy(() => import("@/pages/LearningResources").then((m
 const CareerExplorer = lazy(() => import("@/pages/CareerExplorer").then((m) => ({ default: m.CareerExplorer })))
 const CompetencyTraining = lazy(() => import("@/pages/CompetencyTraining").then((m) => ({ default: m.CompetencyTraining })))
 const AIInterview = lazy(() => import("@/pages/AIInterview").then((m) => ({ default: m.AIInterview })))
+const EnterpriseHub = lazy(() => import("@/pages/EnterpriseHub").then((m) => ({ default: m.EnterpriseHub })))
+const EnterpriseDashboard = lazy(() => import("@/pages/EnterpriseDashboard").then((m) => ({ default: m.EnterpriseDashboard })))
+const EnterpriseTaskRead = lazy(() => import("@/pages/EnterpriseTaskRead").then((m) => ({ default: m.EnterpriseTaskRead })))
 const Login = lazy(() => import("@/pages/Login").then((m) => ({ default: m.Login })))
 const NotFound = lazy(() => import("@/pages/NotFound").then((m) => ({ default: m.NotFound })))
 const TutorBubble = lazy(() => import("@/components/TutorBubble").then((m) => ({ default: m.TutorBubble })))
 
 // 登录、助教自身、沉浸工具与高密度数据页不叠加悬浮人物，避免遮挡关键控件和数据卡。
-const BUBBLE_HIDDEN_PATHS = ["/login", "/tutor", "/tutor/voice", "/concept", "/ppt", "/report", "/tests", "/competency"]
+const BUBBLE_HIDDEN_PATHS = ["/login", "/tutor", "/tutor/voice", "/concept", "/ppt", "/report", "/tests"]
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -91,6 +94,15 @@ function ProtectedPage({ children }: { children: ReactNode }) {
   return <RequireAuth><AppShell>{children}</AppShell></RequireAuth>
 }
 
+function EnterpriseDashboardEntry() {
+  const user = useCurrentUser()
+  if (!user) return <RequireAuth><div /></RequireAuth>
+  if (user.role !== "enterprise_admin" && user.role !== "admin") {
+    return <Navigate to="/enterprise" replace />
+  }
+  return <AppShell><EnterpriseDashboard /></AppShell>
+}
+
 function RouteFallback() {
   return (
     <div className="app-page paper-theme grid min-h-dvh place-items-center px-5">
@@ -127,9 +139,9 @@ class RouteErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
       <div className="app-page paper-theme grid min-h-dvh place-items-center px-5">
         <section role="alert" className="w-full max-w-lg rounded-[28px] border border-[#DFC8BE] bg-[#FFFEFA] p-6 text-center shadow-[0_18px_48px_rgba(24,35,45,.09)] sm:p-8">
           <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#DFC8BE] bg-[#F4E8E2] text-xl text-[#9A4E35]">!</span>
-          <p className="mt-4 text-[10px] font-bold tracking-[0.12em] text-[#9A4E35]">页面资源加载中断</p>
-          <h1 className="mt-1 text-xl font-bold tracking-[-0.03em] text-[#18232D]">当前学习记录仍然安全</h1>
-          <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#66717B]">可能是网络短暂波动或页面资源更新。重新加载即可继续，工作台生成结果与答题证据不会被清空。</p>
+          <p className="mt-4 text-[10px] font-bold tracking-[0.12em] text-[#9A4E35]">加载失败</p>
+          <h1 className="mt-1 text-xl font-bold tracking-[-0.03em] text-[#18232D]">页面暂时无法打开</h1>
+          <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#66717B]">可能是网络波动。学习记录不会丢失，请重新加载。</p>
           <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
             <button type="button" onClick={() => window.location.reload()} className="inline-flex h-10 items-center justify-center rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] hover:bg-[#193B50]">重新加载当前页面</button>
             <button type="button" onClick={() => { window.location.href = "/" }} className="inline-flex h-10 items-center justify-center rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-5 text-xs font-bold text-[#59636B] hover:bg-[#F1EDE4]">返回学习首页</button>
@@ -157,7 +169,13 @@ export default function App() {
           <Route path="/resources" element={<ProtectedPage><LearningResources /></ProtectedPage>} />
           <Route path="/career" element={<ProtectedPage><CareerExplorer /></ProtectedPage>} />
           <Route path="/competency" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
+          <Route path="/competency/resources" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
+          <Route path="/competency/audit" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
+          <Route path="/competency/report" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
           <Route path="/ai-interview" element={<ProtectedPage><AIInterview /></ProtectedPage>} />
+          <Route path="/enterprise" element={<ProtectedPage><EnterpriseHub /></ProtectedPage>} />
+          <Route path="/enterprise/dashboard" element={<EnterpriseDashboardEntry />} />
+          <Route path="/enterprise/tasks/:taskId/read" element={<ProtectedPage><EnterpriseTaskRead /></ProtectedPage>} />
           <Route path="/workspace" element={<Navigate to="/competency" replace />} />
           <Route path="/workspace/r/:agentId" element={<ProtectedPage><WorkspaceDetail /></ProtectedPage>} />
           <Route path="/tutor" element={<ProtectedPage><TutorChat /></ProtectedPage>} />

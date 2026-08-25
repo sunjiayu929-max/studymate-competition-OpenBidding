@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useCurrentCourse } from "@/store/course"
 import { useTargetRole } from "@/store/targetRole"
+import { useCurrentUser } from "@/store/user"
 
 export type PageId =
   | "home"
@@ -50,7 +51,7 @@ const PAGE_META: Record<PageId, { label: string; group: string; icon: typeof Hom
   knowledge: { label: "自建知识库", group: "知识与笔记", icon: Database },
   ppt: { label: "PPT 生成", group: "AI 学习工具", icon: Presentation },
   resources: { label: "学习资源", group: "发现与拓展", icon: Compass },
-  career: { label: "职业探索", group: "发现与拓展", icon: GraduationCap },
+  career: { label: "转岗培训", group: "发现与拓展", icon: GraduationCap },
   report: { label: "实时学习报告", group: "练习与成长", icon: BarChart3 },
   tests: { label: "测试管理", group: "辅助入口", icon: ClipboardCheck },
   courses: { label: "岗位空间", group: "求职准备", icon: Library },
@@ -81,12 +82,16 @@ export function AppTopbar({
 }: AppTopbarProps) {
   const course = useCurrentCourse()
   const targetRole = useTargetRole()
+  const user = useCurrentUser()
   const meta = PAGE_META[current]
   const Icon = meta.icon
   const paper = appearance === "paper"
   const label = labelOverride ?? meta.label
   const group = groupOverride ?? meta.group
   const roleSelectionPath = current === "workspace" ? "/courses?returnTo=%2Fworkspace" : "/courses"
+  const identityDetail = user?.role === "enterprise_admin"
+    ? `${user.name} · 企业管理员`
+    : [user?.name, user?.learner_type === "worker" ? user.company || "从业者" : user?.study_stage || "学习者", user?.target_role || targetRole?.name || course?.name].filter(Boolean).join(" · ")
 
   return (
     <header
@@ -107,6 +112,7 @@ export function AppTopbar({
           {group}
         </div>
         <h1 className="truncate text-[14px] font-bold tracking-[-.02em] text-[#18232D]">{label}</h1>
+        {identityDetail && <p className="mt-0.5 truncate text-[10px] font-medium text-[#7A817E]">{identityDetail}</p>}
       </div>
       <Link
         to={roleSelectionPath}

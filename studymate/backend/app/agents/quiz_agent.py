@@ -6,6 +6,7 @@ QuizAgent —— 题目生成。
 from __future__ import annotations
 import asyncio
 import json
+import re
 
 from app.agents.base import AgentBase, AgentMeta, EventEmitter
 from app.llm import get_llm_client, has_llm_key
@@ -205,6 +206,75 @@ class QuizAgent(AgentBase):
 # 题库版批量出题：给 quiz_sessions API 用，与工作台 run() 隔离
 # ============================================================
 
+
+_QUESTION_SPACE_RE = re.compile(r"[\s，。！？；：、,.!?;:'\"（）()【】\[\]<>《》]+")
+_QUOTED_TERM_RE = re.compile(r"[“「『《][^”」』》]{1,80}[”」』》]")
+
+
+def _difficulty_plan(total: int, target: int) -> list[int]:
+    """让整张卷围绕目标难度形成相邻梯度，而不是所有题同级。"""
+    if total <= 0:
+        return []
+    center = max(1, min(4, target))
+    if total == 1:
+        return [center]
+    nearby = list(dict.fromkeys((max(1, center - 1), center, min(4, center + 1))))
+    if len(nearby) == 1:
+        nearby.append(2 if center == 1 else 3)
+    return [nearby[index % len(nearby)] for index in range(total)]
+
+
+def _question_signature(question: str, *, template: bool = False) -> str:
+    """归一化题干，用于拦截原样重复和只替换术语的模板重复。"""
+    text = str(question or "").strip().lower()
+    if template:
+        text = _QUOTED_TERM_RE.sub("术语", text)
+    return _QUESTION_SPACE_RE.sub("", text)
+
+
+def _valid_generated_item(item: dict, item_type: str) -> bool:
+    question = str(item.get("question") or "").strip()
+    explanation = str(item.get("explanation") or "").strip()
+    if len(question) < 8 or not explanation:
+        return False
+    if item_type == "mcq":
+        options = [str(option).strip() for option in (item.get("options") or [])]
+        try:
+            answer = int(item.get("answer"))
+        except (TypeError, ValueError):
+            return False
+        return len(options) == 4 and len(set(options)) == 4 and 0 <= answer < 4
+    if item_type == "fill":
+        return bool(str(item.get("answer") or "").strip())
+    if item_type == "code":
+        return bool(str(item.get("starter") or "").strip() and str(item.get("answer") or "").strip())
+    return False
+
+
+def _compact_fact(content: object, *, max_chars: int = 72) -> str:
+    """提取完整、短小的岗位事实，避免把长知识片段原样塞进选项或题干。"""
+    text = " ".join(str(content or "").split()).strip()
+    if not text:
+        return "应结合现场任务、责任边界和可验证证据完成交付。"
+    text = re.sub(r"（[^）]{8,}）|\([^)]{8,}\)", "", text)
+    sentences = [part.strip() for part in re.split(r"(?<=[。！？；])", text) if part.strip()]
+    first = sentences[0] if sentences else text
+    if len(first) <= max_chars:
+        return first
+    lead = re.split(r"[：:]", first, maxsplit=1)[0].strip()
+    if 12 <= len(lead) <= max_chars:
+        return lead.rstrip("，,；;：:") + "。"
+    clauses = [part.strip() for part in re.split(r"[，,；;]", first) if part.strip()]
+    compact = ""
+    for clause in clauses:
+        candidate = f"{compact}，{clause}" if compact else clause
+        if len(candidate) > max_chars:
+            break
+        compact = candidate
+    if len(compact) >= 12:
+        return compact.rstrip("，,；;：:") + "。"
+    return first[:max_chars].rstrip("，,；;：:") + "…"
+
 async def generate_quiz_batch(
     *,
     topic: str,
@@ -222,7 +292,8 @@ async def generate_quiz_batch(
     """按指定数量批量出题：mcq * mcq_count + fill * fill_count + code * code_count。
 
     - 一次 LLM 调用拿完整结构化 JSON（chat_structured 强制 json_object）
-    - LLM 失败时降级到 MOCK_QUIZ 循环填充，保证调用者拿到非空 items
+    - LLM 失败或返回重复/残缺题目时，优先用检索到的岗位材料补齐
+    - 同一试卷至少覆盖两个相邻难度等级，目标难度作为中心而非固定值
     """
     total = mcq_count + fill_count + code_count
     if total <= 0:
@@ -241,6 +312,7 @@ async def generate_quiz_batch(
 
     llm = get_llm_client()
     diff = max(1, min(4, difficulty))
+    difficulty_plan = _difficulty_plan(total, diff)
     adaptive_hint = "、".join(focus_tags or [])
     competency_hint = "、".join(competencies or []) or topic
     reference_text = "\n".join(
@@ -268,7 +340,8 @@ async def generate_quiz_batch(
 - 填空题（fill）共 {fill_count} 道：answer 是简短答案字符串（用 / 分隔多个等价答案）
 - 编程题（code）共 {code_count} 道：starter 起步代码 + answer 标答 + 解析
 
-每题难度按 {diff}/4 控制（1=入门，4=挑战）。
+目标难度为 {diff}/4（1=入门，4=挑战）。整张卷必须围绕目标难度覆盖相邻等级，
+建议难度序列为 {difficulty_plan}，不得把所有题都标成同一难度。
 
 **语言要求（必须严格遵守）**：
 - 题干 question、选项 options、填空答案 answer、解析 explanation 全部必须使用**简体中文**
@@ -285,24 +358,47 @@ async def generate_quiz_batch(
   ]
 }}
 
-严格按数量出齐 {total} 道，先 mcq 后 fill 再 code。优先覆盖这些岗位能力：{competency_hint}。题目避免重复、覆盖不同岗位能力与任务情境。
+严格按数量出齐 {total} 道，先 mcq 后 fill 再 code。优先覆盖这些岗位能力：{competency_hint}。
+每道题必须考查不同的判断、操作或证据，禁止复用同一题干、选项或答案；
+禁止批量使用“关于某某的哪项表述最准确”这一类只替换术语的模板。
+选择题至少混合场景决策、流程排序、风险识别和证据判断；填空题考查关键动作或产物；编程题必须对应岗位中的数据、接口、检查或验证任务。
 {adaptive_section}
 {grounding_section}
 """
     msgs = [{"role": "system", "content": sys}, {"role": "user", "content": topic}]
     try:
-        raw = await llm.chat_structured(messages=msgs, temperature=0.5)
+        raw = await asyncio.wait_for(
+            llm.chat_structured(messages=msgs, temperature=0.5),
+            timeout=45,
+        )
         data = json.loads(raw)
         items = data.get("items", [])
     except Exception:
         items = []
 
-    # 兜底：缺什么补什么（防 LLM 漏题）
+    # 质量门禁：过滤残缺题、重复题和无知识库来源题，再按类型补齐。
     by_type: dict[str, list[dict]] = {"mcq": [], "fill": [], "code": []}
+    allowed_sources = {
+        str(item.get("source") or "").strip()
+        for item in (reference_materials or [])
+        if str(item.get("source") or "").strip()
+    }
+    seen_questions: set[str] = set()
+    seen_templates: set[str] = set()
     for it in items:
         t = it.get("type")
-        if t in by_type:
-            by_type[t].append(it)
+        if t not in by_type or not _valid_generated_item(it, t):
+            continue
+        signature = _question_signature(it.get("question", ""))
+        template_signature = _question_signature(it.get("question", ""), template=True)
+        if not signature or signature in seen_questions or template_signature in seen_templates:
+            continue
+        source = str(it.get("source") or "").strip()
+        if allowed_sources and source not in allowed_sources:
+            continue
+        seen_questions.add(signature)
+        seen_templates.add(template_signature)
+        by_type[t].append(dict(it))
     grounded_fallback = _grounded_mock_fill(
         mcq_count,
         fill_count,
@@ -319,12 +415,18 @@ async def generate_quiz_batch(
 
     def fill_short(t: str, need: int) -> list[dict]:
         cur = by_type[t]
+        candidates = grounded_by_type[t]
+        candidate_index = 0
+        while len(cur) < need and candidate_index < len(candidates):
+            candidate = dict(candidates[candidate_index])
+            candidate_index += 1
+            signature = _question_signature(candidate.get("question", ""))
+            if signature and signature not in seen_questions:
+                seen_questions.add(signature)
+                cur.append(candidate)
         while len(cur) < need:
             fallback_index = len(cur)
-            if fallback_index < len(grounded_by_type[t]):
-                cur.append(dict(grounded_by_type[t][fallback_index]))
-            else:
-                cur.append({**mock_by_type[t], "id": f"mock_{t}_{fallback_index}"})
+            cur.append({**mock_by_type[t], "id": f"mock_{t}_{fallback_index}"})
         return cur[:need]
 
     final = (
@@ -332,9 +434,10 @@ async def generate_quiz_batch(
         + fill_short("fill", fill_count)
         + fill_short("code", code_count)
     )
-    # 强制每题带 difficulty
-    for it in final:
-        it.setdefault("difficulty", diff)
+    # 强制题号唯一，并按整卷难度计划标注。
+    for index, it in enumerate(final):
+        it["id"] = f"quiz_{index + 1}"
+        it["difficulty"] = difficulty_plan[index]
         it.setdefault("explanation", "")
     return final
 
@@ -348,38 +451,123 @@ def _grounded_mock_fill(
     competencies: list[str],
     difficulty: int,
 ) -> list[dict]:
-    """无模型时用已检索知识片段构造可审计的基础卷。"""
+    """无模型或模型漏题时，用检索片段构造不重复、可审计的岗位卷。"""
     usable = [item for item in reference_materials if str(item.get("content") or "").strip()]
     if not usable:
         return _mock_fill(mcq, fill, code)
     result: list[dict] = []
     diff = max(1, min(4, difficulty))
-    distractors = [
-        "只需记忆术语，无需结合岗位任务验证",
-        "该能力仅影响界面展示，不影响交付质量",
-        "所有场景都应直接套用同一结论，无需检查前提",
+    difficulty_plan = _difficulty_plan(mcq + fill + code, diff)
+    mcq_stems = [
+        "客户项目进入{competency}阶段，现阶段哪项行动最符合岗位要求？",
+        "项目评审准备检查{competency}的完成质量，哪项判断最符合岗位要求？",
+        "现场约束发生变化时，围绕{competency}采取哪种处理更稳妥？",
+        "团队准备把{competency}做法固化为交付流程，哪项原则应优先保留？",
+        "负责人要求说明{competency}为何已经完成，哪项回答最有说服力？",
+        "同类现场问题再次出现时，哪项做法最有助于复用{competency}经验？",
+        "在阶段复盘中，哪项结论最能反映{competency}的岗位价值？",
+        "为了减少后续返工，开展{competency}时应优先选择哪项做法？",
+    ]
+    distractor_sets = [
+        ["先承诺一套覆盖全部场景的完整方案，等上线后再补范围和验证口径", "只记录项目最终结论，不保留责任人、依赖、决策和过程证据", "忽略当前现场约束，直接复制其他客户项目的配置与验收方式"],
+        ["仅用会议中的口头确认代替可追溯记录，出现分歧后再临时协调", "只展示系统界面和演示效果，不让真实用户完成实际工作任务", "默认所有异常都属于用户操作问题，不再区分数据、接口与环境"],
+        ["跳过责任人与依赖确认直接进入上线，出现阻塞后再确定处理顺序", "只验证一条正常路径，不设计异常处理、回滚方式与遗留问题记录", "将某个客户的特殊例外直接写成所有项目都必须遵守的统一规则"],
+        ["只统计团队投入工时和完成页面数量，不检查业务结果是否发生变化", "发现权限、合规或交付风险后不升级，也不保留相关决策记录", "用文档中的术语数量代替真实场景可用性、用户采用和运行证据"],
     ]
     for index in range(mcq):
         material = usable[index % len(usable)]
-        fact = " ".join(str(material.get("content") or "").split())[:120]
-        competency = competencies[index % len(competencies)] if competencies else "岗位领域知识"
+        fact = _compact_fact(material.get("content"), max_chars=72)
+        meta = material.get("meta") if isinstance(material.get("meta"), dict) else {}
+        competency = str(meta.get("topic") or "").strip()
+        if not competency:
+            competency = competencies[index % len(competencies)] if competencies else "岗位领域知识"
         correct_index = index % 4
-        options = list(distractors)
+        options = list(distractor_sets[index % len(distractor_sets)])
         options.insert(correct_index, fact)
+        scenario_stage = ("现场交付", "变更复核", "复盘迁移")[
+            (index // len(mcq_stems)) % 3
+        ]
         result.append({
             "id": f"grounded_mcq_{index}",
             "type": "mcq",
-            "question": f"根据岗位知识库，关于“{competency}”的哪项表述最准确？",
+            "question": f"{scenario_stage}：{mcq_stems[index % len(mcq_stems)].format(competency=competency)}",
             "options": options,
             "answer": correct_index,
-            "explanation": f"该结论来自岗位知识库资料《{material.get('source') or '岗位知识库'}》。",
-            "difficulty": diff,
+            "explanation": f"岗位知识片段强调：{fact}",
+            "difficulty": difficulty_plan[len(result)],
             "competency": competency,
             "source": str(material.get("source") or "岗位知识库"),
         })
-    # 理论基线默认只使用选择题；保留其他类型的兼容兜底。
-    if fill or code:
-        result.extend(_mock_fill(0, fill, code))
+
+    fill_stems = [
+        "客户现场需要落实这项要求：{fact} 请填写最匹配的岗位能力：____。",
+        "交付检查发现以下要求尚未落实：{fact} 负责补齐这一环节的能力是：____。",
+        "团队准备复盘并推广以下做法：{fact} 这属于 ____ 能力。",
+        "项目负责人要为以下任务指定能力域：{fact} 应归入 ____。",
+    ]
+    for index in range(fill):
+        material = usable[(mcq + index) % len(usable)]
+        fact = _compact_fact(material.get("content"), max_chars=72)
+        meta = material.get("meta") if isinstance(material.get("meta"), dict) else {}
+        competency = str(meta.get("topic") or "").strip()
+        if not competency:
+            competency = competencies[(mcq + index) % len(competencies)] if competencies else "岗位领域知识"
+        fill_stage = ("交付准备", "现场执行", "结果复盘", "能力沉淀", "风险复核")[
+            (index // len(fill_stems)) % 5
+        ]
+        result.append({
+            "id": f"grounded_fill_{index}",
+            "type": "fill",
+            "question": f"{fill_stage}：{fill_stems[index % len(fill_stems)].format(fact=fact)}",
+            "answer": competency,
+            "explanation": f"该任务对应“{competency}”，知识片段要求：{fact}",
+            "difficulty": difficulty_plan[len(result)],
+            "competency": competency,
+            "source": str(material.get("source") or "岗位知识库"),
+        })
+
+    code_templates = [
+        {
+            "question": "围绕{competency}实现 Python 函数 missing_checks(checks, required)，返回所有未通过或缺失的必检项，保持 required 原顺序。岗位背景：{fact}",
+            "starter": "def missing_checks(checks: dict[str, bool], required: list[str]) -> list[str]:\n    # TODO：返回缺失或值为 False 的检查项\n    pass\n",
+            "answer": "def missing_checks(checks, required):\n    return [name for name in required if not checks.get(name, False)]",
+            "explanation": "逐项读取必检清单，缺失值和 False 都必须被识别，才能留下完整的交付检查证据。",
+        },
+        {
+            "question": "围绕{competency}实现 Python 函数 group_issues(issues)，按 category 汇总问题标题；未知分类归入“其他”。岗位背景：{fact}",
+            "starter": "def group_issues(issues: list[dict]) -> dict[str, list[str]]:\n    # issue 示例：{\"title\": \"接口超时\", \"category\": \"接口\"}\n    pass\n",
+            "answer": "def group_issues(issues):\n    groups = {}\n    for issue in issues:\n        category = issue.get('category') or '其他'\n        groups.setdefault(category, []).append(issue.get('title', '未命名问题'))\n    return groups",
+            "explanation": "按类别沉淀现场问题，能帮助团队区分依赖与责任边界，并支持后续复盘。",
+        },
+        {
+            "question": "围绕{competency}实现 Python 函数 acceptance_ready(results)，只有全部 critical 检查项 passed=True 时才返回 True。岗位背景：{fact}",
+            "starter": "def acceptance_ready(results: list[dict]) -> bool:\n    # result 含 critical 与 passed 两个布尔字段\n    pass\n",
+            "answer": "def acceptance_ready(results):\n    critical = [item for item in results if item.get('critical')]\n    return bool(critical) and all(item.get('passed') is True for item in critical)",
+            "explanation": "验收不能只看部分成功项；关键检查必须存在且全部通过，结果才可被判定为就绪。",
+        },
+    ]
+    for index in range(code):
+        material = usable[(mcq + fill + index) % len(usable)]
+        fact = _compact_fact(material.get("content"), max_chars=80)
+        meta = material.get("meta") if isinstance(material.get("meta"), dict) else {}
+        competency = str(meta.get("topic") or "").strip()
+        if not competency:
+            competency = competencies[(mcq + fill + index) % len(competencies)] if competencies else "岗位领域知识"
+        template = code_templates[index % len(code_templates)]
+        code_stage = ("依赖检查", "问题归档", "验收门禁", "交付复核")[
+            (index // len(code_templates)) % 4
+        ]
+        result.append({
+            "id": f"grounded_code_{index}",
+            "type": "code",
+            "question": f"{code_stage}：{template['question'].format(competency=competency, fact=fact)}",
+            "starter": template["starter"],
+            "answer": template["answer"],
+            "explanation": template["explanation"],
+            "difficulty": difficulty_plan[len(result)],
+            "competency": competency,
+            "source": str(material.get("source") or "岗位知识库"),
+        })
     return result
 
 
@@ -424,5 +612,5 @@ async def judge_code_with_llm(
         score = float(data.get("score", 0))
         reason = str(data.get("reason", ""))[:200]
         return max(0.0, min(100.0, score)), reason
-    except Exception as e:
-        return 0.0, f"判分异常：{type(e).__name__}"
+    except Exception:
+        return 0.0, "自动判分服务暂时不可用，本题未计为通过；请稍后重试或改用自评模式"
