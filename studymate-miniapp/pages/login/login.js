@@ -21,6 +21,10 @@ Page({
     this.setData({ showPassword: !this.data.showPassword })
   },
 
+  onHide() {
+    if (this.data.showPassword) this.setData({ showPassword: false })
+  },
+
   async login() {
     const { email, password } = this.data
     if (!email.trim() || !password) {
