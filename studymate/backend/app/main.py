@@ -545,7 +545,41 @@ async def _ensure_pramate_demo_enterprise(conn):
                     "user_id": learner[0],
                     "created_at": datetime.utcnow(),
                 },
-                )
+            )
+
+    test_member = (
+        await conn.execute(
+            text("SELECT id FROM users WHERE lower(email) = :email LIMIT 1"),
+            {"email": _PRAMATE_EXTRA_MEMBER_EMAIL},
+        )
+    ).fetchone()
+    if test_member is not None:
+        await conn.execute(
+            text(
+                "UPDATE users SET name = 'test', learner_type = 'worker', company = :company, "
+                "target_role = '前线部署工程师（FDE）' WHERE id = :user_id"
+            ),
+            {"company": _PRAMATE_DEMO_ENTERPRISE_NAME, "user_id": test_member[0]},
+        )
+        test_membership = (
+            await conn.execute(
+                text("SELECT id FROM enterprise_memberships WHERE user_id = :user_id LIMIT 1"),
+                {"user_id": test_member[0]},
+            )
+        ).fetchone()
+        if test_membership is None:
+            await conn.execute(
+                text(
+                    "INSERT INTO enterprise_memberships "
+                    "(enterprise_id, user_id, member_role, job_title, status, created_at) "
+                    "VALUES (:enterprise_id, :user_id, 'learner', '前线部署工程师（FDE）', 'active', :created_at)"
+                ),
+                {
+                    "enterprise_id": enterprise[0],
+                    "user_id": test_member[0],
+                    "created_at": datetime.utcnow(),
+                },
+            )
 
 
 async def _ensure_private_demo_knowledge(conn):
@@ -761,40 +795,6 @@ async def _ensure_role_knowledge_catalog() -> None:
 
     await import_fde_catalog()
     await import_role_catalog()
-
-    test_member = (
-        await conn.execute(
-            text("SELECT id FROM users WHERE lower(email) = :email LIMIT 1"),
-            {"email": _PRAMATE_EXTRA_MEMBER_EMAIL},
-        )
-    ).fetchone()
-    if test_member is not None:
-        await conn.execute(
-            text(
-                "UPDATE users SET name = 'test', learner_type = 'worker', company = :company, "
-                "target_role = '前线部署工程师（FDE）' WHERE id = :user_id"
-            ),
-            {"company": _PRAMATE_DEMO_ENTERPRISE_NAME, "user_id": test_member[0]},
-        )
-        test_membership = (
-            await conn.execute(
-                text("SELECT id FROM enterprise_memberships WHERE user_id = :user_id LIMIT 1"),
-                {"user_id": test_member[0]},
-            )
-        ).fetchone()
-        if test_membership is None:
-            await conn.execute(
-                text(
-                    "INSERT INTO enterprise_memberships "
-                    "(enterprise_id, user_id, member_role, job_title, status, created_at) "
-                    "VALUES (:enterprise_id, :user_id, 'learner', '前线部署工程师（FDE）', 'active', :created_at)"
-                ),
-                {
-                    "enterprise_id": enterprise[0],
-                    "user_id": test_member[0],
-                    "created_at": datetime.utcnow(),
-                },
-            )
 
 
 @asynccontextmanager
