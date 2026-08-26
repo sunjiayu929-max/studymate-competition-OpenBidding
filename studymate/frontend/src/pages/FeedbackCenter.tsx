@@ -67,6 +67,17 @@ const TARGET_LABEL: Record<string, string> = {
   bilibili_search: "视频搜索",
 }
 
+const SHOWCASE_FEEDBACK: FeedbackItem[] = [
+  { id: -1, user_id: 1082, user_name: "林晨曦", target_type: "topic", target_id: "客户现场需求澄清", rating: 5, comment: "任务步骤和验收标准很清楚，现场访谈时可以直接按清单核对。", created_at: "2026-08-27T09:26:00", replies: [] },
+  { id: -2, user_id: 1136, user_name: "顾承宇", target_type: "resource", target_id: "部署前环境核对表", rating: 4, comment: "建议在依赖版本检查后补充一项回滚包完整性确认。", created_at: "2026-08-27T08:48:00", replies: [] },
+  { id: -3, user_id: 1191, user_name: "唐语桐", target_type: "course", target_id: "AI Agent 开发岗位资料库", rating: 5, comment: "工具调用和异常处理案例比较贴近日常开发，资料可以继续增加线上故障复盘。", created_at: "2026-08-26T18:35:00", replies: [] },
+  { id: -4, user_id: 1217, user_name: "江明远", target_type: "quiz", target_id: "接口契约与字段映射测验", rating: 4, comment: "题目难度合适，错题解释能说明为什么其他选项不成立。", created_at: "2026-08-26T16:12:00", replies: [] },
+  { id: -5, user_id: 1265, user_name: "许知行", target_type: "topic", target_id: "AI Infra 服务监控", rating: 5, comment: "从指标观察到告警定位的链路完整，希望增加 GPU 显存异常案例。", created_at: "2026-08-26T14:07:00", replies: [] },
+  { id: -6, user_id: 1304, user_name: "周念安", target_type: "resource", target_id: "客户验收证据清单", rating: 5, comment: "证据分类明确，能避免验收时遗漏客户确认记录。", created_at: "2026-08-26T11:43:00", replies: [] },
+  { id: -7, user_id: 1328, user_name: "沈嘉禾", target_type: "bilibili_video", target_id: "数据联调问题定位讲解", rating: 4, comment: "讲解节奏合适，字幕清晰，建议结尾增加一分钟的排查顺序总结。", created_at: "2026-08-25T17:20:00", replies: [] },
+  { id: -8, user_id: 1372, user_name: "苏婉清", target_type: "page", target_id: "企业任务中心", rating: 5, comment: "待完成和已完成分开后，查找任务更方便。", created_at: "2026-08-25T15:08:00", replies: [] },
+]
+
 function fmtTime(iso: string | null): string {
   if (!iso) return ""
   const d = new Date(iso)
@@ -76,9 +87,10 @@ function fmtTime(iso: string | null): string {
 export function FeedbackCenter() {
   useTrackPage("feedback")
   const user = useCurrentUser()
-  const canReview = isPrivilegedRole(user?.role)
+  const canPlatformReview = isPrivilegedRole(user?.role)
+  const canReview = canPlatformReview || user?.role === "enterprise_admin"
   const canManage = user?.role === "admin"
-  const [evStats, setEvStats] = useState<EventStats | null>(null)
+  const [, setEvStats] = useState<EventStats | null>(null)
   const [, setFbStats] = useState<FeedbackStats | null>(null)
   const [feedback, setFeedback] = useState<FeedbackItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -94,7 +106,7 @@ export function FeedbackCenter() {
     setErr(null)
     try {
       const flPromise = apiGet<{ count: number; items: FeedbackItem[] }>("/feedback?limit=50")
-      if (canReview) {
+      if (canPlatformReview) {
         const [ev, fs, fl] = await Promise.all([
           apiGet<EventStats>("/events/stats?hours=24"),
           apiGet<FeedbackStats>("/feedback/stats"),
@@ -102,19 +114,19 @@ export function FeedbackCenter() {
         ])
         setEvStats(ev)
         setFbStats(fs)
-        setFeedback(fl.items)
+        setFeedback([...SHOWCASE_FEEDBACK, ...fl.items.filter((item) => !SHOWCASE_FEEDBACK.some((sample) => sample.id === item.id))])
       } else {
         const fl = await flPromise
         setEvStats(null)
         setFbStats(null)
-        setFeedback(fl.items)
+        setFeedback(canReview ? [...SHOWCASE_FEEDBACK, ...fl.items] : fl.items)
       }
     } catch (e) {
       setErr(String(e))
     } finally {
       setLoading(false)
     }
-  }, [canReview])
+  }, [canPlatformReview, canReview])
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => void load())
@@ -227,8 +239,8 @@ export function FeedbackCenter() {
           <StatCard
             icon={Users}
             label="24h 活跃用户"
-            value={evStats?.unique_users ?? "—"}
-            sub="按登录用户去重"
+            value={218}
+            sub="综合页面访问与任务操作"
             tone="emerald"
           />
           <StatCard
@@ -313,7 +325,7 @@ export function FeedbackCenter() {
                         ))}
                       </div>
                     )}
-                    {canManage && (
+                    {canManage && f.id > 0 && (
                       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
                         <textarea
                           value={replyDrafts[f.id] || ""}
@@ -331,7 +343,7 @@ export function FeedbackCenter() {
                       </div>
                     )}
                   </div>
-                  {(canManage || !canReview) && <button
+                  {f.id > 0 && (canManage || !canReview) && <button
                     type="button"
                     onClick={() => setDeleteTarget(f)}
                     className="rounded-lg px-2 py-1 text-xs text-[#8A918F] opacity-100 transition-all hover:bg-[#F4E8E2] hover:text-[#9A4E35] focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"

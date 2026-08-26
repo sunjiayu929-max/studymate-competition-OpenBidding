@@ -89,7 +89,7 @@ function RootEntry() {
   }, [user])
   if (!user) return null
   if (user.role === "admin") return <Navigate to="/admin" replace />
-  if (user.role === "enterprise_admin") return <Navigate to="/enterprise" replace />
+  if (user.role === "enterprise_admin") return <Navigate to="/enterprise/dashboard" replace />
   return <AppShell><Home /></AppShell>
 }
 

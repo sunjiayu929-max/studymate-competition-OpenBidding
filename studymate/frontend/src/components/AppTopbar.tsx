@@ -125,7 +125,7 @@ export function AppTopbar({
         title="查看或切换当前目标岗位"
       >
         <Library className="size-3.5 shrink-0 text-[#315E83]" />
-        <span className="truncate">{selectionLabel ?? targetRole?.name ?? course?.name ?? "选择当前岗位"}</span>
+        <span className="truncate">{selectionLabel ?? ((user?.learner_type === "worker" && user.target_role) || targetRole?.name || course?.name || "选择当前岗位")}</span>
       </Link>
     </header>
   )
