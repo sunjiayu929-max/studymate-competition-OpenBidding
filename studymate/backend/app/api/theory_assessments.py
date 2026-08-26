@@ -22,6 +22,28 @@ from app.schemas.profile import ProfileDims
 
 router = APIRouter(prefix="/theory-assessments", tags=["theory-assessments"])
 
+_ASSESSMENT_OPTIONAL_PROFILE_FIELDS = {
+    "认知风格",
+    "资源偏好",
+    "就业技能与实践经历",
+}
+
+
+def _assessment_missing_fields(dims: ProfileDims, target_role: str | None = None) -> list[str]:
+    """展示偏好和就业证据不应阻塞理论知识诊断。"""
+    return [
+        field
+        for field in profile_missing_fields(dims, target_role)
+        if field not in _ASSESSMENT_OPTIONAL_PROFILE_FIELDS
+    ]
+
+
+def _assessment_is_current(assessment: TheoryAssessment, dims: ProfileDims) -> bool:
+    if assessment.status != "submitted":
+        return True
+    evidence = dims.theory_assessments.get(assessment.role_id)
+    return bool(evidence and evidence.assessment_id == assessment.id)
+
 
 def _strip_source_leadin(question: str) -> str:
     """移除题干开头的书名/章节出处，同时保留正常的场景条件。"""
@@ -288,9 +310,11 @@ async def assessment_status(
     profile = await db.scalar(select(Profile).where(Profile.user_id == user.id))
     dims = ProfileDims.model_validate(profile.dims if profile else {})
     profile_score = _profile_score(dims, profile.version if profile else 1)
-    missing_fields = profile_missing_fields(dims)
+    missing_fields = _assessment_missing_fields(dims, user.target_role)
     profile_ready = bool(profile) and not missing_fields
     assessment = await _latest_assessment(db, user_id=user.id, role_id=role_id)
+    if assessment and not _assessment_is_current(assessment, dims):
+        assessment = None
     return {
         "role_id": role_id,
         "profile_ready": profile_ready,
@@ -317,12 +341,11 @@ async def create_assessment(
     user: User = Depends(require_user),
 ) -> dict:
     existing = await _latest_assessment(db, user_id=user.id, role_id=req.role_id)
-    if existing and existing.status in {"generating", "ready", "submitted"}:
-        return _public_assessment(existing)
-
     profile = await db.scalar(select(Profile).where(Profile.user_id == user.id))
     dims = ProfileDims.model_validate(profile.dims if profile else {})
-    if not profile or profile_missing_fields(dims):
+    if existing and existing.status in {"generating", "ready", "submitted"} and _assessment_is_current(existing, dims):
+        return _public_assessment(existing)
+    if not profile or _assessment_missing_fields(dims, user.target_role or req.role_name):
         raise HTTPException(409, "请先完成岗位能力画像，再进行理论基线测评")
 
     try:

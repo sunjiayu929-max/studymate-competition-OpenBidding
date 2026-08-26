@@ -60,6 +60,7 @@ export interface TheoryGateState {
 interface StatusResponse {
   profile_ready: boolean
   profile_score: number
+  missing_fields: string[]
   required: boolean
   assessment: TheoryAssessment | null
 }
@@ -140,8 +141,12 @@ export function TheoryAssessmentModal({
           return
         }
         if (!status.profile_ready) {
+          const message = status.missing_fields.length
+            ? `岗位能力画像还缺：${status.missing_fields.join("、")}`
+            : "请先完成岗位能力画像，再进行理论基线测评。"
+          setError(message)
           setOpen(false)
-          emitGate({ loading: false, completed: false, required: false, assessment: null, error: "" })
+          emitGate({ loading: false, completed: false, required: false, assessment: null, error: message })
           return
         }
         setOpen(true)

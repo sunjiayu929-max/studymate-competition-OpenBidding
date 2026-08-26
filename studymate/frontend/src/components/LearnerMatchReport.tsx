@@ -3,11 +3,11 @@ import { Link } from "react-router-dom"
 import {
   ArrowRight,
   CircleAlert,
-  LockKeyhole,
+  Flag,
+  Lock,
   Network,
-  RefreshCw,
   Route,
-  Sparkles,
+  Zap,
 } from "lucide-react"
 import {
   Area,
@@ -30,6 +30,7 @@ export interface ReportCapability {
   level: number
   state: "mastered" | "developing" | "current" | "ready" | "locked"
   task: string
+  prerequisites: string[]
 }
 
 export interface ReportResource {
@@ -40,10 +41,7 @@ export interface ReportResource {
 }
 
 interface LearnerMatchReportProps {
-  released: boolean
-  generated: boolean
-  onGenerate: () => void
-  onRegenerate: () => void
+  targetRoleName: string
   diagnosis: TrainingDiagnosis | null
   plan?: PersonalizedTrainingPlan
   theoryScore?: number
@@ -90,35 +88,18 @@ function unique(items: Array<string | undefined>) {
 export function LearnerMatchReport(props: LearnerMatchReportProps) {
   const report = buildReport(props)
   const [selectedNodeId, setSelectedNodeId] = useState("")
+  const [selectedPathId, setSelectedPathId] = useState("")
   const selectedNode = report.knowledgeNodes.find((node) => node.id === selectedNodeId) ?? report.knowledgeNodes[0]
-
-  if (!props.released) {
-    return (
-      <section className="mt-4 rounded-[24px] border border-[#D9E1E9] bg-white p-5 shadow-[0_10px_30px_rgba(41,67,112,.06)] sm:p-6">
-        <div className="flex items-start gap-4 rounded-[18px] border border-dashed border-[#C9D3DE] bg-[#FAFBFC] p-5">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#EEF1F4] text-[#748291]"><LockKeyhole className="size-4.5" /></span>
-          <div><h2 className="text-base font-bold text-[#28394B]">个人学情与资源匹配度报告</h2><p className="mt-1 text-xs leading-5 text-[#74808D]">七类资源通过发布门禁后，即可生成完整报告。</p></div>
-        </div>
-      </section>
-    )
-  }
-
-  if (!props.generated) {
-    return (
-      <section id="learner-match-report" className="mt-4 scroll-mt-24 rounded-[24px] border border-[#C9D6E3] bg-white p-6 shadow-[0_14px_36px_rgba(41,67,112,.08)] sm:p-8">
-        <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
-          <div><div className="flex items-center gap-2 text-[10px] font-bold tracking-[.12em] text-[#708399]"><Sparkles className="size-4" />资源分析已就绪</div><h2 className="mt-2 text-xl font-bold tracking-[-.025em] text-[#24374C]">个人学情与资源匹配度报告</h2><p className="mt-2 max-w-2xl text-xs leading-5 text-[#748291]">生成知识盲区定位、资源难度匹配曲线和个性化学习路径规划图。</p></div>
-          <button type="button" onClick={props.onGenerate} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-[#285F9D] px-5 text-sm font-bold text-white shadow-[0_8px_18px_rgba(40,95,157,.18)] hover:bg-[#204F84]"><Network className="size-4" />生成可视化报告<ArrowRight className="size-4" /></button>
-        </div>
-      </section>
-    )
-  }
-
+  const pathCapabilities = props.capabilities.length ? props.capabilities : [{ id: "report-start", name: "建立目标岗位路径", level: 0, state: "ready" as const, task: "选择目标岗位后，系统会生成对应的能力节点与训练路线。", prerequisites: [] }]
+  const selectedPath = pathCapabilities.find((node) => node.id === selectedPathId) ?? pathCapabilities.find((node) => node.state === "current") ?? pathCapabilities[0]
   return (
-    <section id="learner-match-report" className="mt-4 scroll-mt-24 rounded-[24px] border border-[#CBD6E1] bg-[#F6F8FA] shadow-[0_14px_38px_rgba(41,67,112,.09)]">
+    <section id="learner-match-report" className="mb-4 mt-4 scroll-mt-24 rounded-[24px] border border-[#CBD6E1] bg-[#F6F8FA] shadow-[0_14px_38px_rgba(41,67,112,.09)]">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D7E0E8] bg-white px-5 py-5 sm:px-7">
-        <h2 className="text-xl font-bold tracking-[-.025em] text-[#23364B]">个人学情与资源匹配度报告</h2>
-        <button type="button" onClick={props.onRegenerate} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#D5DEE7] bg-white px-3 text-[11px] font-bold text-[#52687F] hover:bg-[#F5F7F9]"><RefreshCw className="size-3.5" />重新生成</button>
+        <div>
+          <h2 className="text-xl font-bold tracking-[-.025em] text-[#23364B]">个人学情与资源匹配度报告</h2>
+          <p className="mt-1 text-xs leading-5 text-[#748291]">综合当前画像、测评和训练记录，呈现知识盲区、资源难度与学习路径。</p>
+        </div>
+        <span className="inline-flex h-9 items-center gap-2 rounded-xl border border-[#BFDCCF] bg-[#F3FAF7] px-3 text-[11px] font-bold text-[#286B59]"><span className="size-1.5 rounded-full bg-[#319078]" />实时更新</span>
       </header>
 
       <div className="space-y-4 p-4 sm:p-6">
@@ -138,7 +119,7 @@ export function LearnerMatchReport(props: LearnerMatchReportProps) {
                   const startY = point.y + 43
                   return <path key={`edge-${node.id}`} d={`M 410 225 C ${(410 + startX) / 2} 225, ${(410 + startX) / 2} ${startY}, ${startX} ${startY}`} fill="none" stroke="#AAB9C8" strokeWidth="2" strokeDasharray={node.status === "verify" ? "6 6" : undefined} />
                 })}
-                <foreignObject x="326" y="176" width="168" height="98"><div className="grid h-full place-items-center rounded-[20px] border-2 border-[#6E8CAB] bg-white px-4 text-center shadow-[0_8px_18px_rgba(48,72,98,.11)]"><div><Network className="mx-auto size-5 text-[#456A90]" /><strong className="mt-2 block text-[12px] text-[#2D435A]">本轮知识结构</strong></div></div></foreignObject>
+                <foreignObject x="326" y="176" width="168" height="98"><div className="grid h-full place-items-center rounded-[20px] border-2 border-[#6E8CAB] bg-white px-4 text-center shadow-[0_8px_18px_rgba(48,72,98,.11)]"><div><Network className="mx-auto size-5 text-[#456A90]" /><strong className="mt-2 block text-[12px] text-[#2D435A]">当前知识结构</strong></div></div></foreignObject>
                 {report.knowledgeNodes.map((node, index) => {
                   const point = NODE_POSITIONS[index]
                   if (!point) return null
@@ -171,23 +152,85 @@ export function LearnerMatchReport(props: LearnerMatchReportProps) {
         </article>
 
         <article className="rounded-[20px] border border-[#D7E0E8] bg-white p-5">
-          <ReportHeading icon={Route} index="03" title="学习路径规划图" description="路径根据当前知识盲区、能力前置关系和本轮训练计划生成。" />
-          <div className="mt-6 overflow-x-auto pb-2">
-            <div className="flex min-w-[820px] items-center">
-              {report.path.map((node, index) => (
-                <div key={`${node}-${index}`} className="contents">
-                  <div className={cn("grid min-h-24 w-[180px] shrink-0 place-items-center rounded-[18px] border px-4 text-center", index === 0 ? "border-[#6D95BD] bg-[#F0F6FB] ring-2 ring-[#557FA7]/10" : index === report.path.length - 1 ? "border-[#A8C9BD] bg-[#F2F9F6]" : "border-[#D8E0E8] bg-[#FAFBFC]")}><div><span className="text-[9px] font-black text-[#8090A1]">{String(index + 1).padStart(2, "0")}</span><strong className="mt-2 block text-[11px] leading-5 text-[#2C4055]">{node}</strong></div></div>
-                  {index < report.path.length - 1 && <div className="flex w-10 shrink-0 items-center"><div className="h-px flex-1 border-t-2 border-dashed border-[#9FAFBE]" /><ArrowRight className="-ml-1 size-4 text-[#879AAA]" /></div>}
-                </div>
-              ))}
+          <ReportHeading icon={Route} index="03" title="学习路径规划图" description="路径根据当前知识盲区、能力前置关系和已有训练计划动态生成。" />
+          <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_188px] xl:items-center">
+            <div className="min-w-0">
+              <ReportPathMap
+                capabilities={pathCapabilities}
+                targetRoleName={props.targetRoleName}
+                selectedId={selectedPath?.id}
+                onSelect={setSelectedPathId}
+              />
+              <ReportPathProgress capabilities={props.capabilities} targetRoleName={props.targetRoleName} />
             </div>
+            <Link to="/competency" className="group inline-flex min-h-24 items-center justify-center gap-2 rounded-[18px] border border-[#B9CBE4] bg-[linear-gradient(145deg,#244C80,#315E9C)] px-4 text-center text-xs font-bold text-white shadow-[0_12px_24px_rgba(36,76,128,.2)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(36,76,128,.28)]"><span><span className="grid mx-auto mb-2 size-9 place-items-center rounded-xl bg-white/15"><Route className="size-4" /></span><span className="block">开始今日学习</span><span className="mt-1 block text-[9px] font-medium text-[#CFE2FF]">进入岗位训练中心</span></span><ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></Link>
           </div>
+          {selectedPath && <div className="mt-3 rounded-[16px] border border-[#D8E2EE] bg-[#FAFCFE] px-4 py-3"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-[9px] font-extrabold tracking-[.12em] text-[#7185A1]">当前路径节点 · {selectedPath.level >= 3 ? "已验收" : selectedPath.state === "current" ? "本轮训练" : "待完成"}</span><strong className="text-xs text-[#294A73]">{selectedPath.name}</strong></div><p className="mt-1 text-[10px] leading-5 text-[#64758A]">{selectedPath.task}</p></div>}
         </article>
 
-        <div className="flex justify-end"><Link to="/workspace/r/doc" className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#285F9D] px-4 text-xs font-bold text-white hover:bg-[#204F84]">按照路径开始学习<ArrowRight className="size-3.5" /></Link></div>
       </div>
     </section>
   )
+}
+
+const REPORT_ROUTE_META: Record<ReportCapability["state"], { fill: string; stroke: string; label: string }> = {
+  mastered: { fill: "#E6F6EF", stroke: "#2A8A70", label: "已验收" },
+  developing: { fill: "#FFF4E2", stroke: "#C6872E", label: "待补强" },
+  current: { fill: "#EAF2FF", stroke: "#3974CA", label: "本轮训练" },
+  ready: { fill: "#F4F7FB", stroke: "#8799AF", label: "可以开始" },
+  locked: { fill: "#F5F6F8", stroke: "#A8B0BC", label: "前置未完成" },
+}
+
+export function ReportPathMap({ capabilities, targetRoleName, selectedId, onSelect }: { capabilities: ReportCapability[]; targetRoleName: string; selectedId?: string; onSelect: (id: string) => void }) {
+  const nodes = capabilities.slice(0, 7)
+  const positions = nodes.map((_, index) => ({ x: 122 + (index % 3) * 258, y: 104 + Math.floor(index / 3) * 142 }))
+  const nodeById = new Map(nodes.map((node, index) => [node.id, { node, point: positions[index] }]))
+  const finalPoint = { x: 890, y: 246 }
+  const finalReady = nodes.length > 0 && nodes.every((node) => node.level >= 3)
+  const prerequisiteIds = new Set(nodes.flatMap((node) => node.prerequisites))
+  const terminalNodes = nodes.filter((node) => !prerequisiteIds.has(node.id))
+
+  return <div className="overflow-x-auto rounded-[18px] border border-[#DCE5F0] bg-[linear-gradient(180deg,#F8FBFF_0%,#FFFFFF_100%)]">
+    <svg viewBox="0 0 1020 390" role="img" aria-label={`${targetRoleName || "目标岗位"}路径地图`} className="min-w-[780px]">
+      <defs>
+        <pattern id="learner-report-route-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none" stroke="#DDE7F2" strokeWidth="1" opacity=".55" /></pattern>
+        <marker id="learner-report-route-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9AAFC7" /></marker>
+      </defs>
+      <rect width="1020" height="390" fill="url(#learner-report-route-grid)" />
+      {nodes.flatMap((node, targetIndex) => node.prerequisites.map((sourceId) => {
+        const source = nodeById.get(sourceId)
+        const target = positions[targetIndex]
+        if (!source || !target) return null
+        const midX = (source.point.x + target.x) / 2
+        return <path key={`${sourceId}-${node.id}`} d={`M ${source.point.x + 78} ${source.point.y} C ${midX} ${source.point.y}, ${midX} ${target.y}, ${target.x - 78} ${target.y}`} fill="none" stroke="#9AAFC7" strokeWidth="3" strokeDasharray={node.level === 0 ? "7 7" : undefined} markerEnd="url(#learner-report-route-arrow)" />
+      }))}
+      {terminalNodes.map((node) => {
+        const source = nodeById.get(node.id)
+        if (!source) return null
+        const midX = (source.point.x + finalPoint.x) / 2
+        return <path key={`${node.id}-final`} d={`M ${source.point.x + 78} ${source.point.y} C ${midX} ${source.point.y}, ${midX} ${finalPoint.y}, ${finalPoint.x - 78} ${finalPoint.y}`} fill="none" stroke="#9AAFC7" strokeWidth="3" strokeDasharray={finalReady ? undefined : "7 7"} markerEnd="url(#learner-report-route-arrow)" />
+      })}
+      {nodes.map((node, index) => {
+        const point = positions[index]
+        if (!point) return null
+        const meta = REPORT_ROUTE_META[node.state]
+        return <foreignObject key={node.id} x={point.x - 78} y={point.y - 42} width="156" height="84"><button type="button" onClick={() => onSelect(node.id)} className="h-full w-full rounded-[16px] border-2 px-3 py-2 text-left shadow-[0_8px_20px_rgba(50,77,110,.1)] transition hover:-translate-y-0.5" style={{ backgroundColor: meta.fill, borderColor: selectedId === node.id ? "#7654DC" : meta.stroke }}><span className="block text-[8px] font-black" style={{ color: meta.stroke }}>{meta.label} · L{node.level}/L3</span><strong className="mt-1 block truncate text-[11px] text-[#233A57]">{node.name}</strong><small className="mt-1 block truncate text-[8px] text-[#718096]">{node.task}</small></button></foreignObject>
+      })}
+      <foreignObject x={finalPoint.x - 78} y={finalPoint.y - 46} width="156" height="92"><div className={cn("grid h-full place-items-center rounded-[16px] border-2 px-3 text-center shadow-[0_8px_20px_rgba(50,77,110,.1)]", finalReady ? "border-[#2A8A70] bg-[#E6F6EF]" : "border-[#A8B0BC] bg-[#F5F6F8]")}><div>{finalReady ? <Flag className="mx-auto size-4 text-[#2A8A70]" /> : <Lock className="mx-auto size-4 text-[#8A95A4]" />}<strong className="mt-1 block truncate text-[11px] text-[#33475F]">{targetRoleName || "目标岗位"}</strong><small className="mt-1 block text-[8px] text-[#758399]">{finalReady ? "可以进入岗位验收" : `还需完成 ${nodes.filter((node) => node.level < 3).length} 项能力`}</small></div></div></foreignObject>
+    </svg>
+  </div>
+}
+
+export function ReportPathProgress({ capabilities, targetRoleName }: { capabilities: ReportCapability[]; targetRoleName: string }) {
+  const capabilityProgress = capabilities.length
+    ? Math.round(capabilities.reduce((sum, node) => sum + Math.min(3, Math.max(0, node.level)), 0) / (capabilities.length * 3) * 100)
+    : 0
+
+  return <div className="mt-4 rounded-[18px] border border-[#D8E2EE] bg-[#F7FAFD] p-4" role="progressbar" aria-label="岗位学习路径进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={capabilityProgress}>
+    <div className="flex items-center justify-between gap-3 text-[10px] font-bold text-[#63758D]"><span className="inline-flex items-center gap-1.5"><Zap className="size-3.5 text-[#C6872E]" />岗位学习路径进度</span><strong className="text-[#285FAF]">{capabilityProgress}%</strong></div>
+    <div className="relative mt-3 h-3 overflow-hidden rounded-full bg-[#DCE5F0] shadow-inner"><div className="absolute inset-y-0 left-0 rounded-full bg-[linear-gradient(90deg,#2E6EC8_0%,#6C5CE7_48%,#22A38A_100%)] shadow-[0_0_14px_rgba(68,111,218,.7)] transition-[width] duration-700" style={{ width: `${capabilityProgress}%` }} /><div className="absolute inset-y-0 w-16 animate-[route-progress-shimmer_2.4s_linear_infinite] bg-gradient-to-r from-transparent via-white/70 to-transparent" style={{ left: `calc(${Math.max(0, capabilityProgress - 8)}% - 32px)` }} /></div>
+    <div className="mt-2 flex items-center justify-between text-[9px] text-[#8090A1]"><span>{capabilities.filter((node) => node.level > 0).length} 项已有学习证据</span><span>目标：{targetRoleName || "目标岗位"}</span></div>
+  </div>
 }
 
 function buildReport(props: LearnerMatchReportProps) {
@@ -257,7 +300,7 @@ function buildReport(props: LearnerMatchReportProps) {
     ...(props.plan?.stages.map((stage) => stage.goal) ?? []),
   ])
   const path = pathCandidates.slice(0, 4)
-  const finalNode = props.diagnosis?.training_goal ?? "完成本轮岗位任务验收"
+  const finalNode = props.diagnosis?.training_goal ?? "完善个人学习路径"
   if (!path.includes(finalNode)) path.push(finalNode)
 
   return { knowledgeNodes, curve, path: path.slice(0, 5) }

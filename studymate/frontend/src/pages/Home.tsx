@@ -29,9 +29,11 @@ import {
 } from "lucide-react"
 
 import { AppTopbar } from "@/components/AppTopbar"
+import { LearnerMatchReport, type ReportCapability } from "@/components/LearnerMatchReport"
 import { useTutorContext } from "@/hooks/useTutorContext"
 import { apiGet } from "@/lib/api"
 import { listQuizSessions, type QuizSession } from "@/lib/quizSession"
+import { buildRoleCompetencyMap } from "@/lib/roleCompetencyMap"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { fallbackSamplesFor, isShowcaseCourse, useCurrentCourse } from "@/store/course"
 import { useTargetRole } from "@/store/targetRole"
@@ -62,6 +64,10 @@ interface ProfileDims {
   pace?: { hours_per_week?: number; intensity?: string }
   preference?: Record<string, unknown>
   employment_skills?: Record<string, unknown>
+  theory_assessments?: Record<string, {
+    score?: number
+    weak_topics?: string[]
+  }>
 }
 
 interface ProfileResponse {
@@ -743,6 +749,7 @@ function calculateProfileCompleteness(profile: ProfileResponse | null) {
     pace: { hours_per_week: 0, intensity: "" },
     preference: { document: 3, mindmap: 3, quiz: 3, code: 3, video: 3, reading: 3 },
     employment_skills: { programming: 0, algorithms: 0, data_ai: 0, systems: 0, engineering: 0, professional: 0 },
+    theory_assessments: {},
   }
   const groups: Array<keyof ProfileDims> = [
     "knowledge_base",
@@ -763,6 +770,16 @@ function formatTrackedDuration(minutes: number) {
   const hours = Math.floor(minutes / 60)
   const rest = minutes % 60
   return rest ? `${hours} 小时 ${rest} 分` : `${hours} 小时`
+}
+
+function readReportCapabilityEvidence(userId: number | undefined, roleId: string) {
+  if (!userId) return {} as Record<string, { level?: number }>
+  try {
+    const raw = window.localStorage.getItem(`sm:role-capability-evidence:${userId}:${roleId}`)
+    return raw ? JSON.parse(raw) as Record<string, { level?: number }> : {}
+  } catch {
+    return {} as Record<string, { level?: number }>
+  }
 }
 
 function OrbitMap({ learnerName }: { learnerName: string }) {
@@ -1035,6 +1052,35 @@ export function Home() {
     Boolean(workspace.outputs.guide?.content),
     Boolean(workspace.outputs.video?.script),
   ].filter(Boolean).length
+  const reportCapabilityMap = useMemo(() => targetRole ? buildRoleCompetencyMap(targetRole) : null, [targetRole])
+  const reportCapabilities = useMemo<ReportCapability[]>(() => {
+    if (!reportCapabilityMap) return []
+    const storedEvidence = readReportCapabilityEvidence(user?.user_id, reportCapabilityMap.roleId)
+    const currentNames = new Set(workspace.outputs.training_plan?.priority_competencies ?? [])
+    const feedbackLevel = workspace.feedback?.accuracy == null
+      ? 0
+      : workspace.feedback.accuracy >= 85
+        ? 3
+        : workspace.feedback.accuracy >= 60
+          ? 2
+          : 1
+    const levels = new Map(reportCapabilityMap.nodes.map((node) => [
+      node.id,
+      Math.max(storedEvidence[node.id]?.level ?? 0, currentNames.has(node.name) ? feedbackLevel : 0),
+    ]))
+
+    return reportCapabilityMap.nodes.map((node) => {
+      const level = levels.get(node.id) ?? 0
+      let state: ReportCapability["state"]
+      if (level >= 3) state = "mastered"
+      else if (currentNames.has(node.name)) state = "current"
+      else if (level > 0) state = "developing"
+      else if (node.prerequisites.every((id) => (levels.get(id) ?? 0) >= 3)) state = "ready"
+      else state = "locked"
+      return { id: node.id, name: node.name, level, state, task: node.task, prerequisites: node.prerequisites }
+    })
+  }, [reportCapabilityMap, user?.user_id, workspace.feedback?.accuracy, workspace.outputs.training_plan])
+  const theoryEvidence = targetRole ? data.profile?.dims.theory_assessments?.[targetRole.id] : undefined
   const todayKey = shanghaiDayKey(new Date())
   const todaySubmittedQuizzes = submittedQuizzes.filter((quiz) => shanghaiDayKey(quiz.submitted_at) === todayKey)
   const todayNotes = data.notes.items.filter((note) => shanghaiDayKey(note.updated_at || note.created_at) === todayKey)
@@ -1269,6 +1315,22 @@ export function Home() {
               </div>
             </motion.section>
           )}
+
+          <LearnerMatchReport
+            targetRoleName={targetRoleName || "目标岗位"}
+            diagnosis={workspace.diagnosis}
+            plan={workspace.outputs.training_plan}
+            theoryScore={theoryEvidence?.score}
+            theoryWeakTopics={theoryEvidence?.weak_topics ?? []}
+            profileWeakTopics={weakTopics}
+            feedbackAccuracy={workspace.feedback?.accuracy ?? submittedQuizzes[0]?.score}
+            capabilities={reportCapabilities}
+            resources={[
+              { id: "doc", title: "定制讲义", reviewScore: workspace.reviews.evidence_review?.score ?? 0, ready: Boolean(workspace.outputs.doc) },
+              { id: "guide", title: "实操指南", reviewScore: workspace.reviews.practice_review?.score ?? 0, ready: Boolean(workspace.outputs.guide) },
+              { id: "quiz", title: "分阶测试", reviewScore: workspace.reviews.difficulty_review?.score ?? 0, ready: Boolean(workspace.outputs.quiz) },
+            ]}
+          />
 
           <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(340px,.75fr)]">
             <motion.article
