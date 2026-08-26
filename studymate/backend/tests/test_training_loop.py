@@ -321,7 +321,7 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
             "topic": "接口联调",
             "target_role": "前线部署工程师",
             "core_competencies": ["系统集成"],
-            "generation_round": 4,
+            "generation_round": 2,
             "outputs": {"doc": {"content": "available"}, "quiz": {"items": []}},
             "reviews": {
                 "evidence_review": {"status": "fail", "score": 40, "findings": [{}]},
@@ -359,7 +359,7 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
         }.items():
             self.assertTrue(context["outputs"][resource_id][field], resource_id)
 
-    async def test_pipeline_publishes_after_exactly_three_resource_reworks(self):
+    async def test_pipeline_publishes_after_exactly_one_resource_rework(self):
         orchestrator = _build_orchestrator()
         plan = {
             "type": "training_plan",
@@ -422,8 +422,8 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
 
         reworks = [event for event in events if event["event"] == "rework"]
         done = next(event["data"] for event in events if event["event"] == "done")
-        self.assertEqual(len(reworks), 3)
-        self.assertEqual(done["generation_round"], 4)
+        self.assertEqual(len(reworks), 1)
+        self.assertEqual(done["generation_round"], 2)
         self.assertEqual(done["stage"], "published")
         self.assertEqual(done["decision"]["decision"], "publish")
         self.assertTrue(done["decision"]["release_gate"]["all_metrics_passed"])

@@ -138,7 +138,7 @@ class Orchestrator:
 class TrainingLoopOrchestrator:
     """岗位训练闭环：诊断 → 生成 → 审核 → 裁决/返工 → 发布。"""
 
-    MAX_REWORK_ATTEMPTS = 3
+    MAX_REWORK_ATTEMPTS = 1
 
     def __init__(
         self,
@@ -240,12 +240,12 @@ class TrainingLoopOrchestrator:
                         "decision": "accept",
                         "rework_targets": [],
                         "required_fixes": [],
-                        "resolution": "三次自动优化完成，采用最终训练方案继续生成资源。",
+                        "resolution": "一次自动优化完成，采用最终训练方案继续生成资源。",
                     })
                 await emit("rework_exhausted", {
                     "phase": "planning",
                     "rework_count": self.MAX_REWORK_ATTEMPTS,
-                    "summary": "训练计划已完成三次自动优化，采用最终方案继续生成资源",
+                    "summary": "训练计划已完成一次自动优化，采用最终方案继续生成资源",
                 })
 
             await self._run_generation(ctx, emit, self.generators)
@@ -270,13 +270,18 @@ class TrainingLoopOrchestrator:
                         "decision": forced,
                     })
                     await emit("decision", forced)
-                    await self._stage(emit, "publishing", "三次自动返工已完成，正在发布最终资源包", ctx)
+                    await self._stage(emit, "publishing", "一次自动返工已完成，正在发布最终资源包", ctx)
                     await self._stage(emit, "published", "最终资源包已发布，可进入学习与反馈", ctx)
                     await self._emit_done(ctx, emit)
                     return
 
                 resource_rework_count += 1
-                await self._stage(emit, "rework", f"资源辩论未通过，开始第 {resource_rework_count} / 3 次定向返工", ctx)
+                await self._stage(
+                    emit,
+                    "rework",
+                    f"资源辩论未通过，开始第 {resource_rework_count} / {self.MAX_REWORK_ATTEMPTS} 次定向返工",
+                    ctx,
+                )
                 await emit("rework", {
                     "phase": "resource",
                     "rework_attempt": resource_rework_count,
@@ -503,9 +508,9 @@ class TrainingLoopOrchestrator:
             },
         }
         reviewer_names = {
-            "evidence_review": "事实与来源审核",
-            "practice_review": "实操规范审核",
-            "difficulty_review": "难度与覆盖审核",
+            "evidence_review": "事实与来源校验 Agent",
+            "practice_review": "实操规范校验 Agent",
+            "difficulty_review": "难度与覆盖校验 Agent",
         }
         for reviewer_id, score in review_scores.items():
             review = dict((ctx.get("reviews") or {}).get(reviewer_id) or {})
@@ -564,7 +569,7 @@ class TrainingLoopOrchestrator:
             **previous,
             "type": "decision",
             "decision": "publish",
-            "summary": "资源已完成三次自动优化，最终审核结果符合要求，资源包已批准发布",
+            "summary": "资源已完成一次自动优化，最终审核结果符合要求，资源包已批准发布",
             "quality_score": quality_score,
             "generation_round": int(ctx.get("generation_round", 1)),
             "rework_targets": [],

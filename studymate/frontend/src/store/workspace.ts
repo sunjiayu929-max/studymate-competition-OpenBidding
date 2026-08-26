@@ -361,7 +361,7 @@ function migrateExhaustedRun(parsed: WorkspaceState): void {
   parsed.decision = {
     ...decision,
     decision: "publish",
-    summary: "资源已完成三次自动优化，最终审核结果符合要求，资源包已批准发布",
+    summary: "资源已完成一次自动优化，最终审核结果符合要求，资源包已批准发布",
     quality_score: Math.round(((100 - hallucinationRate) + difficultyAccuracy + knowledgeCoverage + 100) / 4),
     rework_targets: [],
     required_fixes: [],
@@ -771,7 +771,7 @@ class WorkspaceStore {
         break
       }
       case "rework_exhausted": {
-        this.appendLog(String(d.summary ?? "已完成 3 次自动返工，采用最终结果继续流程"))
+        this.appendLog(String(d.summary ?? "已完成 1 次自动返工，采用最终结果继续流程"))
         break
       }
       case "agent_status": {
@@ -848,11 +848,19 @@ class WorkspaceStore {
   /** 记录一次答题（供 QuizCard 提交时调用）。同一题再次提交会覆盖。 */
   recordQuizAttempt(attempt: QuizAttempt) {
     const now = Date.now()
-    this.setState((s) => ({
-      quizAttempts: { ...s.quizAttempts, [attempt.id]: attempt },
-      resourcesConsumed: { ...s.resourcesConsumed, quiz: s.resourcesConsumed.quiz || now },
-      learningStartedAt: s.learningStartedAt || now,
-    }))
+    this.setState((s) => {
+      const previous = s.quizAttempts[attempt.id]
+      const answerChanged = !previous
+        || previous.user_answer !== attempt.user_answer
+        || previous.is_correct !== attempt.is_correct
+      return {
+        quizAttempts: { ...s.quizAttempts, [attempt.id]: attempt },
+        resourcesConsumed: { ...s.resourcesConsumed, quiz: s.resourcesConsumed.quiz || now },
+        learningStartedAt: s.learningStartedAt || now,
+        feedback: answerChanged ? null : s.feedback,
+        stage: answerChanged && s.feedback ? "published" : s.stage,
+      }
+    })
   }
 
   /** 记录用户实际查看/沉淀过的资源类型。 */
@@ -934,11 +942,17 @@ class WorkspaceStore {
 
   async submitTrainingFeedback(satisfaction?: number): Promise<TrainingFeedback> {
     if (!this.state.runId) throw new Error("没有可反馈的训练记录")
-    const attempts = Object.values(this.state.quizAttempts).map((item) => ({
-      question_id: item.id,
-      correct: item.is_correct,
-      difficulty: item.difficulty,
-    }))
+    const quizItems = this.state.outputs.quiz?.items ?? []
+    const answeredCount = quizItems.filter((item) => Boolean(this.state.quizAttempts[item.id])).length
+    if (!answeredCount) throw new Error("请先完成本轮分阶测试题，再提交验收")
+    const attempts = quizItems.map((item) => {
+      const attempt = this.state.quizAttempts[item.id]
+      return {
+        question_id: item.id,
+        correct: attempt?.is_correct ?? false,
+        difficulty: attempt?.difficulty ?? item.difficulty,
+      }
+    })
     const result = await apiPost<TrainingFeedback>("/workspace/feedback", {
       run_id: this.state.runId,
       attempts,

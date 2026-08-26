@@ -134,7 +134,7 @@ export function QuizLibrary() {
               <CourseRequiredState targetRoleName={targetRole?.name} />
             ) : (
               <>
-            <div className="grid gap-4 lg:grid-cols-[minmax(300px,420px)_minmax(0,1fr)]">
+            <div className="grid items-start gap-4 lg:grid-cols-[minmax(380px,480px)_minmax(0,1fr)]">
               <aside className="min-w-0">
                 <NewQuizModal
                   open

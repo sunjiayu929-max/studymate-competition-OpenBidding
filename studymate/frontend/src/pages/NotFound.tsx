@@ -6,7 +6,7 @@ import { useTrackPage } from "@/lib/useTrackPage"
 
 const DESTINATIONS = [
   { to: "/courses", label: "岗位空间", detail: "选择领域与目标岗位", icon: Library, color: "#8E6925", wash: "#F4ECD8" },
-  { to: "/competency", label: "岗位训练中心", detail: "能力地图与 15 个协作节点训练闭环", icon: LayoutDashboard, color: "#315E83", wash: "#E7EDF3" },
+  { to: "/competency", label: "岗位训练中心", detail: "能力地图与 14 个协作节点训练闭环", icon: LayoutDashboard, color: "#315E83", wash: "#E7EDF3" },
   { to: "/tutor", label: "AI 岗位助教", detail: "继续当前问题", icon: MessageCircleMore, color: "#6F8A69", wash: "#E8EDE5" },
   { to: "/knowledge", label: "知识库", detail: "管理私有资料与来源", icon: Database, color: "#B85C3E", wash: "#F4E8E2" },
 ]

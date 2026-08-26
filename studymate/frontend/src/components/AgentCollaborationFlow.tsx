@@ -87,7 +87,7 @@ const VIRTUAL_NODES = {
   publish: { x: 1390, y: 272, width: 125, height: 92 },
 } as const
 
-const RESOURCE_AGENT_IDS = ["doc", "guide", "quiz", "mindmap", "reading", "code", "video"]
+const RESOURCE_AGENT_IDS = ["doc", "guide", "quiz", "mindmap", "code", "video"]
 
 const EDGE_STYLES: Record<EdgeState, { color: string; width: number; dash?: string; marker: string }> = {
   pending: { color: "#AEBCCE", width: 2, dash: "5 7", marker: "agent-flow-arrow-pending" },

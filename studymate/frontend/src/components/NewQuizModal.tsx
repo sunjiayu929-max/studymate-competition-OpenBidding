@@ -51,7 +51,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
   const [recommendation, setRecommendation] = useState<QuizRecommendation | null>(null)
 
   useEffect(() => {
-    if (!open || embedded) return
+    if (!open) return
     const frame = window.requestAnimationFrame(() => {
       setTopic(initialTopic.trim() || "综合复习")
       setDifficulty(challengePreset ? 3 : 2)
@@ -132,7 +132,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
         initial={{ opacity: 0, y: 16, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 380, damping: 26 }}
-        className={`flex max-h-[min(92dvh,780px)] w-full ${embedded ? "max-w-none rounded-[22px] shadow-[0_10px_28px_rgba(24,35,45,.06)]" : "max-w-lg rounded-[24px] shadow-[0_24px_70px_rgba(24,35,45,.18)]"} flex-col overflow-hidden border border-[#CFC8B9] bg-[#FFFEFA]`}
+        className={`flex w-full ${embedded ? "max-w-none rounded-[22px] shadow-[0_10px_28px_rgba(24,35,45,.06)]" : "max-h-[min(92dvh,780px)] max-w-lg rounded-[24px] shadow-[0_24px_70px_rgba(24,35,45,.18)]"} flex-col overflow-hidden border border-[#CFC8B9] bg-[#FFFEFA]`}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-[#D7D1C4] bg-[#F8F6F0] px-5 py-3.5">
           <div className="flex items-center gap-2 min-w-0">
@@ -160,7 +160,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
           </button>}
         </div>
 
-        <div className="min-h-0 space-y-4 overflow-y-auto px-5 py-4">
+        <div className={embedded ? "space-y-3 px-4 py-3" : "min-h-0 space-y-4 overflow-y-auto px-5 py-4"}>
           {/* 主题 */}
           <Field label="测验主题">
             <input
