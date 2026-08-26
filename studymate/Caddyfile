@@ -16,6 +16,8 @@
 		# paths on the StudyMate identity flow, including legacy page links.
 		@oj_auth path /oj/login /oj/register /oj/register/* /oj/lostpass /oj/lostpass/* /oj/oauth/*
 		redir @oj_auth /api/oj/entry 303
+		@oj_logout path /oj/logout /oj/logout/*
+		redir @oj_logout /oj/integrations/studymate/logout 303
 
 		# Hydro is an independent OJ project. The public path is stripped before
 		# proxying; Hydro itself is configured with https://matropic.cn/oj/ as its
