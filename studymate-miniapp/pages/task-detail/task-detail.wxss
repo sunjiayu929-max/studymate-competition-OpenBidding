@@ -88,6 +88,27 @@
   white-space: pre-wrap;
 }
 
+.material-block {
+  padding: 24rpx 0 8rpx;
+}
+
+.material-block + .material-block {
+  margin-top: 12rpx;
+  border-top: 1rpx solid #edf1eb;
+}
+
+.material-subtitle {
+  display: block;
+  color: #334934;
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+.material-copy {
+  margin-top: 12rpx;
+}
+
 .knowledge-item {
   padding: 22rpx 0;
   border-bottom: 1rpx solid #edf1eb;
