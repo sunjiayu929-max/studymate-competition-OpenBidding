@@ -50,7 +50,7 @@ function recruitmentLinks(role: CareerRole) {
   ].map((item) => ({ ...item, query: role.name }))
 }
 
-export function CareerRecommendations({ profileVersion: _profileVersion = 0, compact = false }: { profileVersion?: number; compact?: boolean }) {
+export function CareerRecommendations({ compact = false }: { profileVersion?: number; compact?: boolean }) {
   const navigate = useNavigate()
   const currentRole = useTargetRole()
   const course = useCurrentCourse()

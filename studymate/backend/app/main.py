@@ -752,44 +752,6 @@ async def _ensure_role_knowledge_catalog() -> None:
     await import_role_catalog()
 
 
-async def _ensure_role_knowledge_catalog() -> None:
-    """补齐 SQLite 本地库中缺失的岗位课程与检索切片。
-
-    Docker 种子库只携带基础课程目录；岗位资料作为可审阅源文件独立维护。
-    因此裸跑首次解压种子库后，需要在应用启动时做一次幂等导入，否则前端
-    会把目录中的岗位标为可用，却无法为它找到对应的 course_id。
-    """
-    if not settings.DATABASE_URL.startswith("sqlite:"):
-        return
-
-    from app.courses import list_course_names
-
-    expected = {name for name in list_course_names() if name.endswith("岗位知识库")}
-    if not expected:
-        return
-
-    async with engine.connect() as conn:
-        rows = await conn.execute(
-            text(
-                "SELECT courses.name, COUNT(knowledge_chunks.id) "
-                "FROM courses LEFT JOIN knowledge_chunks "
-                "ON knowledge_chunks.course_id = courses.id "
-                "WHERE courses.name LIKE :suffix GROUP BY courses.id"
-            ),
-            {"suffix": "%岗位知识库"},
-        )
-        imported = {name for name, chunk_count in rows if chunk_count > 0}
-
-    if expected.issubset(imported):
-        return
-
-    from scripts.import_fde_knowledge import import_catalog as import_fde_catalog
-    from scripts.import_role_knowledge import main as import_role_catalog
-
-    await import_fde_catalog()
-    await import_role_catalog()
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 启动时：建表（开发用，正式上 alembic）
