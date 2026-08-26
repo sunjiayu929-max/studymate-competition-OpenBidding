@@ -34,7 +34,7 @@
       <text class="section-detail">加入后只能属于一个企业，管理员发布的训练和阅读任务会出现在这里。</text>
       <input class="input join-input" value="{{inviteCode}}" placeholder="请输入企业邀请码" placeholder-class="input-placeholder" bindinput="onInviteInput" />
       <button class="primary-button" loading="{{joinLoading}}" disabled="{{joinLoading}}" bindtap="joinEnterprise">加入企业</button>
-      <text class="demo-hint">演示环境可使用企业管理员提供的邀请码</text>
+      <text class="demo-hint">可使用企业管理员提供的邀请码加入企业</text>
     </view>
 
     <view wx:if="{{!error && hasEnterprise}}" class="task-section">

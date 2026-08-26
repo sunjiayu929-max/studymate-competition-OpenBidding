@@ -70,7 +70,7 @@
           <button class="code-button" disabled="{{codeLoading || countdown > 0}}" bindtap="sendCode">{{countdown > 0 ? countdown + 's 后重发' : '发送验证码'}}</button>
         </view>
         <text class="form-label">密码</text>
-        <view class="field-shell"><text class="field-symbol">●</text><input wx:if="{{showPassword}}" class="field-input" type="text" value="{{password}}" placeholder="至少 8 位字符" placeholder-class="input-placeholder" bindinput="onPasswordInput" /><input wx:else class="field-input" type="password" value="{{password}}" placeholder="至少 8 位字符" placeholder-class="input-placeholder" bindinput="onPasswordInput" /><view class="password-toggle {{showPassword ? 'eye-visible' : 'eye-hidden'}}" bindtap="togglePassword" aria-label="{{showPassword ? '隐藏密码' : '显示密码'}}"><view class="eye-icon"></view></view></view>
+        <view class="field-shell"><text class="field-symbol">●</text><input class="field-input" type="text" password="{{!showPassword}}" value="{{password}}" placeholder="至少 8 位字符" placeholder-class="input-placeholder" bindinput="onPasswordInput" /><view class="password-toggle {{showPassword ? 'eye-visible' : 'eye-hidden'}}" catchtap="togglePassword" aria-label="{{showPassword ? '隐藏密码' : '显示密码'}}"><view class="eye-icon"></view></view></view>
         <view class="helper-text">注册身份和岗位信息可用于后续任务匹配。</view>
         <view wx:if="{{notice}}" class="auth-notice">{{notice}}</view>
         <view wx:if="{{error}}" class="auth-error">{{error}}</view>

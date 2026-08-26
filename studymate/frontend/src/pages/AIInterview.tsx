@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 import { ExternalLink, FileCheck2, LoaderCircle, ShieldCheck, Target } from "lucide-react"
 
 import { AppTopbar } from "@/components/AppTopbar"
@@ -12,10 +13,25 @@ interface InterviewAttempt {
   status: string
   created_at?: string | null
   score_summary?: { overall_score?: number; role_match_score?: number; general_score?: number }
+  report?: InterviewReport
 }
 
 interface InterviewAttemptList { items: InterviewAttempt[] }
 interface InterviewLaunchResponse { launch_url: string }
+
+interface InterviewCompetencyReport {
+  competency: string
+  score: number
+  evidence?: string
+  improvement?: string
+}
+
+interface InterviewReport {
+  summary?: string
+  strengths?: string[]
+  improvements?: string[]
+  competency_scores?: InterviewCompetencyReport[]
+}
 
 const statusLabels: Record<string, string> = {
   launch_ready: "待开始",
@@ -25,6 +41,36 @@ const statusLabels: Record<string, string> = {
   report_failed: "报告待重试",
   failed: "需重试",
   abandoned: "已结束",
+}
+
+function scoreText(value?: number) {
+  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(1) : "-"
+}
+
+function ReportPreview({ report }: { report?: InterviewReport }) {
+  if (!report) return null
+  const hasDetails = Boolean(
+    report.summary || report.competency_scores?.length || report.strengths?.length || report.improvements?.length,
+  )
+  if (!hasDetails) return null
+
+  return (
+    <details className="mt-3 border-t border-[#E0DACE] pt-2">
+      <summary className="cursor-pointer text-[10px] font-bold text-[#315E83]">查看评估报告</summary>
+      <div className="mt-3 space-y-3 text-[11px] leading-5 text-[#66717B]">
+        {report.summary && <p>{report.summary}</p>}
+        {report.competency_scores?.length ? <div className="grid gap-2 sm:grid-cols-2">
+          {report.competency_scores.map((item) => <article key={item.competency} className="rounded-lg border border-[#E0DACE] bg-[#FFFEFA] p-2.5">
+            <div className="flex items-center justify-between gap-2"><strong className="text-[#315E83]">{item.competency}</strong><span className="font-extrabold text-[#18232D]">{scoreText(item.score)}</span></div>
+            {item.evidence && <p className="mt-1.5"><span className="font-semibold text-[#59636B]">证据：</span>{item.evidence}</p>}
+            {item.improvement && <p className="mt-1"><span className="font-semibold text-[#59636B]">建议：</span>{item.improvement}</p>}
+          </article>)}
+        </div> : null}
+        {report.strengths?.length ? <div><p className="font-bold text-[#59636B]">优势</p><ul className="mt-1 list-disc space-y-0.5 pl-4">{report.strengths.map((item) => <li key={item}>{item}</li>)}</ul></div> : null}
+        {report.improvements?.length ? <div><p className="font-bold text-[#59636B]">改进建议</p><ul className="mt-1 list-disc space-y-0.5 pl-4">{report.improvements.map((item) => <li key={item}>{item}</li>)}</ul></div> : null}
+      </div>
+    </details>
+  )
 }
 
 export function AIInterview() {
@@ -50,7 +96,7 @@ export function AIInterview() {
     try {
       const payload = await apiPost<InterviewLaunchResponse>("/interviews/attempts", {
         role_id: role.id,
-        course_id: course?.id ?? null,
+        course_id: course?.name === role.courseName ? course.id : null,
       })
       if (!payload.launch_url) throw new Error("面试服务未返回启动地址")
       window.location.assign(payload.launch_url)
@@ -91,20 +137,20 @@ export function AIInterview() {
                 </div>
               </div>
               <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
-                <button type="button" onClick={() => void startInterview()} disabled={launching || !role} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white shadow-[0_8px_18px_rgba(36,76,102,.16)] hover:bg-[#1D4058] disabled:cursor-wait disabled:opacity-60">{launching ? <LoaderCircle className="size-4 animate-spin" /> : <ExternalLink className="size-4" />}{launching ? "正在建立安全会话" : "进入独立 AI 面试"}</button>
-                <span className="text-[10px] leading-4 text-[#8A8172]">将打开独立面试页面，结束后返回查看结果。</span>
+                {role ? <button type="button" onClick={() => void startInterview()} disabled={launching} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white shadow-[0_8px_18px_rgba(36,76,102,.16)] hover:bg-[#1D4058] disabled:cursor-wait disabled:opacity-60">{launching ? <LoaderCircle className="size-4 animate-spin" /> : <ExternalLink className="size-4" />}{launching ? "正在建立安全会话" : "进入独立 AI 面试"}</button> : <Link to="/courses?returnTo=%2Fai-interview" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white shadow-[0_8px_18px_rgba(36,76,102,.16)] hover:bg-[#1D4058]"><Target className="size-4" />选择目标岗位</Link>}
+                <span className="text-[10px] leading-4 text-[#8A8172]">将带入当前 StudyMate 账号打开独立面试页面，无需再次注册或登录。</span>
               </div>
               {error && <p className="mt-3 text-xs font-semibold text-[#9A4E35]" role="alert">{error}</p>}
             </section>
 
             <aside className="space-y-3" aria-label="面试说明">
-              <div className="rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] p-4"><ShieldCheck className="size-5 text-[#6F8A69]" /><h2 className="mt-3 text-sm font-bold text-[#18232D]">数据说明</h2><p className="mt-1.5 text-xs leading-5 text-[#66717B]">只向面试页面传递当前岗位和必要的账号信息。</p></div>
+              <div className="rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] p-4"><ShieldCheck className="size-5 text-[#6F8A69]" /><h2 className="mt-3 text-sm font-bold text-[#18232D]">账号说明</h2><p className="mt-1.5 text-xs leading-5 text-[#66717B]">使用当前 StudyMate 账号进入 AI 面试，不需要创建第二套普通用户账号。</p></div>
               <div className="rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] p-4"><FileCheck2 className="size-5 text-[#B1842C]" /><h2 className="mt-3 text-sm font-bold text-[#18232D]">成绩用途</h2><p className="mt-1.5 text-xs leading-5 text-[#66717B]">同步成绩后，训练建议会结合本次面试表现更新。</p></div>
             </aside>
           </div>
           <section className="border-t border-[#D7D1C4] bg-[#FFFEFA] px-5 py-5 sm:px-8" aria-labelledby="interview-history">
             <div className="flex items-center justify-between gap-3"><h2 id="interview-history" className="text-sm font-bold text-[#18232D]">最近面试</h2><span className="text-[10px] text-[#8A8172]">仅显示当前账号记录</span></div>
-            {attempts.length ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{attempts.slice(0, 6).map((attempt) => <div key={attempt.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#E0DACE] bg-[#FBF9F4] px-3 py-2.5"><div className="min-w-0"><p className="truncate text-xs font-bold text-[#315E83]">{attempt.role_name}</p><p className="mt-1 text-[10px] text-[#8A8172]">{attempt.created_at ? new Date(attempt.created_at).toLocaleString() : ""}</p></div><div className="shrink-0 text-right"><span className="text-[10px] font-bold text-[#557052]">{statusLabels[attempt.status] || attempt.status}</span>{attempt.score_summary?.overall_score != null && <p className="mt-1 text-sm font-extrabold text-[#18232D]">{attempt.score_summary.overall_score.toFixed(1)}</p>}</div></div>)}</div> : <p className="mt-3 text-xs text-[#7A817F]">完成第一次模拟面试后，报告会出现在这里。</p>}
+            {attempts.length ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{attempts.slice(0, 6).map((attempt) => <article key={attempt.id} className="rounded-xl border border-[#E0DACE] bg-[#FBF9F4] px-3 py-2.5"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-xs font-bold text-[#315E83]">{attempt.role_name}</p><p className="mt-1 text-[10px] text-[#8A8172]">{attempt.created_at ? new Date(attempt.created_at).toLocaleString() : ""}</p></div><div className="shrink-0 text-right"><span className="text-[10px] font-bold text-[#557052]">{statusLabels[attempt.status] || attempt.status}</span>{attempt.score_summary?.overall_score != null && <p className="mt-1 text-sm font-extrabold text-[#18232D]">{scoreText(attempt.score_summary.overall_score)}</p>}</div></div><ReportPreview report={attempt.report} /></article>)}</div> : <p className="mt-3 text-xs text-[#7A817F]">完成第一次模拟面试后，报告会出现在这里。</p>}
           </section>
         </section>
       </div>

@@ -58,7 +58,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
       setError(null)
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [challengePreset, open, initialTopic])
+  }, [challengePreset, embedded, open, initialTopic])
 
   useEffect(() => {
     if (!open || !USER_ID || !course) {

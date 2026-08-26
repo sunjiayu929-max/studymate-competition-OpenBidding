@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import {
+  BarChart3,
   BookOpenCheck,
   BriefcaseBusiness,
   Bot,
@@ -80,6 +81,7 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
       { label: "岗位训练中心", to: "/competency", icon: ShieldCheck },
       { label: "智能测验", to: "/quiz", icon: BookOpenCheck },
       { label: "智能笔记", to: "/notes", icon: NotebookPen },
+      { label: "实时学习报告", to: "/report", icon: BarChart3 },
     ],
   },
   {
@@ -87,7 +89,7 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
     label: "求职备战中心",
     icon: ClipboardCheck,
     items: [
-      { label: "机考备战中心", to: "/api/oj/launch", icon: Code2, external: true },
+      { label: "机考备战中心", to: "/api/oj/entry", icon: Code2, external: true },
       { label: "面试备战中心", to: "/ai-interview", icon: MessageSquare },
     ],
   },
@@ -163,8 +165,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(readGroups)
   const [enterpriseMember, setEnterpriseMember] = useState<boolean | null>(null)
 
-  const enterpriseAdmin = user?.role === "enterprise_admin" || user?.role === "admin"
-  const enterpriseVisible = enterpriseAdmin || enterpriseMember === true
+  const enterpriseAdmin = user?.role === "enterprise_admin"
+  const enterpriseVisible = user?.role !== "admin" && (enterpriseAdmin || enterpriseMember === true)
   const learnerIdentity = enterpriseAdmin
     ? { kind: "企业管理员", detail: user?.company || "企业工作台" }
     : user?.learner_type === "worker"
@@ -227,7 +229,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       setEnterpriseMember(null)
       return
     }
-    if (enterpriseAdmin) {
+    if (enterpriseAdmin || user.role === "admin") {
       setEnterpriseMember(true)
       return
     }
@@ -235,12 +237,18 @@ export function AppShell({ children }: { children: ReactNode }) {
     void apiGet<{ enterprise: unknown | null }>("/learner/context")
       .then((context) => setEnterpriseMember(Boolean(context.enterprise)))
       .catch(() => setEnterpriseMember(false))
-  }, [enterpriseAdmin, user?.user_id])
+  }, [enterpriseAdmin, user?.role, user?.user_id])
 
   const handleLogout = async () => {
     setLogoutBusy(true)
     discardPendingEventsForLogout()
     try {
+      // Hydro owns a separate /oj-scoped browser session. Clear it before the
+      // StudyMate session so one browser logout signs out of both services.
+      await fetch("/oj/integrations/studymate/logout", {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => undefined)
       await apiPost("/auth/logout", {})
     } finally {
       logoutUser()
@@ -374,15 +382,17 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <div className="shrink-0 px-3 pt-3">
           <Link
-            to="/courses"
-            title={targetRole?.name || course?.name || "选择当前岗位"}
+            to={user?.role === "admin" ? "/admin" : "/courses"}
+            title={user?.role === "admin" ? "系统管理工作台" : targetRole?.name || course?.name || "选择当前岗位"}
             className={cn(
               "flex items-center rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] shadow-[0_5px_14px_rgba(24,35,45,.045)] transition-colors hover:bg-[#F7F2E7]",
               effectiveCollapsed ? "h-11 justify-center" : "gap-2.5 px-3 py-2.5",
             )}
           >
-            <Library className="size-4 shrink-0 text-[#315E83]" />
-            {!effectiveCollapsed && <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">{learnerIdentity.kind}</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{user?.name || "学习者"}</strong><span className="mt-1 block truncate text-[10px] text-[#66717B]">{learnerIdentity.detail} · {learnerTargetRole}</span></span>}
+            {user?.role === "admin" ? <ShieldCheck className="size-4 shrink-0 text-[#9A4E35]" /> : <Library className="size-4 shrink-0 text-[#315E83]" />}
+            {!effectiveCollapsed && (user?.role === "admin"
+              ? <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">系统管理</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">平台运营工作台</strong></span>
+              : <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">{learnerIdentity.kind}</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{user?.name || "学习者"}</strong><span className="mt-1 block truncate text-[10px] text-[#66717B]">{learnerIdentity.detail} · {learnerTargetRole}</span></span>)}
           </Link>
           <div className="mt-2">
             <ShellLink item={{ label: "新手指引", to: "/guide", icon: Compass }} compact={effectiveCollapsed} pathname={pathname} />
@@ -396,6 +406,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="nav-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3" aria-label="主功能">
+          {user?.role === "admin" && <>
+            <div className="mb-1 px-2.5 text-[9px] font-extrabold tracking-[.14em] text-[#9A4E35]">系统管理</div>
+            <ShellLink item={{ label: "系统总览", to: "/admin", icon: ShieldCheck, exact: true }} compact={effectiveCollapsed} pathname={pathname} />
+            <div className="mb-3 grid grid-cols-3 gap-1 px-1">
+              <Link to="/admin?view=enterprises" className="rounded-lg bg-[#F4E8E2] px-1.5 py-1.5 text-center text-[9px] font-bold text-[#9A4E35]">企业</Link>
+              <Link to="/admin?view=users" className="rounded-lg bg-[#E7EDF3] px-1.5 py-1.5 text-center text-[9px] font-bold text-[#315E83]">用户</Link>
+              <Link to="/admin?view=content" className="rounded-lg bg-[#EAF4E7] px-1.5 py-1.5 text-center text-[9px] font-bold text-[#52704D]">运行</Link>
+            </div>
+            <div className="my-3 border-t border-[#DED8CC]" />
+          </>}
           <ShellLink item={{ label: "今日学习", to: "/", icon: Home, exact: true }} compact={effectiveCollapsed} pathname={pathname} />
           {GROUPS.slice(0, 3).map(renderGroup)}
           <ShellLink item={{ label: "转岗培训", to: "/career", icon: GraduationCap }} compact={effectiveCollapsed} pathname={pathname} />

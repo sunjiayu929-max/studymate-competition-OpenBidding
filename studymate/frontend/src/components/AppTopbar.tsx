@@ -88,10 +88,12 @@ export function AppTopbar({
   const paper = appearance === "paper"
   const label = labelOverride ?? meta.label
   const group = groupOverride ?? meta.group
-  const roleSelectionPath = current === "workspace" ? "/courses?returnTo=%2Fworkspace" : "/courses"
-  const identityDetail = user?.role === "enterprise_admin"
-    ? `${user.name} · 企业管理员`
-    : [user?.name, user?.learner_type === "worker" ? user.company || "从业者" : user?.study_stage || "学习者", user?.target_role || targetRole?.name || course?.name].filter(Boolean).join(" · ")
+  const roleSelectionPath = user?.role === "admin" ? "/admin" : current === "workspace" ? "/courses?returnTo=%2Fworkspace" : "/courses"
+  const identityDetail = user?.role === "admin"
+    ? `${user.name} · 系统管理员`
+    : user?.role === "enterprise_admin"
+      ? `${user.name} · 企业管理员`
+      : [user?.name, user?.learner_type === "worker" ? user.company || "从业者" : user?.study_stage || "学习者", user?.target_role || targetRole?.name || course?.name].filter(Boolean).join(" · ")
 
   return (
     <header

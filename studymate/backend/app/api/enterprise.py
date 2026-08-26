@@ -171,6 +171,26 @@ DEMO_TASK_CATALOG = (
 _DEMO_SEED_LOCK = Lock()
 
 
+def _expanded_task_material(title: str, description: str, brief: str, task_type: str) -> str:
+    action = "完成阅读确认" if task_type == "reading" else "提交训练记录"
+    return f"""## 本次学习目标
+
+本任务围绕“{title}”展开。学习者需要把岗位知识转化为可检查的工作步骤，明确输入、判断依据、输出物和责任边界。{description}
+
+## 关键内容
+
+{brief} 在实际工作中，不能只记录最终结论，还要保留能够支持结论的原始信息、操作时间、责任人和复核结果。遇到信息不足时，应先标记待确认项，不能用猜测替代证据。
+
+## 工作方法
+
+先梳理业务目标和当前状态，再按“现象、证据、判断、动作、验证”的顺序组织记录。涉及接口、环境或客户资料时，要注明版本、范围和权限；涉及变更时，要同时写明影响评估、回滚条件和复测方式。
+
+## {action}前检查
+
+请至少检查：目标是否清楚、关键字段或环境信息是否完整、证据是否能够复核、异常和风险是否单独列出、后续责任人是否明确。完成后保留一份结构化记录，便于企业管理员和后续协作者追踪。
+"""
+
+
 def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value else None
 
@@ -218,23 +238,11 @@ async def _enterprise(db: AsyncSession, enterprise_id: int) -> Enterprise:
 
 
 async def _admin_enterprise(db: AsyncSession, user: User) -> Enterprise:
-    if (user.role or "student") not in {"enterprise_admin", "admin"}:
+    if (user.role or "student") != "enterprise_admin":
         raise HTTPException(status_code=403, detail="当前账号不是企业管理员")
     membership = await _membership(db, user.id)
     if membership and membership.member_role in {"owner", "manager"}:
         return await _enterprise(db, membership.enterprise_id)
-    if user.role == "admin":
-        enterprise = Enterprise(name="河南本线商贸有限公司", invite_code="SM-DEMO", owner_id=user.id)
-        db.add(enterprise)
-        await db.flush()
-        db.add(EnterpriseMembership(
-            enterprise_id=enterprise.id,
-            user_id=user.id,
-            member_role="owner",
-            job_title="系统演示管理员",
-        ))
-        await db.commit()
-        return enterprise
     raise HTTPException(status_code=403, detail="企业管理员尚未绑定企业")
 
 
@@ -664,6 +672,7 @@ async def _ensure_demo_tasks(db: AsyncSession, enterprise: Enterprise, knowledge
             EnterpriseTask.title == title,
         ))
         knowledge = knowledge_map[str(knowledge_key)]
+        expanded_content = _expanded_task_material(title, description, material_content, task_type)
         if task is None:
             task = EnterpriseTask(
                 enterprise_id=enterprise.id,
@@ -673,14 +682,19 @@ async def _ensure_demo_tasks(db: AsyncSession, enterprise: Enterprise, knowledge
                 task_type=task_type,
                 target_role="前线部署工程师（FDE）",
                 material_title=material_title,
-                material_content=material_content,
+                material_content=expanded_content,
                 knowledge_base_id=knowledge.id,
                 status="published",
                 due_label="本周五前" if task_type == "training" else "阅读后确认",
             )
             db.add(task)
             await db.flush()
-        elif task.status != "published":
+        else:
+            task.description = description
+            task.task_type = task_type
+            task.target_role = "前线部署工程师（FDE）"
+            task.material_title = material_title
+            task.material_content = expanded_content
             task.status = "published"
         if task.knowledge_base_id is None:
             task.knowledge_base_id = knowledge.id

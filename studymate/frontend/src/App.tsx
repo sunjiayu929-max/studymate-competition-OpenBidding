@@ -34,6 +34,7 @@ const AIInterview = lazy(() => import("@/pages/AIInterview").then((m) => ({ defa
 const EnterpriseHub = lazy(() => import("@/pages/EnterpriseHub").then((m) => ({ default: m.EnterpriseHub })))
 const EnterpriseDashboard = lazy(() => import("@/pages/EnterpriseDashboard").then((m) => ({ default: m.EnterpriseDashboard })))
 const EnterpriseTaskRead = lazy(() => import("@/pages/EnterpriseTaskRead").then((m) => ({ default: m.EnterpriseTaskRead })))
+const AdminDashboard = lazy(() => import("@/pages/AdminDashboard").then((m) => ({ default: m.AdminDashboard })))
 const Login = lazy(() => import("@/pages/Login").then((m) => ({ default: m.Login })))
 const NotFound = lazy(() => import("@/pages/NotFound").then((m) => ({ default: m.NotFound })))
 const TutorBubble = lazy(() => import("@/components/TutorBubble").then((m) => ({ default: m.TutorBubble })))
@@ -99,7 +100,16 @@ function RootEntry() {
     if (!user) window.location.replace("/landing/index.html")
   }, [user])
   if (!user) return null
+  if (user.role === "admin") return <Navigate to="/admin" replace />
+  if (user.role === "enterprise_admin") return <Navigate to="/enterprise" replace />
   return <AppShell><Home /></AppShell>
+}
+
+function SystemAdminEntry() {
+  const user = useCurrentUser()
+  if (!user) return <RequireAuth><div /></RequireAuth>
+  if (user.role !== "admin") return <Navigate to="/" replace />
+  return <AppShell><AdminDashboard /></AppShell>
 }
 
 function ProtectedPage({ children }: { children: ReactNode }) {
@@ -109,10 +119,18 @@ function ProtectedPage({ children }: { children: ReactNode }) {
 function EnterpriseDashboardEntry() {
   const user = useCurrentUser()
   if (!user) return <RequireAuth><div /></RequireAuth>
-  if (user.role !== "enterprise_admin" && user.role !== "admin") {
+  if (user.role !== "enterprise_admin") {
     return <Navigate to="/enterprise" replace />
   }
   return <AppShell><EnterpriseDashboard /></AppShell>
+}
+
+function LearnerTaskReadEntry() {
+  const user = useCurrentUser()
+  if (!user) return <RequireAuth><div /></RequireAuth>
+  if (user.role === "admin") return <Navigate to="/admin" replace />
+  if (user.role === "enterprise_admin") return <Navigate to="/enterprise" replace />
+  return <ProtectedPage><EnterpriseTaskRead /></ProtectedPage>
 }
 
 function RouteFallback() {
@@ -173,6 +191,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<RootEntry />} />
+          <Route path="/admin" element={<SystemAdminEntry />} />
           <Route path="/profile" element={<ProtectedPage><ProfileChat /></ProtectedPage>} />
           <Route path="/rag" element={<ProtectedPage><RagDemo /></ProtectedPage>} />
           <Route path="/rag/source/:chunkId" element={<ProtectedPage><RagSource /></ProtectedPage>} />
@@ -187,7 +206,7 @@ export default function App() {
           <Route path="/ai-interview" element={<ProtectedPage><AIInterview /></ProtectedPage>} />
           <Route path="/enterprise" element={<ProtectedPage><EnterpriseHub /></ProtectedPage>} />
           <Route path="/enterprise/dashboard" element={<EnterpriseDashboardEntry />} />
-          <Route path="/enterprise/tasks/:taskId/read" element={<ProtectedPage><EnterpriseTaskRead /></ProtectedPage>} />
+          <Route path="/enterprise/tasks/:taskId/read" element={<LearnerTaskReadEntry />} />
           <Route path="/workspace" element={<Navigate to="/competency" replace />} />
           <Route path="/workspace/r/:agentId" element={<ProtectedPage><WorkspaceDetail /></ProtectedPage>} />
           <Route path="/tutor" element={<ProtectedPage><TutorChat /></ProtectedPage>} />
