@@ -7,6 +7,29 @@ const STATUS_LABELS = {
   completed: "已完成",
 }
 
+function parseMaterial(content, fallback) {
+  const source = String(content || fallback || "暂无资料内容").replace(/\r\n/g, "\n").trim()
+  const sections = []
+  let current = { title: "", body: [] }
+
+  source.split("\n").forEach((line) => {
+    const heading = line.trim().match(/^#{1,6}\s+(.+)$/)
+    if (heading) {
+      if (current.title || current.body.length) {
+        sections.push({ title: current.title, body: current.body.join("\n").trim() })
+      }
+      current = { title: heading[1].trim(), body: [] }
+      return
+    }
+    current.body.push(line)
+  })
+
+  if (current.title || current.body.length) {
+    sections.push({ title: current.title, body: current.body.join("\n").trim() })
+  }
+  return sections.filter((section) => section.title || section.body)
+}
+
 function decorateTask(task) {
   const status = task.assignment_status || "pending"
   return {
@@ -14,6 +37,7 @@ function decorateTask(task) {
     statusLabel: STATUS_LABELS[status] || "待处理",
     typeLabel: task.task_type === "training" ? "岗位训练任务" : "普通阅读任务",
     actionLabel: status === "pending" ? "接受任务" : status === "accepted" ? "开始任务" : "标记为完成",
+    materialSections: parseMaterial(task.material_content, task.description),
   }
 }
 

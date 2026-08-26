@@ -25,6 +25,10 @@ Page({
     if (this.countdownTimer) clearInterval(this.countdownTimer)
   },
 
+  onHide() {
+    if (this.data.showPassword) this.setData({ showPassword: false })
+  },
+
   onNameInput(event) { this.setData({ name: event.detail.value, error: "" }) },
   onEmailInput(event) { this.setData({ email: event.detail.value, error: "" }) },
   onCodeInput(event) { this.setData({ code: event.detail.value, error: "" }) },

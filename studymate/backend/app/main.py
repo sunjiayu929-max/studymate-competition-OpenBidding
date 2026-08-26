@@ -14,7 +14,7 @@ from app.db.session import engine, Base
 # 导入 models 让 Base 知道所有表
 from app.db import models  # noqa: F401
 from app.deps import require_admin, require_user
-from app.api import health, profile, rag, workspace, tutor, eval as eval_api, tests as tests_api, courses as courses_api, notes as notes_api, events as events_api, feedback as feedback_api, auth as auth_api, voice as voice_api, quiz_sessions as quiz_sessions_api, theory_assessments as theory_assessments_api, run as run_api, concept as concept_api, bili as bili_api, ocr as ocr_api, rencaiya as rencaiya_api, careers as careers_api, reading as reading_api, knowledge as knowledge_api, ppt as ppt_api, interviews as interviews_api, enterprise as enterprise_api, oj as oj_api
+from app.api import health, profile, rag, workspace, tutor, eval as eval_api, tests as tests_api, courses as courses_api, notes as notes_api, events as events_api, feedback as feedback_api, auth as auth_api, voice as voice_api, quiz_sessions as quiz_sessions_api, theory_assessments as theory_assessments_api, run as run_api, concept as concept_api, bili as bili_api, ocr as ocr_api, rencaiya as rencaiya_api, careers as careers_api, reading as reading_api, knowledge as knowledge_api, ppt as ppt_api, interviews as interviews_api, enterprise as enterprise_api, admin as admin_api, oj as oj_api
 from app.video.assembler import VideoAssemblyError, media_file_path
 from app.demo_private_knowledge import ensure_demo_private_libraries
 from app.demo_notes import ensure_demo_notes_for_users
@@ -49,6 +49,8 @@ _PRAMATE_DEMO_ADMIN_PASSWORD = "a123456"
 _PRAMATE_DEMO_ENTERPRISE_NAME = "河南本线商贸有限公司"
 _PRAMATE_DEMO_INVITE_CODE = "PRAMATE-DEMO"
 _PRAMATE_STUDENT_PASSWORD = "p123456"
+_PRAMATE_EXTRA_MEMBER_EMAIL = "test@pramate.com"
+_PRAMATE_EXTRA_MEMBER_PASSWORD = "p123456"
 
 
 def _seed_password_matches(password: str, stored_hash: str | None) -> bool:
@@ -371,7 +373,7 @@ async def _ensure_seed_users(conn):
         conn,
         email=_PRAMATE_DEMO_ADMIN_EMAIL,
         password=_PRAMATE_DEMO_ADMIN_PASSWORD,
-        name="企业演示管理员",
+        name="企业管理员",
         role="enterprise_admin",
         verified_at=verified_at,
     )
@@ -423,6 +425,15 @@ async def _ensure_seed_users(conn):
             role="student",
             verified_at=verified_at,
         )
+
+    await _ensure_seed_user(
+        conn,
+        email=_PRAMATE_EXTRA_MEMBER_EMAIL,
+        password=_PRAMATE_EXTRA_MEMBER_PASSWORD,
+        name="test",
+        role="student",
+        verified_at=verified_at,
+    )
 
     # @pramate.com 是企业演示账号组，按从业者身份展示岗位信息；旧的
     # @studymate.com 测试账号继续保留学生学习者身份。
@@ -542,7 +553,41 @@ async def _ensure_pramate_demo_enterprise(conn):
                     "user_id": learner[0],
                     "created_at": datetime.utcnow(),
                 },
-                )
+            )
+
+    test_member = (
+        await conn.execute(
+            text("SELECT id FROM users WHERE lower(email) = :email LIMIT 1"),
+            {"email": _PRAMATE_EXTRA_MEMBER_EMAIL},
+        )
+    ).fetchone()
+    if test_member is not None:
+        await conn.execute(
+            text(
+                "UPDATE users SET name = 'test', learner_type = 'worker', company = :company, "
+                "target_role = '前线部署工程师（FDE）' WHERE id = :user_id"
+            ),
+            {"company": _PRAMATE_DEMO_ENTERPRISE_NAME, "user_id": test_member[0]},
+        )
+        test_membership = (
+            await conn.execute(
+                text("SELECT id FROM enterprise_memberships WHERE user_id = :user_id LIMIT 1"),
+                {"user_id": test_member[0]},
+            )
+        ).fetchone()
+        if test_membership is None:
+            await conn.execute(
+                text(
+                    "INSERT INTO enterprise_memberships "
+                    "(enterprise_id, user_id, member_role, job_title, status, created_at) "
+                    "VALUES (:enterprise_id, :user_id, 'learner', '前线部署工程师（FDE）', 'active', :created_at)"
+                ),
+                {
+                    "enterprise_id": enterprise[0],
+                    "user_id": test_member[0],
+                    "created_at": datetime.utcnow(),
+                },
+            )
 
 
 async def _ensure_private_demo_knowledge(conn):
@@ -760,44 +805,6 @@ async def _ensure_role_knowledge_catalog() -> None:
     await import_role_catalog()
 
 
-async def _ensure_role_knowledge_catalog() -> None:
-    """补齐 SQLite 本地库中缺失的岗位课程与检索切片。
-
-    Docker 种子库只携带基础课程目录；岗位资料作为可审阅源文件独立维护。
-    因此裸跑首次解压种子库后，需要在应用启动时做一次幂等导入，否则前端
-    会把目录中的岗位标为可用，却无法为它找到对应的 course_id。
-    """
-    if not settings.DATABASE_URL.startswith("sqlite:"):
-        return
-
-    from app.courses import list_course_names
-
-    expected = {name for name in list_course_names() if name.endswith("岗位知识库")}
-    if not expected:
-        return
-
-    async with engine.connect() as conn:
-        rows = await conn.execute(
-            text(
-                "SELECT courses.name, COUNT(knowledge_chunks.id) "
-                "FROM courses LEFT JOIN knowledge_chunks "
-                "ON knowledge_chunks.course_id = courses.id "
-                "WHERE courses.name LIKE :suffix GROUP BY courses.id"
-            ),
-            {"suffix": "%岗位知识库"},
-        )
-        imported = {name for name, chunk_count in rows if chunk_count > 0}
-
-    if expected.issubset(imported):
-        return
-
-    from scripts.import_fde_knowledge import import_catalog as import_fde_catalog
-    from scripts.import_role_knowledge import main as import_role_catalog
-
-    await import_fde_catalog()
-    await import_role_catalog()
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 启动时：建表（开发用，正式上 alembic）
@@ -835,6 +842,7 @@ app.include_router(health.router, prefix="/api")
 app.include_router(auth_api.router, prefix="/api")
 user_required = [Depends(require_user)]
 admin_required = [Depends(require_admin)]
+app.include_router(admin_api.router, prefix="/api")
 app.include_router(profile.router, prefix="/api", dependencies=user_required)
 app.include_router(rag.router, prefix="/api", dependencies=user_required)
 app.include_router(workspace.router, prefix="/api", dependencies=user_required)

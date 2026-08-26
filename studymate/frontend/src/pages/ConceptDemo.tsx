@@ -171,7 +171,7 @@ export function ConceptDemo() {
 
         {/* Agent 结果 —— 与多 Agent 工作台「可视讲解」卡共用同一渲染 */}
         <div className="mt-5 flex-1">
-          <ConceptResultView result={result} loading={loading} lastQuery={lastQuery} roleContext={roleContext} />
+          <ConceptResultView result={result} loading={loading} lastQuery={lastQuery} />
           {!result && !loading && (
             <div className="grid gap-3 md:grid-cols-3">
               <CapabilityCard icon={PlayCircle} title="分步动画" description="控制播放节奏，逐步观察算法、系统和网络过程。" tone="blue" />

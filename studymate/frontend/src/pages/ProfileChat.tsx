@@ -5,7 +5,6 @@ import type { LucideIcon } from "lucide-react"
 import { AppTopbar } from "@/components/AppTopbar"
 import { Markdown } from "@/components/Markdown"
 import { ProfileRadar } from "@/components/ProfileRadar"
-import { CareerRecommendations } from "@/components/CareerRecommendations"
 import { MicButton } from "@/components/MicButton"
 import { SpeakerButton } from "@/components/SpeakerButton"
 import { VoiceSelector } from "@/components/VoiceSelector"
@@ -347,11 +346,17 @@ export function ProfileChat() {
   const weakTopics = profile?.dims.weak_points.topics?.filter(Boolean) || []
   const targetTopics = profile?.dims.goals.target_topics?.filter(Boolean) || []
   const hoursPerWeek = profile?.dims.pace.hours_per_week || 0
-  const hasProfileContent = Boolean(profile?.intake_complete)
+  // Keep the training entry available for existing and partially migrated profiles.
+  const hasProfileContent = Boolean(
+    profile?.dims.goals.primary?.trim()
+    || weakTopics.length
+    || targetTopics.length
+    || hoursPerWeek,
+  )
   const quickPrompts = targetRole ? [
     "我是计算机专业本科生，编程基础较好，数学和岗位领域知识一般。",
     "我更容易通过图示和动手实践理解，希望多提供文档、代码实操和小测。",
-    `我目前没有相关实习，每周能投入 6 小时，希望重点训练${targetRole.skills.slice(0, 2).join("和")}。`,
+    `我每周能投入 6 小时，希望重点训练${targetRole.skills.slice(0, 2).join("和")}。`,
   ] : [
     "我还没有确定目标岗位，希望先梳理自己的专业与实践经历。",
     "我更喜欢边看案例边动手实践，每周能投入 6 小时。",
@@ -401,7 +406,7 @@ export function ProfileChat() {
                     </span>
                     <h3 className="mt-4 text-xl font-bold tracking-[-0.03em] text-[#18232D]">先说说你的目标和经历</h3>
                     <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#66717B]">
-                      告诉我你的专业、项目或实习经历，以及想学习的岗位。我会分几步补充信息，再为你安排训练。
+                      告诉我你的专业、学习基础和想学习的岗位。我会分几步补充信息，再为你安排训练。
                     </p>
                     <div className="mt-6 grid gap-2 text-left sm:grid-cols-3">
                       {quickPrompts.map((prompt, index) => (
@@ -524,7 +529,6 @@ export function ProfileChat() {
                 <ProfileRadar title="知识基础" data={profile.dims.knowledge_base} color="#315E83" height={124} />
                 <ProfileRadar title="认知风格" data={profile.dims.cognitive_style} color="#B85C3E" height={124} />
                 <ProfileRadar title="资源偏好" data={profile.dims.preference} color="#6F8A69" height={124} />
-                <ProfileRadar title="就业技能" data={profile.dims.employment_skills} color="#7E6B83" height={124} />
               </>
             ) : (
               <div className="rounded-[24px] border border-dashed border-[#C9C2B4] bg-[#F8F6F0] p-6 text-center text-xs text-[#66717B]">画像加载后，这里会实时显示目标、基础、偏好和节奏。</div>
@@ -566,9 +570,6 @@ export function ProfileChat() {
             )}
           </aside>
         </main>
-        <div className="mt-4">
-          <CareerRecommendations profileVersion={profile?.version || 0} />
-        </div>
       </div>
     </div>
   )
@@ -580,10 +581,9 @@ function buildOpeningMessage(roleName?: string, missingFields?: string[]): strin
     "知识基础与薄弱点",
     "认知风格",
     "资源偏好",
-    "就业技能与实践经历",
     "学习目标与时间安排",
   ])
-    .filter((field) => !(roleName && field === "目标岗位"))
+    .filter((field) => field !== "就业技能与实践经历" && !(roleName && field === "目标岗位"))
   if (!remaining.length) {
     return `你的${roleName ? `“${roleName}”` : "岗位"}画像已准备好，可以进入岗位训练中心。`
   }
@@ -602,12 +602,8 @@ function buildOpeningMessage(roleName?: string, missingFields?: string[]): strin
       : pending.has("认知风格")
         ? "学习新内容时，你更容易通过图示、阅读、讲解还是动手实践理解？"
         : "训练资源方面，你更希望多提供文档、思维导图、视频、代码实操还是小测？"
-  } else if (pending.has("就业技能与实践经历") || pending.has("学习目标与时间安排")) {
-    question = pending.has("就业技能与实践经历") && pending.has("学习目标与时间安排")
-      ? "最后说说相关项目或实习中用过的技术、负责内容和成果（没有也可说明），以及每周可投入的时间和期望完成时间。"
-      : pending.has("就业技能与实践经历")
-        ? "请说说相关项目或实习中用过的技术、负责内容和成果；没有也可以直接说明。"
-        : "你每周可以投入多少学习时间？如果有期望完成时间也可以一起说明。"
+  } else if (pending.has("学习目标与时间安排")) {
+    question = "你每周可以投入多少学习时间？如果有期望完成时间也可以一起说明。"
   }
   return `${roleText}${question}我会分几步询问，不重复。`
 }
