@@ -22,7 +22,7 @@ export function TutorChat() {
   const [searchParams, setSearchParams] = useSearchParams()
   const captureMode = searchParams.get("capture") === "1"
   const [profile, setProfile] = useState<ProfileMiniData | null>(null)
-  const [radarView, setRadarView] = useState<"knowledge" | "style" | "preference" | "employment">("knowledge")
+  const [radarView, setRadarView] = useState<"knowledge" | "style" | "preference">("knowledge")
 
   useTutorContext(null)
 
@@ -47,7 +47,6 @@ export function TutorChat() {
     knowledge: { label: "知识基础", data: profile.dims.knowledge_base, color: "#315E83" },
     style: { label: "认知风格", data: profile.dims.cognitive_style, color: "#B85C3E" },
     preference: { label: "资源偏好", data: profile.dims.preference, color: "#6F8A69" },
-    employment: { label: "就业技能", data: profile.dims.employment_skills, color: "#7E6B83" },
   } : null
   const activeRadar = radarOptions?.[radarView]
 
@@ -84,8 +83,8 @@ export function TutorChat() {
 
             {profile ? (
               <section aria-label="画像维度切换" className="xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
-                <div role="tablist" aria-label="选择画像维度" className="mb-2 grid grid-cols-4 rounded-2xl border border-[#CFC8B9] bg-[#F8F6F0] p-1">
-                  {(["knowledge", "style", "preference", "employment"] as const).map((key) => {
+                <div role="tablist" aria-label="选择画像维度" className="mb-2 grid grid-cols-3 rounded-2xl border border-[#CFC8B9] bg-[#F8F6F0] p-1">
+                  {(["knowledge", "style", "preference"] as const).map((key) => {
                     const option = radarOptions![key]
                     return <button key={key} type="button" role="tab" aria-selected={radarView === key} onClick={() => setRadarView(key)} className={`h-8 rounded-xl text-[10px] font-bold transition-colors ${radarView === key ? "bg-[#FFFEFA] text-[#244C66] shadow-[0_3px_9px_rgba(24,35,45,.08)]" : "text-[#7A817F] hover:text-[#244C66]"}`}>{option.label}</button>
                   })}

@@ -188,9 +188,9 @@ export default function App() {
           <Route path="/resources" element={<ProtectedPage><LearningResources /></ProtectedPage>} />
           <Route path="/career" element={<ProtectedPage><CareerExplorer /></ProtectedPage>} />
           <Route path="/competency" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
-          <Route path="/competency/resources" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
-          <Route path="/competency/audit" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
-          <Route path="/competency/report" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
+          <Route path="/competency/resources" element={<Navigate to="/competency" replace />} />
+          <Route path="/competency/audit" element={<Navigate to="/competency" replace />} />
+          <Route path="/competency/report" element={<Navigate to="/#learner-match-report" replace />} />
           <Route path="/ai-interview" element={<ProtectedPage><AIInterview /></ProtectedPage>} />
           <Route path="/enterprise" element={<ProtectedPage><EnterpriseHub /></ProtectedPage>} />
           <Route path="/enterprise/dashboard" element={<EnterpriseDashboardEntry />} />

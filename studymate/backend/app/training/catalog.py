@@ -50,6 +50,11 @@ _ROLE_ORDER = (
     "edge-ai",
     "industrial-vision",
     "industrial-network",
+    "mes-engineer",
+    "multimodal-llm",
+    "industrial-ai-agent",
+    "smart-manufacturing-software",
+    "iot-specialist",
 )
 
 TRAINING_ROLES: list[dict] = [

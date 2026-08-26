@@ -1,4 +1,4 @@
-export type DomainId = "industrial" | "software" | "ai"
+export type DomainId = "industrial" | "software" | "ai" | "smart-manufacturing"
 
 export interface LearningResource {
   title: string
@@ -80,6 +80,12 @@ const industrialSources: LearningResource[] = [
   { type: "分阶测试题", title: "工业岗位能力题", description: "按现场问题分析、工程实施和综合决策分层。", sourceLabel: "中国工业互联网研究院", sourceUrl: "https://www.china-aii.com/" },
 ]
 
+const smartManufacturingSources: LearningResource[] = [
+  { type: "定制讲义", title: "智能制造岗位知识要点", description: "围绕制造业务、工业数据和软件工程组织岗位知识。", sourceLabel: "NIST Smart Manufacturing", sourceUrl: "https://www.nist.gov/programs-projects/smart-manufacturing-systems-design-and-analysis" },
+  { type: "实操指南", title: "设备接入与系统集成闭环", description: "从协议接入、数据联调到现场验收的工程步骤。", sourceLabel: "OPC Foundation：OPC UA", sourceUrl: "https://opcfoundation.org/about/opc-technologies/opc-ua/" },
+  { type: "分阶测试题", title: "智能制造岗位能力题", description: "按岗位基础、工程实施和综合决策分层练习。", sourceLabel: "MESA International：MES Explained", sourceUrl: "https://www.mesa.org/en/modelstrategicinitiatives/MESExplained.asp" },
+]
+
 export const careerDomains: CareerDomain[] = [
   {
     id: "ai",
@@ -115,6 +121,18 @@ export const careerDomains: CareerDomain[] = [
       role("edge-ai", "边缘计算 AI 工程师", "完成边缘设备 AI 部署、性能优化和运维。", ["边缘部署", "模型优化", "性能", "运维"], ["优化模型体积", "部署边缘服务", "排查现场性能异常"], industrialSources),
       role("industrial-vision", "工业 AI 视觉工程师", "完成缺陷数据、视觉模型、边缘部署与现场验收。", ["机器视觉", "模型训练", "边缘部署", "验收"], ["制定标注规范", "分析误检漏检", "完成部署验收"], industrialSources),
       role("industrial-network", "工业互联网网络集成工程师", "完成工业网络、协议接入、现场联调和安全运维。", ["网络规划", "工业协议", "设备接入", "联调"], ["梳理协议适配", "制定联调方案", "定位网络故障"], industrialSources),
+    ],
+  },
+  {
+    id: "smart-manufacturing",
+    name: "智能制造",
+    description: "面向制造执行、工业 AI、工业软件与物联网的岗位训练。",
+    roles: [
+      role("mes-engineer", "MES工程师", "建设、实施、运维并持续优化制造执行系统。", ["MES配置", "系统集成", "工业协议", "生产追溯"], ["配置工单与生产追溯规则", "排查 ERP 与 MES 接口异常", "验证设备数据采集与 OEE 指标"], smartManufacturingSources, ["数据结构与算法", "计算机网络"]),
+      role("multimodal-llm", "多模态大模型算法工程师", "构建面向工业场景的多模态理解、训练与评测能力。", ["多模态数据", "模型训练", "视觉语言", "评测部署"], ["构建图文与传感器训练样本", "设计工业视觉语言评测集", "分析模型部署后的误判案例"], smartManufacturingSources),
+      role("industrial-ai-agent", "工业 AI Agent应用工程师", "把工业知识、工具和工作流编排为可评测的 Agent 应用。", ["Agent工作流", "工业知识库", "工具调用", "安全评测"], ["设计工艺知识问答工作流", "实现受控设备数据工具调用", "评测无依据回答与异常处理"], smartManufacturingSources),
+      role("smart-manufacturing-software", "智能制造工程师（软件）", "交付可集成、可验证的智能制造软件方案。", ["工业软件", "云边协同", "数据集成", "交付验证"], ["划分智能制造系统云边端职责", "制定跨系统数据集成方案", "完成现场交付验收与问题复盘"], smartManufacturingSources, ["数据结构与算法", "计算机网络"]),
+      role("iot-specialist", "物联网专项开发", "完成工业设备接入、边缘开发与现场联调运维。", ["物联网协议", "设备接入", "边缘开发", "联调运维"], ["实现 OPC UA 与 MQTT 设备接入", "开发边缘采集与上报服务", "定位现场联调与网络异常"], smartManufacturingSources, ["计算机网络", "数据结构与算法"]),
     ],
   },
 ]

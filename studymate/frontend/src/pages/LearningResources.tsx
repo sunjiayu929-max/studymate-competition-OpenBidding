@@ -11,7 +11,10 @@ export function LearningResources() {
   useTrackPage("learning_resources")
   const course = useCurrentCourse()
   const targetRole = useTargetRole()
-  const initialKeyword = targetRole?.sampleTasks?.[0] || targetRole?.skills?.[0] || course?.name || "岗位能力训练"
+  const isFde = targetRole?.id === "fde" || /FDE|前线部署工程师/.test(course?.name || "")
+  const initialKeyword = isFde
+    ? "FDE 前线部署工程师 现场交付 部署验收"
+    : targetRole?.sampleTasks?.[0] || targetRole?.skills?.[0] || course?.name || "岗位能力训练"
   const [draft, setDraft] = useState(initialKeyword)
   const [keyword, setKeyword] = useState(initialKeyword)
 
@@ -23,7 +26,7 @@ export function LearningResources() {
           <div className="max-w-2xl">
             <span className="inline-flex items-center gap-2 text-[10px] font-bold tracking-[.12em] text-[#6F8A69]"><Compass className="size-4" />学习资源</span>
             <h1 className="mt-2 text-2xl font-bold tracking-[-.04em] text-[#18232D]">查找与岗位相关的学习资源</h1>
-            <p className="mt-2 text-xs leading-6 text-[#66717B]">搜索视频、公开课程和文档；每条结果都会标明来源。</p>
+            <p className="mt-2 text-xs leading-6 text-[#66717B]">搜索书籍、论文、视频和公开文档；每条结果都会标明来源并可直接打开。</p>
           </div>
           <form
             className="mt-5 flex max-w-2xl gap-2"

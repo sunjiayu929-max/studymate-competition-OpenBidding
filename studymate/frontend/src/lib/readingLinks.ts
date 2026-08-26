@@ -57,17 +57,6 @@ function officialDocumentUrl(value?: string): string | null {
   }
 }
 
-function talentCourseUrl(item: ReadingLinkInput): string | null {
-  if (item.type !== "course" || !item.url || !(item.source || "").includes("人才呀")) return null
-  try {
-    const parsed = new URL(item.url)
-    if (!["http:", "https:"].includes(parsed.protocol) || parsed.hostname !== "rencaiya.vip") return null
-    return /^\/college\/courseinfo\/\d+\/?$/.test(parsed.pathname) ? parsed.toString() : null
-  } catch {
-    return null
-  }
-}
-
 function verifiedResolvedUrl(item: ReadingLinkInput): string | null {
   if (!item.resolvedUrl) return null
   try {
@@ -97,13 +86,6 @@ export function resolveReadingLinks(item: ReadingLinkInput, selectedTopic: strin
   const title = item.title.trim() || topic
   const source = (item.source || "").trim()
   const genericFallback: ReadingResolvedLink = { url: bing(`${topic} ${source || title}`), label: "备用搜索", kind: "search" }
-  const courseUrl = talentCourseUrl(item)
-  if (courseUrl) {
-    return {
-      primary: { url: courseUrl, label: "打开人才呀课程", kind: "direct" },
-      fallback: genericFallback,
-    }
-  }
 
   const official = item.type === "doc" ? officialDocumentUrl(item.url) : null
   if (official) {
@@ -122,15 +104,16 @@ export function resolveReadingLinks(item: ReadingLinkInput, selectedTopic: strin
   }
 
   if (item.type === "paper") {
+    const paperQuery = `${topic} ${title}`.trim()
     if (item.lang === "en") {
       return {
-        primary: { url: `https://arxiv.org/search/?query=${enc(title)}&searchtype=all`, label: "arXiv 搜论文", kind: "search" },
-        fallback: { url: bing(`${title} paper`), label: "备用论文搜索", kind: "search" },
+        primary: { url: `https://arxiv.org/search/?query=${enc(paperQuery)}&searchtype=all`, label: "arXiv 搜论文", kind: "search" },
+        fallback: { url: bing(`${paperQuery} paper`), label: "备用论文搜索", kind: "search" },
       }
     }
     return {
-      primary: { url: `https://kns.cnki.net/kns8s/defaultresult/index?kw=${enc(topic)}`, label: "知网搜主题（可能需验证）", kind: "search" },
-      fallback: { url: bing(`${topic} 论文`), label: "备用论文搜索", kind: "search" },
+      primary: { url: `https://kns.cnki.net/kns8s/defaultresult/index?kw=${enc(paperQuery)}`, label: "知网搜主题（可能需验证）", kind: "search" },
+      fallback: { url: bing(`${paperQuery} 论文`), label: "备用论文搜索", kind: "search" },
     }
   }
 
@@ -145,6 +128,13 @@ export function resolveReadingLinks(item: ReadingLinkInput, selectedTopic: strin
     return {
       primary: { url: `https://search.bilibili.com/all?keyword=${enc(topic)}`, label: "B 站搜主题", kind: "search" },
       fallback: { url: bing(`${topic} 视频`), label: "备用视频搜索", kind: "search" },
+    }
+  }
+
+  if (item.type === "course") {
+    return {
+      primary: { url: bing(`${topic} ${title} 课程`), label: "搜索相关课程", kind: "search" },
+      fallback: genericFallback,
     }
   }
 

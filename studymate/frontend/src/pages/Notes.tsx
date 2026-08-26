@@ -33,7 +33,7 @@ import { useCurrentCourse } from "@/store/course"
 import { usePostSSE } from "@/hooks/usePostSSE"
 import { createQuizSession } from "@/lib/quizSession"
 
-type Source = "manual" | "doc" | "quiz" | "tutor"
+type Source = "manual" | "doc" | "quiz" | "tutor" | "mindmap"
 
 interface Note {
   id: number
@@ -70,6 +70,7 @@ const SOURCE_META: Record<Source, { label: string; color: string; icon: typeof F
   doc:    { label: "讲解摘录", color: "bg-[#E7EDF3] text-[#315E83]", icon: FileText },
   quiz:   { label: "错题本", color: "bg-[#F4E8E2] text-[#9A4E35]", icon: BookOpen },
   tutor:  { label: "助教摘录", color: "bg-[#F4ECD8] text-[#8E6925]", icon: Bot },
+  mindmap: { label: "思维导图", color: "bg-[#E2EEEB] text-[#3E7774]", icon: BookMarked },
 }
 
 // 特殊筛选 key
@@ -166,6 +167,9 @@ export function Notes() {
       const r = await apiGet<ListResp>(`/notes?${params}`)
       setList(r.items)
       setBySrc(r.by_source || {})
+      // First entry should be immediately useful in the judge-facing notebook.
+      // Keep a user's current selection intact while filters or refreshes change.
+      setSelectedId((current) => current ?? r.items[0]?.id ?? null)
     } catch (e) {
       setErr(String(e))
     } finally {

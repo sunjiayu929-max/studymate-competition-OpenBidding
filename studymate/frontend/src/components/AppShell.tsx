@@ -95,7 +95,7 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
     icon: Compass,
     items: [
       { label: "学习资源", to: "/resources", icon: Compass },
-      { label: "职业探索", to: "/career", icon: GraduationCap },
+      { label: "转岗培训", to: "/career", icon: GraduationCap },
       { label: "AI 面试", to: "/ai-interview", icon: MessageSquare },
     ],
   },
@@ -142,6 +142,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const enterpriseAdmin = user?.role === "enterprise_admin"
   const enterpriseVisible = user?.role !== "admin" && (enterpriseAdmin || enterpriseMember === true)
+  const learnerIdentity = enterpriseAdmin
+    ? { kind: "企业管理员", detail: user?.company || "企业工作台" }
+    : user?.learner_type === "worker"
+      ? { kind: "从业者", detail: user.company || "未填写在职公司" }
+      : { kind: "学生学习者", detail: user?.study_stage || "未填写学习阶段" }
+  const learnerTargetRole = user?.target_role || targetRole?.name || course?.name || "未选择目标岗位"
 
   const immersive = pathname === "/tutor/voice" || /^\/quiz\/[^/]+$/u.test(pathname)
   const shellHidden = pathname === "/" && homeUniverseVisible
@@ -277,7 +283,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
           >
             {user?.role === "admin" ? <ShieldCheck className="size-4 shrink-0 text-[#9A4E35]" /> : <Library className="size-4 shrink-0 text-[#315E83]" />}
-            {!effectiveCollapsed && <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">{user?.role === "admin" ? "系统管理" : "当前岗位"}</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{user?.role === "admin" ? "平台运营工作台" : targetRole?.name || course?.name || "选择目标岗位"}</strong></span>}
+            {!effectiveCollapsed && (user?.role === "admin"
+              ? <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">系统管理</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">平台运营工作台</strong></span>
+              : <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">{learnerIdentity.kind}</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{user?.name || "学习者"}</strong><span className="mt-1 block truncate text-[10px] text-[#66717B]">{learnerIdentity.detail} · {learnerTargetRole}</span></span>)}
           </Link>
           {!effectiveCollapsed && user && enterpriseVisible && (
             <Link to="/enterprise" className="mt-2 block rounded-2xl border border-[#DCE5D7] bg-[#F5FAF3] px-3 py-2.5 transition-colors hover:bg-[#EAF4E7]">

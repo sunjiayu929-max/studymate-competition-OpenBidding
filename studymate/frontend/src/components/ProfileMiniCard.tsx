@@ -38,11 +38,6 @@ const labelMap: Record<string, string> = {
   algorithms: "算法建模", data_ai: "数据AI", systems: "系统网络", engineering: "工程实践", professional: "职业素养",
 }
 
-const employmentLabelMap: Record<string, string> = {
-  programming: "编程实现", algorithms: "算法建模", data_ai: "数据AI",
-  systems: "系统网络", engineering: "工程实践", professional: "职业素养",
-}
-
 const intensityLabel: Record<string, string> = {
   low: "轻量",
   medium: "适中",
@@ -53,7 +48,6 @@ const RADARS: Array<{ key: keyof ProfileMiniData["dims"]; title: string; emoji: 
   { key: "knowledge_base", title: "知识基础", emoji: "📚", color: "#315E83" },
   { key: "cognitive_style", title: "认知风格", emoji: "🧠", color: "#B85C3E" },
   { key: "preference", title: "资源偏好", emoji: "🎯", color: "#6F8A69" },
-  { key: "employment_skills", title: "就业技能", emoji: "💼", color: "#7E6B83" },
 ]
 
 interface ProfileMiniCardProps {
@@ -119,12 +113,11 @@ export function ProfileMiniCard({ profile, variant = "full" }: ProfileMiniCardPr
         </Link>
       </div>
 
-      <div className={compact ? "mb-2 grid grid-cols-1 gap-2" : "mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4"}>
+      <div className={compact ? "mb-2 grid grid-cols-1 gap-2" : "mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3"}>
         {RADARS.map(({ key, title, emoji, color }) => {
           const raw = (dims[key] as Record<string, number> | undefined) || {}
-          const labels = key === "employment_skills" ? employmentLabelMap : labelMap
           const chartData = Object.entries(raw).map(([k, v]) => ({
-            dim: labels[k] || labelMap[k] || k,
+            dim: labelMap[k] || k,
             value: typeof v === "number" ? v : 0,
           }))
           return (

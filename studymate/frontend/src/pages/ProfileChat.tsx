@@ -1,21 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { ArrowLeft, ArrowRight, Send, Loader2, Bot, RotateCw, Headphones, Paperclip, X, ShieldCheck, Sparkles, Target, AlertTriangle, Clock3, ImagePlus } from "lucide-react"
+import { ArrowLeft, ArrowRight, Send, Loader2, Bot, RotateCw, Headphones, Paperclip, X, ShieldCheck, Sparkles, Target, AlertTriangle, Clock3, ImagePlus, GraduationCap, BriefcaseBusiness, Save, UserRound, ChevronDown } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { AppTopbar } from "@/components/AppTopbar"
 import { Markdown } from "@/components/Markdown"
 import { ProfileRadar } from "@/components/ProfileRadar"
-import { CareerRecommendations } from "@/components/CareerRecommendations"
 import { MicButton } from "@/components/MicButton"
 import { SpeakerButton } from "@/components/SpeakerButton"
 import { VoiceSelector } from "@/components/VoiceSelector"
 import { usePostSSE } from "@/hooks/usePostSSE"
-import { apiGet, apiPost } from "@/lib/api"
+import { apiGet, apiPatch, apiPost } from "@/lib/api"
 import { compressImage } from "@/lib/image"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useCurrentCourse } from "@/store/course"
 import { useTargetRole } from "@/store/targetRole"
-import { useCurrentUser } from "@/store/user"
+import { setCurrentUser, useCurrentUser } from "@/store/user"
 
 interface Msg {
   role: "user" | "assistant"
@@ -44,6 +43,15 @@ interface ProfileResp {
 
 type ProfileNotice = { tone: "success" | "info" | "warning" | "error"; message: string }
 
+type LearnerContext = {
+  name: string
+  learner_type: "student" | "worker"
+  study_stage: string
+  company: string
+  target_role: string
+  enterprise: unknown | null
+}
+
 export function ProfileChat() {
   useTrackPage("profile")
   const navigate = useNavigate()
@@ -61,6 +69,16 @@ export function ProfileChat() {
   const streamingRef = useRef("")  // 镜像 streaming，避开 StrictMode 在 setState updater 里 double-invoke 副作用
   const [lastReasoning, setLastReasoning] = useState("")
   const [profileNotice, setProfileNotice] = useState<ProfileNotice | null>(null)
+  const [identity, setIdentity] = useState<LearnerContext>({
+    name: user?.name || "",
+    learner_type: user?.learner_type || "student",
+    study_stage: user?.study_stage || "",
+    company: user?.company || "",
+    target_role: user?.target_role || "",
+    enterprise: null,
+  })
+  const [identitySaving, setIdentitySaving] = useState(false)
+  const [identityNotice, setIdentityNotice] = useState("")
   const endRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   // 用户是否「贴着底部」：只有贴底时才跟随自动滚，否则上滑看历史不被打断
@@ -168,6 +186,48 @@ export function ProfileChat() {
       active = false
     }
   }, [USER_ID, targetRole?.name])
+
+  useEffect(() => {
+    if (!USER_ID) return
+    let active = true
+    apiGet<LearnerContext>("/learner/context").then((context) => {
+      if (active) setIdentity(context)
+    }).catch(() => {
+      if (active) setIdentityNotice("身份资料暂时无法读取")
+    })
+    return () => {
+      active = false
+    }
+  }, [USER_ID])
+
+  const saveIdentity = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setIdentitySaving(true)
+    setIdentityNotice("")
+    try {
+      const next = await apiPatch<LearnerContext>("/learner/context", {
+        learner_type: identity.learner_type,
+        study_stage: identity.learner_type === "student" ? identity.study_stage.trim() : "",
+        company: identity.learner_type === "worker" ? identity.company.trim() : "",
+        target_role: identity.target_role.trim(),
+      })
+      setIdentity(next)
+      if (user) {
+        setCurrentUser({
+          ...user,
+          learner_type: next.learner_type,
+          study_stage: next.study_stage,
+          company: next.company,
+          target_role: next.target_role,
+        })
+      }
+      setIdentityNotice("身份资料已保存")
+    } catch (error) {
+      setIdentityNotice(error instanceof Error ? error.message : "身份资料保存失败，请稍后重试")
+    } finally {
+      setIdentitySaving(false)
+    }
+  }
 
   useEffect(() => {
     const scroller = scrollRef.current
@@ -286,11 +346,17 @@ export function ProfileChat() {
   const weakTopics = profile?.dims.weak_points.topics?.filter(Boolean) || []
   const targetTopics = profile?.dims.goals.target_topics?.filter(Boolean) || []
   const hoursPerWeek = profile?.dims.pace.hours_per_week || 0
-  const hasProfileContent = Boolean(profile?.intake_complete)
+  // Keep the training entry available for existing and partially migrated profiles.
+  const hasProfileContent = Boolean(
+    profile?.dims.goals.primary?.trim()
+    || weakTopics.length
+    || targetTopics.length
+    || hoursPerWeek,
+  )
   const quickPrompts = targetRole ? [
     "我是计算机专业本科生，编程基础较好，数学和岗位领域知识一般。",
     "我更容易通过图示和动手实践理解，希望多提供文档、代码实操和小测。",
-    `我目前没有相关实习，每周能投入 6 小时，希望重点训练${targetRole.skills.slice(0, 2).join("和")}。`,
+    `我每周能投入 6 小时，希望重点训练${targetRole.skills.slice(0, 2).join("和")}。`,
   ] : [
     "我还没有确定目标岗位，希望先梳理自己的专业与实践经历。",
     "我更喜欢边看案例边动手实践，每周能投入 6 小时。",
@@ -340,7 +406,7 @@ export function ProfileChat() {
                     </span>
                     <h3 className="mt-4 text-xl font-bold tracking-[-0.03em] text-[#18232D]">先说说你的目标和经历</h3>
                     <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#66717B]">
-                      告诉我你的专业、项目或实习经历，以及想学习的岗位。我会分几步补充信息，再为你安排训练。
+                      告诉我你的专业、学习基础和想学习的岗位。我会分几步补充信息，再为你安排训练。
                     </p>
                     <div className="mt-6 grid gap-2 text-left sm:grid-cols-3">
                       {quickPrompts.map((prompt, index) => (
@@ -416,6 +482,30 @@ export function ProfileChat() {
           </section>
 
           <aside className="space-y-3 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:pr-1 [scrollbar-color:#CFC8B9_transparent] [scrollbar-width:thin]">
+            <form onSubmit={saveIdentity} className="rounded-[22px] border border-[#CFC8B9] bg-[#F8F6F0] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-bold tracking-[0.12em] text-[#315E83]">身份资料</span>
+                  <h2 className="mt-1 text-sm font-bold tracking-[-0.02em] text-[#18232D]">随时调整学习身份</h2>
+                  <p className="mt-1 text-[10px] leading-4 text-[#7A817F]">注册后也可以修改，保存后会同步到菜单栏。</p>
+                </div>
+                <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83]"><UserRound className="size-3.5" /></span>
+              </div>
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-2.5 text-[11px] font-semibold text-[#18232D]">
+                <UserRound className="size-3.5 shrink-0 text-[#66717B]" />
+                <span className="truncate">{identity.name || user?.name || "学习者"}</span>
+              </div>
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-[#D7D1C4] bg-[#F1EDE4] px-3 py-2 text-[10px] font-bold text-[#59636B]">
+                {identity.learner_type === "student" ? <GraduationCap className="size-3.5 text-[#315E83]" /> : <BriefcaseBusiness className="size-3.5 text-[#52704D]" />}
+                <span>注册身份 · {identity.learner_type === "student" ? "学生" : "从业者"}</span>
+              </div>
+              {identity.learner_type === "student" ? (
+                <label className="mt-3 block"><span className="mb-1.5 block text-[10px] font-bold text-[#394950]">学习阶段</span><span className="group relative flex h-10 items-center rounded-xl border border-[#D7D1C4] bg-white transition-[border-color,box-shadow] focus-within:border-[#244C66] focus-within:shadow-[0_0_0_3px_rgba(197,212,217,.55)]"><GraduationCap className="ml-3 size-3.5 shrink-0 text-[#8A918F] transition-colors group-focus-within:text-[#244C66]" /><select value={identity.study_stage} onChange={(event) => setIdentity((current) => ({ ...current, study_stage: event.target.value }))} className={`h-full min-w-0 flex-1 appearance-none bg-transparent px-2.5 pr-8 text-xs outline-none ${identity.study_stage ? "text-[#293D2A]" : "text-[#9A9F9C]"}`}><option value="">暂不填写</option><option value="本科">本科</option><option value="研究生">研究生</option><option value="博士">博士</option></select><ChevronDown className="pointer-events-none absolute right-3 size-3.5 text-[#8A918F]" /></span></label>
+              ) : (
+                <label className="mt-3 block"><span className="mb-1.5 block text-[10px] font-bold text-[#394950]">在职公司</span><span className="flex h-10 items-center rounded-xl border border-[#D7D1C4] bg-white px-3 focus-within:border-[#52704D]"><BriefcaseBusiness className="mr-2 size-3.5 shrink-0 text-[#8A918F]" /><input value={identity.company} onChange={(event) => setIdentity((current) => ({ ...current, company: event.target.value }))} placeholder="例如：星河科技" className="min-w-0 flex-1 bg-transparent text-xs text-[#293D2A] outline-none placeholder:text-[#9AA598]" /></span></label>
+              )}
+              <div className="mt-3 flex items-center justify-between gap-2"><span role={identityNotice.includes("失败") || identityNotice.includes("无法") ? "alert" : "status"} className={`min-w-0 truncate text-[10px] ${identityNotice.includes("失败") || identityNotice.includes("无法") ? "text-[#9A4E35]" : "text-[#557052]"}`}>{identityNotice}</span><button type="submit" disabled={identitySaving} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[#244C66] px-3 text-[10px] font-bold text-white disabled:opacity-50">{identitySaving ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}保存资料</button></div>
+            </form>
             <section className="rounded-[22px] border border-[#CFC8B9] bg-[#F8F6F0] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
@@ -439,7 +529,6 @@ export function ProfileChat() {
                 <ProfileRadar title="知识基础" data={profile.dims.knowledge_base} color="#315E83" height={124} />
                 <ProfileRadar title="认知风格" data={profile.dims.cognitive_style} color="#B85C3E" height={124} />
                 <ProfileRadar title="资源偏好" data={profile.dims.preference} color="#6F8A69" height={124} />
-                <ProfileRadar title="就业技能" data={profile.dims.employment_skills} color="#7E6B83" height={124} />
               </>
             ) : (
               <div className="rounded-[24px] border border-dashed border-[#C9C2B4] bg-[#F8F6F0] p-6 text-center text-xs text-[#66717B]">画像加载后，这里会实时显示目标、基础、偏好和节奏。</div>
@@ -481,9 +570,6 @@ export function ProfileChat() {
             )}
           </aside>
         </main>
-        <div className="mt-4">
-          <CareerRecommendations profileVersion={profile?.version || 0} />
-        </div>
       </div>
     </div>
   )
@@ -495,10 +581,9 @@ function buildOpeningMessage(roleName?: string, missingFields?: string[]): strin
     "知识基础与薄弱点",
     "认知风格",
     "资源偏好",
-    "就业技能与实践经历",
     "学习目标与时间安排",
   ])
-    .filter((field) => !(roleName && field === "目标岗位"))
+    .filter((field) => field !== "就业技能与实践经历" && !(roleName && field === "目标岗位"))
   if (!remaining.length) {
     return `你的${roleName ? `“${roleName}”` : "岗位"}画像已准备好，可以进入岗位训练中心。`
   }
@@ -517,12 +602,8 @@ function buildOpeningMessage(roleName?: string, missingFields?: string[]): strin
       : pending.has("认知风格")
         ? "学习新内容时，你更容易通过图示、阅读、讲解还是动手实践理解？"
         : "训练资源方面，你更希望多提供文档、思维导图、视频、代码实操还是小测？"
-  } else if (pending.has("就业技能与实践经历") || pending.has("学习目标与时间安排")) {
-    question = pending.has("就业技能与实践经历") && pending.has("学习目标与时间安排")
-      ? "最后说说相关项目或实习中用过的技术、负责内容和成果（没有也可说明），以及每周可投入的时间和期望完成时间。"
-      : pending.has("就业技能与实践经历")
-        ? "请说说相关项目或实习中用过的技术、负责内容和成果；没有也可以直接说明。"
-        : "你每周可以投入多少学习时间？如果有期望完成时间也可以一起说明。"
+  } else if (pending.has("学习目标与时间安排")) {
+    question = "你每周可以投入多少学习时间？如果有期望完成时间也可以一起说明。"
   }
   return `${roleText}${question}我会分几步询问，不重复。`
 }

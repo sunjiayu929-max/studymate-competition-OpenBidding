@@ -44,6 +44,10 @@ _DOI_RE = re.compile(r"^10\.\d{4,9}/\S+$", re.IGNORECASE)
 _CSDN_PATH_RE = re.compile(r"^/[^/]+/article/details/\d+/?$")
 _JUEJIN_PATH_RE = re.compile(r"^/post/\d+/?$")
 _DOUBAN_PATH_RE = re.compile(r"^/subject/\d+/?$")
+_TOPIC_STOPWORDS = {
+    "岗位", "知识库", "工程师", "开发", "应用", "课程", "教程", "学习", "资料", "内容",
+    "什么", "如何", "为什么", "原理", "过程", "介绍", "讲解", "工作",
+}
 
 
 def _clean_text(value: Any) -> str:
@@ -65,6 +69,38 @@ def _title_core(value: str) -> str:
     return text
 
 
+def _topic_terms(value: str) -> list[str]:
+    """提取用于二次验真的主题词，避免仅凭论文标题相似度放行跑题结果。"""
+    text = _title_core(_clean_text(value))
+    terms: list[str] = []
+    for token in re.findall(r"[a-zA-Z][a-zA-Z0-9+#]{2,24}", text):
+        token = token.lower()
+        if token not in terms:
+            terms.append(token)
+    for chunk in re.findall(r"[\u4e00-\u9fff]{2,}", text):
+        for part in re.split(r"岗位|知识库|工程师|开发|应用|课程|教程|学习|资料|内容|什么|如何|为什么|原理|过程|介绍|讲解|工作|以及|与|和|的|中|从|到|形成|建立|实现|进行", chunk):
+            part = part.strip()
+            if len(part) >= 2 and part not in _TOPIC_STOPWORDS and part not in terms:
+                terms.append(part)
+    return list(dict.fromkeys(terms))[:12]
+
+
+def _topic_relevant(topic: str, candidate: str) -> bool:
+    normalized_topic = _normalize_title(_title_core(topic))
+    normalized_candidate = _normalize_title(candidate)
+    if not normalized_topic or not normalized_candidate:
+        return False
+    # 长主题完整命中是最可靠的信号；短英文缩写则由词命中判断。
+    if len(normalized_topic) >= 4 and normalized_topic in normalized_candidate:
+        return True
+    terms = _topic_terms(topic)
+    if not terms:
+        return True
+    hits = sum(1 for term in terms if _normalize_title(term) in normalized_candidate)
+    required = 1 if len(terms) <= 2 else 2
+    return hits >= required
+
+
 def title_match_score(query: str, candidate: str) -> float:
     left = _normalize_title(query)
     right = _normalize_title(candidate)
@@ -81,7 +117,7 @@ def title_match_score(query: str, candidate: str) -> float:
     return SequenceMatcher(None, left, right).ratio()
 
 
-def _best_arxiv(xml_text: str, title: str) -> dict[str, Any] | None:
+def _best_arxiv(xml_text: str, title: str, topic: str = "") -> dict[str, Any] | None:
     try:
         root = ElementTree.fromstring(xml_text)
     except ElementTree.ParseError:
@@ -91,6 +127,8 @@ def _best_arxiv(xml_text: str, title: str) -> dict[str, Any] | None:
     for entry in root.findall("atom:entry", ns):
         candidate = _clean_text(entry.findtext("atom:title", default="", namespaces=ns))
         score = title_match_score(title, candidate)
+        if topic and not _topic_relevant(topic, candidate):
+            continue
         direct = ""
         for link in entry.findall("atom:link", ns):
             if link.attrib.get("rel") == "alternate":
@@ -100,14 +138,14 @@ def _best_arxiv(xml_text: str, title: str) -> dict[str, Any] | None:
         if parsed.hostname not in {"arxiv.org", "www.arxiv.org"} or not parsed.path.startswith("/abs/"):
             continue
         direct = f"https://arxiv.org{parsed.path}"
-        if score >= 0.84 and (best is None or score > best[0]):
+        if score >= 0.90 and (best is None or score > best[0]):
             best = (score, direct)
     if best is None:
         return None
     return {"url": best[1], "provider": "arXiv", "label": "打开 arXiv 原文", "score": round(best[0], 3)}
 
 
-def _best_crossref(body: dict[str, Any], title: str) -> dict[str, Any] | None:
+def _best_crossref(body: dict[str, Any], title: str, topic: str = "") -> dict[str, Any] | None:
     best: tuple[float, str] | None = None
     for item in ((body.get("message") or {}).get("items") or []):
         if not isinstance(item, dict) or item.get("type") not in _ARTICLE_TYPES:
@@ -116,7 +154,7 @@ def _best_crossref(body: dict[str, Any], title: str) -> dict[str, Any] | None:
         candidate = _clean_text(candidate_titles[0] if candidate_titles else "")
         doi = str(item.get("DOI") or "").strip()
         score = title_match_score(title, candidate)
-        if score < 0.92 or not _DOI_RE.match(doi):
+        if score < 0.94 or not _DOI_RE.match(doi) or (topic and not _topic_relevant(topic, candidate)):
             continue
         direct = f"https://doi.org/{quote(doi, safe='/:;().-_')}"
         if best is None or score > best[0]:
@@ -126,7 +164,7 @@ def _best_crossref(body: dict[str, Any], title: str) -> dict[str, Any] | None:
     return {"url": best[1], "provider": "Crossref DOI", "label": "打开 DOI 原文", "score": round(best[0], 3)}
 
 
-def _best_douban(page: str, title: str) -> dict[str, Any] | None:
+def _best_douban(page: str, title: str, topic: str = "") -> dict[str, Any] | None:
     match = re.search(r"window\.__DATA__\s*=\s*", page)
     if not match:
         return None
@@ -143,7 +181,7 @@ def _best_douban(page: str, title: str) -> dict[str, Any] | None:
         direct = str(item.get("url") or "").strip()
         parsed = urlparse(direct)
         score = title_match_score(title, str(item.get("title") or ""))
-        if parsed.hostname != "book.douban.com" or not _DOUBAN_PATH_RE.match(parsed.path) or score < 0.8:
+        if parsed.hostname != "book.douban.com" or not _DOUBAN_PATH_RE.match(parsed.path) or score < 0.90 or (topic and not _topic_relevant(topic, str(item.get("title") or ""))):
             continue
         clean_url = f"https://book.douban.com{parsed.path}"
         if best is None or score > best[0]:
@@ -153,15 +191,16 @@ def _best_douban(page: str, title: str) -> dict[str, Any] | None:
     return {"url": best[1], "provider": "豆瓣图书", "label": "打开图书详情", "score": round(best[0], 3)}
 
 
-def _best_csdn(body: dict[str, Any], title: str) -> dict[str, Any] | None:
+def _best_csdn(body: dict[str, Any], title: str, topic: str = "") -> dict[str, Any] | None:
     best: tuple[float, str] | None = None
     for item in body.get("result_vos") or []:
         if not isinstance(item, dict):
             continue
         direct = str(item.get("url") or "").strip()
         parsed = urlparse(direct)
-        score = title_match_score(title, str(item.get("title") or ""))
-        if parsed.hostname != "blog.csdn.net" or not _CSDN_PATH_RE.match(parsed.path) or score < 0.62:
+        candidate = str(item.get("title") or "")
+        score = title_match_score(title, candidate)
+        if parsed.hostname != "blog.csdn.net" or not _CSDN_PATH_RE.match(parsed.path) or score < 0.82 or (topic and not _topic_relevant(topic, candidate)):
             continue
         clean_url = f"https://blog.csdn.net{parsed.path.rstrip('/')}"
         if best is None or score > best[0]:
@@ -171,7 +210,7 @@ def _best_csdn(body: dict[str, Any], title: str) -> dict[str, Any] | None:
     return {"url": best[1], "provider": "CSDN", "label": "打开博客原文", "score": round(best[0], 3)}
 
 
-def _best_juejin(body: dict[str, Any], title: str) -> dict[str, Any] | None:
+def _best_juejin(body: dict[str, Any], title: str, topic: str = "") -> dict[str, Any] | None:
     best: tuple[float, str] | None = None
     for result in body.get("data") or []:
         model = result.get("result_model") if isinstance(result, dict) else None
@@ -182,7 +221,7 @@ def _best_juejin(body: dict[str, Any], title: str) -> dict[str, Any] | None:
         direct = f"https://juejin.cn/post/{article_id}"
         parsed = urlparse(direct)
         score = title_match_score(title, candidate)
-        if not article_id.isdigit() or parsed.hostname != "juejin.cn" or not _JUEJIN_PATH_RE.match(parsed.path) or score < 0.62:
+        if not article_id.isdigit() or parsed.hostname != "juejin.cn" or not _JUEJIN_PATH_RE.match(parsed.path) or score < 0.82 or (topic and not _topic_relevant(topic, candidate)):
             continue
         if best is None or score > best[0]:
             best = (score, direct)
@@ -191,7 +230,7 @@ def _best_juejin(body: dict[str, Any], title: str) -> dict[str, Any] | None:
     return {"url": best[1], "provider": "掘金", "label": "打开博客原文", "score": round(best[0], 3)}
 
 
-async def _resolve_arxiv(client: httpx.AsyncClient, title: str) -> dict[str, Any] | None:
+async def _resolve_arxiv(client: httpx.AsyncClient, title: str, topic: str = "") -> dict[str, Any] | None:
     try:
         response = await client.get(
             # export.arxiv.org 的 HTTP 入口会立即跳转到 HTTPS；从部分双栈网络
@@ -200,44 +239,44 @@ async def _resolve_arxiv(client: httpx.AsyncClient, title: str) -> dict[str, Any
             params={"search_query": f'ti:"{title}"', "start": 0, "max_results": 5},
         )
         response.raise_for_status()
-        return _best_arxiv(response.text, title)
+        return _best_arxiv(response.text, title, topic)
     except Exception:
         return None
 
 
-async def _resolve_crossref(client: httpx.AsyncClient, title: str) -> dict[str, Any] | None:
+async def _resolve_crossref(client: httpx.AsyncClient, title: str, topic: str = "") -> dict[str, Any] | None:
     try:
         response = await client.get(
             "https://api.crossref.org/works",
             params={"query.title": title, "rows": 5, "select": "DOI,title,URL,type"},
         )
         response.raise_for_status()
-        return _best_crossref(response.json(), title)
+        return _best_crossref(response.json(), title, topic)
     except Exception:
         return None
 
 
-async def _resolve_paper(client: httpx.AsyncClient, title: str) -> dict[str, Any] | None:
+async def _resolve_paper(client: httpx.AsyncClient, title: str, topic: str = "") -> dict[str, Any] | None:
     arxiv, crossref = await asyncio.gather(
-        _resolve_arxiv(client, title),
-        _resolve_crossref(client, title),
+        _resolve_arxiv(client, title, topic),
+        _resolve_crossref(client, title, topic),
     )
     return arxiv or crossref
 
 
-async def _resolve_book(client: httpx.AsyncClient, title: str) -> dict[str, Any] | None:
+async def _resolve_book(client: httpx.AsyncClient, title: str, topic: str = "") -> dict[str, Any] | None:
     try:
         response = await client.get(
             "https://search.douban.com/book/subject_search",
             params={"search_text": title},
         )
         response.raise_for_status()
-        return _best_douban(response.text, title)
+        return _best_douban(response.text, title, topic)
     except Exception:
         return None
 
 
-async def _resolve_csdn(client: httpx.AsyncClient, title: str) -> dict[str, Any] | None:
+async def _resolve_csdn(client: httpx.AsyncClient, title: str, topic: str = "") -> dict[str, Any] | None:
     query = _title_core(title) or title
     try:
         response = await client.get(
@@ -256,12 +295,12 @@ async def _resolve_csdn(client: httpx.AsyncClient, title: str) -> dict[str, Any]
             headers={"Referer": "https://so.csdn.net/so/search"},
         )
         response.raise_for_status()
-        return _best_csdn(response.json(), title)
+        return _best_csdn(response.json(), title, topic)
     except Exception:
         return None
 
 
-async def _resolve_juejin(client: httpx.AsyncClient, title: str) -> dict[str, Any] | None:
+async def _resolve_juejin(client: httpx.AsyncClient, title: str, topic: str = "") -> dict[str, Any] | None:
     query = _title_core(title) or title
     try:
         response = await client.post(
@@ -270,26 +309,27 @@ async def _resolve_juejin(client: httpx.AsyncClient, title: str) -> dict[str, An
             headers={"Referer": "https://juejin.cn/"},
         )
         response.raise_for_status()
-        return _best_juejin(response.json(), title)
+        return _best_juejin(response.json(), title, topic)
     except Exception:
         return None
 
 
-async def _resolve_blog(client: httpx.AsyncClient, title: str, source: str) -> dict[str, Any] | None:
+async def _resolve_blog(client: httpx.AsyncClient, title: str, source: str, topic: str = "") -> dict[str, Any] | None:
     normalized = source.lower()
     if "csdn" in normalized:
-        return await _resolve_csdn(client, title)
+        return await _resolve_csdn(client, title, topic)
     if "掘金" in source or "juejin" in normalized:
-        return await _resolve_juejin(client, title)
+        return await _resolve_juejin(client, title, topic)
     return None
 
 
-def _cache_key(item: dict[str, Any]) -> str:
+def _cache_key(item: dict[str, Any], topic: str = "") -> str:
     return ":".join((
         str(item.get("type") or ""),
         str(item.get("lang") or ""),
         _normalize_title(item.get("title")),
         _normalize_title(item.get("source")),
+        _normalize_title(topic),
     ))
 
 
@@ -312,7 +352,7 @@ def _set_cached(key: str, value: dict[str, Any] | None) -> None:
         _cache.pop(old_key, None)
 
 
-async def resolve_reading_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+async def resolve_reading_items(items: list[dict[str, Any]], topic: str = "") -> list[dict[str, Any]]:
     if safe_offline_enabled():
         return []
     semaphore = asyncio.Semaphore(4)
@@ -326,7 +366,7 @@ async def resolve_reading_items(items: list[dict[str, Any]]) -> list[dict[str, A
         trust_env=False,
     ) as client:
         async def resolve_one(item: dict[str, Any]) -> dict[str, Any] | None:
-            key = _cache_key(item)
+            key = _cache_key(item, topic)
             found, cached = _get_cached(key)
             if found:
                 return {"index": item["index"], **cached} if cached else None
@@ -334,11 +374,11 @@ async def resolve_reading_items(items: list[dict[str, Any]]) -> list[dict[str, A
             async with semaphore:
                 kind = item.get("type")
                 if kind == "paper":
-                    match = await _resolve_paper(client, item["title"])
+                    match = await _resolve_paper(client, item["title"], topic)
                 elif kind == "book":
-                    match = await _resolve_book(client, item["title"])
+                    match = await _resolve_book(client, item["title"], topic)
                 elif kind == "blog":
-                    match = await _resolve_blog(client, item["title"], item.get("source", ""))
+                    match = await _resolve_blog(client, item["title"], item.get("source", ""), topic)
                 else:
                     match = None
             _set_cached(key, match)

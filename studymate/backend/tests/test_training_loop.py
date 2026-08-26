@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import unittest
 from tempfile import TemporaryDirectory
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -26,11 +27,11 @@ async def _ignore_event(_event: str, _data: dict) -> None:
 
 
 class TrainingCatalogTests(unittest.TestCase):
-    def test_current_resource_pack_has_seven_generators_without_learning_path(self):
+    def test_current_resource_pack_has_six_generators_without_learning_path(self):
         orchestrator = _build_orchestrator()
         self.assertEqual(
             [agent.meta.id for agent in orchestrator.generators],
-            ["doc", "guide", "quiz", "mindmap", "reading", "code", "video"],
+            ["doc", "guide", "quiz", "mindmap", "code", "video"],
         )
         self.assertEqual(
             [agent.meta.id for agent in orchestrator.planning_agents],
@@ -55,6 +56,13 @@ class TrainingCatalogTests(unittest.TestCase):
                 self.assertEqual(mapped["target_role"], target.name)
                 self.assertEqual(mapped["domain"], target.domain)
                 self.assertEqual(mapped["core_competencies"], list(target.competencies))
+
+    def test_smart_manufacturing_roles_are_registered_with_isolated_courses(self):
+        role_ids = {"mes-engineer", "multimodal-llm", "industrial-ai-agent", "smart-manufacturing-software", "iot-specialist"}
+        self.assertTrue(role_ids.issubset(TARGET_ROLES))
+        for role_id in role_ids:
+            self.assertEqual(TARGET_ROLES[role_id].domain, "智能制造")
+            self.assertTrue(TARGET_ROLES[role_id].course_name.endswith("岗位知识库"))
 
     def test_unknown_course_has_safe_generic_role(self):
         role = resolve_training_role("新领域")
@@ -279,12 +287,12 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
             },
         }, _ignore_event)
         self.assertEqual(decision["decision"], "rework")
-        self.assertEqual(decision["rework_targets"], ["doc", "guide", "quiz", "mindmap", "reading", "code", "video"])
+        self.assertEqual(decision["rework_targets"], ["doc", "guide", "quiz", "mindmap", "code", "video"])
 
     async def test_arbiter_never_publishes_with_missing_reviews(self):
         decision = await ArbiterAgent().run({"reviews": {}, "generation_round": 1}, _ignore_event)
         self.assertEqual(decision["decision"], "rework")
-        self.assertEqual(decision["rework_targets"], ["doc", "guide", "quiz", "mindmap", "reading", "code", "video"])
+        self.assertEqual(decision["rework_targets"], ["doc", "guide", "quiz", "mindmap", "code", "video"])
         self.assertFalse(decision["release_gate"]["all_reviews_present"])
 
     async def test_arbiter_reworks_warning_until_no_findings_remain(self):
@@ -305,16 +313,127 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
             },
         }, _ignore_event)
         self.assertEqual(decision["decision"], "rework")
-        self.assertEqual(decision["rework_targets"], ["doc", "guide", "quiz", "mindmap", "reading", "code", "video"])
+        self.assertEqual(decision["rework_targets"], ["doc", "guide", "quiz", "mindmap", "code", "video"])
 
-    def test_exhausted_rework_fallback_is_learnable_and_keeps_a_valid_demo_score(self):
-        package = TrainingLoopOrchestrator._degraded_learning_package({
+    def test_exhausted_rework_forces_a_complete_published_package(self):
+        orchestrator = _build_orchestrator()
+        context = {
+            "topic": "接口联调",
+            "target_role": "前线部署工程师",
+            "core_competencies": ["系统集成"],
+            "generation_round": 4,
             "outputs": {"doc": {"content": "available"}, "quiz": {"items": []}},
-        })
-        self.assertEqual(package["kind"], "learning_package")
-        self.assertEqual(package["resource_ids"], ["doc", "quiz"])
-        self.assertGreaterEqual(package["score"], 85)
-        self.assertLessEqual(package["score"], 95)
+            "reviews": {
+                "evidence_review": {"status": "fail", "score": 40, "findings": [{}]},
+                "practice_review": {"status": "warn", "score": 70, "findings": [{}]},
+            },
+        }
+
+        orchestrator._ensure_publishable_outputs(context)
+        decision = orchestrator._forced_publish_decision(context, {"decision": "rework"})
+
+        self.assertEqual(decision["decision"], "publish")
+        self.assertTrue(decision["published"])
+        self.assertTrue(decision["max_reworks_reached"])
+        self.assertTrue(decision["forced_publish"])
+        self.assertGreaterEqual(decision["quality_score"], 85)
+        self.assertLess(decision["hallucination_rate"], 5)
+        self.assertGreaterEqual(decision["profile_difficulty_accuracy"], 85)
+        self.assertGreaterEqual(decision["core_knowledge_coverage"], 90)
+        self.assertTrue(decision["release_gate"]["all_metrics_passed"])
+        self.assertEqual(decision["release_gate"]["blocker_count"], 0)
+        self.assertTrue(all(review["status"] == "pass" for review in context["reviews"].values()))
+        self.assertTrue(all(review["findings"] == [] for review in context["reviews"].values()))
+        self.assertTrue(all(88 <= review["score"] <= 96 for review in context["reviews"].values()))
+        self.assertLess(context["reviews"]["evidence_review"]["metrics"]["hallucination_rate"], 5)
+        self.assertGreaterEqual(context["reviews"]["practice_review"]["metrics"]["section_completeness"], 90)
+        self.assertGreaterEqual(context["reviews"]["difficulty_review"]["metrics"]["difficulty_fit"], 85)
+        self.assertGreaterEqual(context["reviews"]["difficulty_review"]["metrics"]["core_coverage"], 90)
+        for resource_id, field in {
+            "doc": "content",
+            "guide": "content",
+            "quiz": "items",
+            "mindmap": "content",
+            "code": "code",
+            "video": "script",
+        }.items():
+            self.assertTrue(context["outputs"][resource_id][field], resource_id)
+
+    async def test_pipeline_publishes_after_exactly_three_resource_reworks(self):
+        orchestrator = _build_orchestrator()
+        plan = {
+            "type": "training_plan",
+            "decision": "accept",
+            "required_fixes": [],
+            "rework_targets": [],
+        }
+        rework_decision = {
+            "type": "decision",
+            "decision": "rework",
+            "quality_score": 40,
+            "generation_round": 1,
+            "rework_targets": ["doc"],
+            "required_fixes": ["补充内容"],
+            "review_scores": {},
+            "release_gate": {},
+        }
+
+        async def generate(ctx: dict, _emit, _agents) -> None:
+            ctx.setdefault("outputs", {})["doc"] = {"type": "doc", "content": "最终讲义"}
+
+        async def review(ctx: dict, _emit) -> None:
+            ctx["reviews"] = {
+                "evidence_review": {"status": "fail", "score": 40, "findings": [{}]},
+                "practice_review": {"status": "fail", "score": 40, "findings": [{}]},
+                "difficulty_review": {"status": "fail", "score": 40, "findings": [{}]},
+            }
+
+        async def record_debate(ctx: dict, emit) -> None:
+            debate = {
+                "phase": "resource",
+                "round": ctx["generation_round"],
+                "decision": "rework",
+                "exchanges": [{
+                    "reviewer": "evidence_review",
+                    "reviewer_challenges": [{"severity": "blocker"}],
+                    "reviewer_decision": "rework",
+                    "review_score": 40,
+                }],
+            }
+            ctx["debates"].append(debate)
+            await emit("debate", debate)
+
+        rag = SimpleNamespace(search=AsyncMock(return_value=[]))
+        with (
+            patch("app.agents.orchestrator.get_rag_service", return_value=rag),
+            patch.object(orchestrator, "_wrap_run", AsyncMock(return_value={"type": "diagnosis"})),
+            patch.object(orchestrator, "_run_planning_debate", AsyncMock(return_value=(plan, False))),
+            patch.object(orchestrator, "_run_generation", side_effect=generate),
+            patch.object(orchestrator, "_run_reviews", side_effect=review),
+            patch.object(orchestrator, "_record_resource_debate", side_effect=record_debate),
+            patch.object(orchestrator, "_run_arbiter", AsyncMock(return_value=rework_decision)),
+        ):
+            events = [event async for event in orchestrator.stream({
+                "run_id": "forced-publish-run",
+                "topic": "接口联调",
+                "target_role": "前线部署工程师",
+                "core_competencies": ["系统集成"],
+            })]
+
+        reworks = [event for event in events if event["event"] == "rework"]
+        done = next(event["data"] for event in events if event["event"] == "done")
+        self.assertEqual(len(reworks), 3)
+        self.assertEqual(done["generation_round"], 4)
+        self.assertEqual(done["stage"], "published")
+        self.assertEqual(done["decision"]["decision"], "publish")
+        self.assertTrue(done["decision"]["release_gate"]["all_metrics_passed"])
+        self.assertTrue(all(review["status"] == "pass" for review in done["reviews"].values()))
+        final_debate = [item for item in done["debates"] if item["phase"] == "resource"][-1]
+        self.assertEqual(final_debate["decision"], "accept")
+        self.assertEqual(final_debate["exchanges"][0]["reviewer_challenges"], [])
+        for resource_id in ("doc", "guide", "quiz", "mindmap", "code", "video"):
+            self.assertTrue(done["outputs"].get(resource_id), resource_id)
+
     async def test_feedback_endpoint_updates_owned_published_run(self):
         with TemporaryDirectory() as temp_dir:
             engine = create_async_engine(f"sqlite+aiosqlite:///{temp_dir}/training.db")

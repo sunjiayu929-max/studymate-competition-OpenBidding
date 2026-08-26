@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { Link } from "react-router-dom"
 import { AlertCircle, BookOpen, CircleHelp, Database, ExternalLink, FileSearch, FileText, Hash, Loader2, Search, ShieldCheck, Sparkles } from "lucide-react"
@@ -60,8 +60,9 @@ export function RagDemo() {
     : course
       ? fallbackSamplesFor(course.name).topics
       : DEFAULT_SAMPLE_TOPICS
+  const defaultQuery = sampleQueries[0] || "如何拆解岗位任务与验收标准"
   const resultLimit = targetRole?.id === "fde" ? FDE_RESULT_LIMIT : DEFAULT_RESULT_LIMIT
-  const [q, setQ] = useState(sampleQueries[0] || "如何拆解岗位任务与验收标准")
+  const [q, setQ] = useState(defaultQuery)
   const [stats, setStats] = useState<Stats | null>(null)
   const [resp, setResp] = useState<SearchResp | null>(null)
   const [loading, setLoading] = useState(false)
@@ -72,7 +73,7 @@ export function RagDemo() {
     apiGet<Stats>(url).then(setStats).catch(() => {})
   }, [course])
 
-  const doSearch = async (query: string) => {
+  const doSearch = useCallback(async (query: string) => {
     if (!query.trim()) return
     setLoading(true)
     setError("")
@@ -85,7 +86,13 @@ export function RagDemo() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [course, resultLimit])
+
+  useEffect(() => {
+    if (!course) return
+    setQ(defaultQuery)
+    void doSearch(defaultQuery)
+  }, [course, defaultQuery, doSearch])
 
   if (!course) {
     return (
@@ -138,7 +145,7 @@ export function RagDemo() {
               </form>
 
               <div className="mt-4 flex flex-wrap items-center gap-2.5">
-                <span className="mr-1 text-xs font-bold text-[#736958]">试试搜索</span>
+                <span className="mr-1 text-xs font-bold text-[#736958]">已展示默认知识片段，也可继续搜索</span>
                 {sampleQueries.slice(0, 5).map((sample) => (
                   <button key={sample} type="button" onClick={() => { setQ(sample); doSearch(sample) }} className="rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-4 py-2 text-xs font-semibold text-[#59636B] shadow-[0_2px_7px_rgba(24,35,45,.035)] transition-all hover:-translate-y-0.5 hover:border-[#AEBAB5] hover:bg-[#E9EEE6] hover:text-[#315E83]">{sample}</button>
                 ))}
@@ -161,7 +168,7 @@ export function RagDemo() {
               <div className="space-y-3">
                 <div className="flex flex-wrap items-end justify-between gap-2 px-1 py-2">
                   <div>
-                    <span className="text-[10px] font-bold tracking-[0.12em] text-[#6F8A69]">检索结果</span>
+                    <span className="text-[10px] font-bold tracking-[0.12em] text-[#6F8A69]">{resp.query === defaultQuery ? "默认知识片段" : "检索结果"}</span>
                     <h2 className="mt-1 text-lg font-bold text-[#18232D]">“{resp.query}” 找到 {resp.count} 条依据</h2>
                   </div>
                   <span className="text-[10px] font-semibold text-[#8A8172]">按相对匹配度排序 · 最多显示 {resp.k} 条</span>
@@ -207,8 +214,8 @@ export function RagDemo() {
               <section className="grid min-h-[360px] place-items-center rounded-[26px] border border-dashed border-[#C9C2B4] bg-[#F8F6F0] p-8 text-center">
                 <div className="max-w-md">
                   <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83]"><FileSearch className="size-5" /></span>
-                  <h2 className="mt-4 text-lg font-bold text-[#18232D]">输入一个岗位任务或能力点开始检索</h2>
-                  <p className="mt-2 text-sm leading-6 text-[#66717B]">检索结果会保留岗位知识库中的原始上下文，方便你核对结论并继续完成训练任务。</p>
+                  <h2 className="mt-4 text-lg font-bold text-[#18232D]">正在加载岗位知识片段</h2>
+                  <p className="mt-2 text-sm leading-6 text-[#66717B]">首次进入会自动展示默认检索结果；随后可输入更具体的任务或能力点继续筛选。</p>
                 </div>
               </section>
             )}
