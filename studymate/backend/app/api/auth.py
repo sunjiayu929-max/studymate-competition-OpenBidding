@@ -27,6 +27,18 @@ password_hash = PasswordHash.recommended()
 _dummy_password_hash = password_hash.hash("StudyMate-dummy-password")
 _ephemeral_secret = secrets.token_bytes(32)
 COOKIE_NAME = "sm_session"
+FIXED_FDE_ACCOUNTS = {
+    "sunjiayu@pramate.com",
+    "baixinyue@pramate.com",
+    "yuanshicong@pramate.com",
+    "chenzhuo@pramate.com",
+    "lijiayi@pramate.com",
+    "zhouxiang@pramate.com",
+    "tianyixin@pramate.com",
+    "liufei@pramate.com",
+    "test@pramate.com",
+}
+FIXED_FDE_ROLE = "前线部署工程师（FDE）"
 
 
 class SendCodeRequest(BaseModel):
@@ -79,6 +91,7 @@ def _token_hash(token: str) -> str:
 
 
 def _user_out(user: User, *, created: bool = False) -> UserOut:
+    email = (user.email or "").lower()
     return UserOut(
         user_id=user.id,
         name=user.name,
@@ -87,7 +100,7 @@ def _user_out(user: User, *, created: bool = False) -> UserOut:
         learner_type=user.learner_type or "student",
         study_stage=user.study_stage or "",
         company=user.company or "",
-        target_role=user.target_role or "",
+        target_role=FIXED_FDE_ROLE if email in FIXED_FDE_ACCOUNTS else user.target_role or "",
         created=created,
     )
 
@@ -230,6 +243,16 @@ async def login(req: LoginRequest, response: Response, db: AsyncSession = Depend
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="邮箱或密码错误",
         )
+    if email in FIXED_FDE_ACCOUNTS:
+        user.learner_type = "worker"
+        user.company = "河南本线商贸有限公司"
+        user.target_role = FIXED_FDE_ROLE
+        membership = await db.scalar(select(EnterpriseMembership).where(
+            EnterpriseMembership.user_id == user.id,
+            EnterpriseMembership.status == "active",
+        ))
+        if membership is not None:
+            membership.job_title = FIXED_FDE_ROLE
     await _create_session(db, user, response)
     return _user_out(user)
 
