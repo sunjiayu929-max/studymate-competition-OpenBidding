@@ -110,6 +110,8 @@ class OJTicketTests(unittest.IsolatedAsyncioTestCase):
             _normalize_next_path("https://evil.example/steal")
         with self.assertRaises(HTTPException):
             _normalize_next_path("//evil.example/steal")
+        with self.assertRaises(HTTPException):
+            _normalize_next_path("/oj/p/100\r\nLocation: https://evil.example")
 
     async def test_identity_status_is_signed_and_reports_inactive_user(self):
         with TemporaryDirectory() as tmp:

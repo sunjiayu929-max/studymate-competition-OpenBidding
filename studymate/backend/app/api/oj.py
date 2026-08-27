@@ -46,6 +46,7 @@ def _normalize_next_path(value: str | None) -> str:
         or not candidate.startswith("/oj/")
         or candidate.startswith("//")
         or "\\" in candidate
+        or any(ord(char) < 0x20 or ord(char) == 0x7F for char in candidate)
         or parsed.scheme
         or parsed.netloc
     ):

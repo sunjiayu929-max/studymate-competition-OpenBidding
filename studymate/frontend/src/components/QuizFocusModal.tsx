@@ -28,7 +28,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { CodeEditor } from "@/components/CodeEditor"
 import { CodeRunner, type RunLang } from "@/components/CodeRunner"
 import { Markdown } from "@/components/Markdown"
-import type { QuizItem, QuizResult } from "@/components/QuizCard"
+import type { QuizItem, QuizResult, SavedQuizAttempt } from "@/components/QuizCard"
 
 interface QuizFocusModalProps {
   open: boolean
@@ -39,6 +39,8 @@ interface QuizFocusModalProps {
   onClose: () => void
   /** 每次答题提交回调,用于上层同步统计 */
   onSubmit?: (result: QuizResult & { topic: string }) => void
+  /** 离开页面前已提交的答题记录。 */
+  initialAttempts?: Record<string, SavedQuizAttempt>
 }
 
 interface Attempt {
@@ -64,6 +66,7 @@ export function QuizFocusModal({
   defaultLanguage = "python",
   onClose,
   onSubmit,
+  initialAttempts,
 }: QuizFocusModalProps) {
   const [idx, setIdx] = useState(startIndex)
   const [attempts, setAttempts] = useState<AttemptMap>({})
@@ -73,12 +76,25 @@ export function QuizFocusModal({
   const questionScrollRef = useRef<HTMLDivElement | null>(null)
   const answerScrollRef = useRef<HTMLDivElement | null>(null)
 
-  // 切换 startIndex 时重置
+  // 每次打开时从工作区恢复已提交题目；未提交的临时输入不跨页面保留。
   useEffect(() => {
     if (!open) return
-    const frame = window.requestAnimationFrame(() => setIdx(startIndex))
+    const restored = Object.fromEntries(items.flatMap((item) => {
+      const saved = initialAttempts?.[item.id]
+      if (!saved) return []
+      const answerIndex = item.type === "mcq" ? Number(saved.user_answer) : saved.user_answer
+      return [[item.id, {
+        answered: true,
+        userAnswer: item.type === "mcq" && !Number.isInteger(answerIndex) ? -1 : answerIndex,
+        isCorrect: item.type === "code" ? null : saved.is_correct,
+      } satisfies Attempt]]
+    })) as AttemptMap
+    const frame = window.requestAnimationFrame(() => {
+      setIdx(startIndex)
+      setAttempts(restored)
+    })
     return () => window.cancelAnimationFrame(frame)
-  }, [open, startIndex])
+  }, [initialAttempts, items, open, startIndex])
 
   const current = items[idx]
 

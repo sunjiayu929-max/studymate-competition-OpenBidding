@@ -30,6 +30,13 @@ function safeReturnTo(value: string | null): string | null {
   return value
 }
 
+function landingPath(user: Pick<CurrentUser, "role">, requestedPath: string): string {
+  if (user.role === "admin") return "/admin"
+  if (user.role === "enterprise_admin") return "/enterprise/dashboard"
+  if (requestedPath === "/admin" || requestedPath === "/enterprise/dashboard") return "/"
+  return requestedPath
+}
+
 const ORBIT_PATHS = [
   "M320 122 m -140 0 a 140 98 0 1 0 280 0 a 140 98 0 1 0 -280 0",
   "M320 122 m -232 0 a 232 112 0 1 0 464 0 a 232 112 0 1 0 -464 0",
@@ -77,7 +84,7 @@ export function Login() {
   const from = safeReturnTo(searchParams.get("return_to")) || statePath || "/"
 
   useEffect(() => {
-    if (currentUser) navigate(from, { replace: true })
+    if (currentUser) navigate(landingPath(currentUser, from), { replace: true })
   }, [currentUser, from, navigate])
 
   useEffect(() => {
@@ -134,7 +141,7 @@ export function Login() {
         company: result.company,
         target_role: result.target_role,
       })
-      navigate(from, { replace: true })
+      navigate(landingPath(result, from), { replace: true })
     } catch (err) {
       setError(messageOf(err))
     } finally {

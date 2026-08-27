@@ -43,7 +43,7 @@ def _review_output(
 class EvidenceReviewAgent(AgentBase):
     meta = AgentMeta(
         id="evidence_review",
-        name="事实与来源审核 Agent",
+        name="事实与来源校验 Agent",
         icon="🔍",
         color="indigo",
         description="核对专业主张、引用编号与知识来源",
@@ -205,7 +205,7 @@ class EvidenceReviewAgent(AgentBase):
         score = round(100 - hallucination_rate)
         score -= 10 if len(content.replace(" ", "")) < 260 else 0
         result = _review_output(
-            "事实与来源审核",
+            "事实与来源校验 Agent",
             score,
             findings,
             {
@@ -231,7 +231,7 @@ class EvidenceReviewAgent(AgentBase):
 class PracticeReviewAgent(AgentBase):
     meta = AgentMeta(
         id="practice_review",
-        name="实操规范审核 Agent",
+        name="实操规范校验 Agent",
         icon="🛡️",
         color="rose",
         description="检查实操前置、步骤、验收、异常与安全边界",
@@ -308,7 +308,7 @@ class PracticeReviewAgent(AgentBase):
         score -= 30 if not citations else 0
         score -= 15 if numbered_steps < 3 else 0
         result = _review_output(
-            "实操规范审核",
+            "实操规范校验 Agent",
             score,
             findings,
             {
@@ -328,7 +328,7 @@ class PracticeReviewAgent(AgentBase):
 class DifficultyReviewAgent(AgentBase):
     meta = AgentMeta(
         id="difficulty_review",
-        name="难度与覆盖审核 Agent",
+        name="难度与覆盖校验 Agent",
         icon="📐",
         color="emerald",
         description="校准资源难度并核查岗位核心能力覆盖",
@@ -420,7 +420,7 @@ class DifficultyReviewAgent(AgentBase):
         score -= 30 if len(items) < 3 else 0
         score -= 15 if difficulties and len(set(difficulties)) < 2 else 0
         result = _review_output(
-            "难度与覆盖审核",
+            "难度与覆盖校验 Agent",
             score,
             findings,
             {

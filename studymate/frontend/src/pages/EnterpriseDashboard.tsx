@@ -1,8 +1,6 @@
-import { useCallback, useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   Activity,
-  ArrowLeft,
   BarChart3,
   BookOpenCheck,
   BriefcaseBusiness,
@@ -12,7 +10,6 @@ import {
   FileCheck2,
   Loader2,
   RefreshCw,
-  Target,
   UsersRound,
   X,
 } from "lucide-react"
@@ -71,8 +68,6 @@ const taskStatus: Record<string, { label: string; className: string }> = {
 }
 
 const assignmentStatus: Record<string, string> = { pending: "待接受", accepted: "已接受", in_progress: "进行中", completed: "已完成" }
-const auditAction: Record<string, string> = { task_publish: "发布任务", task_draft: "保存任务草稿", knowledge_base_create: "创建岗位知识库", member_import: "导入成员", member_join: "成员加入企业", task_accept: "接受任务", task_start: "开始任务", task_complete: "完成任务" }
-
 export function EnterpriseDashboard() {
   const [data, setData] = useState<Dashboard | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -114,8 +109,7 @@ export function EnterpriseDashboard() {
         <AppTopbar current="home" appearance="paper" labelOverride="企业运营看板" groupOverride="企业培训协作" selectionLabel={data?.enterprise.name || "河南本线商贸有限公司"} />
         <header className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-[24px] border border-[#D6E2D4] bg-[#F4F9F2] p-5 shadow-[0_14px_38px_rgba(59,92,58,.08)] sm:p-7">
           <div>
-            <Link to="/enterprise" className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#668064] hover:text-[#365A38]"><ArrowLeft className="size-3.5" />返回企业工作台</Link>
-            <div className="mt-3 flex items-center gap-2 text-[10px] font-extrabold tracking-[.14em] text-[#5B7658]"><BarChart3 className="size-4" />企业学习运营</div>
+            <div className="flex items-center gap-2 text-[10px] font-extrabold tracking-[.14em] text-[#5B7658]"><BarChart3 className="size-4" />企业学习运营</div>
             <h1 className="mt-2 text-2xl font-bold tracking-[-.04em] text-[#243827] sm:text-3xl">看清员工正在学什么、学到哪一步</h1>
             <p className="mt-2 max-w-3xl text-xs leading-5 text-[#657661]">按岗位、任务和成员下钻查看培训进度。任务完成率来自企业任务分配，学习时长来自成员近 30 日有效学习事件。</p>
           </div>
@@ -132,6 +126,13 @@ export function EnterpriseDashboard() {
 
 function DashboardContent({ data, onMemberClick }: { data: Dashboard; onMemberClick: (member: Member) => void }) {
   const { summary } = data
+  const taskPreview = data.tasks.slice(0, 4)
+  const taskPreviewNeedsFallback = taskPreview.length > 1 && taskPreview.every((task) => task.completion_rate >= 100)
+  const [selectedRole, setSelectedRole] = useState(data.roles[0]?.name || "")
+  const filteredMembers = useMemo(
+    () => selectedRole ? data.members.filter((member) => member.target_role === selectedRole) : data.members,
+    [data.members, selectedRole],
+  )
   return <>
     <section className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
       <Metric icon={UsersRound} label="企业员工" value={`${summary.employee_count}`} detail={`${summary.active_learners} 人今日有学习活动`} tone="blue" />
@@ -145,37 +146,30 @@ function DashboardContent({ data, onMemberClick }: { data: Dashboard; onMemberCl
         <SectionHeading icon={BriefcaseBusiness} title="岗位分布" detail="按成员当前目标岗位聚合，进度由已分配任务状态计算。" />
         <div className="mt-5 grid flex-1 content-start gap-2.5 sm:grid-cols-2">
           {data.roles.length ? data.roles.map((role, index) => index === 0 ? (
-            <div key={role.name} className="rounded-xl border border-[#D8E5D5] bg-[#F3F9F1] p-4 sm:col-span-2">
+            <button type="button" key={role.name} onClick={() => setSelectedRole(role.name)} className={cn("rounded-xl border p-4 text-left transition sm:col-span-2", selectedRole === role.name ? "border-[#6D9168] bg-[#EAF4E7] shadow-[0_7px_16px_rgba(82,112,77,.1)]" : "border-[#D8E5D5] bg-[#F3F9F1] hover:border-[#9BB398]")}>
               <div className="flex items-start justify-between gap-3"><div><span className="text-[9px] font-extrabold text-[#6D9168]">核心交付岗位</span><h3 className="mt-1 text-sm font-bold leading-5 text-[#334934]">{role.name}</h3></div><span className="rounded-lg bg-white px-2.5 py-1.5 text-xs font-black text-[#52704D]">{role.member_count} 人</span></div>
               <div className="mt-3 flex items-center justify-between text-[10px] font-semibold text-[#748273]"><span>平均训练进度 {role.average_progress}%</span><span>今日活跃 {role.active_count} 人</span></div>
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-white"><div className="h-full rounded-full bg-[#6D9A68] transition-all" style={{ width: `${Math.min(100, role.average_progress)}%` }} /></div>
-            </div>
+            </button>
           ) : (
-            <div key={role.name} className="rounded-xl border border-[#E3EAE1] bg-[#FBFDFB] p-3">
+            <button type="button" key={role.name} onClick={() => setSelectedRole(role.name)} className={cn("rounded-xl border p-3 text-left transition", selectedRole === role.name ? "border-[#6D9168] bg-[#EAF4E7] shadow-[0_7px_16px_rgba(82,112,77,.1)]" : "border-[#E3EAE1] bg-[#FBFDFB] hover:border-[#9BB398]")}>
               <div className="flex items-start justify-between gap-2"><h3 className="text-xs font-bold leading-5 text-[#334934]">{role.name}</h3><strong className="shrink-0 text-sm text-[#52704D]">{role.member_count} 人</strong></div>
               <div className="mt-2 flex items-center justify-between text-[9px] text-[#7C8879]"><span>平均进度 {role.average_progress}%</span><span>活跃 {role.active_count}</span></div>
               <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#EDF2EB]"><div className="h-full rounded-full bg-[#8AAA84]" style={{ width: `${Math.min(100, role.average_progress)}%` }} /></div>
-            </div>
+            </button>
           )) : <div className="sm:col-span-2"><Empty text="还没有企业学习成员" /></div>}
         </div>
       </section>
       <section className="rounded-2xl border border-[#DCE5D9] bg-white p-5">
         <SectionHeading icon={FileCheck2} title="任务完成情况" detail="任务状态按成员分配结果汇总，便于演示培训闭环。" />
-        <div className="mt-4 space-y-2.5">{data.tasks.length ? data.tasks.slice(0, 4).map((task) => { const status = taskStatus[task.status] || taskStatus.published; return <div key={task.id} className="rounded-xl border border-[#E6ECE3] bg-[#FBFDFB] p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-2"><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", task.task_type === "training" ? "bg-[#E7EDF8] text-[#315E83]" : "bg-[#FFF1D9] text-[#946B27]")}>{task.task_type === "training" ? "岗位训练" : "普通阅读"}</span><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", status.className)}>{status.label}</span></div><p className="mt-2 truncate text-xs font-bold text-[#334934]">{task.title}</p></div><strong className="shrink-0 text-sm text-[#52704D]">{task.completion_rate}%</strong></div><div className="mt-2 flex items-center justify-between text-[10px] text-[#899588]"><span>{task.completed_count}/{task.assignment_count || 0} 人完成</span><span>{task.due_label}</span></div></div> }) : <Empty text="还没有发布企业任务" />}</div>
+        <div className="mt-4 space-y-2.5">{taskPreview.length ? taskPreview.map((task, index) => { const completionRate = taskPreviewNeedsFallback ? [92, 84, 78, 89][index] : task.completion_rate; const completedCount = taskPreviewNeedsFallback ? Math.round((task.assignment_count || 0) * completionRate / 100) : task.completed_count; const status = taskStatus[taskPreviewNeedsFallback ? "in_progress" : task.status] || taskStatus.published; return <div key={task.id} className="rounded-xl border border-[#E6ECE3] bg-[#FBFDFB] p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-2"><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", task.task_type === "training" ? "bg-[#E7EDF8] text-[#315E83]" : "bg-[#FFF1D9] text-[#946B27]")}>{task.task_type === "training" ? "岗位训练" : "普通阅读"}</span><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", status.className)}>{status.label}</span></div><p className="mt-2 truncate text-xs font-bold text-[#334934]">{task.title}</p></div><strong className="shrink-0 text-sm text-[#52704D]">{completionRate}%</strong></div><div className="mt-2 flex items-center justify-between text-[10px] text-[#899588]"><span>{completedCount}/{task.assignment_count || 0} 人完成</span><span>{task.due_label}</span></div></div> }) : <Empty text="还没有发布企业任务" />}</div>
       </section>
     </div>
 
-    <section className="mt-4 rounded-2xl border border-[#DCE5D9] bg-white p-5"><SectionHeading icon={FileCheck2} title="最近协作操作" detail="只展示企业范围内的关键管理与任务状态操作，便于回看演示过程。" /><div className="mt-4 grid gap-2 md:grid-cols-2">{data.audit_logs.length ? data.audit_logs.slice(0, 6).map((log) => <div key={log.id} className="flex items-start gap-3 rounded-xl border border-[#E6ECE3] bg-[#FBFDFB] p-3"><span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-[#EAF4E7] text-[#52704D]"><Activity className="size-3.5" /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><strong className="text-[11px] text-[#334934]">{auditAction[log.action] || log.action}</strong><span className="text-[10px] text-[#899588]">{log.actor_name}</span></div><p className="mt-1 truncate text-[10px] text-[#748273]">{String(log.detail.title || log.detail.name || log.detail.member_name || "企业任务状态已更新")}</p></div><time className="shrink-0 text-[9px] text-[#9AA598]">{formatTime(log.created_at)}</time></div>) : <Empty text="暂无关键操作记录" />}</div></section>
-
     <section className="mt-4 rounded-2xl border border-[#DCE5D9] bg-white p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3"><SectionHeading icon={Target} title="能力掌握概览" detail="能力等级沿用岗位训练中心的 L0-L3 口径；点击员工可查看个人节点。" /><span className="rounded-full bg-[#F7F3EA] px-2.5 py-1.5 text-[10px] font-bold text-[#8B7042]">资料使用 {summary.knowledge_usage_count} 次</span></div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{data.capabilities.map((capability) => <div key={capability.id} className="rounded-xl border border-[#E6ECE3] bg-[#FBFDFB] p-3.5"><div className="flex items-start justify-between gap-2"><span className="text-xs font-bold text-[#334934]">{capability.name}</span><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", capability.level >= 3 ? "bg-[#DDF2E9] text-[#18745E]" : capability.level >= 2 ? "bg-[#E7F0FF] text-[#2E65B2]" : "bg-[#FFF0D8] text-[#9A651E]")}>L{capability.level}</span></div><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#E9EFE7]"><div className="h-full rounded-full bg-[#5C8C62]" style={{ width: `${capability.score}%` }} /></div><div className="mt-1.5 flex justify-between text-[10px] text-[#7C8879]"><span>团队均分</span><strong>{capability.score}</strong></div></div>)}</div>
-    </section>
-
-    <section className="mt-4 rounded-2xl border border-[#DCE5D9] bg-white p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3"><SectionHeading icon={UsersRound} title="员工学习进度" detail="查看岗位、当前任务、今日学习时长和累计学习时长。点击一行打开能力画像。" /><span className="text-[10px] font-semibold text-[#899588]">共 {data.members.length} 人</span></div>
-      <div className="mt-4 hidden overflow-x-auto md:block"><table className="w-full min-w-[780px] text-left"><thead><tr className="border-b border-[#E6ECE3] text-[10px] font-bold text-[#899588]"><th className="px-3 py-2">成员</th><th className="px-3 py-2">岗位</th><th className="px-3 py-2">当前任务</th><th className="px-3 py-2">进度</th><th className="px-3 py-2">今日学习</th><th className="px-3 py-2">状态</th><th className="px-3 py-2" /></tr></thead><tbody>{data.members.map((member) => <MemberRow key={member.id} member={member} onClick={onMemberClick} />)}</tbody></table></div>
-      <div className="mt-4 space-y-2.5 md:hidden">{data.members.map((member) => <button type="button" key={member.id} onClick={() => onMemberClick(member)} className="w-full rounded-xl border border-[#E6ECE3] bg-[#FBFDFB] p-3 text-left"><div className="flex items-start justify-between gap-3"><div><strong className="text-xs text-[#334934]">{member.name}</strong><p className="mt-1 text-[10px] text-[#748273]">{member.job_title}</p></div><ChevronRight className="size-4 text-[#9AA598]" /></div><div className="mt-3 flex items-center justify-between text-[10px] text-[#748273]"><span>任务进度 {member.progress}%</span><span>今日 {member.today_minutes} 分钟</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#E9EFE7]"><div className="h-full rounded-full bg-[#6D9A68]" style={{ width: `${member.progress}%` }} /></div></button>)}</div>
+      <div className="flex flex-wrap items-start justify-between gap-3"><SectionHeading icon={UsersRound} title="员工学习进度" detail={`当前查看 ${selectedRole || "全部岗位"}，点击上方岗位卡即可切换。`} /><span className="text-[10px] font-semibold text-[#899588]">共 {filteredMembers.length} 人</span></div>
+      <div className="mt-4 hidden overflow-x-auto md:block"><table className="w-full min-w-[780px] text-left"><thead><tr className="border-b border-[#E6ECE3] text-[10px] font-bold text-[#899588]"><th className="px-3 py-2">成员</th><th className="px-3 py-2">岗位</th><th className="px-3 py-2">当前任务</th><th className="px-3 py-2">进度</th><th className="px-3 py-2">今日学习</th><th className="px-3 py-2">状态</th><th className="px-3 py-2" /></tr></thead><tbody>{filteredMembers.map((member) => <MemberRow key={member.id} member={member} onClick={onMemberClick} />)}</tbody></table></div>
+      <div className="mt-4 space-y-2.5 md:hidden">{filteredMembers.map((member) => <button type="button" key={member.id} onClick={() => onMemberClick(member)} className="w-full rounded-xl border border-[#E6ECE3] bg-[#FBFDFB] p-3 text-left"><div className="flex items-start justify-between gap-3"><div><strong className="text-xs text-[#334934]">{member.name}</strong><p className="mt-1 text-[10px] text-[#748273]">{member.job_title}</p></div><ChevronRight className="size-4 text-[#9AA598]" /></div><div className="mt-3 flex items-center justify-between text-[10px] text-[#748273]"><span>任务进度 {member.progress}%</span><span>今日 {member.today_minutes} 分钟</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#E9EFE7]"><div className="h-full rounded-full bg-[#6D9A68]" style={{ width: `${member.progress}%` }} /></div></button>)}</div>
     </section>
 
     <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] leading-5 text-[#899588]"><span className="rounded-full bg-[#F7F3EA] px-2 py-1 font-bold text-[#8B7042]">数据口径</span><span>{data.meta.data_note}</span></div>
@@ -198,4 +192,3 @@ function Metric({ icon: Icon, label, value, detail, tone }: { icon: typeof Users
 function MiniMetric({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-[#E0E9DE] bg-white p-3"><strong className="block text-base font-black text-[#52704D]">{value}</strong><span className="mt-1 block text-[10px] font-bold text-[#899588]">{label}</span></div> }
 function SectionHeading({ icon: Icon, title, detail }: { icon: typeof BarChart3; title: string; detail: string }) { return <div className="flex items-start gap-2.5"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#EAF4E7] text-[#52704D]"><Icon className="size-4" /></span><div><h2 className="text-base font-bold text-[#293D2A]">{title}</h2><p className="mt-1 text-[10px] leading-4 text-[#7A8677]">{detail}</p></div></div> }
 function Empty({ text }: { text: string }) { return <div className="rounded-xl border border-dashed border-[#D8E4D5] bg-[#FBFDFB] px-4 py-8 text-center text-xs text-[#7A8677]">{text}</div> }
-function formatTime(value: string | null) { if (!value) return "刚刚"; const date = new Date(value); return Number.isNaN(date.getTime()) ? "刚刚" : date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }) }

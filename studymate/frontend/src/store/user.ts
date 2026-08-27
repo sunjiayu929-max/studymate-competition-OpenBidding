@@ -22,6 +22,21 @@ export interface CurrentUser {
 
 const STORAGE_KEY = "sm:current-user"
 export const USER_SESSION_RESET_EVENT = "studymate:user-session-reset"
+const FIXED_FDE_EMAILS = new Set([
+  "sunjiayu@pramate.com", "baixinyue@pramate.com", "yuanshicong@pramate.com",
+  "chenzhuo@pramate.com", "lijiayi@pramate.com", "zhouxiang@pramate.com",
+  "tianyixin@pramate.com", "liufei@pramate.com", "test@pramate.com",
+])
+
+function normalizeUser(user: CurrentUser): CurrentUser {
+  if (!FIXED_FDE_EMAILS.has((user.email || "").toLowerCase())) return user
+  return {
+    ...user,
+    learner_type: "worker",
+    company: "河南本线商贸有限公司",
+    target_role: "前线部署工程师（FDE）",
+  }
+}
 
 function loadFromStorage(): CurrentUser | null {
   try {
@@ -30,7 +45,7 @@ function loadFromStorage(): CurrentUser | null {
     const parsed = JSON.parse(raw) as CurrentUser
     if (typeof parsed.user_id !== "number" || !parsed.name) return null
     const role: UserRole = ["admin", "judge", "enterprise_admin", "worker"].includes(parsed.role) ? parsed.role : "student"
-    return { ...parsed, role }
+    return normalizeUser({ ...parsed, role })
   } catch {
     return null
   }
@@ -48,12 +63,12 @@ class UserStore {
 
   set(u: CurrentUser | null) {
     const previousUserId = this.current?.user_id ?? null
-    this.current = u
+    this.current = u ? normalizeUser(u) : null
     if (u && typeof window !== "undefined") {
       window.dispatchEvent(new Event("studymate:event-tracking-resume"))
     }
     try {
-      if (u) localStorage.setItem(STORAGE_KEY, JSON.stringify(u))
+      if (this.current) localStorage.setItem(STORAGE_KEY, JSON.stringify(this.current))
       else localStorage.removeItem(STORAGE_KEY)
     } catch {
       /* ignore */
