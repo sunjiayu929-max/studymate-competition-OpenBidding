@@ -215,21 +215,42 @@ def _rank_videos(
     candidates: list[dict],
     core_terms: list[str],
     course_name: str | None,
-    topic_phrases: list[str],
-    limit: int,
+    topic_phrases: list[str] | int,
+    limit: int | None = None,
 ) -> list[dict]:
+    # Keep the pre-topic-phrase helper signature working for callers and
+    # fixtures that still pass ``(candidates, terms, course, limit)``.
+    legacy_signature = limit is None
+    if limit is None:
+        if not isinstance(topic_phrases, int):
+            raise TypeError("limit is required when topic_phrases is provided")
+        limit = topic_phrases
+        topic_phrases = []
+    phrases = topic_phrases
     ranked: list[tuple[int, int, int, dict]] = []
     for video in candidates:
         search_text = _normalize_text(str(video.get("_search_text") or video.get("title") or ""))
         if any(_normalize_text(term) in search_text for term in _OFF_TOPIC_TERMS):
             continue
-        score, hits, anchor_hits, exact = _relevance_score(video, core_terms, course_name, topic_phrases)
+        score, hits, anchor_hits, exact = _relevance_score(video, core_terms, course_name, phrases)
+        if legacy_signature:
+            # Before phrase-aware ranking, two terms (or the sole term) were
+            # considered an exact match. Preserve that result classification
+            # for older internal callers while the endpoint uses phrases.
+            exact = hits >= min(2, len(core_terms))
         anchors = _course_anchor_terms(course_name)
         role_context = bool(course_name and ("岗位知识库" in course_name or course_name not in _COURSE_ANCHORS))
         anchor_ok = not anchors or not role_context or anchor_hits > 0
-        # 完整知识点命中，或至少两个主题词命中；单个泛词不再足以入选。
-        enough_terms = anchor_ok and ((exact and hits >= 1) or hits >= 2)
-        if enough_terms and score >= 6:
+        matched_specific_term = any(
+            _normalize_text(term) in search_text
+            and _normalize_text(term) not in {_normalize_text(item) for item in _GENERIC_TOPIC_TERMS}
+            and len(_normalize_text(term)) >= 2
+            for term in core_terms
+        )
+        # 精确短语和多个主题词优先；一个明确的知识词也可作为“相关补充”，
+        # 但泛词、跑题内容和缺少岗位锚点的结果仍会被过滤。
+        enough_terms = anchor_ok and hits >= 1 and (exact or hits >= 2 or matched_specific_term)
+        if enough_terms and score >= 3:
             match_level = "exact" if exact else "related"
             ranked.append(
                 (
@@ -256,6 +277,19 @@ def _candidate_queries(
     queries = [resolved_query]
     if anchors:
         queries.append(f"{resolved_query} {anchors[0]}")
+    compact = _normalize_text(resolved_query)
+    broad_term = next(
+        (
+            term
+            for term in core_terms
+            if _normalize_text(term) and _normalize_text(term) != compact
+        ),
+        "",
+    )
+    if broad_term:
+        # 长短语搜索偶尔没有结果；保留一个主知识词作为补充检索，
+        # 最终仍由本地相关度和跑题词过滤。
+        queries.append(broad_term)
     if concept_title and concept_title != resolved_query:
         queries.append(f"{concept_title} {anchors[0]}" if anchors else concept_title)
     return list(dict.fromkeys(query.strip() for query in queries if query.strip()))[:3]
