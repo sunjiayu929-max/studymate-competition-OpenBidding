@@ -22,6 +22,7 @@ from app.api.interviews import (
     _token_hash,
     _validate_report_scores,
     create_interview_attempt,
+    relaunch_interview_attempt,
     receive_interview_abandoned,
     receive_interview_started,
     redeem_launch_ticket,
@@ -139,6 +140,47 @@ class InterviewScoreTests(unittest.TestCase):
 
 
 class InterviewTicketTests(unittest.IsolatedAsyncioTestCase):
+    async def test_existing_attempt_can_rotate_a_resume_ticket(self):
+        with TemporaryDirectory() as tmp:
+            engine = create_async_engine(f"sqlite+aiosqlite:///{Path(tmp, 'resume-ticket.db')}")
+            maker = async_sessionmaker(engine, expire_on_commit=False)
+            async with engine.begin() as connection:
+                await connection.run_sync(Base.metadata.create_all)
+
+            user = User(id=50, name="测试学习者", is_active=True)
+            attempt = InterviewAttempt(
+                id="attempt-resume",
+                user_id=user.id,
+                role_id="fde",
+                role_name="FDE",
+                role_context={"id": "fde", "name": "FDE", "competencies": ["系统集成"]},
+                status="in_progress",
+            )
+            old_ticket = InterviewLaunchTicket(
+                attempt_id=attempt.id,
+                token_hash=_token_hash("old-ticket"),
+                expires_at=datetime.utcnow() + timedelta(minutes=2),
+                consumed_at=datetime.utcnow(),
+            )
+            old_hash = old_ticket.token_hash
+            async with maker() as db:
+                db.add_all([user, attempt, old_ticket])
+                await db.commit()
+                with (
+                    patch.object(settings, "AI_INTERVIEW_PUBLIC_URL", "https://interview.test/interview"),
+                    patch.object(settings, "AI_INTERVIEW_SERVICE_SECRET", "interview-test-secret"),
+                ):
+                    result = await relaunch_interview_attempt(attempt.id, user=user, db=db)
+                saved = await db.scalar(
+                    select(InterviewLaunchTicket).where(InterviewLaunchTicket.attempt_id == attempt.id)
+                )
+
+            await engine.dispose()
+            self.assertTrue(result["launch_url"].startswith("https://interview.test/interview/integrations/"))
+            self.assertIsNotNone(saved)
+            self.assertIsNone(saved.consumed_at)
+            self.assertNotEqual(saved.token_hash, old_hash)
+
     async def test_launch_ticket_is_consumed_once(self):
         with TemporaryDirectory() as tmp:
             engine = create_async_engine(f"sqlite+aiosqlite:///{Path(tmp, 'interview.db')}")

@@ -231,6 +231,40 @@ async def _get_owned_attempt(
     return attempt
 
 
+async def _issue_launch_ticket(db: AsyncSession, attempt: InterviewAttempt) -> dict:
+    """Rotate the one-time browser ticket for an existing interview attempt."""
+    public_url = settings.AI_INTERVIEW_PUBLIC_URL.strip().rstrip("/")
+    if not public_url:
+        raise HTTPException(status_code=503, detail="AI 面试服务尚未配置")
+    _service_secret()
+
+    raw_ticket = secrets.token_urlsafe(32)
+    ticket = await db.scalar(
+        select(InterviewLaunchTicket)
+        .where(InterviewLaunchTicket.attempt_id == attempt.id)
+        .with_for_update()
+    )
+    expires_at = datetime.utcnow() + timedelta(seconds=settings.AI_INTERVIEW_TICKET_TTL_SECONDS)
+    if ticket is None:
+        ticket = InterviewLaunchTicket(
+            attempt_id=attempt.id,
+            token_hash=_token_hash(raw_ticket),
+            expires_at=expires_at,
+        )
+        db.add(ticket)
+    else:
+        # Rotating an unconsumed ticket also invalidates an older browser tab.
+        ticket.token_hash = _token_hash(raw_ticket)
+        ticket.expires_at = expires_at
+        ticket.consumed_at = None
+    await db.commit()
+    return {
+        "attempt": _attempt_public(attempt),
+        "launch_url": f"{public_url}/integrations/studymate/launch?ticket={quote(raw_ticket, safe='')}",
+        "expires_at": expires_at.isoformat(),
+    }
+
+
 async def _get_internal_attempt(
     db: AsyncSession, *, attempt_id: str, lock: bool = False
 ) -> InterviewAttempt:
@@ -309,20 +343,9 @@ async def create_interview_attempt(
         profile_snapshot=_candidate_snapshot(user, dims),
         status="launch_ready",
     )
-    raw_ticket = secrets.token_urlsafe(32)
-    ticket = InterviewLaunchTicket(
-        attempt_id=attempt.id,
-        token_hash=_token_hash(raw_ticket),
-        expires_at=datetime.utcnow() + timedelta(seconds=settings.AI_INTERVIEW_TICKET_TTL_SECONDS),
-    )
-    db.add_all((attempt, ticket))
-    await db.commit()
-    launch_url = f"{public_url}/integrations/studymate/launch?ticket={quote(raw_ticket, safe='')}"
-    return {
-        "attempt": _attempt_public(attempt),
-        "launch_url": launch_url,
-        "expires_at": ticket.expires_at.isoformat(),
-    }
+    db.add(attempt)
+    await db.flush()
+    return await _issue_launch_ticket(db, attempt)
 
 
 @router.get("/attempts")
@@ -346,6 +369,25 @@ async def get_interview_attempt(
     db: AsyncSession = Depends(get_db),
 ):
     return _attempt_public(await _get_owned_attempt(db, user_id=user.id, attempt_id=attempt_id))
+
+
+@router.post("/attempts/{attempt_id}/launch")
+async def relaunch_interview_attempt(
+    attempt_id: str,
+    user: User = Depends(require_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reissue a short-lived launch URL so a learner can resume a live attempt."""
+    attempt = await db.scalar(
+        select(InterviewAttempt)
+        .where(InterviewAttempt.id == attempt_id, InterviewAttempt.user_id == user.id)
+        .with_for_update()
+    )
+    if attempt is None:
+        raise HTTPException(status_code=404, detail="面试记录不存在")
+    if attempt.status not in {"launch_ready", "launched", "in_progress"}:
+        raise HTTPException(status_code=409, detail="当前面试不能继续")
+    return await _issue_launch_ticket(db, attempt)
 
 
 @internal_router.post("/tickets/redeem")
