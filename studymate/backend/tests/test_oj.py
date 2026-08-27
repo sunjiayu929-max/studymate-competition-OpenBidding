@@ -119,9 +119,15 @@ class OJTicketTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(HTTPException):
             _normalize_next_path("/oj/p/%2e%2e/admin")
         with self.assertRaises(HTTPException):
+            _normalize_next_path("/oj/p/%252e%252e/admin")
+        with self.assertRaises(HTTPException):
+            _normalize_next_path("/oj/p/%255c%255cevil")
+        with self.assertRaises(HTTPException):
             _normalize_next_path("/oj/p/100?tab=one#fragment")
         with self.assertRaises(HTTPException):
             _normalize_next_path("/oj/p/100?tab=%23fragment")
+        with self.assertRaises(HTTPException):
+            _normalize_next_path("/oj/p/100?tab=%2523fragment")
         with self.assertRaises(HTTPException):
             _normalize_next_path("/oj/p/100?tab=%C3")
         self.assertEqual(

@@ -46,33 +46,43 @@ def _has_unsafe_path_segments(path: str) -> bool:
             or any(part in {".", ".."} for part in value.split("/"))
         )
 
-    if unsafe(path) or re.search(r"%(?![0-9A-Fa-f]{2})", path):
-        return True
-    try:
-        decoded = unquote(path, errors="strict")
-    except UnicodeDecodeError:
-        return True
-    return decoded != path and unsafe(decoded)
+    current = path
+    for _ in range(4):
+        if unsafe(current) or re.search(r"%(?![0-9A-Fa-f]{2})", current):
+            return True
+        if not re.search(r"%[0-9A-Fa-f]{2}", current):
+            return False
+        try:
+            decoded = unquote(current, errors="strict")
+        except UnicodeDecodeError:
+            return True
+        if decoded == current:
+            return False
+        current = decoded
+    return True
 
 
 def _has_unsafe_query(query: str) -> bool:
     """Reject query text that can be reinterpreted as a redirect boundary."""
-    if (
-        any(ord(char) < 0x20 or ord(char) == 0x7F for char in query)
-        or "\\" in query
-        or "#" in query
-        or re.search(r"%(?![0-9A-Fa-f]{2})", query)
-    ):
-        return True
-    try:
-        decoded = unquote(query, errors="strict")
-    except UnicodeDecodeError:
-        return True
-    return (
-        any(ord(char) < 0x20 or ord(char) == 0x7F for char in decoded)
-        or "\\" in decoded
-        or "#" in decoded
-    )
+    current = query
+    for _ in range(4):
+        if (
+            any(ord(char) < 0x20 or ord(char) == 0x7F for char in current)
+            or "\\" in current
+            or "#" in current
+            or re.search(r"%(?![0-9A-Fa-f]{2})", current)
+        ):
+            return True
+        if not re.search(r"%[0-9A-Fa-f]{2}", current):
+            return False
+        try:
+            decoded = unquote(current, errors="strict")
+        except UnicodeDecodeError:
+            return True
+        if decoded == current:
+            return False
+        current = decoded
+    return True
 
 
 def _normalize_next_path(value: str | None) -> str:
