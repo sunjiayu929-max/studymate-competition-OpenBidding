@@ -390,6 +390,37 @@ async def relaunch_interview_attempt(
     return await _issue_launch_ticket(db, attempt)
 
 
+@router.post("/attempts/{attempt_id}/abandon")
+async def abandon_interview_attempt(
+    attempt_id: str,
+    user: User = Depends(require_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Close a stale learner-owned attempt when the remote page was closed.
+
+    The AI Interview service normally mirrors this transition through its
+    signed callback.  This explicit endpoint is a safe recovery path for
+    older attempts created before that callback was deployed, and for a
+    browser that disappeared before the callback request completed.
+    """
+    attempt = await db.scalar(
+        select(InterviewAttempt)
+        .where(InterviewAttempt.id == attempt_id, InterviewAttempt.user_id == user.id)
+        .with_for_update()
+    )
+    if attempt is None:
+        raise HTTPException(status_code=404, detail="面试记录不存在")
+    if attempt.status in {"completed", "abandoned"}:
+        return {"ok": True, "idempotent": True, "attempt": _attempt_public(attempt)}
+    if attempt.status not in {"launch_ready", "launched", "in_progress"}:
+        raise HTTPException(status_code=409, detail="当前面试不能结束")
+
+    attempt.status = "abandoned"
+    attempt.completed_at = datetime.utcnow()
+    await db.commit()
+    return {"ok": True, "idempotent": False, "attempt": _attempt_public(attempt)}
+
+
 @internal_router.post("/tickets/redeem")
 async def redeem_launch_ticket(request: Request, db: AsyncSession = Depends(get_db)):
     raw_body = await request.body()
@@ -496,6 +527,7 @@ async def receive_interview_abandoned(
         raise HTTPException(status_code=409, detail="面试记录当前不能结束")
     attempt.status = "abandoned"
     attempt.external_interview_id = payload.external_interview_id
+    attempt.completed_at = attempt.completed_at or datetime.utcnow()
     await db.commit()
     return {"ok": True, "idempotent": False, "attempt": _attempt_public(attempt)}
 

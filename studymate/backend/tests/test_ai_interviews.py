@@ -21,6 +21,7 @@ from app.api.interviews import (
     _signature_payload,
     _token_hash,
     _validate_report_scores,
+    abandon_interview_attempt,
     create_interview_attempt,
     relaunch_interview_attempt,
     receive_interview_abandoned,
@@ -140,6 +141,35 @@ class InterviewScoreTests(unittest.TestCase):
 
 
 class InterviewTicketTests(unittest.IsolatedAsyncioTestCase):
+    async def test_owned_attempt_can_be_closed_idempotently(self):
+        with TemporaryDirectory() as tmp:
+            engine = create_async_engine(f"sqlite+aiosqlite:///{Path(tmp, 'abandon-owned.db')}")
+            maker = async_sessionmaker(engine, expire_on_commit=False)
+            async with engine.begin() as connection:
+                await connection.run_sync(Base.metadata.create_all)
+
+            user = User(id=55, name="测试学习者", is_active=True)
+            attempt = InterviewAttempt(
+                id="attempt-owned-abandon",
+                user_id=user.id,
+                role_id="fde",
+                role_name="FDE",
+                role_context={"id": "fde", "name": "FDE", "competencies": ["系统集成"]},
+                status="in_progress",
+            )
+            async with maker() as db:
+                db.add_all([user, attempt])
+                await db.commit()
+                first = await abandon_interview_attempt(attempt.id, user=user, db=db)
+                second = await abandon_interview_attempt(attempt.id, user=user, db=db)
+                saved = await db.get(InterviewAttempt, attempt.id)
+
+            await engine.dispose()
+            self.assertFalse(first["idempotent"])
+            self.assertTrue(second["idempotent"])
+            self.assertEqual(saved.status, "abandoned")
+            self.assertIsNotNone(saved.completed_at)
+
     async def test_existing_attempt_can_rotate_a_resume_ticket(self):
         with TemporaryDirectory() as tmp:
             engine = create_async_engine(f"sqlite+aiosqlite:///{Path(tmp, 'resume-ticket.db')}")
