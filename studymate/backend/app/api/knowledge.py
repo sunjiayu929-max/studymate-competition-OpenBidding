@@ -345,9 +345,9 @@ async def process_document_task(document_id: int, user_id: int) -> None:
                 document.error_detail = ""
             else:
                 await db.refresh(document)
-                # 没有语义向量服务时仍会建立完整的关键词索引；不能让完成的资料
-                # 在界面上看起来只完成了一半。
-                document.vector_progress = 100
+                # 关键词索引已就绪，但没有执行语义向量化；保留 0
+                # 让界面准确区分两种检索能力。
+                document.vector_progress = 0
                 document.status = "ready_keyword"
                 document.error_detail = "语义向量服务未配置；关键词检索已就绪"
 

@@ -112,6 +112,28 @@ class OJTicketTests(unittest.IsolatedAsyncioTestCase):
             _normalize_next_path("//evil.example/steal")
         with self.assertRaises(HTTPException):
             _normalize_next_path("/oj/p/100\r\nLocation: https://evil.example")
+        with self.assertRaises(HTTPException):
+            _normalize_next_path("/oj/p/../admin")
+        with self.assertRaises(HTTPException):
+            _normalize_next_path("/oj/p//admin")
+        with self.assertRaises(HTTPException):
+            _normalize_next_path("/oj/p/%2e%2e/admin")
+        with self.assertRaises(HTTPException):
+            _normalize_next_path("/oj/p/%252e%252e/admin")
+        with self.assertRaises(HTTPException):
+            _normalize_next_path("/oj/p/%255c%255cevil")
+        with self.assertRaises(HTTPException):
+            _normalize_next_path("/oj/p/100?tab=one#fragment")
+        with self.assertRaises(HTTPException):
+            _normalize_next_path("/oj/p/100?tab=%23fragment")
+        with self.assertRaises(HTTPException):
+            _normalize_next_path("/oj/p/100?tab=%2523fragment")
+        with self.assertRaises(HTTPException):
+            _normalize_next_path("/oj/p/100?tab=%C3")
+        self.assertEqual(
+            _normalize_next_path("/oj/p/100?source=cache%2Fwarm"),
+            "/oj/p/100?source=cache%2Fwarm",
+        )
 
     async def test_identity_status_is_signed_and_reports_inactive_user(self):
         with TemporaryDirectory() as tmp:

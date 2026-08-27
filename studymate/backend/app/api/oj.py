@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import re
 import secrets
 import time
 from datetime import datetime, timedelta
-from urllib.parse import quote, urlencode, urlsplit
+from urllib.parse import quote, unquote, urlencode, urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
@@ -35,9 +36,63 @@ class IdentityStatusRequest(BaseModel):
 DEFAULT_OJ_PATH = "/oj/"
 
 
+def _has_unsafe_path_segments(path: str) -> bool:
+    """Reject traversal, duplicate separators, and encoded equivalents."""
+    def unsafe(value: str) -> bool:
+        return (
+            "//" in value
+            or "\\" in value
+            or any(ord(char) < 0x20 or ord(char) == 0x7F for char in value)
+            or any(part in {".", ".."} for part in value.split("/"))
+        )
+
+    current = path
+    for _ in range(4):
+        if unsafe(current) or re.search(r"%(?![0-9A-Fa-f]{2})", current):
+            return True
+        if not re.search(r"%[0-9A-Fa-f]{2}", current):
+            return False
+        try:
+            decoded = unquote(current, errors="strict")
+        except UnicodeDecodeError:
+            return True
+        if decoded == current:
+            return False
+        current = decoded
+    return True
+
+
+def _has_unsafe_query(query: str) -> bool:
+    """Reject query text that can be reinterpreted as a redirect boundary."""
+    current = query
+    for _ in range(4):
+        if (
+            any(ord(char) < 0x20 or ord(char) == 0x7F for char in current)
+            or "\\" in current
+            or "#" in current
+            or re.search(r"%(?![0-9A-Fa-f]{2})", current)
+        ):
+            return True
+        if not re.search(r"%[0-9A-Fa-f]{2}", current):
+            return False
+        try:
+            decoded = unquote(current, errors="strict")
+        except UnicodeDecodeError:
+            return True
+        if decoded == current:
+            return False
+        current = decoded
+    return True
+
+
 def _normalize_next_path(value: str | None) -> str:
     """Allow only public OJ paths; never reflect an external redirect target."""
-    candidate = (value or DEFAULT_OJ_PATH).strip() or DEFAULT_OJ_PATH
+    raw_candidate = value or DEFAULT_OJ_PATH
+    if not isinstance(raw_candidate, str):
+        raise HTTPException(status_code=400, detail="OJ 回跳路径无效")
+    if any(ord(char) < 0x20 or ord(char) == 0x7F for char in raw_candidate):
+        raise HTTPException(status_code=400, detail="OJ 回跳路径无效")
+    candidate = raw_candidate.strip() or DEFAULT_OJ_PATH
     if candidate == "/oj":
         candidate = DEFAULT_OJ_PATH
     parsed = urlsplit(candidate)
@@ -46,9 +101,11 @@ def _normalize_next_path(value: str | None) -> str:
         or not candidate.startswith("/oj/")
         or candidate.startswith("//")
         or "\\" in candidate
-        or any(ord(char) < 0x20 or ord(char) == 0x7F for char in candidate)
         or parsed.scheme
         or parsed.netloc
+        or parsed.fragment
+        or _has_unsafe_path_segments(parsed.path)
+        or _has_unsafe_query(parsed.query)
     ):
         raise HTTPException(status_code=400, detail="OJ 回跳路径无效")
     return candidate
