@@ -78,7 +78,7 @@ const RESOURCE_DEFS: ResourceDefinition[] = [
   { id: "quiz", title: "岗位分阶测试", detail: "基础、应用与挑战层级验证", icon: BookOpenCheck, color: "#3E7774", wash: "#E2EEEB" },
   { id: "code", title: "代码案例", detail: "适配岗位任务场景的可运行示例", icon: Code2, color: "#7E6B83", wash: "#EEE9EF" },
   { id: "concept", title: "动画 / 黑板讲解", detail: "保留旧课程动画库与黑板讲解入口", icon: Film, color: "#9B7429", wash: "#F7F0DA" },
-  { id: "video", title: "可视讲解", detail: "先看动画讲解，再看岗位视频", icon: Film, color: "#287F8D", wash: "#E2F0F1" },
+  { id: "video", title: "可视讲解", detail: "动画讲解与相关拓展资源", icon: Film, color: "#287F8D", wash: "#E2F0F1" },
 ]
 
 const AGENT_TONES: Record<string, { icon: LucideIcon; color: string; wash: string }> = {
@@ -108,10 +108,10 @@ const STANDBY_AGENTS: AgentState[] = [
   { meta: { id: "quiz", name: "分阶测试生成 Agent", icon: "", color: "emerald", description: "生成匹配学情的分阶测试" }, status: "pending" },
   { meta: { id: "mindmap", name: "思维导图生成 Agent", icon: "", color: "rose", description: "生成岗位任务知识脑图" }, status: "pending" },
   { meta: { id: "code", name: "代码案例生成 Agent", icon: "", color: "violet", description: "生成适配岗位任务的代码示例" }, status: "pending" },
-  { meta: { id: "video", name: "可视讲解生成 Agent", icon: "", color: "sky", description: "生成带中文原生声音的岗位视频" }, status: "pending" },
-  { meta: { id: "evidence_review", name: "事实与来源审核 Agent", icon: "", color: "indigo", description: "核对专业主张与来源引用" }, status: "pending" },
-  { meta: { id: "practice_review", name: "实操规范审核 Agent", icon: "", color: "rose", description: "检查步骤、异常和安全边界" }, status: "pending" },
-  { meta: { id: "difficulty_review", name: "难度与覆盖审核 Agent", icon: "", color: "emerald", description: "校准难度与核心能力覆盖" }, status: "pending" },
+  { meta: { id: "video", name: "可视讲解生成 Agent", icon: "", color: "sky", description: "匹配动画讲解与相关拓展资源" }, status: "pending" },
+  { meta: { id: "evidence_review", name: "事实与来源校验 Agent", icon: "", color: "indigo", description: "核对专业主张与来源引用" }, status: "pending" },
+  { meta: { id: "practice_review", name: "实操规范校验 Agent", icon: "", color: "rose", description: "检查步骤、异常和安全边界" }, status: "pending" },
+  { meta: { id: "difficulty_review", name: "难度与覆盖校验 Agent", icon: "", color: "emerald", description: "校准难度与核心能力覆盖" }, status: "pending" },
   { meta: { id: "arbiter", name: "总裁决 Agent", icon: "", color: "amber", description: "决定发布或定向返工" }, status: "pending" },
 ]
 
@@ -539,7 +539,7 @@ export function Workspace() {
 
           <footer className="mt-5 flex flex-col gap-2 border-t border-[#CFC8B9] px-1 pt-4 text-[11px] text-[#747C7D] sm:flex-row sm:items-center sm:justify-between">
             <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-[#6F8A69]" />AI 生成内容保留来源、过程与异常状态，便于复核</span>
-            <span>15 个协作节点 · 诊断—协商—生成—审核—裁决—反馈 · {status === "done" ? released ? "本轮已裁决发布" : "本轮自动返工未完成" : status === "interrupted" ? "中断前证据已保留" : "运行过程自动留痕"}</span>
+            <span>14 个协作节点 · 诊断—协商—生成—审核—裁决—反馈 · {status === "done" ? released ? "本轮已裁决发布" : "本轮自动返工未完成" : status === "interrupted" ? "中断前证据已保留" : "运行过程自动留痕"}</span>
           </footer>
         </main>
       </div>

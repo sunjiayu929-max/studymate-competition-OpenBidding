@@ -78,7 +78,8 @@ for (const label of ["学情诊断 Agent", "领域专家 Agent", "教学策略 A
   if (!competencyText.includes(label)) throw new Error(`协作流程缺少节点：${label}`)
 }
 if (competencyText.includes("训练计划仲裁 Agent")) throw new Error("协作流程仍包含训练计划仲裁 Agent")
-if (await page.getByText("第二轮资源校验", { exact: false }).count() !== 1) throw new Error("辩论实录未收敛为第二轮资源校验")
+if (await page.getByText("辩论实录", { exact: true }).count() !== 1) throw new Error("辩论实录标题不正确")
+if (!competencyText.includes("交叉验证结果") || !competencyText.includes("审核结果")) throw new Error("交叉验证结果与审核结果未并置显示")
 if (await page.locator("details").count() !== 1) throw new Error("辩论实录应是唯一的折叠容器")
 if (competencyText.includes("自动返工记录") || competencyText.includes("查看最近处理记录")) throw new Error("岗位训练中心仍显示已移除的记录区块")
 await page.screenshot({ path: "test-results/screenshots/competency-training.png", fullPage: true })

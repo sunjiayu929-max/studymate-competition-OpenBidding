@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import {
   ArrowRight,
-  BadgeCheck,
   BookOpenCheck,
-  CheckCircle2,
   Code2,
-  FileCheck2,
   FileText,
   Film,
   Flag,
@@ -59,6 +56,8 @@ const RESOURCE_META = {
 type ResourceId = keyof typeof RESOURCE_META
 type CapabilityState = ReportCapability["state"]
 
+const ADVANCED_CHALLENGE_THRESHOLD = 0.666
+
 const capabilityStorageKey = (userId: number, roleId: string) => `sm:role-capability-evidence:${userId}:${roleId}`
 
 function readEvidence(userId: number | undefined, roleId: string) {
@@ -73,6 +72,7 @@ function readEvidence(userId: number | undefined, roleId: string) {
 
 export function CompetencyTraining() {
   useTrackPage("competency_training")
+  const navigate = useNavigate()
   const role = useTargetRole()
   const user = useCurrentUser()
   const course = useCurrentCourse()
@@ -99,7 +99,11 @@ export function CompetencyTraining() {
   const plan = workspace.outputs.training_plan
   const released = workspace.decision?.decision === "publish"
   const cycle = plan?.cycle ?? workspace.diagnosis?.training_cycle ?? 1
-  const nextTopic = role ? (role.sampleTasks[(cycle - 1) % role.sampleTasks.length] ?? role.sampleTasks[0]) : ""
+  const sampleTasks = role?.sampleTasks ?? []
+  const currentTopicIndex = sampleTasks.length ? (cycle - 1) % sampleTasks.length : 0
+  const nextTopicIndex = sampleTasks.length ? cycle % sampleTasks.length : 0
+  const currentTopic = workspace.topic.trim() || sampleTasks[currentTopicIndex] || sampleTasks[0] || ""
+  const nextTopic = sampleTasks[nextTopicIndex] ?? sampleTasks[0] ?? currentTopic
   const reportCapabilities = useMemo<ReportCapability[]>(() => {
     if (!role || !capabilityMap) return []
     const stored = readEvidence(user?.user_id, role.id)
@@ -119,25 +123,46 @@ export function CompetencyTraining() {
   const agentDone = workspace.agents.filter((agent) => agent.status === "done").length
   const agentProgress = workspace.agents.length ? Math.round(agentDone / workspace.agents.length * 100) : 0
 
-  const startRound = () => {
+  const startRoundForTopic = (topic: string) => {
     if (!user?.user_id || !course || workspace.status === "running") return
     if (!theoryCompleted) {
       setTheoryPromptSignal((value) => value + 1)
       return
     }
-    void workspaceStore.start(nextTopic, user.user_id, course.id, course.name)
+    void workspaceStore.start(topic, user.user_id, course.id, course.name)
   }
 
-  const submitFeedback = async () => {
+  const startRound = () => startRoundForTopic(workspace.feedback ? nextTopic : currentTopic)
+
+  const submitFeedback = async (): Promise<boolean> => {
     setFeedbackBusy(true)
     setFeedbackError("")
     try {
       await workspaceStore.submitTrainingFeedback()
+      return true
     } catch (error) {
       setFeedbackError(error instanceof Error ? error.message : "验收结果回写失败，请稍后重试。")
+      return false
     } finally {
       setFeedbackBusy(false)
     }
+  }
+
+  const ensureFeedback = async () => Boolean(workspace.feedback) || submitFeedback()
+
+  const startSimplifiedRound = async () => {
+    if (!await ensureFeedback()) return
+    startRoundForTopic(currentTopic)
+  }
+
+  const startAdvancedChallenge = async () => {
+    if (!await ensureFeedback()) return
+    navigate(`/quiz?create=1&challenge=1&topic=${encodeURIComponent(currentTopic)}`)
+  }
+
+  const startNextKnowledgeRound = async () => {
+    if (!await ensureFeedback()) return
+    startRoundForTopic(nextTopic)
   }
 
   return (
@@ -154,11 +179,10 @@ export function CompetencyTraining() {
         <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6"><SectionTitle icon={Network} eyebrow="多智能体协作" title="从任务输入到发布门禁的一整条协作链" description="学情诊断后分为领域专家与教学策略两路，汇合到资源生成，再进入三项校验与总决策。" /><AgentCollaborationFlow workspace={workspace} /></section>
 
         <DebateQualityPanel workspace={workspace} />
-        <ReviewAuditPanel workspace={workspace} />
 
-        <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6"><div className="flex flex-wrap items-end justify-between gap-3"><SectionTitle icon={Layers3} eyebrow="六类资源生成" title="围绕同一岗位任务形成可执行资源包" description={plan?.rationale || `本轮候选任务：${nextTopic}`} /><span className={cn("rounded-full px-3 py-1.5 text-[10px] font-bold", released ? "bg-[#E5F6F0] text-[#18745E]" : "bg-[#EEF3FA] text-[#61738D]")}>{released ? `发布门禁通过 · ${workspace.decision?.quality_score ?? 0} 分` : workspace.status === "running" ? "生成与校验进行中" : "等待协作流程"}</span></div><div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{(Object.keys(RESOURCE_META) as ResourceId[]).map((id, index) => <ResourceCard key={id} id={id} index={index} plan={plan} ready={Boolean(workspace.outputs[id])} released={released} reviewScore={reviewScoreFor(workspace.reviews, id)} videoStatus={id === "video" ? workspace.outputs.video?.status : undefined} />)}</div></section>
+        <section id="training-resources" className="mt-4 scroll-mt-6 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6"><div className="flex flex-wrap items-end justify-between gap-3"><SectionTitle icon={Layers3} eyebrow="六类资源生成" title="围绕同一岗位任务形成可执行资源包" description={plan?.rationale || `本轮候选任务：${currentTopic}`} /><span className={cn("rounded-full px-3 py-1.5 text-[10px] font-bold", released ? "bg-[#E5F6F0] text-[#18745E]" : "bg-[#EEF3FA] text-[#61738D]")}>{released ? `发布门禁通过 · ${workspace.decision?.quality_score ?? 0} 分` : workspace.status === "running" ? "生成与校验进行中" : "等待协作流程"}</span></div><div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{(Object.keys(RESOURCE_META) as ResourceId[]).map((id, index) => <ResourceCard key={id} id={id} index={index} plan={plan} ready={Boolean(workspace.outputs[id])} released={released} reviewScore={reviewScoreFor(workspace.reviews, id)} videoStatus={id === "video" ? workspace.outputs.video?.status : undefined} />)}</div></section>
 
-        <AcceptancePanel workspace={workspace} plan={plan} feedbackBusy={feedbackBusy} feedbackError={feedbackError} onSubmit={submitFeedback} onStart={startRound} />
+        <AcceptancePanel workspace={workspace} feedbackBusy={feedbackBusy} feedbackError={feedbackError} onSimplify={startSimplifiedRound} onChallenge={startAdvancedChallenge} onNext={startNextKnowledgeRound} />
       </div>
     </main>
   )
@@ -174,12 +198,6 @@ function SectionTitle({ icon: Icon, eyebrow, title, description }: { icon: typeo
   return <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#EDF2F6] text-[#456A8E]"><Icon className="size-4" /></span><div><span className="text-[9px] font-bold tracking-[.12em] text-[#8493A2]">{eyebrow}</span><h2 className="text-base font-bold text-[#293C51]">{title}</h2><p className="mt-1 text-[10px] leading-4 text-[#758392]">{description}</p></div></div>
 }
 
-function ReviewAuditPanel({ workspace }: { workspace: WorkspaceState }) {
-  const decision = workspace.decision
-  const reviews = [{ id: "evidence_review", label: "事实与来源校验 Agent", hint: "引用、依据与来源可追溯" }, { id: "practice_review", label: "实操规范校验 Agent", hint: "步骤、代码、异常与安全边界" }, { id: "difficulty_review", label: "难度与覆盖校验 Agent", hint: "难度适配与岗位能力覆盖" }]
-  return <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6"><SectionTitle icon={ShieldCheck} eyebrow="三项交叉校验 · 审核结果" title="校验结果与总决策" description="三项校验 Agent 独立检查并将结果汇总给总决策 Agent。" /><div className="mt-5 grid gap-3 lg:grid-cols-3">{reviews.map((item) => { const review = workspace.reviews[item.id]; return <article key={item.id} className="rounded-2xl border border-[#DCE7F3] bg-[#F8FAFD] p-4"><div className="flex items-start justify-between gap-2"><div><strong className="text-[11px] text-[#355A84]">{item.label}</strong><p className="mt-1 text-[9px] text-[#7A8CA2]">{item.hint}</p></div><span className={cn("rounded-full px-2 py-1 text-[8px] font-bold", review?.status === "pass" ? "bg-[#E1F2EB] text-[#20755F]" : review?.status === "fail" ? "bg-[#FFEDE4] text-[#A9573D]" : "bg-white text-[#8291A4]")}>{review ? reviewStatusLabel(review.status) : "等待"}</span></div><strong className="mt-4 block text-xl text-[#294A73]">{review ? `${review.score} 分` : "--"}</strong>{review?.findings?.length ? <p className="mt-2 text-[9px] leading-4 text-[#71849A]">{review.findings[0].message}</p> : <p className="mt-2 text-[9px] text-[#8A97A7]">等待该校验 Agent 返回结果。</p>}</article> })}</div><div className={cn("mt-4 rounded-2xl border p-4", decision?.decision === "publish" ? "border-[#BFDCCF] bg-[#F3FAF7]" : decision?.decision === "rework" || decision?.decision === "failed" ? "border-[#E8CDBE] bg-[#FFF7F2]" : "border-[#DCE5F1] bg-[#F8FAFD]")}><div className="flex flex-wrap items-center justify-between gap-2"><strong className="flex items-center gap-2 text-[11px] text-[#334B68]"><BadgeCheck className="size-4" />总决策结果</strong><span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-bold text-[#426384]">{decision ? decisionLabel(decision.decision) : "等待决策"}</span></div><p className="mt-2 text-[10px] leading-5 text-[#687991]">{decision?.summary || "三项校验完成后，总决策 Agent 将决定发布或自动返工。"}</p></div></section>
-}
-
 function ResourceCard({ id, index, plan, ready, released, reviewScore, videoStatus }: { id: ResourceId; index: number; plan?: PersonalizedTrainingPlan; ready: boolean; released: boolean; reviewScore?: number; videoStatus?: string }) {
   const meta = RESOURCE_META[id]
   const Icon = meta.icon
@@ -188,19 +206,37 @@ function ResourceCard({ id, index, plan, ready, released, reviewScore, videoStat
   return <article className={cn("rounded-[20px] border p-4", released && ready ? "border-[#BFDCCF] bg-[#F7FCFA]" : ready ? "border-[#C8D9ED] bg-[#F8FBFF]" : "border-[#E0E7F0] bg-[#FBFCFE]")}><div className="flex items-start justify-between gap-3"><span className="grid size-10 place-items-center rounded-xl bg-white text-[#3369B4] shadow-sm"><Icon className="size-4.5" /></span><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", released && ready ? "bg-[#DDF2E9] text-[#18745E]" : ready ? "bg-[#E6F0FD] text-[#3568A9]" : "bg-[#EDF1F6] text-[#7B899B]")}>{released && ready ? (id === "video" ? (videoReady ? "已发布" : "生成中") : `校验 ${reviewScore ?? "—"} 分`) : ready ? "等待发布门禁" : "等待生成"}</span></div><h3 className="mt-3 text-sm font-bold text-[#20344E]">{meta.title}</h3><p className="mt-1 text-[10px] leading-4 text-[#738298]">{stage?.goal || meta.detail}</p><div className="mt-3 rounded-xl bg-white/90 px-3 py-2 text-[9px] leading-4 text-[#63758D]">成果证据：{stage?.evidence || "由资源生成 Agent 确定"}</div>{released && ready ? <Link to={`/workspace/r/${id}`} className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#2864BA]">打开资源<ArrowRight className="size-3" /></Link> : <span className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#8794A5]"><ShieldCheck className="size-3" />通过发布门禁后开放</span>}</article>
 }
 
-function AcceptancePanel({ workspace, plan, feedbackBusy, feedbackError, onSubmit, onStart }: { workspace: WorkspaceState; plan?: PersonalizedTrainingPlan; feedbackBusy: boolean; feedbackError: string; onSubmit: () => void; onStart: () => void }) {
-  const attempts = Object.values(workspace.quizAttempts)
-  const accuracy = attempts.length ? Math.round(attempts.filter((attempt) => attempt.is_correct).length / attempts.length * 100) : null
-  const criteria = plan?.acceptance_criteria ?? ["完成本轮分阶测试", "提交岗位任务成果", "通过总决策 Agent 验收"]
-  return <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6"><SectionTitle icon={Flag} eyebrow="05 · 本轮验收" title="用岗位任务结果确认训练是否完成" description="验收结果会回写学情证据，并影响下一轮路径和资源难度。" /><div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_350px]"><div className="rounded-2xl border border-[#DCE5F1] bg-[#F8FAFD] p-4"><div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-[11px] text-[#334B68]">本轮验收标准</strong><span className="text-[10px] font-bold text-[#2C9677]">{accuracy === null ? "等待测评" : `当前正确率 ${accuracy}%`}</span></div><ul className="mt-3 space-y-2">{criteria.map((criterion, index) => <li key={criterion} className="flex gap-2 text-[10px] leading-5 text-[#62738A]"><span className={cn("mt-1 grid size-4 shrink-0 place-items-center rounded-full text-[8px] font-bold", index < attempts.length ? "bg-[#DDF2E9] text-[#18745E]" : "bg-white text-[#75849A]")}>{index < attempts.length ? "✓" : index + 1}</span>{criterion}</li>)}</ul></div><div className="rounded-2xl border border-[#DCE5F1] bg-white p-4"><div className="flex items-center gap-2 text-[11px] font-bold text-[#294A73]"><FileCheck2 className="size-4 text-[#3974CA]" />提交本轮结果</div><p className="mt-2 text-[10px] leading-5 text-[#718096]">完成分阶测试后提交，系统会将结果写入能力节点并安排下一轮训练。</p><div className="mt-4 flex flex-wrap gap-2">{attempts.length ? <button type="button" onClick={onSubmit} disabled={feedbackBusy} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#2468CE] px-3 text-[10px] font-bold text-white disabled:opacity-50">{feedbackBusy ? <Loader2 className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-3.5" />}提交验收</button> : <button type="button" onClick={onStart} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#2468CE] px-3 text-[10px] font-bold text-white"><BookOpenCheck className="size-3.5" />开始分阶测试</button>}{workspace.feedback && <span className="inline-flex items-center rounded-xl bg-[#E5F6F0] px-3 text-[10px] font-bold text-[#18745E]">结果已回写</span>}</div>{feedbackError && <p role="alert" className="mt-2 text-[10px] text-[#A85138]">{feedbackError}</p>}</div></div></section>
-}
+function AcceptancePanel({ workspace, feedbackBusy, feedbackError, onSimplify, onChallenge, onNext }: { workspace: WorkspaceState; feedbackBusy: boolean; feedbackError: string; onSimplify: () => Promise<void>; onChallenge: () => Promise<void>; onNext: () => Promise<void> }) {
+  const quizItems = workspace.outputs.quiz?.items ?? []
+  const attempts = quizItems.flatMap((item) => workspace.quizAttempts[item.id] ? [workspace.quizAttempts[item.id]] : [])
+  const correctCount = attempts.filter((attempt) => attempt.is_correct).length
+  const hasAttempts = attempts.length > 0
+  const accuracyRate = hasAttempts && quizItems.length ? correctCount / quizItems.length : null
+  const accuracyPercent = accuracyRate === null ? null : accuracyRate * 100
+  const accuracyLabel = accuracyPercent === null
+    ? "—"
+    : `${Number.isInteger(accuracyPercent) ? accuracyPercent : accuracyPercent.toFixed(1)}%`
+  const advancedChallengeAvailable = accuracyRate !== null && accuracyRate >= ADVANCED_CHALLENGE_THRESHOLD
 
-function reviewStatusLabel(status: string) {
-  return ({ pass: "通过", warn: "有建议", fail: "未通过" } as Record<string, string>)[status] || status
-}
+  return (
+    <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6">
+      <SectionTitle icon={Flag} eyebrow="05 · 本轮验收" title="本轮验收" description="根据本轮已完成题目的正确率选择下一步。" />
 
-function decisionLabel(decision: string) {
-  return ({ publish: "批准发布", rework: "自动返工", failed: "停止发布" } as Record<string, string>)[decision] || decision
+      <div className="mt-5 grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="flex min-h-32 flex-col justify-center rounded-2xl border border-[#DCE5F1] bg-[#F8FAFD] px-5 py-4">
+          <span className="text-[10px] font-bold text-[#75849A]">正确率</span>
+          <strong className="mt-2 text-3xl text-[#294A73]">{accuracyLabel}</strong>
+        </div>
+        <div className="flex min-h-32 flex-wrap items-center gap-3 rounded-2xl border border-[#DCE5F1] bg-white px-5 py-4">
+          {!hasAttempts && <Link to="/workspace/r/quiz" className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#2468CE] px-4 text-xs font-bold text-white"><BookOpenCheck className="size-4" />开始分阶测试<ArrowRight className="size-4" /></Link>}
+          {hasAttempts && !advancedChallengeAvailable && <button type="button" onClick={() => void onSimplify()} disabled={feedbackBusy || workspace.status === "running"} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#A9583D] px-4 text-xs font-bold text-white disabled:opacity-50">{feedbackBusy ? <Loader2 className="size-4 animate-spin" /> : <BookOpenCheck className="size-4" />}降维解释</button>}
+          {hasAttempts && advancedChallengeAvailable && <button type="button" onClick={() => void onChallenge()} disabled={feedbackBusy} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#6D50C7] px-4 text-xs font-bold text-white disabled:opacity-50">{feedbackBusy ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}生成进阶挑战任务</button>}
+          {hasAttempts && advancedChallengeAvailable && <button type="button" onClick={() => void onNext()} disabled={feedbackBusy || workspace.status === "running"} className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#B9CBE4] bg-white px-4 text-xs font-bold text-[#315E83] disabled:opacity-50"><ArrowRight className="size-4" />继续生成新一轮知识</button>}
+          {feedbackError && <p role="alert" className="w-full text-[10px] text-[#A85138]">{feedbackError}</p>}
+        </div>
+      </div>
+    </section>
+  )
 }
 
 function RoleRequired() {
