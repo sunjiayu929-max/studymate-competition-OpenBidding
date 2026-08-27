@@ -6,6 +6,7 @@ import {
   AlertCircle,
   ArrowDown,
   ArrowRight,
+  Award,
   BarChart3,
   BookOpenCheck,
   CalendarDays,
@@ -572,6 +573,7 @@ function LearningUniverse(props: LearningUniverseProps) {
               <button type="button" onClick={enterDesk} className="universe-primary-cta" data-testid="universe-primary-cta">
                 进入今日学习 <ArrowDown className="size-3.5" />
               </button>
+              <Link to="/honors" className="universe-course-cta"><Award className="size-3.5" />我的荣誉墙</Link>
               {!courseSelected && <Link to="/courses" className="universe-course-cta">选择目标岗位 <ArrowRight className="size-3.5" /></Link>}
             </div>
           </main>
@@ -1253,6 +1255,9 @@ export function Home() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
+              <Link to="/honors" className="inline-flex h-10 items-center gap-2 rounded-full border border-[#D9C382] bg-[#FFF7E2] px-4 text-xs font-bold text-[#8C6726] shadow-[0_4px_12px_rgba(168,120,34,.08)] transition-colors hover:bg-[#F7E9C5]">
+                <Award className="size-4" />我的荣誉墙<ChevronRight className="size-3.5" />
+              </Link>
               <span className="inline-flex h-10 items-center gap-2 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-4 text-xs font-semibold text-[#66717B] shadow-[0_4px_12px_rgba(24,35,45,.04)]">
                 <CalendarDays className="size-4 text-[#6F8A69]" /> {todayLabel()}
               </span>
