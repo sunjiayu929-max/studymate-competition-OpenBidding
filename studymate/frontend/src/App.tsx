@@ -43,10 +43,22 @@ const TutorBubble = lazy(() => import("@/components/TutorBubble").then((m) => ({
 const BUBBLE_HIDDEN_PATHS = ["/login", "/tutor", "/tutor/voice", "/concept", "/ppt", "/report", "/tests"]
 
 function ScrollToTop() {
-  const { pathname } = useLocation()
+  const { pathname, hash } = useLocation()
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" })
-  }, [pathname])
+    const scrollToDestination = () => {
+      if (hash) {
+        document.getElementById(hash.slice(1))?.scrollIntoView({ block: "start", behavior: "auto" })
+        return
+      }
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" })
+    }
+    const frame = window.requestAnimationFrame(scrollToDestination)
+    const timeout = window.setTimeout(scrollToDestination, 100)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(timeout)
+    }
+  }, [pathname, hash])
   return null
 }
 

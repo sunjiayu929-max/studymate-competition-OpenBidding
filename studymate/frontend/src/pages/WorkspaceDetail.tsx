@@ -1,11 +1,11 @@
 import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { useNavigate, useParams, Link } from "react-router-dom"
-import { FileText, BookOpen, Hash, ExternalLink, Sparkles, NotebookText, Check, Plus, Loader2, Target, Database, ShieldCheck, UserRoundSearch, CheckCircle2, CircleHelp, ArrowLeft, ArrowRight, BarChart3, Wrench, Network, Library, Code2, Film, Volume2, Clock3, Settings2 } from "lucide-react"
+import { FileText, BookOpen, Hash, ExternalLink, Sparkles, NotebookText, Check, Plus, Loader2, Target, Database, ShieldCheck, UserRoundSearch, CheckCircle2, CircleHelp, ArrowLeft, ArrowRight, BarChart3, Wrench, Network, Code2, Film } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { PageHeader } from "@/components/PageHeader"
 import type { ProfileMiniData } from "@/components/ProfileMiniCard"
 import { Button } from "@/components/ui/button"
-import { useWorkspaceStore, workspaceStore, type Citation, type WorkspaceOutputs } from "@/store/workspace"
+import { useWorkspaceStore, workspaceStore, type Citation } from "@/store/workspace"
 import { apiGet, apiPost } from "@/lib/api"
 import { formatSourceLabel, sourceLink } from "@/lib/ragSource"
 import type { QuizItem } from "@/components/QuizCard"
@@ -16,7 +16,6 @@ import { useCurrentUser } from "@/store/user"
 import { SaveToNotebookModal } from "@/components/SaveToNotebookModal"
 import { FeedbackThumb } from "@/components/FeedbackThumb"
 import { MindMapView } from "@/components/MindMapView"
-import { ReadingList, type ReadingItem } from "@/components/ReadingList"
 import { CodeBlock } from "@/components/CodeBlock"
 import { ConceptAutoExplain } from "@/components/concepts/ConceptAutoExplain"
 
@@ -24,20 +23,19 @@ import { ConceptAutoExplain } from "@/components/concepts/ConceptAutoExplain"
 const Markdown = lazy(() => import("@/components/Markdown").then((module) => ({ default: module.Markdown })))
 const QuizCard = lazy(() => import("@/components/QuizCard").then((module) => ({ default: module.QuizCard })))
 
-// 当前岗位训练资源包包含七类并行成果；学习路径不作为独立生成资源。
-type AgentKey = "doc" | "guide" | "quiz" | "mindmap" | "reading" | "code" | "video"
+// 当前岗位训练资源包包含六类成果；拓展资源统一收纳在可视讲解中。
+type AgentKey = "doc" | "guide" | "quiz" | "mindmap" | "code" | "video"
 
 const META: Record<AgentKey, { title: string; icon: LucideIcon; color: string }> = {
   doc:     { title: "岗位定制讲义", icon: FileText,    color: "text-[#355C8A]" },
   guide:   { title: "实操指南",   icon: Wrench,      color: "text-[#A05137]" },
   quiz:    { title: "岗位分阶测试", icon: BookOpen,    color: "text-[#3E7774]" },
   mindmap: { title: "思维导图", icon: Network, color: "text-[#B85C3E]" },
-  reading: { title: "拓展阅读", icon: Library, color: "text-[#6F8A69]" },
   code:    { title: "代码案例", icon: Code2, color: "text-[#7E6B83]" },
   video:   { title: "可视讲解", icon: Film, color: "text-[#9B7429]" },
 }
 
-const ORDER: AgentKey[] = ["doc", "guide", "quiz", "mindmap", "reading", "code", "video"]
+const ORDER: AgentKey[] = ["doc", "guide", "quiz", "mindmap", "code", "video"]
 
 function ResourcePager({
   current,
@@ -84,6 +82,8 @@ function ResourcePager({
         <div className="flex min-w-0 flex-1 justify-end">
           {next ? (
             <Link to={`/workspace/r/${next}`} className={`${linkClass} justify-end text-right`}><span><span className="block text-[9px] font-semibold text-[#8A8172]">下一资源</span>{META[next].title}</span><ArrowRight className="size-3.5" /></Link>
+          ) : current === "video" && variant === "footer" ? (
+            <Link to="/competency#training-resources" className={`${linkClass} justify-end text-right`}><span><span className="block text-[9px] font-semibold text-[#8A8172]">完成浏览</span>返回岗位训练中心</span><ArrowRight className="size-3.5" /></Link>
           ) : <span className="hidden sm:block" />}
         </div>
       </div>
@@ -149,9 +149,8 @@ export function WorkspaceDetail() {
       case "guide": return Boolean(outputs.guide?.content || stream.guide)
       case "quiz": return Boolean(outputs.quiz?.items?.length || stream.quiz)
       case "mindmap": return Boolean(outputs.mindmap?.content || stream.mindmap)
-      case "reading": return Boolean(outputs.reading?.items?.length)
       case "code": return Boolean(outputs.code?.code)
-      case "video": return Boolean(outputs.video?.script)
+      case "video": return true
       default: return false
     }
   }, [agentId, isValidAgent, outputs, released, stream])
@@ -273,7 +272,7 @@ export function WorkspaceDetail() {
                 <span className="mx-auto grid size-12 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><CircleHelp className="size-5" /></span>
                 <p className="mt-3 text-[11px] font-bold tracking-[0.12em] text-[#B1842C]">资源地址有误 · 已保护当前任务</p>
                 <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#18232D]">这个资源入口不存在</h2>
-                <p className="mx-auto mt-2 max-w-[520px] text-xs leading-5 text-[#6F787A]">当前岗位训练资源包支持七类经发布门禁批准的训练成果；学习路径不作为独立生成资源。</p>
+                <p className="mx-auto mt-2 max-w-[520px] text-xs leading-5 text-[#6F787A]">当前岗位训练资源包支持六类经发布门禁批准的训练成果；学习路径不作为独立生成资源。</p>
               </div>
               <div className="flex flex-wrap justify-center gap-2 px-5 py-5" aria-label="支持的资源类型">
                 {ORDER.map((key) => {
@@ -464,6 +463,8 @@ export function WorkspaceDetail() {
                       index={i}
                       topic={topic}
                       allItems={outputs.quiz?.items as QuizItem[]}
+                      initialAttempt={state.quizAttempts[q.id]}
+                      initialAttempts={state.quizAttempts}
                       onSubmit={(r) => workspaceStore.recordQuizAttempt(r)}
                     />
                   ))}
@@ -524,14 +525,6 @@ export function WorkspaceDetail() {
               )
             )}
 
-            {agentId === "reading" && (
-              outputs.reading?.items?.length ? (
-                <ReadingList items={outputs.reading.items as ReadingItem[]} topic={topic} />
-              ) : (
-                <EmptyHint icon={Icon} label="拓展阅读 Agent 还未输出" />
-              )
-            )}
-
             {agentId === "code" && (
               outputs.code?.code ? (
                 <CodeBlock data={outputs.code} />
@@ -541,11 +534,7 @@ export function WorkspaceDetail() {
             )}
 
             {agentId === "video" && (
-              outputs.video?.script ? (
-                <VideoResource output={outputs.video} topic={topic} userId={user?.user_id ?? 0} />
-              ) : (
-                <EmptyHint icon={Icon} label="可视讲解生成 Agent 还未输出" />
-              )
+              <VideoResource topic={topic} userId={user?.user_id ?? 0} />
             )}
 
             </Suspense>
@@ -618,9 +607,8 @@ const RESOURCE_STRATEGY: Record<AgentKey, string> = {
   guide: "把岗位任务拆成环境、步骤、预期、异常、安全边界与验收清单",
   quiz: "围绕薄弱点与当前主题生成多题型掌握度验证",
   mindmap: "用结构化关系帮助你建立岗位任务的整体认知",
-  reading: "补充可验证的岗位资料，支持从任务继续深入学习",
   code: "围绕岗位任务提供可运行示例，连接理解与实际操作",
-  video: "把岗位任务编排为带中文原生声音的短视频，辅助理解步骤与验收边界",
+  video: "用动画和外部拓展资源解释岗位任务中的关键原理与应用",
 }
 
 function ResourceEvidenceBar({
@@ -670,109 +658,21 @@ function ResourceEvidenceBar({
   )
 }
 
-function VideoResource({ output, topic, userId }: { output: NonNullable<WorkspaceOutputs["video"]>; topic: string; userId: number }) {
-  const script = output.script
-  const isReady = output.status === "succeeded" && Boolean(output.video_url)
-  const isFailed = output.status === "failed" || output.status === "partial_failed"
-  const segments = output.segments || []
-
+function VideoResource({ topic, userId }: { topic: string; userId: number }) {
   return (
-    <div className="space-y-5">
-      <section className="overflow-hidden rounded-[20px] border border-[#D7D1C4] bg-[#FBF9F4] p-4 sm:p-5">
-        <div className="flex items-start gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Film className="size-4" /></span>
-          <div>
-            <p className="text-[10px] font-bold tracking-[0.12em] text-[#8E6925]">第一步 · 先看动画讲解</p>
-            <h2 className="mt-1 text-base font-bold text-[#18232D]">先用动画理解原理，再看岗位视频</h2>
-            <p className="mt-1 text-[11px] leading-5 text-[#66717B]">系统会优先匹配动画库；没有对应动画时，自动生成分步动画或黑板讲解。动画不消耗岗位视频额度。</p>
-          </div>
-        </div>
-        <div className="mt-4">
-          <ConceptAutoExplain topic={topic} userId={userId} />
-        </div>
-      </section>
-
-      <div className="border-t border-[#C7D8D4] pt-5">
-        <div className="flex items-start gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#BFD7D1] bg-[#E2F0ED] text-[#287F8D]"><Film className="size-4" /></span>
-          <div>
-            <p className="text-[10px] font-bold tracking-[0.12em] text-[#287F8D]">第二步 · 岗位适配视频</p>
-            <h2 className="mt-1 text-base font-bold text-[#183E46]">岗位流程视频与分镜</h2>
-            <p className="mt-1 text-[11px] leading-5 text-[#527077]">下面保留岗位视频、片段状态、旁白和分镜，负责补充岗位任务中的流程演示。</p>
-          </div>
-        </div>
-
-        <div className="mt-4 space-y-5">
-      {isReady ? (
-        <div className="overflow-hidden rounded-[20px] border border-[#C7D2D8] bg-[#18232D] shadow-[0_12px_28px_rgba(24,35,45,.12)]">
-          <video className="aspect-video w-full bg-black object-contain" controls preload="metadata" src={output.video_url}>
-            您的浏览器不支持视频播放。
-          </video>
-        </div>
-      ) : (
-        <div className={`rounded-[20px] border px-4 py-3 ${isFailed ? "border-[#DFC8BE] bg-[#FCF7F4] text-[#9A4E35]" : "border-[#D9CFB7] bg-[#F4ECD8] text-[#72551F]"}`}>
-          <div className="flex items-start gap-3">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-current/20 bg-white/70"><Settings2 className="size-4" /></span>
-            <div className="min-w-0">
-              <strong className="block text-sm">{isFailed ? "视频片段生成失败，脚本仍可复核" : output.status === "segments_ready" ? "片段已生成，当前环境暂未合成最终视频" : "脚本已通过审核，等待配置视频生成服务"}</strong>
-              <p className="mt-1 text-[11px] leading-5">{output.message || "配置后重新运行岗位训练，即可生成带声音的视频文件。"}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="grid gap-3 sm:grid-cols-4">
-        <VideoMeta icon={Film} label="视频服务" value="岗位视频生成" />
-        <VideoMeta icon={Clock3} label="片段与总时长" value={`${output.completed_segments || 0}/${output.segment_count || segments.length} · ${output.total_duration || output.duration || "—"} 秒`} />
-        <VideoMeta icon={Volume2} label="声音" value={output.has_audio ? "中文原生声音" : "无音频"} />
-        <VideoMeta icon={Settings2} label="规格" value={`${output.resolution || "768P"} · ${output.ratio || "16:9"}`} />
-      </div>
-
-      <p className="text-[11px] leading-5 text-[#66717B]">
-        {output.scope || "岗位流程片段"}。{output.duration_reason || "时长按任务内容自动选择"}，不用于替代完整课程讲解。
-      </p>
-
-      <section className="rounded-[20px] border border-[#D7D1C4] bg-[#FBF9F4] p-4">
-        <div className="flex items-center gap-2 text-[11px] font-bold tracking-[0.08em] text-[#8E6925]"><Film className="size-3.5" />岗位视频脚本与分镜</div>
-        <h2 className="mt-2 text-base font-bold text-[#18232D]">{script.title}</h2>
-        <div className="mt-3 rounded-xl border border-[#E0DACE] bg-white px-3 py-3">
-          <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#6F8A69]"><Volume2 className="size-3.5" />旁白</div>
-          <p className="mt-1 text-xs leading-6 text-[#4F5E65]">{script.voiceover}</p>
-        </div>
-        {segments.length > 0 && (
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            {segments.map((segment) => (
-              <div key={segment.index} className="rounded-xl border border-[#DDE4DF] bg-white px-3 py-3">
-                <span className={`text-[10px] font-bold tracking-[0.08em] ${segment.status === "succeeded" ? "text-[#287F8D]" : segment.status === "failed" ? "text-[#9A4E35]" : "text-[#8E6925]"}`}>{String(segment.index).padStart(2, "0")} · {segment.title} · {segment.duration} 秒</span>
-                <p className="mt-1 text-xs leading-5 text-[#4F5E65]">{segment.status === "succeeded" ? "已生成" : segment.status === "failed" ? (segment.message || "生成失败") : "等待生成"}</p>
-                {segment.status === "succeeded" && segment.video_url && <a className="text-[10px] text-[#287F8D] underline" href={segment.video_url} target="_blank" rel="noreferrer">查看片段</a>}
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="mt-3 grid gap-2 sm:grid-cols-3">
-          {script.shots.map((shot, index) => (
-            <div key={`${shot.description}-${index}`} className="rounded-xl border border-[#E0DACE] bg-white px-3 py-3">
-              <span className="text-[10px] font-bold tracking-[0.1em] text-[#B1842C]">0{index + 1} · {shot.duration} 秒</span>
-              <p className="mt-1 text-xs leading-5 text-[#4F5E65]">{shot.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {output.task_id && <p className="text-[10px] text-[#7A817F]">视频任务 ID：{output.task_id}</p>}
+    <section className="overflow-hidden rounded-[20px] border border-[#D7D1C4] bg-[#FBF9F4] p-4 sm:p-5">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Film className="size-4" /></span>
+        <div>
+          <p className="text-[10px] font-bold tracking-[0.12em] text-[#8E6925]">动画讲解</p>
+          <h2 className="mt-1 text-base font-bold text-[#18232D]">用动画理解原理与岗位应用</h2>
+          <p className="mt-1 text-[11px] leading-5 text-[#66717B]">系统会优先匹配动画库；没有对应动画时，自动生成分步动画或黑板讲解，并在下方补充相关外部学习资源。</p>
         </div>
       </div>
-    </div>
-  )
-}
-
-function VideoMeta({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-[#D7D1C4] bg-[#FBF9F4] px-3 py-3">
-      <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#8A8172]"><Icon className="size-3.5 text-[#9B7429]" />{label}</div>
-      <strong className="mt-1 block truncate text-xs text-[#27343D]">{value}</strong>
-    </div>
+      <div className="mt-4">
+        <ConceptAutoExplain topic={topic} userId={userId} />
+      </div>
+    </section>
   )
 }
 
@@ -816,7 +716,7 @@ function NoData({ resourceTitle, onBack }: { resourceTitle: string; onBack: () =
           <p className="mt-3 text-[11px] font-bold tracking-[0.12em] text-[#8E6925]">等待生成 · 操作可继续</p>
           <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#18232D]">这份{resourceTitle}还未生成</h2>
           <p className="mx-auto mt-2 max-w-[560px] text-xs leading-5 text-[#6F787A]">
-            返回岗位训练中心启动本轮任务后，15 个协作节点会依次完成诊断、计划协商、七类资源生成、审核与裁决；批准发布后可在这里核对内容并进入笔记、测验或报告。
+            返回岗位训练中心启动本轮任务后，14 个协作节点会依次完成诊断、计划协商、六类资源生成、审核与裁决；批准发布后可在这里核对内容并进入笔记、测验或报告。
           </p>
         </div>
 
