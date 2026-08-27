@@ -58,7 +58,7 @@ reject_compose_env_overrides() {
   # stack with the wrong public routing. Fail closed when both values exist.
   [[ -f "$DEPLOY_ENV_FILE" ]] || return 0
   local key configured inherited
-  for key in SITE_ADDRESS HTTP_PORT HTTPS_PORT COMPOSE_PROFILES; do
+  for key in SITE_ADDRESS HTTP_PORT HTTPS_PORT COMPOSE_PROFILES DATABASE_URL SEED_DEMO_USERS; do
     configured="$(dotenv_value "$DEPLOY_ENV_FILE" "$key")"
     if [[ -n "$configured" && -n "${!key+x}" ]]; then
       inherited="${!key}"
