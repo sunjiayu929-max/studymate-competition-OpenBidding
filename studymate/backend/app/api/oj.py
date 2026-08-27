@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
-import logging
 import re
 import secrets
 import time
@@ -25,7 +23,6 @@ from app.deps import current_user, require_user
 
 router = APIRouter(prefix="/oj", tags=["oj"])
 internal_router = APIRouter(prefix="/internal/oj", tags=["internal-oj"])
-logger = logging.getLogger(__name__)
 
 
 class RedeemTicketRequest(BaseModel):
@@ -207,24 +204,6 @@ async def redeem_oj_ticket(request: Request, db: AsyncSession = Depends(get_db))
     try:
         payload = RedeemTicketRequest.model_validate_json(raw_body)
     except ValidationError as exc:
-        # Never log the ticket itself. The shape metadata is enough to
-        # diagnose clients that accidentally send a query array, form body,
-        # or an otherwise malformed JSON envelope.
-        try:
-            decoded = json.loads(raw_body)
-        except (TypeError, ValueError):
-            decoded = None
-        ticket_value = decoded.get("ticket") if isinstance(decoded, dict) else None
-        logger.warning(
-            "OJ ticket redeem validation failed: body_bytes=%d content_type=%s "
-            "json_type=%s keys=%s ticket_type=%s ticket_length=%s",
-            len(raw_body),
-            request.headers.get("content-type", ""),
-            type(decoded).__name__,
-            sorted(decoded.keys()) if isinstance(decoded, dict) else [],
-            type(ticket_value).__name__,
-            len(ticket_value) if isinstance(ticket_value, str) else None,
-        )
         raise HTTPException(status_code=422, detail="OJ 启动票据格式无效") from exc
 
     now = datetime.utcnow()
