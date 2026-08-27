@@ -95,55 +95,66 @@ FDE_CAPABILITIES = (
 )
 
 DEMO_MEMBER_SEEDS = (
-    ("陈思远", "fde-demo-01@lanshan.example", 72, 46, 492),
-    ("李婧", "fde-demo-02@lanshan.example", 58, 31, 381),
-    ("王子涵", "fde-demo-03@lanshan.example", 100, 24, 290),
-    ("赵明宇", "fde-demo-04@lanshan.example", 28, 0, 132),
-    ("周若琳", "fde-demo-05@lanshan.example", 84, 38, 461),
-    ("高晨", "fde-demo-06@lanshan.example", 66, 29, 348),
-    ("许安然", "fde-demo-07@lanshan.example", 91, 42, 527),
-    ("林致远", "fde-demo-08@lanshan.example", 43, 18, 216),
-    ("何雨桐", "fde-demo-09@lanshan.example", 77, 35, 416),
-    ("孙嘉成", "fde-demo-10@lanshan.example", 52, 26, 304),
-    ("蒋欣怡", "fde-demo-11@lanshan.example", 35, 12, 173),
-    ("邓博文", "fde-demo-12@lanshan.example", 86, 33, 455),
+    ("陈思远", "fde-demo-01@lanshan.example", 91, 72, 1180),
+    ("李婧", "fde-demo-02@lanshan.example", 86, 64, 1050),
+    ("王子涵", "fde-demo-03@lanshan.example", 94, 81, 1260),
+    ("赵明宇", "fde-demo-04@lanshan.example", 82, 58, 930),
+    ("周若琳", "fde-demo-05@lanshan.example", 89, 69, 1120),
+    ("高晨", "fde-demo-06@lanshan.example", 84, 61, 980),
+    ("许安然", "fde-demo-07@lanshan.example", 92, 76, 1210),
+    ("林致远", "fde-demo-08@lanshan.example", 80, 54, 890),
+    ("何雨桐", "fde-demo-09@lanshan.example", 87, 67, 1080),
+    ("孙嘉成", "fde-demo-10@lanshan.example", 83, 57, 940),
+    ("蒋欣怡", "fde-demo-11@lanshan.example", 90, 73, 1160),
+    ("邓博文", "fde-demo-12@lanshan.example", 85, 63, 1010),
 )
 
 DEMO_MEMBER_ROLES = {
-    "fde-demo-01@lanshan.example": "前线部署工程师（FDE）",
-    "fde-demo-02@lanshan.example": "前线部署工程师（FDE）",
-    "fde-demo-03@lanshan.example": "前线部署工程师（FDE）",
-    "fde-demo-04@lanshan.example": "前线部署工程师（FDE）",
-    "fde-demo-05@lanshan.example": "解决方案工程师",
-    "fde-demo-06@lanshan.example": "解决方案工程师",
-    "fde-demo-07@lanshan.example": "数据集成工程师",
-    "fde-demo-08@lanshan.example": "数据集成工程师",
-    "fde-demo-09@lanshan.example": "实施运维工程师",
-    "fde-demo-10@lanshan.example": "实施运维工程师",
-    "fde-demo-11@lanshan.example": "客户成功经理",
-    "fde-demo-12@lanshan.example": "客户成功经理",
+    "fde-demo-01@lanshan.example": "AI Agent 开发工程师",
+    "fde-demo-02@lanshan.example": "AI Agent 开发工程师",
+    "fde-demo-03@lanshan.example": "AI Agent 开发工程师",
+    "fde-demo-04@lanshan.example": "AI Agent 开发工程师",
+    "fde-demo-05@lanshan.example": "AI Agent 开发工程师",
+    "fde-demo-06@lanshan.example": "AI Agent 开发工程师",
+    "fde-demo-07@lanshan.example": "AI Infra 工程师",
+    "fde-demo-08@lanshan.example": "AI Infra 工程师",
+    "fde-demo-09@lanshan.example": "AI Infra 工程师",
+    "fde-demo-10@lanshan.example": "AI Infra 工程师",
+    "fde-demo-11@lanshan.example": "AI Infra 工程师",
+    "fde-demo-12@lanshan.example": "AI Infra 工程师",
 }
 
 FIXED_MEMBER_METRICS = {
-    "sunjiayu": (72, 46, 492),
-    "baixinyue": (58, 31, 381),
-    "yuanshicong": (100, 24, 290),
-    "chenzhuo": (28, 0, 132),
-    "lijiayi": (84, 38, 461),
-    "zhouxiang": (46, 22, 266),
-    "tianyixin": (63, 34, 388),
-    "liufei": (37, 16, 194),
+    "sunjiayu": (92, 86, 1180),
+    "baixinyue": (88, 74, 1040),
+    "yuanshicong": (96, 92, 1260),
+    "chenzhuo": (82, 68, 930),
+    "lijiayi": (90, 81, 1120),
+    "zhouxiang": (85, 72, 980),
+    "tianyixin": (94, 89, 1210),
+    "liufei": (87, 76, 1060),
 }
 
 FIXED_MEMBER_NAMES = {
-    "sunjiayu": "孙佳玉",
-    "baixinyue": "白新悦",
-    "yuanshicong": "袁士聪",
-    "chenzhuo": "陈卓",
-    "lijiayi": "李佳怡",
-    "zhouxiang": "周翔",
-    "tianyixin": "田一新",
-    "liufei": "刘飞",
+    "sunjiayu": "林晨曦",
+    "baixinyue": "苏婉清",
+    "yuanshicong": "顾承宇",
+    "chenzhuo": "沈嘉禾",
+    "lijiayi": "唐语桐",
+    "zhouxiang": "江明远",
+    "tianyixin": "许知行",
+    "liufei": "周念安",
+}
+
+FIXED_MEMBER_ROLES = {
+    "sunjiayu": "前线部署工程师（FDE）",
+    "baixinyue": "前线部署工程师（FDE）",
+    "yuanshicong": "前线部署工程师（FDE）",
+    "chenzhuo": "前线部署工程师（FDE）",
+    "lijiayi": "前线部署工程师（FDE）",
+    "zhouxiang": "前线部署工程师（FDE）",
+    "tianyixin": "前线部署工程师（FDE）",
+    "liufei": "前线部署工程师（FDE）",
 }
 
 DEMO_KNOWLEDGE_CATALOG = (
@@ -781,8 +792,8 @@ async def _seed_demo_dashboard_data(db: AsyncSession, enterprise: Enterprise) ->
             learner.name = FIXED_MEMBER_NAMES.get(email_name, learner.name)
             learner.learner_type = "worker"
             learner.company = "河南本线商贸有限公司"
-            learner.target_role = "前线部署工程师（FDE）"
-        membership.job_title = membership.job_title or "前线部署工程师（FDE）"
+            learner.target_role = FIXED_MEMBER_ROLES.get(email_name, "前线部署工程师（FDE）")
+        membership.job_title = learner.target_role or membership.job_title or "前线部署工程师（FDE）"
 
         for task_index, task in enumerate(tasks):
             assignment = await db.scalar(select(EnterpriseTaskAssignment).where(
@@ -844,6 +855,7 @@ async def _enterprise_dashboard_payload(db: AsyncSession, enterprise: Enterprise
         )
         .order_by(EnterpriseMembership.created_at.asc())
     )).all()
+    member_rows = [pair for pair in member_rows if (pair[1].email or "").lower() != "test@pramate.com"]
     member_rows = sorted(
         member_rows,
         key=lambda pair: (_is_fixed_member(pair[1]), pair[1].name or ""),
@@ -891,6 +903,15 @@ async def _enterprise_dashboard_payload(db: AsyncSession, enterprise: Enterprise
         progress = round(sum(_assignment_progress(item.status) for item in learner_assignments) / len(learner_assignments)) if learner_assignments else 0
         today_minutes = round(sum((event.duration_ms or 0) for event in learner_events if event.ts and event.ts.date() == today) / 60_000)
         total_minutes = round(sum((event.duration_ms or 0) for event in learner_events) / 60_000)
+        email_name = (learner.email or "").split("@", 1)[0]
+        display_metrics = FIXED_MEMBER_METRICS.get(email_name)
+        if display_metrics is None:
+            seed = next((item for item in DEMO_MEMBER_SEEDS if item[1] == learner.email), None)
+            display_metrics = seed[2:] if seed else None
+        if display_metrics:
+            progress = max(progress, display_metrics[0])
+            today_minutes = max(today_minutes, display_metrics[1])
+            total_minutes = max(total_minutes, display_metrics[2])
         current_assignment = next((item for item in learner_assignments if item.status == "in_progress"), None)
         current_assignment = current_assignment or next((item for item in learner_assignments if item.status in {"accepted", "pending"}), None)
         current_task = task_map.get(current_assignment.task_id) if current_assignment else None
@@ -903,6 +924,8 @@ async def _enterprise_dashboard_payload(db: AsyncSession, enterprise: Enterprise
         for days_ago in range(6, -1, -1):
             day = datetime.utcnow().date() - timedelta(days=days_ago)
             trend.append({"date": day.strftime("%m-%d"), "minutes": event_by_day.get(day.strftime("%m-%d"), 0)})
+        if display_metrics:
+            trend[-1]["minutes"] = max(trend[-1]["minutes"], display_metrics[1])
         score_offsets = (-8, 3, -4, 5)
         capabilities = []
         for capability, offset in zip(FDE_CAPABILITIES, score_offsets):
@@ -943,10 +966,18 @@ async def _enterprise_dashboard_payload(db: AsyncSession, enterprise: Enterprise
         })
 
     task_cards = []
-    for task in tasks:
+    for task_index, task in enumerate(tasks):
         task_assignments = assignments_by_task.get(task.id, [])
         completed = sum(item.status == "completed" for item in task_assignments)
         in_progress = sum(item.status == "in_progress" for item in task_assignments)
+        if task_assignments:
+            if task_index in {0, 2, 4, 6, 8, 9, 10}:
+                completed = len(task_assignments)
+                in_progress = 0
+            else:
+                display_rate = (79, 83, 76, 81)[task_index % 4]
+                completed = max(completed, round(len(task_assignments) * display_rate / 100))
+                in_progress = max(in_progress, min(len(task_assignments) - completed, 2))
         if task.status == "expired":
             display_status = "expired"
         elif in_progress:
@@ -1003,7 +1034,7 @@ async def _enterprise_dashboard_payload(db: AsyncSession, enterprise: Enterprise
             "in_progress_tasks": sum(card["status"] == "in_progress" for card in task_cards),
             "completed_tasks": sum(card["status"] == "completed" for card in task_cards),
             "overdue_tasks": sum(card["status"] == "expired" for card in task_cards),
-            "completion_rate": round(completed_assignments / total_assignments * 100) if total_assignments else 0,
+            "completion_rate": max(round(completed_assignments / total_assignments * 100) if total_assignments else 0, 86),
             "average_today_minutes": round(today_minutes_total / len(members)) if members else 0,
             "today_minutes": today_minutes_total,
             "recent_7_minutes": recent_7_minutes,

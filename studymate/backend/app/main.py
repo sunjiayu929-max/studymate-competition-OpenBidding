@@ -34,14 +34,25 @@ _DEFAULT_STUDENT_NAMES = (
 )
 
 _PRAMATE_MEMBER_NAMES = {
-    "sunjiayu": "孙佳玉",
-    "baixinyue": "白新悦",
-    "yuanshicong": "袁士聪",
-    "chenzhuo": "陈卓",
-    "lijiayi": "李佳怡",
-    "zhouxiang": "周翔",
-    "tianyixin": "田一新",
-    "liufei": "刘飞",
+    "sunjiayu": "林晨曦",
+    "baixinyue": "苏婉清",
+    "yuanshicong": "顾承宇",
+    "chenzhuo": "沈嘉禾",
+    "lijiayi": "唐语桐",
+    "zhouxiang": "江明远",
+    "tianyixin": "许知行",
+    "liufei": "周念安",
+}
+
+_PRAMATE_MEMBER_ROLES = {
+    "sunjiayu": "前线部署工程师（FDE）",
+    "baixinyue": "前线部署工程师（FDE）",
+    "yuanshicong": "前线部署工程师（FDE）",
+    "chenzhuo": "前线部署工程师（FDE）",
+    "lijiayi": "前线部署工程师（FDE）",
+    "zhouxiang": "前线部署工程师（FDE）",
+    "tianyixin": "前线部署工程师（FDE）",
+    "liufei": "前线部署工程师（FDE）",
 }
 
 _PRAMATE_DEMO_ADMIN_EMAIL = "admin@pramate.com"
@@ -515,6 +526,7 @@ async def _ensure_pramate_demo_enterprise(conn):
         )
 
     for name in _DEFAULT_STUDENT_NAMES:
+        member_role = _PRAMATE_MEMBER_ROLES[name]
         learner = (
             await conn.execute(
                 text("SELECT id FROM users WHERE lower(email) = :email LIMIT 1"),
@@ -531,7 +543,7 @@ async def _ensure_pramate_demo_enterprise(conn):
             {
                 "name": _PRAMATE_MEMBER_NAMES[name],
                 "company": _PRAMATE_DEMO_ENTERPRISE_NAME,
-                "target_role": "前线部署工程师（FDE）",
+                "target_role": member_role,
                 "user_id": learner[0],
             },
         )
@@ -546,13 +558,19 @@ async def _ensure_pramate_demo_enterprise(conn):
                 text(
                     "INSERT INTO enterprise_memberships "
                     "(enterprise_id, user_id, member_role, job_title, status, created_at) "
-                    "VALUES (:enterprise_id, :user_id, 'learner', '前线部署工程师（FDE）', 'active', :created_at)"
+                    "VALUES (:enterprise_id, :user_id, 'learner', :job_title, 'active', :created_at)"
                 ),
                 {
                     "enterprise_id": enterprise[0],
                     "user_id": learner[0],
+                    "job_title": member_role,
                     "created_at": datetime.utcnow(),
                 },
+            )
+        else:
+            await conn.execute(
+                text("UPDATE enterprise_memberships SET job_title = :job_title WHERE id = :membership_id"),
+                {"job_title": member_role, "membership_id": learner_membership[0]},
             )
 
     test_member = (

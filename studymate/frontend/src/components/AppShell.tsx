@@ -27,6 +27,7 @@ import {
   PlayCircle,
   Sparkles,
   ShieldCheck,
+  UsersRound,
   X,
 } from "lucide-react"
 
@@ -150,7 +151,7 @@ function readGroups(): Record<string, boolean> {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const navigate = useNavigate()
   const user = useCurrentUser()
   const course = useCurrentCourse()
@@ -166,6 +167,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [enterpriseMember, setEnterpriseMember] = useState<boolean | null>(null)
 
   const enterpriseAdmin = user?.role === "enterprise_admin"
+  const systemAdmin = user?.role === "admin"
   const enterpriseVisible = user?.role !== "admin" && (enterpriseAdmin || enterpriseMember === true)
   const learnerIdentity = enterpriseAdmin
     ? { kind: "企业管理员", detail: user?.company || "企业工作台" }
@@ -382,17 +384,19 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <div className="shrink-0 px-3 pt-3">
           <Link
-            to={user?.role === "admin" ? "/admin" : "/courses"}
-            title={user?.role === "admin" ? "系统管理工作台" : targetRole?.name || course?.name || "选择当前岗位"}
+            to={systemAdmin ? "/admin" : enterpriseAdmin ? "/enterprise/dashboard" : "/courses"}
+            title={systemAdmin ? "系统管理工作台" : enterpriseAdmin ? user?.company || "企业管理工作台" : learnerTargetRole}
             className={cn(
               "flex items-center rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] shadow-[0_5px_14px_rgba(24,35,45,.045)] transition-colors hover:bg-[#F7F2E7]",
               effectiveCollapsed ? "h-11 justify-center" : "gap-2.5 px-3 py-2.5",
             )}
           >
-            {user?.role === "admin" ? <ShieldCheck className="size-4 shrink-0 text-[#9A4E35]" /> : <Library className="size-4 shrink-0 text-[#315E83]" />}
-            {!effectiveCollapsed && (user?.role === "admin"
+            {systemAdmin ? <ShieldCheck className="size-4 shrink-0 text-[#9A4E35]" /> : enterpriseAdmin ? <BriefcaseBusiness className="size-4 shrink-0 text-[#52704D]" /> : <Library className="size-4 shrink-0 text-[#315E83]" />}
+            {!effectiveCollapsed && (systemAdmin
               ? <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">系统管理</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">平台运营工作台</strong></span>
-              : <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">{learnerIdentity.kind}</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{user?.name || "学习者"}</strong><span className="mt-1 block truncate text-[10px] text-[#66717B]">{learnerIdentity.detail} · {learnerTargetRole}</span></span>)}
+              : enterpriseAdmin
+                ? <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#668064]">企业管理员</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{user?.name || "企业管理员"}</strong><span className="mt-1 block truncate text-[10px] text-[#66717B]">{user?.company || "河南本线商贸有限公司"}</span></span>
+                : <span className="min-w-0 flex-1 text-center"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">{learnerIdentity.kind}</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{user?.name || "学习者"}</strong><span className="mt-1 block truncate text-[10px] text-[#66717B]">{learnerIdentity.detail}</span><span className="mt-0.5 block truncate text-[10px] text-[#66717B]">{learnerTargetRole}</span></span>)}
           </Link>
           <div className="mt-2">
             <ShellLink item={{ label: "新手指引", to: "/guide", icon: Compass }} compact={effectiveCollapsed} pathname={pathname} />
@@ -406,16 +410,19 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="nav-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3" aria-label="主功能">
-          {user?.role === "admin" && <>
+          {systemAdmin ? <>
             <div className="mb-1 px-2.5 text-[9px] font-extrabold tracking-[.14em] text-[#9A4E35]">系统管理</div>
-            <ShellLink item={{ label: "系统总览", to: "/admin", icon: ShieldCheck, exact: true }} compact={effectiveCollapsed} pathname={pathname} />
-            <div className="mb-3 grid grid-cols-3 gap-1 px-1">
-              <Link to="/admin?view=enterprises" className="rounded-lg bg-[#F4E8E2] px-1.5 py-1.5 text-center text-[9px] font-bold text-[#9A4E35]">企业</Link>
-              <Link to="/admin?view=users" className="rounded-lg bg-[#E7EDF3] px-1.5 py-1.5 text-center text-[9px] font-bold text-[#315E83]">用户</Link>
-              <Link to="/admin?view=content" className="rounded-lg bg-[#EAF4E7] px-1.5 py-1.5 text-center text-[9px] font-bold text-[#52704D]">运行</Link>
-            </div>
-            <div className="my-3 border-t border-[#DED8CC]" />
-          </>}
+            <ShellLink item={{ label: "平台总览", to: "/admin", icon: ShieldCheck, exact: true }} compact={effectiveCollapsed} pathname={pathname} search={search} />
+            <ShellLink item={{ label: "企业管理", to: "/admin?view=enterprises", icon: BriefcaseBusiness }} compact={effectiveCollapsed} pathname={pathname} search={search} />
+            <ShellLink item={{ label: "用户与成员", to: "/admin?view=users", icon: UsersRound }} compact={effectiveCollapsed} pathname={pathname} search={search} />
+            <ShellLink item={{ label: "内容与运行", to: "/admin?view=content", icon: Database }} compact={effectiveCollapsed} pathname={pathname} search={search} />
+          </> : enterpriseAdmin ? <>
+            <div className="mb-1 px-2.5 text-[9px] font-extrabold tracking-[.14em] text-[#52704D]">企业工作台</div>
+            <ShellLink item={{ label: "运营看板", to: "/enterprise/dashboard", icon: BarChart3, exact: true }} compact={effectiveCollapsed} pathname={pathname} search={search} />
+            <ShellLink item={{ label: "任务发布", to: "/enterprise?view=tasks", icon: ClipboardCheck }} compact={effectiveCollapsed} pathname={pathname} search={search} />
+            <ShellLink item={{ label: "岗位知识库", to: "/enterprise?view=knowledge", icon: Library }} compact={effectiveCollapsed} pathname={pathname} search={search} />
+            <ShellLink item={{ label: "成员加入", to: "/enterprise?view=members", icon: UsersRound }} compact={effectiveCollapsed} pathname={pathname} search={search} />
+          </> : <>
           <ShellLink item={{ label: "今日学习", to: "/", icon: Home, exact: true }} compact={effectiveCollapsed} pathname={pathname} />
           {GROUPS.slice(0, 3).map(renderGroup)}
           <ShellLink item={{ label: "转岗培训", to: "/career", icon: GraduationCap }} compact={effectiveCollapsed} pathname={pathname} />
@@ -489,16 +496,18 @@ function ShellLink({
   item,
   compact,
   pathname,
+  search = "",
   trailing,
 }: {
   item: NavItem
   compact: boolean
   pathname: string
+  search?: string
   trailing?: ReactNode
 }) {
   if (!item.to) return null
   const Icon = item.icon
-  const active = matches(pathname, item)
+  const active = matches(pathname, item, search)
   const className = cn(
     "group relative mb-0.5 flex h-11 items-center rounded-xl text-xs font-semibold transition-colors",
     compact ? "justify-center" : "gap-2.5 px-2.5",
