@@ -43,11 +43,36 @@ function transferScore(current: CareerRole, candidate: CareerRole, domainId: Dom
   return { role: candidate, domainId, score, sharedSkills, gaps }
 }
 
+const recruitmentKeywords: Record<string, string> = {
+  "ai-agent": "AI Agent 开发工程师",
+  "ai-infra": "AI Infra 工程师",
+  "embodied-ai": "具身智能算法工程师",
+  "llm-security": "大模型安全工程师",
+  "llm-application": "大模型应用开发工程师",
+  fde: "前线部署工程师 FDE",
+  devsecops: "DevSecOps 工程师",
+  "rag-implementation": "RAG 应用实施工程师",
+  mlops: "MLOps 工程师",
+  "ai-native-frontend": "AI 前端开发工程师",
+  "industrial-architect": "工业互联网架构师",
+  "industrial-data": "工业数据工程师",
+  "edge-ai": "边缘计算 AI 工程师",
+  "industrial-vision": "工业视觉工程师",
+  "industrial-network": "工业网络集成工程师",
+  "mes-engineer": "MES 工程师",
+  "multimodal-llm": "多模态大模型算法工程师",
+  "industrial-ai-agent": "工业 AI Agent 工程师",
+  "smart-manufacturing-software": "智能制造软件工程师",
+  "iot-specialist": "物联网开发工程师",
+}
+
 function recruitmentLinks(role: CareerRole) {
+  const query = recruitmentKeywords[role.id] ?? role.name
+  const encodedQuery = encodeURIComponent(query)
   return [
-    { label: "BOSS 直聘", url: "https://www.zhipin.com/zhaopin/", event: "boss_jobs" },
-    { label: "智联招聘", url: "https://www.zhaopin.com/zhaopin/", event: "zhaopin_jobs" },
-  ].map((item) => ({ ...item, query: role.name }))
+    { label: "BOSS 直聘", url: `https://www.zhipin.com/web/geek/job?query=${encodedQuery}&city=100010000`, event: "boss_jobs" },
+    { label: "智联招聘", url: `https://sou.zhaopin.com/?jl=489&kw=${encodedQuery}`, event: "zhaopin_jobs" },
+  ].map((item) => ({ ...item, query }))
 }
 
 export function CareerRecommendations({ compact = false }: { profileVersion?: number; compact?: boolean }) {
@@ -129,7 +154,7 @@ export function CareerRecommendations({ compact = false }: { profileVersion?: nu
               <span className="text-[9px] font-semibold text-[#557052]">知识库已导入</span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2 border-t border-[#E3DED3] pt-3">
-              {recruitmentLinks(item.role).map((link) => <a key={link.label} href={link.url} target="_blank" rel="noreferrer noopener" onClick={() => track("external_resource_open", link.event, link.query)} className="inline-flex items-center gap-1 rounded-lg border border-[#D7D1C4] bg-[#F8F6F0] px-2 py-1 text-[9px] font-bold text-[#59636B] hover:border-[#9FB1BC] hover:text-[#315E83]">在{link.label}查看需求<ExternalLink className="size-2.5" /></a>)}
+              {recruitmentLinks(item.role).map((link) => <a key={link.label} href={link.url} target="_blank" rel="noreferrer noopener" aria-label={`在${link.label}搜索${link.query}职位`} title={`搜索：${link.query}`} onClick={() => track("external_resource_open", link.event, link.query)} className="inline-flex items-center gap-1 rounded-lg border border-[#D7D1C4] bg-[#F8F6F0] px-2 py-1 text-[9px] font-bold text-[#59636B] hover:border-[#9FB1BC] hover:text-[#315E83]">在{link.label}查看需求<ExternalLink className="size-2.5" /></a>)}
             </div>
           </article>
         ))}

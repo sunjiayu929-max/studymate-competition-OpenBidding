@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom"
 import {
+  Award,
   BarChart3,
   BookOpenCheck,
   Bot,
@@ -41,6 +42,7 @@ export type PageId =
   | "concept"
   | "guide"
   | "interview"
+  | "honor"
 
 const PAGE_META: Record<PageId, { label: string; group: string; icon: typeof Home }> = {
   home: { label: "今日学习", group: "学习中心", icon: Home },
@@ -61,6 +63,7 @@ const PAGE_META: Record<PageId, { label: string; group: string; icon: typeof Hom
   concept: { label: "可视讲解", group: "AI 学习工具", icon: Orbit },
   guide: { label: "新手指引", group: "辅助入口", icon: Compass },
   interview: { label: "AI 面试", group: "求职准备", icon: MessageSquare },
+  honor: { label: "我的荣誉墙", group: "练习与成长", icon: Award },
 }
 
 interface AppTopbarProps {

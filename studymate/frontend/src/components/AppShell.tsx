@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import {
+  Award,
   BarChart3,
   BookOpenCheck,
   BriefcaseBusiness,
@@ -83,6 +84,7 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
       { label: "智能测验", to: "/quiz", icon: BookOpenCheck },
       { label: "智能笔记", to: "/notes", icon: NotebookPen },
       { label: "实时学习报告", to: "/report", icon: BarChart3 },
+      { label: "我的荣誉墙", to: "/honors", icon: Award },
     ],
   },
   {
