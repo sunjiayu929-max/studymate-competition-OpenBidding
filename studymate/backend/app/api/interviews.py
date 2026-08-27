@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import math
 import secrets
 import time
 import uuid
@@ -13,7 +14,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, ValidationError
-from sqlalchemy import desc, select, update
+from sqlalchemy import desc, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -81,6 +82,12 @@ class InterviewResultCallback(BaseModel):
 class InterviewStartedCallback(BaseModel):
     attempt_id: str = Field(min_length=1, max_length=36)
     external_interview_id: str = Field(min_length=1, max_length=64)
+
+
+class InterviewAbandonedCallback(BaseModel):
+    attempt_id: str = Field(min_length=1, max_length=36)
+    external_interview_id: str = Field(min_length=1, max_length=64)
+    status: Literal["abandoned"]
 
 
 class RedeemTicketRequest(BaseModel):
@@ -178,11 +185,24 @@ def _validate_report_scores(attempt: InterviewAttempt, report: InterviewReport) 
     if not expected_competencies:
         raise HTTPException(status_code=422, detail="面试记录缺少岗位能力要求")
     supplied = {item.competency.strip(): item.score for item in report.competency_scores}
+    generic = report.generic_scores
+    all_scores = [
+        report.overall_score,
+        report.role_match_score,
+        report.general_score,
+        generic.professional_ability,
+        generic.learning_ability,
+        generic.team_collaboration,
+        generic.problem_solving,
+        generic.communication_expression,
+        *supplied.values(),
+    ]
+    if any(not math.isfinite(value) for value in all_scores):
+        raise HTTPException(status_code=422, detail="面试报告包含无效分数")
     if len(supplied) != len(report.competency_scores) or set(supplied) != set(expected_competencies):
         raise HTTPException(status_code=422, detail="面试报告的岗位能力维度不完整或不匹配")
 
     expected_role = round(sum(supplied.values()) / len(supplied), 1)
-    generic = report.generic_scores
     expected_general = round(
         generic.professional_ability * 0.40
         + generic.learning_ability * 0.20
@@ -211,6 +231,25 @@ async def _get_owned_attempt(
     return attempt
 
 
+async def _get_internal_attempt(
+    db: AsyncSession, *, attempt_id: str, lock: bool = False
+) -> InterviewAttempt:
+    """Load an attempt for a signed service callback.
+
+    Callback delivery and an intentional early finish can arrive concurrently.
+    Locking the row for state-changing callbacks makes the transition
+    monotonic on databases that support row locks while remaining harmless on
+    SQLite used for local development.
+    """
+    query = select(InterviewAttempt).where(InterviewAttempt.id == attempt_id)
+    if lock:
+        query = query.with_for_update()
+    attempt = await db.scalar(query)
+    if attempt is None:
+        raise HTTPException(status_code=404, detail="面试记录不存在")
+    return attempt
+
+
 @router.post("/attempts")
 async def create_interview_attempt(
     req: CreateInterviewAttemptRequest,
@@ -224,6 +263,25 @@ async def create_interview_attempt(
     if not public_url:
         raise HTTPException(status_code=503, detail="AI 面试服务尚未配置")
     _service_secret()
+
+    # Serialize the active-attempt check with concurrent starts for the same
+    # learner. Without this lock two requests could both observe capacity and
+    # create more than the configured number of active attempts.
+    locked_user = await db.scalar(select(User).where(User.id == user.id).with_for_update())
+    if locked_user is None:
+        raise HTTPException(status_code=401, detail="当前用户不可用")
+    user = locked_user
+    max_active = max(1, settings.AI_INTERVIEW_MAX_ACTIVE_ATTEMPTS)
+    active_count = await db.scalar(
+        select(func.count())
+        .select_from(InterviewAttempt)
+        .where(
+            InterviewAttempt.user_id == user.id,
+            InterviewAttempt.status.in_(["launch_ready", "launched", "in_progress"]),
+        )
+    ) or 0
+    if active_count >= max_active:
+        raise HTTPException(status_code=429, detail="当前已有进行中的面试，请先完成或结束后再创建")
 
     course_name: str | None = None
     if req.course_id is not None:
@@ -354,9 +412,7 @@ async def receive_interview_started(
     if payload.attempt_id != attempt_id:
         raise HTTPException(status_code=422, detail="面试启动回调与目标记录不一致")
 
-    attempt = await db.get(InterviewAttempt, attempt_id)
-    if attempt is None:
-        raise HTTPException(status_code=404, detail="面试记录不存在")
+    attempt = await _get_internal_attempt(db, attempt_id=attempt_id, lock=True)
     if attempt.external_interview_id and attempt.external_interview_id != payload.external_interview_id:
         raise HTTPException(status_code=409, detail="面试记录已关联其他外部面试")
     if attempt.status == "completed":
@@ -371,6 +427,35 @@ async def receive_interview_started(
     attempt.started_at = attempt.started_at or now
     await db.commit()
     return {"ok": True, "idempotent": was_started, "attempt": _attempt_public(attempt)}
+
+
+@internal_router.post("/attempts/{attempt_id}/abandoned")
+async def receive_interview_abandoned(
+    attempt_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Mirror an intentional early finish to the StudyMate-owned attempt."""
+    raw_body = await request.body()
+    _verify_service_signature(request, raw_body)
+    try:
+        payload = InterviewAbandonedCallback.model_validate_json(raw_body)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail="面试结束回调格式无效") from exc
+    if payload.attempt_id != attempt_id:
+        raise HTTPException(status_code=422, detail="面试结束回调与目标记录不一致")
+
+    attempt = await _get_internal_attempt(db, attempt_id=attempt_id, lock=True)
+    if attempt.external_interview_id and attempt.external_interview_id != payload.external_interview_id:
+        raise HTTPException(status_code=409, detail="面试记录已关联其他外部面试")
+    if attempt.status in {"completed", "abandoned"}:
+        return {"ok": True, "idempotent": True, "attempt": _attempt_public(attempt)}
+    if attempt.status not in {"launch_ready", "launched", "in_progress"}:
+        raise HTTPException(status_code=409, detail="面试记录当前不能结束")
+    attempt.status = "abandoned"
+    attempt.external_interview_id = payload.external_interview_id
+    await db.commit()
+    return {"ok": True, "idempotent": False, "attempt": _attempt_public(attempt)}
 
 
 @internal_router.put("/attempts/{attempt_id}/result")
@@ -388,9 +473,7 @@ async def receive_interview_result(
     if payload.attempt_id != attempt_id or payload.report.attempt_id != attempt_id:
         raise HTTPException(status_code=422, detail="面试报告与目标记录不一致")
 
-    attempt = await db.get(InterviewAttempt, attempt_id)
-    if attempt is None:
-        raise HTTPException(status_code=404, detail="面试记录不存在")
+    attempt = await _get_internal_attempt(db, attempt_id=attempt_id, lock=True)
     if attempt.external_interview_id and attempt.external_interview_id != payload.external_interview_id:
         raise HTTPException(status_code=409, detail="面试记录已关联其他外部面试")
     _validate_report_scores(attempt, payload.report)
@@ -399,6 +482,8 @@ async def receive_interview_result(
         if hmac.compare_digest(attempt.report_hash or "", body_hash):
             return {"ok": True, "idempotent": True, "attempt": _attempt_public(attempt)}
         raise HTTPException(status_code=409, detail="面试记录已由另一份报告完成")
+    if attempt.status == "abandoned":
+        raise HTTPException(status_code=409, detail="面试记录已主动结束，不能再提交报告")
 
     report = payload.report.model_dump(mode="json")
     now = datetime.utcnow()
@@ -409,7 +494,9 @@ async def receive_interview_result(
     attempt.started_at = _parse_iso_time(report.get("started_at")) or attempt.started_at or now
     attempt.completed_at = _parse_iso_time(report.get("completed_at")) or now
 
-    profile = await db.scalar(select(Profile).where(Profile.user_id == attempt.user_id))
+    profile = await db.scalar(
+        select(Profile).where(Profile.user_id == attempt.user_id).with_for_update()
+    )
     if profile is None:
         profile = Profile(user_id=attempt.user_id, dims=ProfileDims().model_dump(), version=1)
         db.add(profile)

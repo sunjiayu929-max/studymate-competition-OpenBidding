@@ -449,6 +449,7 @@ class InterviewAttempt(Base, TimestampMixin):
     course_id: Mapped[int | None] = mapped_column(ForeignKey("courses.id"), nullable=True, index=True)
     role_context: Mapped[dict] = mapped_column(JSON, default=dict)
     profile_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
+    # launch_ready / launched / in_progress / completed / abandoned
     status: Mapped[str] = mapped_column(String(32), default="launch_ready", index=True)
     external_interview_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     report: Mapped[dict] = mapped_column(JSON, default=dict)

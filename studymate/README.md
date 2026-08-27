@@ -119,6 +119,10 @@ bash scripts/deploy.sh up
 
 当前业务基线仍使用 SQLite。`extras` 中的 PostgreSQL、Redis、Chroma 是扩展服务，不代表应用已经切换到这些存储。
 
+Docker 部署时，`DATABASE_URL` 由 Compose 环境变量控制，默认使用持久化卷中的
+`sqlite:///./data/studymate.db`；需要 PostgreSQL 或其他 SQLAlchemy 驱动时，在实际的
+Compose 环境文件中显式填写完整连接串。生产环境同时设置 `SEED_DEMO_USERS=0`，避免后端重启时重新写入固定演示账号；本地演示才保留默认值 `1`。
+
 ## 数据库与演示种子
 
 - 本地运行库：`backend/studymate.db`，由 Git 忽略。

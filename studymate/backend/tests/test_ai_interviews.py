@@ -22,6 +22,7 @@ from app.api.interviews import (
     _token_hash,
     _validate_report_scores,
     create_interview_attempt,
+    receive_interview_abandoned,
     receive_interview_started,
     redeem_launch_ticket,
 )
@@ -96,6 +97,20 @@ class InterviewScoreTests(unittest.TestCase):
 
         with self.assertRaises(HTTPException) as raised:
             _validate_report_scores(attempt, self._report(overall=99, role=80, general=70))
+        self.assertEqual(raised.exception.status_code, 422)
+
+    def test_non_finite_scores_are_rejected(self):
+        attempt = InterviewAttempt(
+            id="attempt-nan",
+            user_id=1,
+            role_id="fde",
+            role_name="FDE",
+            role_context={"competencies": ["系统集成"]},
+        )
+        report = self._report()
+        report.overall_score = float("nan")
+        with self.assertRaises(HTTPException) as raised:
+            _validate_report_scores(attempt, report)
         self.assertEqual(raised.exception.status_code, 422)
 
     def test_profile_keeps_interview_and_training_evidence(self):
@@ -200,6 +215,46 @@ class InterviewTicketTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(saved.status, "in_progress")
             self.assertEqual(saved.external_interview_id, "practice-interview-1")
             self.assertIsNotNone(saved.started_at)
+
+    async def test_abandoned_callback_mirrors_early_finish_and_is_idempotent(self):
+        with TemporaryDirectory() as tmp:
+            engine = create_async_engine(f"sqlite+aiosqlite:///{Path(tmp, 'abandoned.db')}")
+            maker = async_sessionmaker(engine, expire_on_commit=False)
+            async with engine.begin() as connection:
+                await connection.run_sync(Base.metadata.create_all)
+
+            attempt = InterviewAttempt(
+                id="attempt-abandoned",
+                user_id=54,
+                role_id="fde",
+                role_name="FDE",
+                role_context={"id": "fde", "name": "FDE", "competencies": ["系统集成"]},
+                profile_snapshot={"display_name": "测试学习者"},
+                status="in_progress",
+                external_interview_id="practice-abandoned-1",
+            )
+            body = json.dumps({
+                "attempt_id": attempt.id,
+                "external_interview_id": attempt.external_interview_id,
+                "status": "abandoned",
+            }, separators=(",", ":")).encode()
+            path = f"/api/internal/interviews/attempts/{attempt.id}/abandoned"
+            async with maker() as db:
+                db.add_all([User(id=54, name="测试学习者", is_active=True), attempt])
+                await db.commit()
+                with patch.object(settings, "AI_INTERVIEW_SERVICE_SECRET", "interview-test-secret"):
+                    first = await receive_interview_abandoned(
+                        attempt.id, _signed_request(body, path=path), db
+                    )
+                    second = await receive_interview_abandoned(
+                        attempt.id, _signed_request(body, path=path), db
+                    )
+                saved = await db.get(InterviewAttempt, attempt.id)
+
+            await engine.dispose()
+            self.assertFalse(first["idempotent"])
+            self.assertTrue(second["idempotent"])
+            self.assertEqual(saved.status, "abandoned")
 
     async def test_course_must_match_the_server_owned_target_role(self):
         with TemporaryDirectory() as tmp:

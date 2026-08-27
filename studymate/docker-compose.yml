@@ -37,9 +37,11 @@ services:
     environment:
       # 在线代码运行沙箱（同一 docker 网络内访问，不出公网）
       PISTON_URL: "http://piston-api:2000"
-      # 数据库落到挂载的 volume（/app/data），重部署不丢用户数据。
-      # docker_entrypoint.py 首启时从镜像中的压缩种子库解压到这里。
-      DATABASE_URL: "sqlite:///./data/studymate.db"
+      # Compose 的根 .env/.deploy.env 控制数据库；不要在这里写死 SQLite，
+      # 否则会覆盖 backend/.env，导致切换 PostgreSQL 或其他兼容驱动失效。
+      DATABASE_URL: "${DATABASE_URL:-sqlite:///./data/studymate.db}"
+      # 本地默认保留演示数据，生产 .deploy.env 必须显式设为 0。
+      SEED_DEMO_USERS: "${SEED_DEMO_USERS:-1}"
     networks:
       - default
       - studymate_edge
@@ -148,6 +150,12 @@ services:
     depends_on:
       frontend:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2019/config/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     mem_limit: "256m"
     memswap_limit: "512m"
     cpus: 0.5

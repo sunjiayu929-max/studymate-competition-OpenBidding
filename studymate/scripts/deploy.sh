@@ -52,6 +52,24 @@ dotenv_value() {
   ' "$env_file"
 }
 
+reject_compose_env_overrides() {
+  # docker compose gives inherited shell variables precedence over --env-file.
+  # A stale SITE_ADDRESS or profile flag can therefore deploy a valid-looking
+  # stack with the wrong public routing. Fail closed when both values exist.
+  [[ -f "$DEPLOY_ENV_FILE" ]] || return 0
+  local key configured inherited
+  for key in SITE_ADDRESS HTTP_PORT HTTPS_PORT COMPOSE_PROFILES; do
+    configured="$(dotenv_value "$DEPLOY_ENV_FILE" "$key")"
+    if [[ -n "$configured" && -n "${!key+x}" ]]; then
+      inherited="${!key}"
+      if [[ "$inherited" != "$configured" ]]; then
+        echo "Shell environment $key overrides $DEPLOY_ENV_FILE; unset it before deploying." >&2
+        exit 1
+      fi
+    fi
+  done
+}
+
 AI_INTERVIEW_ENABLED="${AI_INTERVIEW_ENABLED:-$(dotenv_value "$DEPLOY_ENV_FILE" AI_INTERVIEW_ENABLED)}"
 AI_INTERVIEW_ENABLED="${AI_INTERVIEW_ENABLED:-0}"
 AI_INTERVIEW_DIR="${AI_INTERVIEW_DIR:-$(dotenv_value "$DEPLOY_ENV_FILE" AI_INTERVIEW_DIR)}"
@@ -113,7 +131,17 @@ oj_compose() {
 preflight_repository() {
   local root branch
   root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
-  [[ -n "$root" ]] || return 0
+  if [[ -z "$root" ]]; then
+    if [[ "$REQUIRE_DEPLOY_BRANCH" == "1" ]]; then
+      local revision
+      revision="${DEPLOY_SOURCE_REVISION:-$(dotenv_value "$DEPLOY_ENV_FILE" DEPLOY_SOURCE_REVISION)}"
+      if [[ -z "$revision" || "$revision" == replace-with-* ]]; then
+        echo "Deployment source has no Git metadata; set DEPLOY_SOURCE_REVISION in $DEPLOY_ENV_FILE." >&2
+        exit 1
+      fi
+    fi
+    return 0
+  fi
 
   if [[ "$REQUIRE_DEPLOY_BRANCH" == "1" ]]; then
     branch="$(git -C "$root" symbolic-ref --short HEAD 2>/dev/null || true)"
@@ -130,6 +158,26 @@ preflight_repository() {
     fi
     [[ -f "$root/ai-interview/docker-compose.yml" ]] || { echo "ai-interview submodule is missing." >&2; exit 1; }
     [[ -f "$root/oj/docker-compose.yml" ]] || { echo "oj submodule is missing." >&2; exit 1; }
+  fi
+}
+
+preflight_effective_compose() {
+  local rendered configured_site
+  reject_compose_env_overrides
+  rendered="$("${COMPOSE[@]}" config 2>/dev/null)" || {
+    echo "Unable to render the effective Docker Compose configuration." >&2
+    exit 1
+  }
+  if [[ -f "$DEPLOY_ENV_FILE" ]] && [[ "$(dotenv_value "$DEPLOY_ENV_FILE" COMPOSE_PROFILES)" == *public* ]]; then
+    configured_site="$(dotenv_value "$DEPLOY_ENV_FILE" SITE_ADDRESS)"
+    if [[ -z "$configured_site" || "$configured_site" == replace-with-* ]]; then
+      echo "Public deployment requires a real SITE_ADDRESS in $DEPLOY_ENV_FILE." >&2
+      exit 1
+    fi
+    if ! grep -Fq "SITE_ADDRESS: $configured_site" <<<"$rendered"; then
+      echo "Effective Compose configuration does not use SITE_ADDRESS=$configured_site." >&2
+      exit 1
+    fi
   fi
 }
 
@@ -347,6 +395,7 @@ case "$ACTION" in
     preflight_repository
     preflight_ai
     preflight_oj
+    preflight_effective_compose
     backup_gate
     compose_up_args=(-d --remove-orphans)
     if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
@@ -375,6 +424,7 @@ case "$ACTION" in
     preflight_repository
     preflight_ai
     preflight_oj
+    preflight_effective_compose
     echo "Deployment preflight passed."
     ;;
   status)
