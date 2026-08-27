@@ -164,7 +164,7 @@ curl -s -o /dev/null -w '%{http_code}\n' https://matropic.cn/interview/loginView
 
 健康检查应返回 JSON；未登录的 `/interview/api/practice/context` 应返回 `401`；`/interview` 应返回 `308` 到 `/interview/`；`/interview/loginView` 应返回 `404`，证明 legacy 路由没有被误公开。静态资源只允许岗位模拟面试所需的 practice 脚本、Three.js 模型加载器、GLB 模型和 UMD 音频处理包。
 
-最后以真实学习者账号进入 AI 面试页面，选择岗位并启动一次会话，确认浏览器落在 `https://matropic.cn/interview/integrations/studymate/launch?...`，且提交作答后主系统的面试记录状态和报告正确更新。
+最后以真实学习者账号进入 AI 面试页面，选择岗位并启动一次会话，确认浏览器落在 `https://matropic.cn/interview/integrations/studymate/launch?...`，且提交作答后主系统的面试记录状态和报告正确更新。中途关闭页面后，StudyMate 的“最近面试”卡片应能通过重新签发一次性 ticket 继续同一场面试，不应创建重复记录。
 
 ## 更新、备份与回滚
 
