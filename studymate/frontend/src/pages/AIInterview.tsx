@@ -9,15 +9,20 @@ import { useTargetRole } from "@/store/targetRole"
 
 interface InterviewAttempt {
   id: string
+  role_id: string
   role_name: string
   status: string
   created_at?: string | null
+  completed_at?: string | null
   score_summary?: { overall_score?: number; role_match_score?: number; general_score?: number }
   report?: InterviewReport
 }
 
 interface InterviewAttemptList { items: InterviewAttempt[] }
 interface InterviewLaunchResponse { launch_url: string }
+interface InterviewAbandonResponse { attempt: InterviewAttempt }
+
+const resumableStatuses = new Set(["launch_ready", "launched", "in_progress"])
 
 interface InterviewCompetencyReport {
   competency: string
@@ -77,6 +82,7 @@ export function AIInterview() {
   const role = useTargetRole()
   const course = useCurrentCourse()
   const [launching, setLaunching] = useState(false)
+  const [endingAttemptId, setEndingAttemptId] = useState("")
   const [error, setError] = useState("")
   const [attempts, setAttempts] = useState<InterviewAttempt[]>([])
 
@@ -86,6 +92,33 @@ export function AIInterview() {
       .catch(() => setAttempts([]))
   }, [])
 
+  async function resumeInterview(attemptId: string) {
+    setLaunching(true)
+    setError("")
+    try {
+      const payload = await apiPost<InterviewLaunchResponse>(`/interviews/attempts/${encodeURIComponent(attemptId)}/launch`)
+      if (!payload.launch_url) throw new Error("面试服务未返回启动地址")
+      window.location.assign(payload.launch_url)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "面试服务暂时不可用，请稍后重试")
+      setLaunching(false)
+    }
+  }
+
+  async function abandonInterview(attemptId: string) {
+    if (!window.confirm("这会将该面试标记为已结束，之后不能从该记录继续，确认结束吗？")) return
+    setEndingAttemptId(attemptId)
+    setError("")
+    try {
+      const payload = await apiPost<InterviewAbandonResponse>(`/interviews/attempts/${encodeURIComponent(attemptId)}/abandon`)
+      setAttempts((current) => current.map((item) => item.id === attemptId ? payload.attempt : item))
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "结束面试记录失败，请稍后重试")
+    } finally {
+      setEndingAttemptId("")
+    }
+  }
+
   async function startInterview() {
     if (!role) {
       setError("请先选择目标岗位")
@@ -94,6 +127,11 @@ export function AIInterview() {
     setLaunching(true)
     setError("")
     try {
+      const activeAttempt = attempts.find((item) => item.role_id === role.id && resumableStatuses.has(item.status))
+      if (activeAttempt) {
+        await resumeInterview(activeAttempt.id)
+        return
+      }
       const payload = await apiPost<InterviewLaunchResponse>("/interviews/attempts", {
         role_id: role.id,
         course_id: course?.name === role.courseName ? course.id : null,
@@ -150,7 +188,7 @@ export function AIInterview() {
           </div>
           <section className="border-t border-[#D7D1C4] bg-[#FFFEFA] px-5 py-5 sm:px-8" aria-labelledby="interview-history">
             <div className="flex items-center justify-between gap-3"><h2 id="interview-history" className="text-sm font-bold text-[#18232D]">最近面试</h2><span className="text-[10px] text-[#8A8172]">仅显示当前账号记录</span></div>
-            {attempts.length ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{attempts.slice(0, 6).map((attempt) => <article key={attempt.id} className="rounded-xl border border-[#E0DACE] bg-[#FBF9F4] px-3 py-2.5"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-xs font-bold text-[#315E83]">{attempt.role_name}</p><p className="mt-1 text-[10px] text-[#8A8172]">{attempt.created_at ? new Date(attempt.created_at).toLocaleString() : ""}</p></div><div className="shrink-0 text-right"><span className="text-[10px] font-bold text-[#557052]">{statusLabels[attempt.status] || attempt.status}</span>{attempt.score_summary?.overall_score != null && <p className="mt-1 text-sm font-extrabold text-[#18232D]">{scoreText(attempt.score_summary.overall_score)}</p>}</div></div><ReportPreview report={attempt.report} /></article>)}</div> : <p className="mt-3 text-xs text-[#7A817F]">完成第一次模拟面试后，报告会出现在这里。</p>}
+            {attempts.length ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{attempts.slice(0, 6).map((attempt) => <article key={attempt.id} className="rounded-xl border border-[#E0DACE] bg-[#FBF9F4] px-3 py-2.5"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-xs font-bold text-[#315E83]">{attempt.role_name}</p><p className="mt-1 text-[10px] text-[#8A8172]">{attempt.created_at ? new Date(attempt.created_at).toLocaleString() : ""}</p></div><div className="shrink-0 text-right"><span className="text-[10px] font-bold text-[#557052]">{statusLabels[attempt.status] || attempt.status}</span>{attempt.score_summary?.overall_score != null && <p className="mt-1 text-sm font-extrabold text-[#18232D]">{scoreText(attempt.score_summary.overall_score)}</p>}</div></div>{resumableStatuses.has(attempt.status) && <div className="mt-2 flex flex-wrap gap-2"><button type="button" onClick={() => void resumeInterview(attempt.id)} disabled={launching || Boolean(endingAttemptId)} className="inline-flex h-8 items-center rounded-lg border border-[#B8C7D4] px-3 text-[10px] font-bold text-[#315E83] hover:bg-[#E7EDF3] disabled:cursor-wait disabled:opacity-60">继续面试</button><button type="button" onClick={() => void abandonInterview(attempt.id)} disabled={launching || Boolean(endingAttemptId)} className="inline-flex h-8 items-center rounded-lg border border-[#D8B7A7] px-3 text-[10px] font-bold text-[#9A4E35] hover:bg-[#F8EDE7] disabled:cursor-wait disabled:opacity-60">{endingAttemptId === attempt.id ? "正在结束" : "结束记录"}</button></div>}<ReportPreview report={attempt.report} /></article>)}</div> : <p className="mt-3 text-xs text-[#7A817F]">完成第一次模拟面试后，报告会出现在这里。</p>}
           </section>
         </section>
       </div>

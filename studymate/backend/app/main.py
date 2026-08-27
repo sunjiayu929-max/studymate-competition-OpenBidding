@@ -830,12 +830,13 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
         await _ensure_columns(conn)
     await _ensure_role_knowledge_catalog()
-    async with engine.begin() as conn:
-        await _ensure_seed_users(conn)
-        await _ensure_pramate_demo_enterprise(conn)
-        await _ensure_demo_quiz_history(conn)
-    await ensure_demo_private_libraries()
-    await ensure_demo_notes_for_users()
+    if settings.SEED_DEMO_USERS:
+        async with engine.begin() as conn:
+            await _ensure_seed_users(conn)
+            await _ensure_pramate_demo_enterprise(conn)
+            await _ensure_demo_quiz_history(conn)
+        await ensure_demo_private_libraries()
+        await ensure_demo_notes_for_users()
     await knowledge_api.mark_interrupted_tasks_failed()
     yield
     await engine.dispose()

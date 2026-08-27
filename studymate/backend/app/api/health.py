@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,7 +12,13 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/ping")
-async def ping():
+async def ping(db: AsyncSession = Depends(get_db)):
+    # A process-only probe allowed a broken database connection to be reported
+    # as healthy. Keep the query minimal for Docker readiness checks.
+    try:
+        await db.execute(text("SELECT 1"))
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="数据库暂不可用") from exc
     client = get_llm_client() if has_llm_key() else None
     return {
         "status": "ok",

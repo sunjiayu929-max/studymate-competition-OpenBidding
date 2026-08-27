@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     EMBEDDING_DIM: int = 1024
 
     DATABASE_URL: str = "sqlite:///./studymate.db"
+    # Local development keeps the presentation seed enabled for convenience.
+    # Production Compose overrides this to 0 so fixed demo credentials and
+    # demo records are never recreated on every backend restart.
+    SEED_DEMO_USERS: bool = True
     CHROMA_PERSIST_DIR: str = "./data/chroma"
     # 私有知识资料原文件目录。Docker 中与数据库同处 /app/data 持久卷。
     PRIVATE_KNOWLEDGE_DIR: str = "./data/private_knowledge"
@@ -130,6 +134,7 @@ class Settings(BaseSettings):
     AI_INTERVIEW_SERVICE_SECRET: str = ""
     AI_INTERVIEW_TICKET_TTL_SECONDS: int = 120
     AI_INTERVIEW_SIGNATURE_TTL_SECONDS: int = 300
+    AI_INTERVIEW_MAX_ACTIVE_ATTEMPTS: int = 2
 
     # Independent Hydro OJ integration. The secret is server-only and must
     # match STUDYMATE_SERVICE_SECRET in the OJ service environment.

@@ -32,9 +32,17 @@
 		# Only the StudyMate learner flow is published here. The retained legacy
 		# recruitment UI still owns root-level /api and page routes, which would
 		# collide with StudyMate if it were exposed through this same host.
+		# Reject encoded dot/slash segments before Caddy's path normalization can
+		# make them escape the /interview namespace.
+		@encoded_interview_escape path_regexp interview_encoded_escape (?i)(%2e|%2f|%5c)
+		handle @encoded_interview_escape {
+			respond "Not found" 404
+		}
 		@unpublished_interview {
 			path /interview/*
-			not path /interview/health /interview/integrations/studymate/launch /interview/practice/* /interview/api/practice/* /interview/api/speech/asr-url /interview/static/*
+			not path /interview/health /interview/integrations/studymate/launch /interview/practice/* /interview/api/practice/* /interview/api/speech/asr-url
+			not path /interview/static/css/practice.css /interview/static/js/practice-avatar.js /interview/static/js/practice-prepare.js /interview/static/js/practice-interview.js
+			not path /interview/static/js/role_*.glb /interview/static/dist/* /interview/static/vendor/three/*
 		}
 		handle @unpublished_interview {
 			respond "Not found" 404

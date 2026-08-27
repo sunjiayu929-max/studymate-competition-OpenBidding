@@ -2,7 +2,9 @@
 
 本文针对当前服务器和域名：`deploy@121.40.64.199`、`matropic.cn`。AI 面试保留独立 Flask + MySQL Compose 项目，但通过 StudyMate 的同一 Caddy 入口发布，不需要新增域名、DNS 记录、证书或公网端口。
 
-> 当前服务器实况（2026-08-23）：Caddy 已恢复宿主机标准 `80/443` 映射，公网 `https://matropic.cn/`、`/api/ping` 和 `/interview/health` 已验收通过。学习者入口是带一次性 ticket 的 `/interview/integrations/studymate/launch?...`，`/interview/` 根路径按白名单可能返回 `404`，不要把它作为已验收的首页。
+> 当前服务器实况（2026-08-27）：Caddy 使用宿主机标准 `80/443` 映射，公网 `https://matropic.cn/`、`/api/ping` 和 `/interview/health` 探针正常。学习者入口是带一次性 ticket 的 `/interview/integrations/studymate/launch?...`，`/interview/` 根路径按白名单返回 `404`，不要把它作为面试首页。生产环境必须关闭固定演示种子（`SEED_DEMO_USERS=0`）。
+
+代码审查期间曾发现一次 Caddy `SITE_ADDRESS` 漂移导致 HTTPS 短时不可用；当前已恢复。部署脚本现在会拒绝 Shell 环境覆盖 `.deploy.env`，并校验最终 Compose 配置。线上验收仍需使用授权学习者账号完成一次完整面试闭环。
 
 ## 发布边界
 
@@ -91,6 +93,9 @@ COMPOSE_PROFILES=public,code-runner
 SITE_ADDRESS=matropic.cn
 AI_INTERVIEW_ENABLED=1
 AI_INTERVIEW_DIR=../ai-interview
+SEED_DEMO_USERS=0
+# 无 Git 元数据的部署目录必须记录 CI 产物提交号或镜像 digest：
+# DEPLOY_SOURCE_REVISION=release-commit-or-image-digest
 HTTP_PORT=80
 HTTPS_PORT=443
 # 服务器无法访问 Docker Hub 时，填写可达的可信镜像或本地镜像名：
@@ -140,7 +145,7 @@ bash scripts/deploy.sh preflight
 bash scripts/deploy.sh up
 ```
 
-`preflight` 会在不启动或重启容器的前提下检查：目录存在、关键密钥已填写、双方共享密钥相同、公开地址为 `https://matropic.cn/interview`、Cookie 前缀为 `/interview`，以及 AI 服务回调地址为 `http://backend:8000`。
+`preflight` 会在不启动或重启容器的前提下检查：目录存在、关键密钥已填写、双方共享密钥相同、公开地址为 `https://matropic.cn/interview`、Cookie 前缀为 `/interview`、AI 服务回调地址为 `http://backend:8000`，以及最终 Compose 配置没有被 Shell 环境覆盖。若部署目录没有 Git 元数据，还必须提供 `DEPLOY_SOURCE_REVISION`。
 
 `up` 先启动主项目以创建共享网络，再启动 AI 面试 Compose 并等待 `studymate-ai-interview` 变为 `healthy`。常用排障命令：
 
@@ -152,13 +157,14 @@ bash scripts/deploy.sh ai-logs
 
 curl -fsS https://matropic.cn/api/ping
 curl -fsS https://matropic.cn/interview/health
+curl -s -o /dev/null -w '%{http_code}\n' https://matropic.cn/interview/api/practice/context
 curl -s -o /dev/null -w '%{http_code}\n' https://matropic.cn/interview
 curl -s -o /dev/null -w '%{http_code}\n' https://matropic.cn/interview/loginView
 ```
 
-健康检查应返回 JSON；`/interview` 应返回 `308` 到 `/interview/`；`/interview/loginView` 应返回 `404`，证明 legacy 路由没有被误公开。
+健康检查应返回 JSON；未登录的 `/interview/api/practice/context` 应返回 `401`；`/interview` 应返回 `308` 到 `/interview/`；`/interview/loginView` 应返回 `404`，证明 legacy 路由没有被误公开。静态资源只允许岗位模拟面试所需的 practice 脚本、Three.js 模型加载器、GLB 模型和 UMD 音频处理包。
 
-最后以真实学习者账号进入 AI 面试页面，选择岗位并启动一次会话，确认浏览器落在 `https://matropic.cn/interview/integrations/studymate/launch?...`，且提交作答后主系统的面试记录状态和报告正确更新。
+最后以真实学习者账号进入 AI 面试页面，选择岗位并启动一次会话，确认浏览器落在 `https://matropic.cn/interview/integrations/studymate/launch?...`，且提交作答后主系统的面试记录状态和报告正确更新。中途关闭页面后，StudyMate 的“最近面试”卡片应能通过重新签发一次性 ticket 继续同一场面试，不应创建重复记录。
 
 ## 更新、备份与回滚
 
