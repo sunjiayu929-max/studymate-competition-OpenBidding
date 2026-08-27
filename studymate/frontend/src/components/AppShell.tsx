@@ -123,12 +123,17 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
   },
 ]
 
-function matches(pathname: string, item: NavItem): boolean {
-  if (item.children) return item.children.some((child) => matches(pathname, child))
+function matches(pathname: string, item: NavItem, search = ""): boolean {
+  if (item.children) return item.children.some((child) => matches(pathname, child, search))
   if (item.external) return false
   if (!item.to) return false
-  if (item.exact) return pathname === item.to
-  return pathname === item.to || pathname.startsWith(`${item.to}/`)
+  const [itemPath, itemQuery] = item.to.split("?", 2)
+  const pathMatches = item.exact
+    ? pathname === itemPath
+    : pathname === itemPath || pathname.startsWith(`${itemPath}/`)
+  if (!pathMatches) return false
+  if (itemQuery) return search === `?${itemQuery}`
+  return !item.exact || search === ""
 }
 
 function readCollapsed() {
@@ -182,16 +187,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const showcaseBlocked = showcaseCourse && SHOWCASE_BLOCKED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
 
   const currentGroup = useMemo(
-    () => GROUPS.find((group) => group.items.some((item) => matches(pathname, item)))?.id,
-    [pathname],
+    () => GROUPS.find((group) => group.items.some((item) => matches(pathname, item, search)))?.id,
+    [pathname, search],
   )
   const currentNestedGroup = useMemo(() => {
     for (const group of GROUPS) {
-      const nestedItem = group.items.find((item) => item.children?.some((child) => matches(pathname, child)))
+      const nestedItem = group.items.find((item) => item.children?.some((child) => matches(pathname, child, search)))
       if (nestedItem) return `${group.id}:${nestedItem.label}`
     }
     return undefined
-  }, [pathname])
+  }, [pathname, search])
 
   useEffect(() => {
     if (currentGroup || currentNestedGroup) {
@@ -298,11 +303,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                     {workspace.status === "running" ? `${readyResources}/6` : "14 Agents"}
                   </span>
                 ) : undefined
-                return <ShellLink key={`${item.to}-${item.label}`} item={item} compact={false} pathname={pathname} trailing={trainingStatus} />
+                return <ShellLink key={`${item.to}-${item.label}`} item={item} compact={false} pathname={pathname} search={search} trailing={trainingStatus} />
               }
               const nestedId = `${group.id}:${item.label}`
               const nestedOpen = Boolean(openGroups[nestedId])
-              const nestedActive = matches(pathname, item)
+              const nestedActive = matches(pathname, item, search)
               const ItemIcon = item.icon
               return (
                 <div key={nestedId}>
@@ -321,7 +326,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </button>
                   {nestedOpen && (
                     <div className="ml-3 border-l border-[#D7D1C4] pl-2">
-                      {item.children.map((child) => <ShellLink key={`${child.to}-${child.label}`} item={child} compact={false} pathname={pathname} />)}
+                      {item.children.map((child) => <ShellLink key={`${child.to}-${child.label}`} item={child} compact={false} pathname={pathname} search={search} />)}
                     </div>
                   )}
                 </div>
@@ -429,6 +434,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {GROUPS.slice(3).map(renderGroup)}
           {enterpriseVisible && <ShellLink item={{ label: enterpriseAdmin ? "企业工作台" : "企业任务", to: "/enterprise", icon: BriefcaseBusiness }} compact={effectiveCollapsed} pathname={pathname} />}
           <ShellLink item={{ label: "反馈中心", to: "/feedback", icon: MessageSquare }} compact={effectiveCollapsed} pathname={pathname} />
+          </>}
         </nav>
 
         <div className="shrink-0 border-t border-[#DED8CC] p-3">
