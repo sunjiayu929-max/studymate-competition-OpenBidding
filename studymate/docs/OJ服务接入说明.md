@@ -47,9 +47,9 @@ bash scripts/deploy.sh status
 
 ## StudyMate 面试题集目录
 
-OJ 插件 `@studymate/oj-catalog` 使用 `oj/packages/studymate-oj/catalog.yaml` 维护学习者入口。目录目前包含五个入口：面试经典 150 题、面试必考 75 题、面试经典题变式、秋招冲刺百题计划和题库；前四个入口共引用 30 道官方题包中的精选题，题目允许在多个入口复用并共享 Hydro 提交进度。题库入口保留 Hydro 原生题库总览，便于管理员继续导入和维护题目。
+OJ 插件 `@studymate/oj-catalog` 使用 `oj/packages/studymate-oj/catalog.yaml` 维护学习者入口。目录包含力扣官方「面试经典 150 题」和「LeetCode 75」外链、两个本站可提交题集（「面试经典题变式」75 题、「秋招冲刺百题计划」100 题）、国内求职与训练平台索引、远程判题占位入口和 Hydro 原生题库总览。本站题集均来自已导入的官方通用题包，题目允许在多个入口复用并共享 Hydro 提交进度；力扣和国内平台只保存官方链接，不复制题面或测试数据。
 
-插件只改造入口和学习路径页面，不删除 Hydro 比赛、作业、讨论、排名等后端模型。普通学习者访问这些旧路径时会收到功能替代提示，系统管理员仍可访问原生管理页面。题目详情、提交编辑器和判题链路继续使用 Hydro 原生实现与 HydroJudge；JavaScript 使用 Judge 镜像内 Node 的 PATH，Go 使用镜像内 Go 工具链。
+插件只改造入口和学习路径页面，不删除 Hydro 比赛、作业、讨论、排名等后端模型。题集页面支持按岗位、难度和完成状态筛选；普通学习者访问这些旧路径时会收到功能替代提示，系统管理员仍可访问原生管理页面。题目详情、提交编辑器和判题链路继续使用 Hydro 原生实现与 HydroJudge；JavaScript 使用 Judge 镜像内 Node 的 PATH，Go 使用镜像内 Go 工具链。
 
 发布或更新题包后，在 OJ Compose 项目目录执行：
 
