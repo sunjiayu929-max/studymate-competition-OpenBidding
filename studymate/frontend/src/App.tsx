@@ -32,6 +32,7 @@ const CareerExplorer = lazy(() => import("@/pages/CareerExplorer").then((m) => (
 const CompetencyTraining = lazy(() => import("@/pages/CompetencyTraining").then((m) => ({ default: m.CompetencyTraining })))
 const HonorWall = lazy(() => import("@/pages/HonorWall").then((m) => ({ default: m.HonorWall })))
 const AIInterview = lazy(() => import("@/pages/AIInterview").then((m) => ({ default: m.AIInterview })))
+const OjCenter = lazy(() => import("@/pages/OjCenter").then((m) => ({ default: m.OjCenter })))
 const EnterpriseHub = lazy(() => import("@/pages/EnterpriseHub").then((m) => ({ default: m.EnterpriseHub })))
 const EnterpriseDashboard = lazy(() => import("@/pages/EnterpriseDashboard").then((m) => ({ default: m.EnterpriseDashboard })))
 const EnterpriseTaskRead = lazy(() => import("@/pages/EnterpriseTaskRead").then((m) => ({ default: m.EnterpriseTaskRead })))
@@ -206,6 +207,7 @@ export default function App() {
           <Route path="/competency/audit" element={<Navigate to="/competency" replace />} />
           <Route path="/competency/report" element={<Navigate to="/#learner-match-report" replace />} />
           <Route path="/ai-interview" element={<ProtectedPage><AIInterview /></ProtectedPage>} />
+          <Route path="/oj-center" element={<ProtectedPage><OjCenter /></ProtectedPage>} />
           <Route path="/enterprise" element={<ProtectedPage><EnterpriseHub /></ProtectedPage>} />
           <Route path="/enterprise/dashboard" element={<EnterpriseDashboardEntry />} />
           <Route path="/enterprise/tasks/:taskId/read" element={<LearnerTaskReadEntry />} />

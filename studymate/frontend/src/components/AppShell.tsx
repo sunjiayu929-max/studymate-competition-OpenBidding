@@ -92,7 +92,7 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
     label: "求职备战中心",
     icon: ClipboardCheck,
     items: [
-      { label: "机考备战中心", to: "/api/oj/entry", icon: Code2, external: true },
+      { label: "机考备战中心", to: "/oj-center", icon: Code2 },
       { label: "面试备战中心", to: "/ai-interview", icon: MessageSquare },
     ],
   },

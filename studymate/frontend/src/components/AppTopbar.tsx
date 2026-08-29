@@ -5,6 +5,7 @@ import {
   BookOpenCheck,
   Bot,
   ClipboardCheck,
+  Code2,
   Compass,
   Database,
   GraduationCap,
@@ -42,6 +43,7 @@ export type PageId =
   | "concept"
   | "guide"
   | "interview"
+  | "oj"
   | "honor"
 
 const PAGE_META: Record<PageId, { label: string; group: string; icon: typeof Home }> = {
@@ -63,6 +65,7 @@ const PAGE_META: Record<PageId, { label: string; group: string; icon: typeof Hom
   concept: { label: "可视讲解", group: "AI 学习工具", icon: Orbit },
   guide: { label: "新手指引", group: "辅助入口", icon: Compass },
   interview: { label: "AI 面试", group: "求职准备", icon: MessageSquare },
+  oj: { label: "机考备战中心", group: "求职备战中心", icon: Code2 },
   honor: { label: "我的荣誉墙", group: "练习与成长", icon: Award },
 }
 
