@@ -128,12 +128,13 @@ STUDYMATE_SERVICE_SECRET=与 backend/.env 的 AI_INTERVIEW_SERVICE_SECRET 完全
 LLM_API_KEY=生产模型密钥
 PRACTICE_RESUME_ENABLED=0
 PRACTICE_AVATAR_MODEL=role_yskg.glb
+PRACTICE_AVATAR_MODE=video
 # 服务器无法访问 Docker Hub 时：
 # PYTHON_IMAGE=...
 # MYSQL_IMAGE=...
 ```
 
-保持 `DATABASE_URL` 为空即可由面试 Compose 根据 MySQL 配置生成连接串。应用首版公开的是 StudyMate 学习者的岗位模拟面试、语音交互和评估报告；`PRACTICE_RESUME_ENABLED=0` 时准备页面不显示简历上传入口，但相关表和 API 为兼容性保留。`PRACTICE_AVATAR_MODEL` 可指定经过授权且兼容的静态 GLB 文件名。`LLM_API_KEY` 为空时可以演示问答页面，但不会生成可回写的岗位能力报告。不要将任何真实值写入仓库、Shell 历史、截图或部署日志。
+保持 `DATABASE_URL` 为空即可由面试 Compose 根据 MySQL 配置生成连接串。应用首版公开的是 StudyMate 学习者的岗位模拟面试、语音交互和评估报告；`PRACTICE_RESUME_ENABLED=0` 时准备页面不显示简历上传入口，但相关表和 API 为兼容性保留。`PRACTICE_AVATAR_MODE=video` 使用主系统课堂讲师的待机/讲解视频，视频加载失败会先显示海报，再懒加载 GLB；故障排查时可临时设置为 `glb`。`PRACTICE_AVATAR_MODEL` 可指定经过授权且兼容的静态 GLB 文件名。`LLM_API_KEY` 为空时可以演示问答页面，但不会生成可回写的岗位能力报告。不要将任何真实值写入仓库、Shell 历史、截图或部署日志。
 
 ## 部署与健康检查
 
