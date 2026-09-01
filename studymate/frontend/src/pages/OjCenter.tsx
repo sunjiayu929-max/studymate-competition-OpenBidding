@@ -16,7 +16,7 @@ const collections: OjCollection[] = [
   { slug: "interview-must", eyebrow: "LeetCode 官方题单", title: "面试必考 75 题", description: "集中练习通用面试高频考点。", count: "75 题" },
   { slug: "interview-variants", eyebrow: "StudyMate 可直接提交", title: "面试经典题变式", description: "数组、字符串、查找、图与动态规划的站内练习路径。", count: "75 题" },
   { slug: "autumn-sprint", eyebrow: "StudyMate 可直接提交", title: "秋招冲刺百题计划", description: "语法、复杂度、数据处理与常见算法主线训练。", count: "100 题" },
-  { slug: "general-foundation", eyebrow: "StudyMate 可直接提交", title: "多岗位通用基础训练", description: "面向后端、前端、测试、数据和 Python 方向的通用编程基础。", count: "30 题" },
+  { slug: "general-foundation", eyebrow: "StudyMate 可直接提交", title: "多岗位筑基训练计划", description: "面向后端、前端、测试、数据和 Python 方向的通用编程基础训练。", count: "30 题" },
   { slug: "problem-bank", eyebrow: "Hydro 本地题库", title: "题库", description: "浏览已导入的官方训练题和其他公开练习。", count: "全部题目" },
 ]
 
