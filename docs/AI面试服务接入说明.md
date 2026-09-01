@@ -86,6 +86,7 @@ STUDYMATE_SERVICE_SECRET=同一条随机长密钥
 LLM_API_KEY=主系统 DEEPSEEK_API_KEY 的值
 LLM_BASE_URL=https://api.deepseek.com/v1
 LLM_MODEL=deepseek-v4-pro
+LLM_TIMEOUT_SECONDS=90
 ```
 
 生产环境额外在 `ai-interview/.env` 设置：
