@@ -109,6 +109,47 @@ async def list_events(
     return {"count": len(rows), "items": [_to_dict(r) for r in rows]}
 
 
+@router.get("/me/summary")
+async def my_event_summary(
+    user: User = Depends(require_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """返回当前学习者的累计学习时长、注册天数和本周学习时长。
+
+    页面停留埋点以 ``page_leave`` 携带有效 duration；只汇总这类事件，避免
+    workspace_start 等无时长事件或未来新增事件重复计算学习时长。
+    """
+    now = datetime.utcnow()
+    week_start = now - timedelta(days=now.weekday(), hours=now.hour, minutes=now.minute, seconds=now.second, microseconds=now.microsecond)
+    rows = (await db.execute(
+        select(Event).where(
+            Event.user_id == user.id,
+            Event.action == "page_leave",
+            Event.duration_ms > 0,
+        )
+    )).scalars().all()
+    total_ms = sum(max(0, int(row.duration_ms or 0)) for row in rows)
+    weekly_ms = sum(
+        max(0, int(row.duration_ms or 0))
+        for row in rows
+        if row.ts is not None and row.ts >= week_start
+    )
+    today_start = datetime(now.year, now.month, now.day)
+    today_ms = sum(
+        max(0, int(row.duration_ms or 0))
+        for row in rows
+        if row.ts is not None and row.ts >= today_start
+    )
+    registered_days = max(0, (now.date() - user.created_at.date()).days) if user.created_at else 0
+    return {
+        "total_minutes": round(total_ms / 60_000),
+        "learning_days": registered_days,
+        "registered_days": registered_days,
+        "weekly_minutes": round(weekly_ms / 60_000),
+        "today_minutes": round(today_ms / 60_000),
+    }
+
+
 @router.get("/stats")
 async def event_stats(
     hours: int = Query(default=24, ge=1, le=720),

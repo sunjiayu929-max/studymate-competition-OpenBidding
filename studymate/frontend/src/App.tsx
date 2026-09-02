@@ -16,6 +16,8 @@ const WorkspaceDetail = lazy(() => import("@/pages/WorkspaceDetail").then((m) =>
 const TutorChat = lazy(() => import("@/pages/TutorChat").then((m) => ({ default: m.TutorChat })))
 const VoiceTutor = lazy(() => import("@/pages/VoiceTutor").then((m) => ({ default: m.VoiceTutor })))
 const Report = lazy(() => import("@/pages/Report").then((m) => ({ default: m.Report })))
+const LearnerMatchReportPage = lazy(() => import("@/pages/LearnerMatchReportPage").then((m) => ({ default: m.LearnerMatchReportPage })))
+const RoleCapabilityProfilePage = lazy(() => import("@/pages/RoleCapabilityProfilePage").then((m) => ({ default: m.RoleCapabilityProfilePage })))
 const Tests = lazy(() => import("@/pages/Tests").then((m) => ({ default: m.Tests })))
 const Courses = lazy(() => import("@/pages/Courses").then((m) => ({ default: m.Courses })))
 const Notes = lazy(() => import("@/pages/Notes").then((m) => ({ default: m.Notes })))
@@ -42,7 +44,7 @@ const NotFound = lazy(() => import("@/pages/NotFound").then((m) => ({ default: m
 const TutorBubble = lazy(() => import("@/components/TutorBubble").then((m) => ({ default: m.TutorBubble })))
 
 // 登录、助教自身、沉浸工具与高密度数据页不叠加悬浮人物，避免遮挡关键控件和数据卡。
-const BUBBLE_HIDDEN_PATHS = ["/login", "/tutor", "/tutor/voice", "/concept", "/ppt", "/report", "/tests"]
+const BUBBLE_HIDDEN_PATHS = ["/login", "/tutor", "/tutor/voice", "/concept", "/ppt", "/report", "/learner-report", "/capability-profile", "/tests"]
 
 function ScrollToTop() {
   const { pathname, hash } = useLocation()
@@ -203,9 +205,11 @@ export default function App() {
           <Route path="/career" element={<ProtectedPage><CareerExplorer /></ProtectedPage>} />
           <Route path="/competency" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
           <Route path="/honors" element={<ProtectedPage><HonorWall /></ProtectedPage>} />
+          <Route path="/learner-report" element={<ProtectedPage><LearnerMatchReportPage /></ProtectedPage>} />
+          <Route path="/capability-profile" element={<ProtectedPage><RoleCapabilityProfilePage /></ProtectedPage>} />
           <Route path="/competency/resources" element={<Navigate to="/competency" replace />} />
           <Route path="/competency/audit" element={<Navigate to="/competency" replace />} />
-          <Route path="/competency/report" element={<Navigate to="/#learner-match-report" replace />} />
+          <Route path="/competency/report" element={<Navigate to="/learner-report" replace />} />
           <Route path="/ai-interview" element={<ProtectedPage><AIInterview /></ProtectedPage>} />
           <Route path="/oj-center" element={<ProtectedPage><OjCenter /></ProtectedPage>} />
           <Route path="/enterprise" element={<ProtectedPage><EnterpriseHub /></ProtectedPage>} />

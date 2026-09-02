@@ -16,19 +16,18 @@ import { Link } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   BarChart3, Sparkles, Loader2, Download, CheckCircle2, AlertTriangle,
-  Clock, Target, TrendingUp, TrendingDown, RefreshCw, BookOpen, ArrowRight,
+  Clock, Target, TrendingUp, RefreshCw, BookOpen, ArrowRight,
   LineChart as LineChartIcon, History, ArrowLeft, X, ShieldCheck, Layers3,
 } from "lucide-react"
 import {
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
+  ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid,
   LineChart, Line,
 } from "recharts"
 import { AppTopbar } from "@/components/AppTopbar"
 import { Button } from "@/components/ui/button"
 import { Markdown } from "@/components/Markdown"
-import { ProfileMiniCard, type ProfileMiniData } from "@/components/ProfileMiniCard"
-import { CareerRecommendations } from "@/components/CareerRecommendations"
+import type { ProfileMiniData } from "@/components/ProfileMiniCard"
 import { apiGet, apiPost } from "@/lib/api"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useTutorContext } from "@/hooks/useTutorContext"
@@ -100,14 +99,23 @@ interface EvalHistoryItem {
   created_at: string | null
 }
 
-interface AppliedKeys {
-  knowledge_base: string[]
-  preference: string[]
-  employment_skills: string[]
-  weak_points: boolean
+interface LearningStats {
+  total_minutes: number
+  learning_days: number
+  registered_days: number
+  weekly_minutes: number
+  today_minutes: number
 }
 
-type ReportErrorAction = "initial" | "eval" | "apply" | "export"
+const EMPTY_LEARNING_STATS: LearningStats = {
+  total_minutes: 0,
+  learning_days: 0,
+  registered_days: 0,
+  weekly_minutes: 0,
+  today_minutes: 0,
+}
+
+type ReportErrorAction = "initial" | "eval" | "export"
 type ReportNotice = { tone: "success" | "info"; message: string }
 
 interface EvalRequestBody {
@@ -194,13 +202,6 @@ function runPersistentEval(
   return task
 }
 
-const DIM_LABEL: Record<string, string> = {
-  math: "数学", programming: "编程", statistics: "统计", english: "英语",
-  subject_prior: "领域先验", ml_prior: "ML 先验",  // ml_prior 兼容旧画像
-  document: "文档", mindmap: "导图", quiz: "题目", code: "代码", video: "视频", reading: "阅读",
-  algorithms: "算法建模", data_ai: "数据AI", systems: "系统网络", engineering: "工程实践", professional: "职业素养",
-}
-
 const RESOURCE_LABEL: Record<string, string> = {
   doc: "讲解文档", mindmap: "思维导图", quiz: "智能题目", reading: "拓展阅读",
   code: "代码案例", path: "学习路径", concept: "可视讲解", note: "学习笔记", video: "视频",
@@ -229,14 +230,10 @@ export function Report() {
   const [profile, setProfile] = useState<ProfileMiniData | null>(null)
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [evalHistory, setEvalHistory] = useState<EvalHistoryItem[]>([])
+  const [learningStats, setLearningStats] = useState<LearningStats>(EMPTY_LEARNING_STATS)
   const [report, setReport] = useState<EvalReport | null>(() => readCachedReport(USER_ID))
   const [loading, setLoading] = useState(() => activeEvalTasks.has(USER_ID))
-  const [applying, setApplying] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [applied, setApplied] = useState(false)
-  const [appliedChanged, setAppliedChanged] = useState<boolean | null>(null)
-  const [appliedKeys, setAppliedKeys] = useState<AppliedKeys | null>(null)
-  const [highlightProfile, setHighlightProfile] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [errorAction, setErrorAction] = useState<ReportErrorAction | null>(null)
   const [notice, setNotice] = useState<ReportNotice | null>(null)
@@ -304,10 +301,11 @@ export function Report() {
 
   const fetchInitial = useCallback(async () => {
     if (!USER_ID) return
-    const [profileResult, snapshotsResult, historyResult] = await Promise.allSettled([
+    const [profileResult, snapshotsResult, historyResult, learningStatsResult] = await Promise.allSettled([
       apiGet<ProfileMiniData>(`/profile/${USER_ID}`),
       apiGet<{ items: Snapshot[] }>(`/profile/snapshots/${USER_ID}?limit=5`),
       apiGet<{ items: EvalHistoryItem[] }>(`/eval/history/${USER_ID}?limit=10`),
+      apiGet<LearningStats>("/events/me/summary"),
     ])
     const failed: string[] = []
     if (profileResult.status === "fulfilled") setProfile(profileResult.value)
@@ -316,6 +314,12 @@ export function Report() {
     else failed.push("画像快照")
     if (historyResult.status === "fulfilled") setEvalHistory(historyResult.value.items || [])
     else failed.push("评估历史")
+    if (learningStatsResult.status === "fulfilled") {
+      setLearningStats({ ...EMPTY_LEARNING_STATS, ...learningStatsResult.value })
+    } else {
+      // An unavailable telemetry endpoint must not leave these cards loading forever.
+      setLearningStats(EMPTY_LEARNING_STATS)
+    }
 
     setReport((current) => {
       const cached = current ?? readCachedReport(USER_ID)
@@ -398,10 +402,6 @@ export function Report() {
     setLoading(true)
     setError(null)
     setErrorAction(null)
-    setApplied(false)
-    setAppliedChanged(null)
-    setAppliedKeys(null)
-    setHighlightProfile(false)
     try {
       const body: EvalRequestBody = {
         user_id: USER_ID,
@@ -429,7 +429,7 @@ export function Report() {
       setEvalStartedAt(activeEvalStartedAt.get(USER_ID) ?? null)
       const r = await task
       setReport(r)
-      showNotice("新的学习报告已生成，证据与画像建议已经更新")
+      showNotice("新的实时学习报告已生成")
       // 把刚刚 persist 的新评估带进折线图
       try {
         const hist = await apiGet<{ items: EvalHistoryItem[] }>(`/eval/history/${USER_ID}?limit=10`)
@@ -442,56 +442,6 @@ export function Report() {
       setLoading(false)
     }
   }, [quizAttempts, ws.topic, ws.status, timeSpentMin, resourcesConsumed, availableResources, topicsStudied, USER_ID, evidenceCourseId, evidenceCourseName, showNotice])
-
-  const applyToProfile = useCallback(async () => {
-    if (!report?.profile_delta) return
-    if (profile && profile.version !== report.profile_version) {
-      setError(`该报告基于画像 v${report.profile_version}，当前已是 v${profile.version}。请重新评估后再回写，避免重复覆盖。`)
-      setErrorAction("apply")
-      return
-    }
-    setApplying(true)
-    setError(null)
-    setErrorAction(null)
-    try {
-      const result = await apiPost<{
-        version: number
-        changed: boolean
-        changed_fields: string[]
-        applied_delta: ProfileDelta
-      }>("/profile/apply-delta", {
-        user_id: USER_ID,
-        profile_delta: report.profile_delta,
-        trigger: "eval_apply",
-        source_version: report.profile_version,
-      })
-      const fields = new Set(result.changed_fields || [])
-      const keys: AppliedKeys = {
-        knowledge_base: [...fields].filter((field) => field.startsWith("knowledge_base.")).map((field) => field.split(".")[1]),
-        preference: [...fields].filter((field) => field.startsWith("preference.")).map((field) => field.split(".")[1]),
-        employment_skills: [...fields].filter((field) => field.startsWith("employment_skills.")).map((field) => field.split(".")[1]),
-        weak_points: [...fields].some((field) => field.startsWith("weak_points.")),
-      }
-      // 重新拉画像和快照
-      await fetchInitial()
-      setApplied(true)
-      setAppliedChanged(result.changed)
-      setAppliedKeys(keys)
-      if (result.changed) {
-        setHighlightProfile(true)
-        showNotice(`画像已安全更新到 v${result.version}，旧版本快照已保留`)
-        // 2.4s 后撤掉画像 ring，但 DeltaBlock 上的 ✓ 保持
-        window.setTimeout(() => setHighlightProfile(false), 2400)
-      } else {
-        showNotice(`建议未造成实际变化，画像仍为 v${result.version}`, "info")
-      }
-    } catch (e) {
-      setError(`应用 delta 失败：${String(e)}`)
-      setErrorAction("apply")
-    } finally {
-      setApplying(false)
-    }
-  }, [report, profile, fetchInitial, USER_ID, showNotice])
 
   const exportPDF = useCallback(async () => {
     if (!reportRef.current) return
@@ -536,29 +486,6 @@ export function Report() {
       setExporting(false)
     }
   }, [ws.topic, showNotice])
-
-  // 雷达对比数据：报告生成时的画像 vs 使用同一后端规则算出的建议应用后画像。
-  const radarData = useMemo(() => {
-    if (!report) return null
-    const before = report.current_dims
-    const projected = report.projected_dims || report.current_dims
-    const build = (dimKey: "knowledge_base" | "preference" | "employment_skills") => {
-      const beforeValues = (before[dimKey] || {}) as Record<string, number>
-      const projectedValues = (projected[dimKey] || {}) as Record<string, number>
-      const keys = [...new Set([...Object.keys(beforeValues), ...Object.keys(projectedValues)])]
-      return keys.map((k) => ({
-        dim: DIM_LABEL[k] || k,
-        before: beforeValues[k] ?? 0,
-        projected: projectedValues[k] ?? beforeValues[k] ?? 0,
-      }))
-    }
-    return {
-      knowledge: build("knowledge_base"),
-      preference: build("preference"),
-      employment: build("employment_skills"),
-      hasProjection: Boolean(report.projected_dims),
-    }
-  }, [report])
 
   // 评估趋势折线（多次评估对比）：oldest → newest
   const trendData = useMemo(() => {
@@ -619,7 +546,6 @@ export function Report() {
     setError(null)
     if (action === "initial") void fetchInitial()
     else if (action === "eval") void runEval()
-    else if (action === "apply" && !reportStale) void applyToProfile()
     else if (action === "export") void exportPDF()
   }
 
@@ -655,7 +581,7 @@ export function Report() {
           <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-[#DFC8BE] bg-[#F4E8E2] p-3 text-sm text-[#9A4E35]">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
             <span className="min-w-0 flex-1 leading-5">{error}</span>
-            {errorAction && !(errorAction === "apply" && reportStale) && (
+            {errorAction && (
               <button type="button" onClick={retryError} className="h-7 shrink-0 rounded-lg border border-[#D6BBAF] bg-[#FFFEFA] px-2.5 text-[11px] font-bold transition-colors hover:bg-[#F8F1EC]">重试</button>
             )}
             <button type="button" aria-label="关闭错误提示" onClick={() => { setError(null); setErrorAction(null) }} className="grid size-7 shrink-0 place-items-center rounded-lg transition-colors hover:bg-[#EBDAD1]"><X className="size-3.5" /></button>
@@ -723,6 +649,7 @@ export function Report() {
               profileVersion={report.profile_version}
               currentProfileVersion={profile?.version ?? null}
             />
+            <LearningStatsCards stats={learningStats} />
 
             {/* 顶部统计卡 */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -755,32 +682,6 @@ export function Report() {
                 hint={reportStale ? `当前已更新至 v${profile?.version}` : snapshots.length > 0 ? `历史 ${snapshots.length} 版` : "当前版本"}
               />
             </div>
-
-            <AchievementBreakdownCard scores={report.scores} evidence={reportEvidence} />
-
-            {/* 双雷达对比 */}
-            {radarData && (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <RadarCompareCard
-                  title="知识基础对比"
-                  data={radarData.knowledge}
-                  color="#315E83"
-                  hasProjection={radarData.hasProjection}
-                />
-                <RadarCompareCard
-                  title="资源偏好对比"
-                  data={radarData.preference}
-                  color="#6F8A69"
-                  hasProjection={radarData.hasProjection}
-                />
-                <RadarCompareCard
-                  title="就业技能对比"
-                  data={radarData.employment}
-                  color="#7E6B83"
-                  hasProjection={radarData.hasProjection}
-                />
-              </div>
-            )}
 
             {/* 新报告显示主题×难度热力图；旧报告继续使用原柱状图。 */}
             {hasTopicDifficultyData ? (
@@ -819,19 +720,6 @@ export function Report() {
             {trendData.length >= 2 && (
               <TrendLineCard data={trendData} />
             )}
-
-            {/* profile_delta 解释卡 + 应用按钮 */}
-            <ProfileDeltaCard
-              delta={report.profile_delta}
-              applied={applied}
-              appliedChanged={appliedChanged}
-              applying={applying}
-              appliedKeys={appliedKeys}
-              sourceVersion={report.profile_version}
-              currentVersion={profile?.version ?? null}
-              stale={reportStale}
-              onApply={applyToProfile}
-            />
 
             {/* 评估总结 markdown */}
             {report.summary_markdown && (
@@ -881,42 +769,6 @@ export function Report() {
                 </div>
               )}
             </div>
-
-            {/* 当前画像（小卡片，给 PDF 留底） */}
-            {profile && (
-              <div className="mt-4">
-                <div className="text-xs text-[var(--muted-foreground)] mb-1.5 flex items-center gap-2">
-                  <span>当前画像快照</span>
-                  <AnimatePresence>
-                    {highlightProfile && (
-                      <motion.span
-                        initial={{ opacity: 0, x: -6 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -6 }}
-                        className="inline-flex items-center gap-1 rounded-full bg-[#E9EEE6] px-1.5 py-0.5 text-[10px] font-medium text-[#557052]"
-                      >
-                        <CheckCircle2 className="size-3" /> 已更新到 v{profile.version}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </div>
-                <motion.div
-                  animate={highlightProfile ? {
-                    boxShadow: [
-                      "0 0 0 0 rgba(16,185,129,0)",
-                      "0 0 0 6px rgba(16,185,129,0.35)",
-                      "0 0 0 0 rgba(16,185,129,0)",
-                    ],
-                  } : {}}
-                  transition={{ duration: 2.0 }}
-                  className="rounded-2xl"
-                >
-                  <ProfileMiniCard profile={profile} variant="compact" />
-                </motion.div>
-              </div>
-            )}
-
-            <CareerRecommendations profileVersion={profile?.version || 0} />
 
             <div className="text-center text-[10px] text-[var(--muted-foreground)] pt-2">
               本报告由 StudyMate 评估智能体根据答题数据与学习行为生成 · {formatReportTime(report.generated_at)}
@@ -972,64 +824,33 @@ function ReportEvidenceStrip({
   )
 }
 
-function AchievementBreakdownCard({ scores, evidence }: { scores: EvalScores; evidence?: EvalEvidence }) {
-  const completion = scores.answer_completion
-  const coverage = scores.resource_coverage
-  const breakdown = scores.engagement_breakdown
-  const metrics = [
-    {
-      label: "作答完成率",
-      rate: completion?.rate ?? null,
-      value: completion?.rate == null ? "未记录" : `${Math.round(completion.rate * 100)}%`,
-      detail: completion ? `${completion.answered} / ${completion.total} 题已作答` : "旧版报告未保存空答案统计",
-      tone: "bg-[#315E83]",
-    },
-    {
-      label: "资源覆盖率",
-      rate: coverage?.rate ?? null,
-      value: coverage?.rate == null ? "未记录" : `${Math.round(coverage.rate * 100)}%`,
-      detail: coverage
-        ? `${coverage.consumed} / ${coverage.available} 类可用资源已查看`
-        : evidence?.resources_available?.length
-          ? `${evidence.resources_consumed.length} / ${evidence.resources_available.length} 类资源`
-          : "旧版报告未保存可用资源范围",
-      tone: "bg-[#6F8A69]",
-    },
-    {
-      label: "参与度组成",
-      rate: scores.engagement_score / 100,
-      value: `${Math.round(scores.engagement_score)} / 100`,
-      detail: breakdown
-        ? `学习时长 ${breakdown.time_score}/60 + 资源多样性 ${breakdown.resource_variety_score}/40`
-        : "沿用原有参与度评分，旧报告未保存分项",
-      tone: "bg-[#B1842C]",
-    },
+function LearningStatsCards({ stats }: { stats: LearningStats }) {
+  const cards = [
+    { label: "累计学习时长", value: formatLearningMinutes(stats.total_minutes), icon: Clock, tone: "border-[#C7D2D8] bg-[#F3F6F7] text-[#315E83]" },
+    { label: "学习天数", value: `${stats.learning_days ?? stats.registered_days ?? 0} 天`, icon: History, tone: "border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]" },
+    { label: "本周学习时长", value: formatLearningMinutes(stats.weekly_minutes), icon: TrendingUp, tone: "border-[#C9D1CB] bg-[#E9EEE6] text-[#557052]" },
+    { label: "今日学习时长", value: formatLearningMinutes(stats.today_minutes), icon: Clock, tone: "border-[#D7D1C4] bg-[#F8F6F0] text-[#66717B]" },
   ]
   return (
-    <section aria-label="学习达成率拆解" className="rounded-[22px] border border-[#D7D1C4] bg-[#F8F6F0] p-4 sm:p-5">
-      <div className="mb-4">
-        <div className="flex items-center gap-1.5 text-sm font-semibold text-[#18232D]"><Target className="size-4 text-[#315E83]" />学习达成率拆解</div>
-        <p className="mt-1 text-[11px] leading-5 text-[#66717B]">分别展示作答、资源覆盖和学习投入</p>
-      </div>
-      <div className="grid gap-3 md:grid-cols-3">
-        {metrics.map((metric) => {
-          const width = metric.rate == null ? 0 : Math.max(0, Math.min(100, Math.round(metric.rate * 100)))
-          return (
-            <article key={metric.label} className="rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] p-3.5">
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="text-[11px] font-bold text-[#59636B]">{metric.label}</span>
-                <strong className="text-sm text-[#18232D]">{metric.value}</strong>
-              </div>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#E8E3D9]" role="progressbar" aria-label={metric.label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={metric.rate == null ? undefined : width}>
-                <motion.div initial={false} animate={{ width: `${width}%` }} className={`h-full rounded-full ${metric.tone}`} />
-              </div>
-              <p className="mt-2 text-[10px] leading-4 text-[#7A817F]">{metric.detail}</p>
-            </article>
-          )
-        })}
-      </div>
+    <section aria-label="账号学习统计" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      {cards.map(({ label, value, icon: Icon, tone }) => (
+        <article key={label} className={`rounded-[18px] border px-3.5 py-3 ${tone}`}>
+          <div className="flex items-center gap-1.5 text-[10px] font-bold"><Icon className="size-3.5" />{label}</div>
+          <strong className="mt-2 block truncate text-lg tracking-[-.02em] text-[#18232D]" title={value}>{value}</strong>
+          {label === "学习天数" && <p className="mt-1 text-[9px] text-[#7A817F]">从账号注册日期起计算</p>}
+          {label === "今日学习时长" && <p className="mt-1 text-[9px] text-[#7A817F]">仅汇总有效页面停留</p>}
+        </article>
+      ))}
     </section>
   )
+}
+
+function formatLearningMinutes(minutes: number) {
+  const safe = Math.max(0, Math.round(minutes || 0))
+  if (safe < 60) return `${safe} 分钟`
+  const hours = Math.floor(safe / 60)
+  const rest = safe % 60
+  return rest ? `${hours} 小时 ${rest} 分` : `${hours} 小时`
 }
 
 function heatmapTone(rate: number | null) {
@@ -1319,6 +1140,7 @@ function StatCard({
   )
 }
 
+/* Removed from the real-time report by product design; retained below as historical code.
 function RadarCompareCard({
   title, data, color, hasProjection,
 }: {
@@ -1498,7 +1320,7 @@ function DeltaBlock({
 }: {
   title: string
   entries: Array<[string, number]>
-  /** undefined = 未应用；string[] = 已应用的字段名集合（条目命中后 ✓ + pulse） */
+   // undefined = 未应用；string[] = 已应用的字段名集合（条目命中后 ✓ + pulse）
   appliedKeys?: string[]
 }) {
   const applied = appliedKeys !== undefined
@@ -1546,6 +1368,8 @@ function DeltaBlock({
     </motion.div>
   )
 }
+
+*/
 
 function TrendLineCard({
   data,

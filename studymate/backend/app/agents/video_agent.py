@@ -5,8 +5,6 @@ import math
 import re
 
 from app.agents.base import AgentBase, AgentMeta, EventEmitter
-from app.video.assembler import VideoAssemblyError, assemble_video_segments
-from app.video.minimax_h3 import MiniMaxH3Error, generate_h3_video, minimax_h3_configured
 
 
 def _estimate_complexity(context: dict, topic: str) -> str:
@@ -24,7 +22,7 @@ def _estimate_complexity(context: dict, topic: str) -> str:
 
 
 def _duration_for_voiceover(voiceover: str, complexity: str) -> int:
-    """MiniMax H3 只接受 4-15 秒；按旁白长度估算并设置复杂主题上限。"""
+    """按旁白长度估算讲解时长，并设置复杂主题上限。"""
     spoken_chars = len(re.sub(r"[，。！？：；、“”‘’（）()、\s]", "", voiceover))
     estimated = math.ceil(spoken_chars / 5) + 1
     cap = {"focused": 6, "workflow": 9, "complex": 12}[complexity]
@@ -32,7 +30,7 @@ def _duration_for_voiceover(voiceover: str, complexity: str) -> int:
 
 
 def _segment_duration(voiceover: str, complexity: str) -> int:
-    """Choose a duration for one teachable node, always within H3's limits."""
+    """为一个可教学节点估算适合前端播放的时长。"""
     cap = {"focused": 6, "workflow": 9, "complex": 12}[complexity]
     spoken_chars = len(re.sub(r"[，。！？：；、“”‘’（）()、\s]", "", voiceover))
     return max(6 if complexity != "focused" else 4, min(cap, math.ceil(spoken_chars / 5) + 1))
@@ -144,7 +142,7 @@ def _build_script(context: dict) -> dict:
 
 
 def preview_video_plan(context: dict) -> dict:
-    """返回生成前可展示的时长与成本估算，不调用 MiniMax。"""
+    """返回前端可视讲解脚本的时长与分镜估算。"""
     script = _build_script(context)
     return {
         "duration": script["duration"],
@@ -169,7 +167,7 @@ class VideoAgent(AgentBase):
         name="可视讲解生成 Agent",
         icon="🎬",
         color="violet",
-        description="将岗位任务编排为带中文原生声音的 H3 教学视频",
+        description="将岗位任务编排为可直接播放的前端可视讲解脚本",
     )
 
     async def run(self, context: dict, emit: EventEmitter) -> dict:
@@ -183,8 +181,8 @@ class VideoAgent(AgentBase):
         base = {
             "type": "video",
             "title": script["title"],
-            "provider": "minimax",
-            "model": "MiniMax-H3",
+            "provider": "frontend",
+            "model": "scripted-lecture",
             "resolution": "768P",
             "duration": script["duration"],
             "total_duration": script["total_duration"],
@@ -192,7 +190,7 @@ class VideoAgent(AgentBase):
             "completed_segments": 0,
             "segments": script["segments"],
             "segment_urls": [],
-            "assembly_status": "pending",
+            "assembly_status": "not_applicable",
             "assembled_video_url": "",
             "actual_cost_rmb": 0,
             "ratio": "16:9",
@@ -208,94 +206,10 @@ class VideoAgent(AgentBase):
             "duration_reason": script["duration_reason"],
             "estimated_cost_rmb": script["estimated_cost_rmb"],
         }
-        await publish_progress({**base, "status": "running", "message": "正在准备视频片段…"})
-        if not minimax_h3_configured():
-            await self.emit_delta(emit, "H3 API Key 未配置，已保留岗位视频脚本与分镜占位。")
-            return {**base, "status": "unconfigured", "message": "待配置 MiniMax H3 API Key"}
-        segments = [dict(segment) for segment in script["segments"]]
-        successful_urls: list[str] = []
-        successful_segments: list[dict] = []
-        successful_tasks: list[str] = []
-        failure_messages: list[str] = []
-        for segment in segments:
-            await self.emit_delta(emit, f"正在生成视频片段 {segment['index']}/{len(segments)}：{segment['title']}…")
-            try:
-                result = await generate_h3_video(prompt=segment["prompt"], duration=segment["duration"])
-                segment.update({
-                    "status": "succeeded",
-                    "task_id": result.get("task_id", ""),
-                    "video_url": result.get("video_url", ""),
-                    "duration": result.get("duration", segment["duration"]),
-                    "usage": result.get("usage", {}),
-                })
-                successful_urls.append(segment["video_url"])
-                successful_segments.append(segment)
-                successful_tasks.append(segment["task_id"])
-                await publish_progress({
-                    **base,
-                    "status": "running",
-                    "segments": segments,
-                    "completed_segments": sum(item["status"] == "succeeded" for item in segments),
-                    "segment_urls": successful_urls,
-                    "actual_cost_rmb": round(sum(float(item.get("duration") or 0) * 0.5 for item in segments if item["status"] == "succeeded"), 2),
-                    "message": f"已完成 {sum(item['status'] == 'succeeded' for item in segments)}/{len(segments)} 个视频片段",
-                })
-            except MiniMaxH3Error as exc:
-                segment.update({"status": "failed", "message": str(exc), "task_id": exc.task_id})
-                failure_messages.append(f"片段 {segment['index']}：{exc}")
-                await publish_progress({
-                    **base,
-                    "status": "partial_failed" if successful_urls else "failed",
-                    "segments": segments,
-                    "completed_segments": len(successful_urls),
-                    "segment_urls": successful_urls,
-                    "message": "部分视频片段生成失败，已保留已完成片段和脚本。",
-                })
-                break
-
-        completed = sum(segment["status"] == "succeeded" for segment in segments)
-        common = {
-            **base,
-            "segments": segments,
-            "segment_urls": successful_urls,
-            "completed_segments": completed,
-            "actual_cost_rmb": round(sum(float(segment.get("duration") or 0) * 0.5 for segment in segments if segment["status"] == "succeeded"), 2),
-            "task_id": successful_tasks[0] if len(successful_tasks) == 1 else "",
-        }
-        if failure_messages:
-            await self.emit_delta(emit, "；".join(failure_messages))
-            return {
-                **common,
-                "status": "partial_failed" if completed else "failed",
-                "assembly_status": "not_started",
-                "message": "部分视频片段生成失败，已保留已完成片段和脚本。",
-            }
-
-        try:
-            assembly = await assemble_video_segments(
-                user_id=int(context.get("user_id") or 0),
-                video_urls=successful_urls,
-                subtitle_segments=successful_segments,
-            )
-        except VideoAssemblyError as exc:
-            return {
-                **common,
-                "status": "segments_ready",
-                "assembly_status": "failed",
-                "message": f"片段已生成，但视频合成失败：{exc}",
-            }
-        if assembly.get("status") == "assembled":
-            return {
-                **common,
-                "status": "succeeded",
-                "assembly_status": "assembled",
-                "video_url": assembly["url"],
-                "assembled_video_url": assembly["url"],
-                "message": "视频片段已生成并合成，等待三组审核与总裁决",
-            }
+        await publish_progress({**base, "status": "running", "message": "正在编排可视讲解脚本…"})
+        await self.emit_delta(emit, "已生成可视讲解脚本与分镜，将使用前端动画、黑板和语音播放。")
         return {
-            **common,
-            "status": "segments_ready",
-            "assembly_status": assembly.get("status", "unavailable"),
-            "message": assembly.get("message", "片段已生成，当前环境暂未合成最终视频。"),
+            **base,
+            "status": "script_ready",
+            "message": "可视讲解脚本与分镜已生成，将使用前端动画、黑板和语音播放。",
         }

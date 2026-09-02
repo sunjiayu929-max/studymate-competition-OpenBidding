@@ -124,12 +124,14 @@ export function LearnerMatchReport(props: LearnerMatchReportProps) {
                   const point = NODE_POSITIONS[index]
                   if (!point) return null
                   const meta = STATUS_META[node.status]
-                  return <foreignObject key={node.id} x={point.x} y={point.y} width="164" height="86"><button type="button" onClick={() => setSelectedNodeId(node.id)} className={cn("h-full w-full rounded-[16px] border px-3 text-left shadow-[0_5px_14px_rgba(48,72,98,.07)] transition hover:-translate-y-0.5", meta.card, selectedNode?.id === node.id && "ring-2 ring-[#577FA7]/25")}><span className="flex items-center gap-1.5 text-[8px] font-bold"><span className={cn("size-1.5 rounded-full", meta.dot)} />{meta.label}</span><strong className="mt-2 block line-clamp-2 text-[11px] leading-4">{node.name}</strong></button></foreignObject>
+                  const nodeClass = cn("block h-full w-full rounded-[16px] border px-3 text-left shadow-[0_5px_14px_rgba(48,72,98,.07)] transition hover:-translate-y-0.5", meta.card, selectedNode?.id === node.id && "ring-2 ring-[#577FA7]/25")
+                  const nodeContent = <><span className="flex items-center gap-1.5 text-[8px] font-bold"><span className={cn("size-1.5 rounded-full", meta.dot)} />{meta.label}{node.status === "gap" && <ArrowRight className="ml-auto size-3" />}</span><strong className="mt-2 block line-clamp-2 text-[11px] leading-4">{node.name}</strong></>
+                  return <foreignObject key={node.id} x={point.x} y={point.y} width="164" height="86">{node.status === "gap" ? <Link to={`/competency?topic=${encodeURIComponent(node.name)}&source=knowledge-gap#training-focus`} onClick={() => setSelectedNodeId(node.id)} aria-label={`学习知识盲区：${node.name}`} className={nodeClass}>{nodeContent}</Link> : <button type="button" onClick={() => setSelectedNodeId(node.id)} className={nodeClass}>{nodeContent}</button>}</foreignObject>
                 })}
               </svg>
             </div>
 
-            {selectedNode && <aside className="rounded-[18px] border border-[#DBE2E9] bg-[#FAFBFC] p-4"><div className="flex items-center gap-2"><span className={cn("size-2 rounded-full", STATUS_META[selectedNode.status].dot)} /><span className="text-[9px] font-bold text-[#778697]">{STATUS_META[selectedNode.status].label}</span></div><h3 className="mt-2 text-sm font-bold text-[#2B3F55]">{selectedNode.name}</h3><div className="mt-4 rounded-xl bg-white p-3"><span className="text-[9px] font-bold text-[#7A8897]">定位依据</span><p className="mt-1 text-[10px] leading-5 text-[#53667A]">{selectedNode.evidence}</p></div><div className="mt-2 rounded-xl bg-white p-3"><span className="text-[9px] font-bold text-[#7A8897]">对应处理</span><p className="mt-1 text-[10px] leading-5 text-[#53667A]">{selectedNode.nextStep}</p></div></aside>}
+            {selectedNode && <aside className="rounded-[18px] border border-[#DBE2E9] bg-[#FAFBFC] p-4"><div className="flex items-center gap-2"><span className={cn("size-2 rounded-full", STATUS_META[selectedNode.status].dot)} /><span className="text-[9px] font-bold text-[#778697]">{STATUS_META[selectedNode.status].label}</span></div><h3 className="mt-2 text-sm font-bold text-[#2B3F55]">{selectedNode.name}</h3><div className="mt-4 rounded-xl bg-white p-3"><span className="text-[9px] font-bold text-[#7A8897]">定位依据</span><p className="mt-1 text-[10px] leading-5 text-[#53667A]">{selectedNode.evidence}</p></div><div className="mt-2 rounded-xl bg-white p-3"><span className="text-[9px] font-bold text-[#7A8897]">对应处理</span><p className="mt-1 text-[10px] leading-5 text-[#53667A]">{selectedNode.nextStep}</p></div>{selectedNode.status === "gap" && <Link to={`/competency?topic=${encodeURIComponent(selectedNode.name)}&source=knowledge-gap#training-focus`} className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#A9583D] px-4 text-[10px] font-bold text-white transition hover:bg-[#94472F]">去岗位训练中心学习此主题<ArrowRight className="size-3.5" /></Link>}</aside>}
           </div>
           <div className="mt-3 flex flex-wrap gap-4 text-[9px] text-[#718090]">{(["gap", "verify", "supported"] as KnowledgeNodeStatus[]).map((status) => <span key={status} className="inline-flex items-center gap-1.5"><span className={cn("size-2 rounded-full", STATUS_META[status].dot)} />{STATUS_META[status].label}</span>)}</div>
         </article>
@@ -161,7 +163,7 @@ export function LearnerMatchReport(props: LearnerMatchReportProps) {
                 selectedId={selectedPath?.id}
                 onSelect={setSelectedPathId}
               />
-              <ReportPathProgress capabilities={props.capabilities} targetRoleName={props.targetRoleName} />
+              <ReportPathProgress capabilities={pathCapabilities} targetRoleName={props.targetRoleName} />
             </div>
             <Link to="/competency" className="group inline-flex min-h-24 items-center justify-center gap-2 rounded-[18px] border border-[#B9CBE4] bg-[linear-gradient(145deg,#244C80,#315E9C)] px-4 text-center text-xs font-bold text-white shadow-[0_12px_24px_rgba(36,76,128,.2)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(36,76,128,.28)]"><span><span className="grid mx-auto mb-2 size-9 place-items-center rounded-xl bg-white/15"><Route className="size-4" /></span><span className="block">开始今日学习</span><span className="mt-1 block text-[9px] font-medium text-[#CFE2FF]">进入岗位训练中心</span></span><ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></Link>
           </div>
@@ -181,42 +183,114 @@ const REPORT_ROUTE_META: Record<ReportCapability["state"], { fill: string; strok
   locked: { fill: "#F5F6F8", stroke: "#A8B0BC", label: "前置未完成" },
 }
 
+interface RoutePoint {
+  x: number
+  y: number
+}
+
+interface RouteLayoutNode {
+  id: string
+  point: RoutePoint
+  depth: number
+  capability?: ReportCapability
+  assessment?: boolean
+}
+
+const ROUTE_NODE_WIDTH = 156
+const ROUTE_NODE_HEIGHT = 84
+const ROUTE_COLUMN_GAP = 218
+const ROUTE_ROW_GAP = 116
+const ROUTE_START_X = 96
+const ROUTE_START_Y = 84
+
+function buildReportRouteLayout(capabilities: ReportCapability[]) {
+  const nodeById = new Map(capabilities.map((node) => [node.id, node]))
+  const depthById = new Map<string, number>()
+
+  const getDepth = (id: string, visiting = new Set<string>()): number => {
+    const cached = depthById.get(id)
+    if (cached !== undefined) return cached
+    if (visiting.has(id)) return 0
+    const node = nodeById.get(id)
+    if (!node) return 0
+    const nextVisiting = new Set(visiting).add(id)
+    const depth = node.prerequisites
+      .filter((prerequisiteId) => nodeById.has(prerequisiteId))
+      .reduce((maxDepth, prerequisiteId) => Math.max(maxDepth, getDepth(prerequisiteId, nextVisiting) + 1), 0)
+    depthById.set(id, depth)
+    return depth
+  }
+
+  capabilities.forEach((node) => getDepth(node.id))
+  const prerequisiteIds = new Set(capabilities.flatMap((node) => node.prerequisites.filter((id) => nodeById.has(id))))
+  const leafIds = capabilities.filter((node) => !prerequisiteIds.has(node.id)).map((node) => node.id)
+  const assessmentDepth = leafIds.length ? Math.max(...leafIds.map((id) => depthById.get(id) ?? 0)) + 1 : 0
+  const routeNodes: Array<Omit<RouteLayoutNode, "point">> = [
+    ...capabilities.map((node) => ({ id: node.id, depth: depthById.get(node.id) ?? 0, capability: node })),
+    { id: "final-assessment", depth: assessmentDepth, assessment: true },
+  ]
+  const maxDepth = Math.max(...routeNodes.map((node) => node.depth), 0)
+  const columns = Array.from({ length: maxDepth + 1 }, (_, depth) => routeNodes.filter((node) => node.depth === depth))
+  const maxRows = Math.max(...columns.map((column) => column.length), 1)
+  const positionedNodes: RouteLayoutNode[] = []
+
+  columns.forEach((column, depth) => {
+    const verticalOffset = (maxRows - column.length) / 2
+    column.forEach((node, row) => positionedNodes.push({
+      ...node,
+      point: {
+        x: ROUTE_START_X + depth * ROUTE_COLUMN_GAP,
+        y: ROUTE_START_Y + (verticalOffset + row) * ROUTE_ROW_GAP,
+      },
+    }))
+  })
+
+  return {
+    nodes: positionedNodes,
+    leafIds,
+    width: Math.max(920, ROUTE_START_X * 2 + (maxDepth + 1) * ROUTE_COLUMN_GAP),
+    height: Math.max(300, ROUTE_START_Y * 2 + maxRows * ROUTE_ROW_GAP),
+  }
+}
+
 export function ReportPathMap({ capabilities, targetRoleName, selectedId, onSelect }: { capabilities: ReportCapability[]; targetRoleName: string; selectedId?: string; onSelect: (id: string) => void }) {
-  const nodes = capabilities.slice(0, 7)
-  const positions = nodes.map((_, index) => ({ x: 122 + (index % 3) * 258, y: 104 + Math.floor(index / 3) * 142 }))
-  const nodeById = new Map(nodes.map((node, index) => [node.id, { node, point: positions[index] }]))
-  const finalPoint = { x: 890, y: 246 }
-  const finalReady = nodes.length > 0 && nodes.every((node) => node.level >= 3)
-  const prerequisiteIds = new Set(nodes.flatMap((node) => node.prerequisites))
-  const terminalNodes = nodes.filter((node) => !prerequisiteIds.has(node.id))
+  const layout = buildReportRouteLayout(capabilities)
+  const nodeById = new Map(layout.nodes.map((node) => [node.id, node]))
+  const finalReady = capabilities.length > 0 && capabilities.every((node) => node.level >= 3)
+  const assessment = nodeById.get("final-assessment")
+
+  const edgePath = (source: RoutePoint, target: RoutePoint) => {
+    const startX = source.x + ROUTE_NODE_WIDTH / 2
+    const endX = target.x - ROUTE_NODE_WIDTH / 2
+    const controlOffset = Math.max(42, (endX - startX) / 2)
+    return `M ${startX} ${source.y} C ${startX + controlOffset} ${source.y}, ${endX - controlOffset} ${target.y}, ${endX} ${target.y}`
+  }
 
   return <div className="overflow-x-auto rounded-[18px] border border-[#DCE5F0] bg-[linear-gradient(180deg,#F8FBFF_0%,#FFFFFF_100%)]">
-    <svg viewBox="0 0 1020 390" role="img" aria-label={`${targetRoleName || "目标岗位"}路径地图`} className="min-w-[780px]">
+    <svg viewBox={`0 0 ${layout.width} ${layout.height}`} role="img" aria-label={`${targetRoleName || "目标岗位"}路径地图`} className="min-w-[780px]">
       <defs>
         <pattern id="learner-report-route-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none" stroke="#DDE7F2" strokeWidth="1" opacity=".55" /></pattern>
         <marker id="learner-report-route-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9AAFC7" /></marker>
       </defs>
-      <rect width="1020" height="390" fill="url(#learner-report-route-grid)" />
-      {nodes.flatMap((node, targetIndex) => node.prerequisites.map((sourceId) => {
+      <rect width={layout.width} height={layout.height} fill="url(#learner-report-route-grid)" />
+      {capabilities.flatMap((node) => node.prerequisites.map((sourceId) => {
         const source = nodeById.get(sourceId)
-        const target = positions[targetIndex]
+        const target = nodeById.get(node.id)
         if (!source || !target) return null
-        const midX = (source.point.x + target.x) / 2
-        return <path key={`${sourceId}-${node.id}`} d={`M ${source.point.x + 78} ${source.point.y} C ${midX} ${source.point.y}, ${midX} ${target.y}, ${target.x - 78} ${target.y}`} fill="none" stroke="#9AAFC7" strokeWidth="3" strokeDasharray={node.level === 0 ? "7 7" : undefined} markerEnd="url(#learner-report-route-arrow)" />
+        return <path key={`${sourceId}-${node.id}`} d={edgePath(source.point, target.point)} fill="none" stroke="#9AAFC7" strokeWidth="3" strokeDasharray={node.level < 3 ? "7 7" : undefined} markerEnd="url(#learner-report-route-arrow)" />
       }))}
-      {terminalNodes.map((node) => {
-        const source = nodeById.get(node.id)
-        if (!source) return null
-        const midX = (source.point.x + finalPoint.x) / 2
-        return <path key={`${node.id}-final`} d={`M ${source.point.x + 78} ${source.point.y} C ${midX} ${source.point.y}, ${midX} ${finalPoint.y}, ${finalPoint.x - 78} ${finalPoint.y}`} fill="none" stroke="#9AAFC7" strokeWidth="3" strokeDasharray={finalReady ? undefined : "7 7"} markerEnd="url(#learner-report-route-arrow)" />
+      {layout.leafIds.map((sourceId) => {
+        const source = nodeById.get(sourceId)
+        if (!source || !assessment) return null
+        return <path key={`${sourceId}-final-assessment`} d={edgePath(source.point, assessment.point)} fill="none" stroke="#9AAFC7" strokeWidth="3" strokeDasharray={finalReady ? undefined : "7 7"} markerEnd="url(#learner-report-route-arrow)" />
       })}
-      {nodes.map((node, index) => {
-        const point = positions[index]
-        if (!point) return null
+      {capabilities.map((node) => {
+        const routeNode = nodeById.get(node.id)
+        if (!routeNode) return null
         const meta = REPORT_ROUTE_META[node.state]
-        return <foreignObject key={node.id} x={point.x - 78} y={point.y - 42} width="156" height="84"><button type="button" onClick={() => onSelect(node.id)} className="h-full w-full rounded-[16px] border-2 px-3 py-2 text-left shadow-[0_8px_20px_rgba(50,77,110,.1)] transition hover:-translate-y-0.5" style={{ backgroundColor: meta.fill, borderColor: selectedId === node.id ? "#7654DC" : meta.stroke }}><span className="block text-[8px] font-black" style={{ color: meta.stroke }}>{meta.label} · L{node.level}/L3</span><strong className="mt-1 block truncate text-[11px] text-[#233A57]">{node.name}</strong><small className="mt-1 block truncate text-[8px] text-[#718096]">{node.task}</small></button></foreignObject>
+        return <foreignObject key={node.id} x={routeNode.point.x - ROUTE_NODE_WIDTH / 2} y={routeNode.point.y - ROUTE_NODE_HEIGHT / 2} width={ROUTE_NODE_WIDTH} height={ROUTE_NODE_HEIGHT}><button type="button" onClick={() => onSelect(node.id)} className="h-full w-full rounded-[16px] border-2 px-3 py-2 text-left shadow-[0_8px_20px_rgba(50,77,110,.1)] transition hover:-translate-y-0.5" style={{ backgroundColor: meta.fill, borderColor: selectedId === node.id ? "#7654DC" : meta.stroke }}><span className="block text-[8px] font-black" style={{ color: meta.stroke }}>{meta.label} · L{node.level}/L3</span><strong className="mt-1 block truncate text-[11px] text-[#233A57]">{node.name}</strong><small className="mt-1 block truncate text-[8px] text-[#718096]">{node.task}</small></button></foreignObject>
       })}
-      <foreignObject x={finalPoint.x - 78} y={finalPoint.y - 46} width="156" height="92"><div className={cn("grid h-full place-items-center rounded-[16px] border-2 px-3 text-center shadow-[0_8px_20px_rgba(50,77,110,.1)]", finalReady ? "border-[#2A8A70] bg-[#E6F6EF]" : "border-[#A8B0BC] bg-[#F5F6F8]")}><div>{finalReady ? <Flag className="mx-auto size-4 text-[#2A8A70]" /> : <Lock className="mx-auto size-4 text-[#8A95A4]" />}<strong className="mt-1 block truncate text-[11px] text-[#33475F]">{targetRoleName || "目标岗位"}</strong><small className="mt-1 block text-[8px] text-[#758399]">{finalReady ? "可以进入岗位验收" : `还需完成 ${nodes.filter((node) => node.level < 3).length} 项能力`}</small></div></div></foreignObject>
+      {assessment && <foreignObject x={assessment.point.x - ROUTE_NODE_WIDTH / 2} y={assessment.point.y - 46} width={ROUTE_NODE_WIDTH} height="92"><div className={cn("grid h-full place-items-center rounded-[16px] border-2 px-3 text-center shadow-[0_8px_20px_rgba(50,77,110,.1)]", finalReady ? "border-[#2A8A70] bg-[#E6F6EF]" : "border-[#A8B0BC] bg-[#F5F6F8]")}><div>{finalReady ? <Flag className="mx-auto size-4 text-[#2A8A70]" /> : <Lock className="mx-auto size-4 text-[#8A95A4]" />}<strong className="mt-1 block truncate text-[11px] text-[#33475F]">岗位综合情境验收</strong><small className="mt-1 block max-w-full truncate text-[8px] text-[#758399]">目标：{targetRoleName || "目标岗位"}</small><small className="mt-0.5 block text-[8px] text-[#758399]">{finalReady ? "可以进入岗位验收" : `还需完成 ${capabilities.filter((node) => node.level < 3).length} 项能力`}</small></div></div></foreignObject>}
     </svg>
   </div>
 }

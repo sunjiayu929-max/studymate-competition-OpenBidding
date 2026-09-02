@@ -219,7 +219,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
               value={difficulty}
               onChange={(e) => setDifficulty(parseInt(e.target.value))}
               disabled={submitting}
-              className="w-full accent-[#315E83]"
+              className="difficulty-gradient-range w-full"
               aria-label="测验难度"
             />
             <div className="grid grid-cols-4 gap-0 text-[10px] text-[var(--muted-foreground)] mt-0.5">

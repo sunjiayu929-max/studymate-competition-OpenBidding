@@ -72,14 +72,13 @@ class TrainingCatalogTests(unittest.TestCase):
 
 class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
     async def test_video_agent_keeps_a_reviewable_script_without_api_key(self):
-        with patch("app.video.minimax_h3.settings.MINIMAX_API_KEY", ""):
-            result = await VideoAgent().run({
-                "topic": "接口异常排查",
-                "target_role": "前线部署工程师（FDE）",
-                "core_competencies": ["日志分析", "系统集成"],
-                "chunks": [{"chunk_id": "chunk-1", "source": "岗位手册", "content": "日志分析"}],
-            }, _ignore_event)
-        self.assertEqual(result["status"], "unconfigured")
+        result = await VideoAgent().run({
+            "topic": "接口异常排查",
+            "target_role": "前线部署工程师（FDE）",
+            "core_competencies": ["日志分析", "系统集成"],
+            "chunks": [{"chunk_id": "chunk-1", "source": "岗位手册", "content": "日志分析"}],
+        }, _ignore_event)
+        self.assertEqual(result["status"], "script_ready")
         self.assertTrue(result["script"]["prompt"])
         self.assertTrue(result["script"]["voiceover"])
         self.assertEqual(len(result["script"]["shots"]), 3)
@@ -125,7 +124,7 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
             {"topic": "接口联调", "target_role": "FDE"},
             "job-1",
         )
-        self.assertEqual(initial["status"], "queued")
+        self.assertEqual(initial["status"], "script_ready")
         self.assertEqual(initial["segment_count"], 1)
         self.assertTrue(initial["script"]["prompt"])
 

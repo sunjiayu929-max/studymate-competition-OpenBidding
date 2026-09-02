@@ -73,7 +73,7 @@ def _build_srt(subtitle_segments: list[dict]) -> str:
 async def _download_segment(client: httpx.AsyncClient, url: str, target: Path) -> None:
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise VideoAssemblyError("H3 返回了不受支持的视频地址")
+        raise VideoAssemblyError("返回了不受支持的视频地址")
     try:
         async with client.stream("GET", url) as response:
             response.raise_for_status()
@@ -96,9 +96,9 @@ async def assemble_video_segments(
     if not ffmpeg_available():
         return {"status": "unavailable", "message": "当前环境未安装 ffmpeg，已保留各个视频片段"}
 
-    # H3 URLs are temporary external resources; respect the app's offline guard.
+    # 外部视频地址属于临时资源；尊重应用的离线保护。
     try:
-        require_external_access("下载 MiniMax 视频片段")
+        require_external_access("下载视频片段")
     except ExternalAccessDisabledError as exc:
         return {"status": "unavailable", "message": str(exc)}
 
@@ -109,7 +109,7 @@ async def assemble_video_segments(
     concat_path = temp_dir / "concat.txt"
     temp_dir.mkdir(parents=True, exist_ok=True)
     try:
-        timeout = httpx.Timeout(settings.MINIMAX_VIDEO_REQUEST_TIMEOUT_SECONDS)
+        timeout = httpx.Timeout(settings.VIDEO_REQUEST_TIMEOUT_SECONDS)
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
             segment_paths: list[Path] = []
             for index, url in enumerate(video_urls, start=1):
