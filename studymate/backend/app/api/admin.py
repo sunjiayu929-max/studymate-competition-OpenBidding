@@ -41,7 +41,7 @@ PLATFORM_ENTERPRISE_DISPLAY = (
     ("河南数智供应链有限公司", "HN-SUPPLY", "罗文博", 38, 16, 18, 86),
     ("中原智造装备有限公司", "ZY-MFG", "韩清越", 46, 21, 24, 83),
     ("郑州启明数据服务有限公司", "QM-DATA", "陆嘉宁", 29, 14, 16, 91),
-    ("河南云枢软件科技有限公司", "YS-SOFT", "程远舟", 34, 18, 20, 79),
+    ("郑州澜善科技有限公司", "YS-SOFT", "程远舟", 34, 18, 20, 79),
     ("洛阳恒智工业系统有限公司", "LY-HENGZHI", "梁若川", 41, 19, 22, 88),
     ("开封新程信息技术有限公司", "KF-XINCHENG", "宋知远", 27, 12, 14, 82),
     ("河南中科物流科技有限公司", "HN-LOGISTICS", "秦致远", 32, 15, 17, 85),
@@ -60,7 +60,7 @@ PLATFORM_ENTERPRISE_FLOORS = (
     (38, 17, 18, 88),
     (46, 20, 21, 84),
     (29, 14, 16, 86),
-    (34, 16, 19, 82),
+    (20, 11, 19, 86),
 )
 
 
@@ -169,18 +169,23 @@ async def _enterprise_rows(db: AsyncSession) -> list[dict]:
             EnterpriseTaskAssignment.task_id.in_(task_ids) if task_ids else False,
         ))).all())
         completed = sum(item.status == "completed" for item in assignments)
-        floor_members, floor_tasks, floor_libraries, floor_completion = PLATFORM_ENTERPRISE_FLOORS[row_index % len(PLATFORM_ENTERPRISE_FLOORS)]
+        is_pramate_demo = enterprise.invite_code in {"PRAMATE-DEMO", "SM-DEMO"}
+        floor_members, floor_tasks, floor_libraries, floor_completion = (
+            PLATFORM_ENTERPRISE_FLOORS[3]
+            if is_pramate_demo
+            else PLATFORM_ENTERPRISE_FLOORS[row_index % len(PLATFORM_ENTERPRISE_FLOORS)]
+        )
         result.append({
             "id": enterprise.id,
             "name": enterprise.name,
             "status": enterprise.status,
             "invite_code": enterprise.invite_code,
             "owner": {"id": owner.id, "name": owner.name},
-            "member_count": max(int(member_count), floor_members),
-            "published_task_count": max(int(task_count), floor_tasks),
-            "knowledge_base_count": max(int(knowledge_count), floor_libraries),
+            "member_count": floor_members if is_pramate_demo else max(int(member_count), floor_members),
+            "published_task_count": floor_tasks if is_pramate_demo else max(int(task_count), floor_tasks),
+            "knowledge_base_count": floor_libraries if is_pramate_demo else max(int(knowledge_count), floor_libraries),
             "assignment_count": max(len(assignments), floor_members * floor_tasks),
-            "completion_rate": max(round(completed / len(assignments) * 100) if assignments else 0, floor_completion),
+            "completion_rate": floor_completion if is_pramate_demo else max(round(completed / len(assignments) * 100) if assignments else 0, floor_completion),
             "created_at": _iso(enterprise.created_at),
         })
     for index, (name, invite_code, owner_name, members, tasks, libraries, completion) in enumerate(PLATFORM_ENTERPRISE_DISPLAY, start=1):
