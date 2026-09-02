@@ -181,6 +181,27 @@ preflight_effective_compose() {
   fi
 }
 
+refresh_caddy_config() {
+  # Caddyfile is bind-mounted into the container. A deployment sync can
+  # replace the host file atomically, leaving a long-lived container attached
+  # to the old inode. Compare the mounted bytes and recreate only Caddy when
+  # that happens; otherwise reload the current config in place.
+  if ! "${COMPOSE[@]}" config --services 2>/dev/null | grep -qx caddy; then
+    return 0
+  fi
+
+  local host_hash container_hash
+  host_hash="$(sha256sum "$PROJECT_DIR/Caddyfile" | awk '{print $1}')"
+  container_hash="$(docker exec studymate-caddy sha256sum /etc/caddy/Caddyfile 2>/dev/null | awk '{print $1}' || true)"
+  if [[ -z "$container_hash" || "$host_hash" != "$container_hash" ]]; then
+    echo "Refreshing Caddy bind mount after configuration sync."
+    "${COMPOSE[@]}" up -d --no-deps --force-recreate caddy
+    return 0
+  fi
+
+  docker exec studymate-caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+}
+
 backup_gate() {
   [[ "$REQUIRE_BACKUP" == "1" ]] || return 0
   [[ -x "$BACKUP_SCRIPT" ]] || {
@@ -411,6 +432,7 @@ case "$ACTION" in
       echo "Piston runtime initialization skipped (profile disabled or explicitly skipped)."
     fi
     "${COMPOSE[@]}" ps
+    refresh_caddy_config
     if ai_enabled; then
       start_ai
       ai_compose ps
