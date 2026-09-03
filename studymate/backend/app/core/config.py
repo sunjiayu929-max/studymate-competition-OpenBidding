@@ -81,17 +81,9 @@ class Settings(BaseSettings):
     # 例：COSYVOICE_API_KEYS=sk-aaa,sk-bbb
     COSYVOICE_API_KEYS: str = ""
 
-    # MiniMax H3 岗位可视讲解。留空时资源链保留可审核的脚本占位，不调用外部 API。
-    MINIMAX_API_KEY: str = ""
-    MINIMAX_BASE_URL: str = "https://api.minimaxi.com"
-    MINIMAX_VIDEO_MODEL: str = "MiniMax-H3"
-    MINIMAX_VIDEO_WATERMARK: bool = True
-    MINIMAX_VIDEO_REQUEST_TIMEOUT_SECONDS: float = 30.0
-    MINIMAX_VIDEO_POLL_INTERVAL_SECONDS: float = 3.0
-    # H3 视频生成可能超过 5 分钟；最多等待约 12 分钟，避免过早把仍在运行的任务判失败。
-    MINIMAX_VIDEO_POLL_ATTEMPTS: int = 240
-    # 合成后的短视频文件目录；Docker 中位于持久化 data volume。
+    # 仅供历史视频工具兼容的本地媒体目录；当前岗位可视讲解使用前端脚本播放。
     VIDEO_MEDIA_DIR: str = "./data/video_media"
+    VIDEO_REQUEST_TIMEOUT_SECONDS: float = 30.0
 
     # 讯飞 TTS 子模式：online=在线语音合成(v2/tts)；oral=超拟人语音合成(v1 oral，音质更高)
     # 切超拟人只需把 XFYUN_TTS_MODE 设 oral 并填下面三项（凭据来自讯飞控制台「超拟人合成」服务）
@@ -158,7 +150,6 @@ class Settings(BaseSettings):
             "XFYUN_API_SECRET",
             "XFYUN_ORAL_TTS_URL",
             "COSYVOICE_API_KEYS",
-            "MINIMAX_API_KEY",
             "SMTP_USERNAME",
             "SMTP_PASSWORD",
             "SMTP_FROM_EMAIL",

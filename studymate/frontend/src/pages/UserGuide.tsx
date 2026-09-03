@@ -63,7 +63,7 @@ const CAPABILITY_GROUPS = [
     items: [
       { label: "岗位空间", to: "/courses", icon: Library },
       { label: "今日学习", to: "/", icon: Sparkles },
-      { label: "岗位能力画像", to: "/profile", icon: GraduationCap },
+      { label: "学情画像构建", to: "/profile", icon: GraduationCap },
     ],
   },
   {

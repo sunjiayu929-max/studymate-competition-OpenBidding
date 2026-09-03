@@ -30,11 +30,12 @@ import {
 } from "lucide-react"
 
 import { AppTopbar } from "@/components/AppTopbar"
-import { LearnerMatchReport, type ReportCapability } from "@/components/LearnerMatchReport"
+import { LearnerMatchReport } from "@/components/LearnerMatchReport"
+import { RoleCapabilityProfile } from "@/components/RoleCapabilityProfile"
 import { useTutorContext } from "@/hooks/useTutorContext"
 import { apiGet } from "@/lib/api"
 import { listQuizSessions, type QuizSession } from "@/lib/quizSession"
-import { buildRoleCompetencyMap } from "@/lib/roleCompetencyMap"
+import { buildRoleCapabilityProfile } from "@/lib/roleCapabilityProfile"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { fallbackSamplesFor, isShowcaseCourse, useCurrentCourse } from "@/store/course"
 import { useTargetRole } from "@/store/targetRole"
@@ -121,7 +122,7 @@ const EMPTY_HOME_DATA: HomeData = {
 }
 
 const MODULES = [
-  { to: "/profile", label: "岗位能力画像", short: "画像", detail: "识别岗位能力证据与差距", icon: UserRoundSearch, color: "#355C8A", wash: "#E7EDF3" },
+  { to: "/capability-profile", label: "岗位能力画像", short: "画像", detail: "识别岗位能力证据与差距", icon: UserRoundSearch, color: "#355C8A", wash: "#E7EDF3" },
   { to: "/tutor", label: "AI 助教", short: "助教", detail: "围绕难点继续追问", icon: MessageCircleMore, color: "#B85C3E", wash: "#F4E8E2" },
   { to: "/courses", label: "岗位空间", short: "岗位", detail: "选择领域与目标岗位", icon: Library, color: "#B1842C", wash: "#F4ECD8" },
   { to: "/notes", label: "智能笔记", short: "笔记", detail: "沉淀讲解与思考", icon: NotebookPen, color: "#6F8A69", wash: "#E8EDE5" },
@@ -129,6 +130,10 @@ const MODULES = [
   { to: "/competency", label: "岗位训练中心", short: "训练", detail: "查看能力范围与当前进度", icon: Route, color: "#7E6B83", wash: "#EEE9EF" },
   { to: "/report", label: "学习报告", short: "报告", detail: "查看成长变化与阶段反馈", icon: BarChart3, color: "#6D748B", wash: "#EAEBF0" },
 ] as const
+
+function resolveHomeModulePath(path: string) {
+  return path === "/profile" ? "/capability-profile" : path
+}
 
 const SOURCE_LABEL: Record<NoteSource, string> = {
   manual: "手动笔记",
@@ -191,7 +196,7 @@ interface LearningUniverseProps {
 }
 
 const UNIVERSE_PLANETS = [
-  { id: "profile", to: "/profile", label: "岗位能力画像", position: "planet-profile", orbit: "inner", size: "lg", icon: UserRoundSearch, tone: "#6EC8ED" },
+  { id: "profile", to: "/capability-profile", label: "岗位能力画像", position: "planet-profile", orbit: "inner", size: "lg", icon: UserRoundSearch, tone: "#6EC8ED" },
   { id: "knowledge", to: "/knowledge", label: "知识库", position: "planet-knowledge", orbit: "middle", size: "md", icon: Library, tone: "#62C6B6" },
   { id: "quiz", to: "/quiz", label: "智能测验", position: "planet-quiz", orbit: "outer", size: "lg", icon: BookOpenCheck, tone: "#E2BC66" },
   { id: "notes", to: "/notes", label: "智能笔记", position: "planet-notes", orbit: "inner", size: "sm", icon: NotebookPen, tone: "#78BE8B" },
@@ -544,7 +549,7 @@ function LearningUniverse(props: LearningUniverseProps) {
                     initial={false}
                   >
                     <Link
-                      to={to}
+                      to={resolveHomeModulePath(to)}
                       className={`universe-planet universe-planet-${size} universe-planet-material-${id}`}
                       style={{ "--planet-tone": tone, "--planet-delay": `${index * -1.7}s` } as CSSProperties}
                       data-planet={id}
@@ -774,16 +779,6 @@ function formatTrackedDuration(minutes: number) {
   return rest ? `${hours} 小时 ${rest} 分` : `${hours} 小时`
 }
 
-function readReportCapabilityEvidence(userId: number | undefined, roleId: string) {
-  if (!userId) return {} as Record<string, { level?: number }>
-  try {
-    const raw = window.localStorage.getItem(`sm:role-capability-evidence:${userId}:${roleId}`)
-    return raw ? JSON.parse(raw) as Record<string, { level?: number }> : {}
-  } catch {
-    return {} as Record<string, { level?: number }>
-  }
-}
-
 function OrbitMap({ learnerName }: { learnerName: string }) {
   const reduceMotion = useReducedMotion()
 
@@ -793,8 +788,8 @@ function OrbitMap({ learnerName }: { learnerName: string }) {
       <div className="absolute inset-[25%] rounded-full border border-dashed border-[#D7D1C4]" />
       <Link
         to="/profile"
-        aria-label="打开岗位能力画像对话"
-        title="继续通过对话完善岗位能力画像"
+        aria-label="打开学情画像构建对话"
+        title="继续通过对话完善学情画像"
         className="group absolute left-1/2 top-1/2 z-20 size-[43%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#B7B0A2] bg-[#F7F2E7] p-[7%] shadow-[0_12px_26px_rgba(24,35,45,.12)] transition-transform duration-300 hover:scale-[1.045] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#315E83]"
       >
         <span className="pointer-events-none absolute -inset-2 rounded-full border border-[#315E83]/25 opacity-0 transition-all duration-300 group-hover:scale-105 group-hover:opacity-100 group-focus-visible:opacity-100" />
@@ -833,7 +828,7 @@ function OrbitMap({ learnerName }: { learnerName: string }) {
                 transition={{ duration: 34, repeat: Infinity, ease: "linear" }}
               >
                 <Link
-                  to={to}
+                  to={resolveHomeModulePath(to)}
                   title={label}
                   aria-label={label}
                   className="group grid size-10 place-items-center rounded-full border-2 border-[#FFFEFA] shadow-[0_4px_10px_rgba(24,35,45,.14)] transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2"
@@ -1054,34 +1049,10 @@ export function Home() {
     Boolean(workspace.outputs.guide?.content),
     Boolean(workspace.outputs.video?.script),
   ].filter(Boolean).length
-  const reportCapabilityMap = useMemo(() => targetRole ? buildRoleCompetencyMap(targetRole) : null, [targetRole])
-  const reportCapabilities = useMemo<ReportCapability[]>(() => {
-    if (!reportCapabilityMap) return []
-    const storedEvidence = readReportCapabilityEvidence(user?.user_id, reportCapabilityMap.roleId)
-    const currentNames = new Set(workspace.outputs.training_plan?.priority_competencies ?? [])
-    const feedbackLevel = workspace.feedback?.accuracy == null
-      ? 0
-      : workspace.feedback.accuracy >= 85
-        ? 3
-        : workspace.feedback.accuracy >= 60
-          ? 2
-          : 1
-    const levels = new Map(reportCapabilityMap.nodes.map((node) => [
-      node.id,
-      Math.max(storedEvidence[node.id]?.level ?? 0, currentNames.has(node.name) ? feedbackLevel : 0),
-    ]))
-
-    return reportCapabilityMap.nodes.map((node) => {
-      const level = levels.get(node.id) ?? 0
-      let state: ReportCapability["state"]
-      if (level >= 3) state = "mastered"
-      else if (currentNames.has(node.name)) state = "current"
-      else if (level > 0) state = "developing"
-      else if (node.prerequisites.every((id) => (levels.get(id) ?? 0) >= 3)) state = "ready"
-      else state = "locked"
-      return { id: node.id, name: node.name, level, state, task: node.task, prerequisites: node.prerequisites }
-    })
-  }, [reportCapabilityMap, user?.user_id, workspace.feedback?.accuracy, workspace.outputs.training_plan])
+  const reportCapabilities = useMemo(
+    () => buildRoleCapabilityProfile(targetRole, user?.user_id, workspace.outputs.training_plan, workspace.feedback?.accuracy),
+    [targetRole, user?.user_id, workspace.outputs.training_plan, workspace.feedback?.accuracy],
+  )
   const theoryEvidence = targetRole ? data.profile?.dims.theory_assessments?.[targetRole.id] : undefined
   const todayKey = shanghaiDayKey(new Date())
   const todaySubmittedQuizzes = submittedQuizzes.filter((quiz) => shanghaiDayKey(quiz.submitted_at) === todayKey)
@@ -1321,6 +1292,8 @@ export function Home() {
             </motion.section>
           )}
 
+          <RoleCapabilityProfile targetRoleName={targetRoleName} capabilities={reportCapabilities} loading={loading} />
+
           <LearnerMatchReport
             targetRoleName={targetRoleName || "目标岗位"}
             diagnosis={workspace.diagnosis}
@@ -1479,7 +1452,7 @@ export function Home() {
             </div>
             <div className="grid grid-cols-2 gap-px bg-[#DDD7CB] sm:grid-cols-3 xl:grid-cols-7">
               {MODULES.map(({ to, label, detail, icon: Icon, color, wash }) => (
-                <Link key={to} to={to} className="group flex min-h-[104px] items-start gap-3 bg-[#FFFEFA] p-4 transition-colors hover:bg-[#F8F6F0]">
+                <Link key={to} to={resolveHomeModulePath(to)} className="group flex min-h-[104px] items-start gap-3 bg-[#FFFEFA] p-4 transition-colors hover:bg-[#F8F6F0]">
                   <span className="grid size-9 shrink-0 place-items-center rounded-xl" style={{ color, backgroundColor: wash }}><Icon className="size-[17px]" /></span>
                   <span className="min-w-0 pt-0.5">
                     <span className="flex items-center gap-1 text-xs font-bold text-[#18232D]">{label}<ChevronRight className="size-3 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" /></span>
@@ -1542,7 +1515,7 @@ export function Home() {
                   <span className="text-[11px] font-bold tracking-[0.12em] text-[#6F8A69]">岗位能力画像</span>
                   <h2 className="mt-1 text-lg font-bold tracking-[-0.025em] text-[#18232D]">岗位能力画像速记</h2>
                 </div>
-                <Link to="/profile" className="grid size-9 place-items-center rounded-full border border-[#D7D1C4] bg-[#FFFEFA] text-[#244C66] transition-colors hover:bg-[#ECE8DE]" aria-label="打开岗位能力画像"><UserRoundSearch className="size-4" /></Link>
+                <Link to="/capability-profile" className="grid size-9 place-items-center rounded-full border border-[#D7D1C4] bg-[#FFFEFA] text-[#244C66] transition-colors hover:bg-[#ECE8DE]" aria-label="打开岗位能力画像"><UserRoundSearch className="size-4" /></Link>
               </div>
 
               {loading ? (
@@ -1608,7 +1581,7 @@ function LearningLoopPanel({
   const steps = [
     {
       number: "01",
-      title: "岗位能力画像",
+      title: "学情画像构建",
       detail: profileVersion ? `画像 v${profileVersion} 已参与决策` : "等待建立画像",
       to: "/profile",
       icon: UserRoundSearch,

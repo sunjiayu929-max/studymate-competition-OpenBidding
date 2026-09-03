@@ -248,7 +248,7 @@ export function Workspace() {
       case "video": {
         const video = outputs.video
         if (!video?.script) return "等待可视讲解生成"
-        return video.status === "succeeded" && video.video_url ? "岗位视频已合成 · 含中文声音" : video.status === "segments_ready" ? "片段已生成 · 待合成最终视频" : video.status === "failed" || video.status === "partial_failed" ? "脚本保留 · 视频片段生成失败" : "脚本已审 · 待配置视频生成服务"
+        return video.status === "script_ready" ? "前端可视讲解脚本已生成" : video.status === "succeeded" && video.video_url ? "岗位视频已合成 · 含中文声音" : video.status === "segments_ready" ? "片段已生成 · 待合成最终视频" : video.status === "failed" || video.status === "partial_failed" ? "脚本保留 · 视频片段生成失败" : "等待可视讲解脚本"
       }
       default: return "等待资源生成"
     }
@@ -326,7 +326,7 @@ export function Workspace() {
                 <Database className="size-4" />{course ? `${trainingTarget} · 岗位知识库` : selectedTargetRole ? `${selectedTargetRole.name} · 知识库待接入` : "选择目标岗位"}<ChevronRight className="size-3.5" />
               </Link>
               <Link to="/profile" className="inline-flex h-10 items-center gap-2 rounded-full border border-[#C9C2B4] bg-[#F7F2E7] px-4 text-xs font-semibold text-[#6A5941] hover:bg-[#EEE8DB]">
-                <UserRoundSearch className="size-4" />{profile ? `岗位画像 v${profile.version}` : "建立岗位能力画像"}<ChevronRight className="size-3.5" />
+                <UserRoundSearch className="size-4" />{profile ? `学情画像 v${profile.version}` : "建立学情画像"}<ChevronRight className="size-3.5" />
               </Link>
             </div>
           </motion.header>

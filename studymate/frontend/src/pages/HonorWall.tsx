@@ -54,7 +54,7 @@ export function HonorWall() {
               <h1 className="mt-4 text-3xl font-bold tracking-[-.045em] sm:text-4xl">我的荣誉墙</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#CAD8E6]">每一张证书都记录了一段完整的岗位学习旅程。这里收藏你的坚持、成长与已经具备的专业能力。</p>
               <div className="mt-5 flex flex-wrap gap-2">
-                <Link to="/" className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 text-[11px] font-bold text-white transition hover:bg-white/15">返回今日学习</Link>
+                <Link to="/" className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 text-[11px] font-bold text-white transition hover:bg-white/15">返回个人中心</Link>
                 <Link to="/competency" className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#D0A64C] px-4 text-[11px] font-bold text-[#17334F] shadow-[0_8px_20px_rgba(208,166,76,.24)] transition hover:bg-[#DDB65E]">继续岗位训练<ArrowRight className="size-3.5" /></Link>
               </div>
             </div>

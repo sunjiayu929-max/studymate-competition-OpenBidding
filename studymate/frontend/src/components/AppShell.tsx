@@ -29,6 +29,7 @@ import {
   Sparkles,
   ShieldCheck,
   UsersRound,
+  UserRound,
   X,
 } from "lucide-react"
 
@@ -47,13 +48,14 @@ import { JUDGE_DEMO_EVENT } from "@/components/JudgeDemoMode"
 const SIDEBAR_KEY = "sm:app-shell:collapsed"
 const GROUP_KEY = "sm:app-shell:groups"
 const DEFAULT_OPEN_GROUPS: Record<string, boolean> = {
+  personalCenter: true,
   roleAlignment: true,
   learningLoop: true,
   jobPreparation: true,
 }
 const SHOWCASE_BLOCKED_PATHS = [
   "/workspace", "/competency", "/tutor", "/rag", "/knowledge", "/ppt",
-  "/resources", "/report", "/quiz", "/concept", "/career", "/notes",
+  "/resources", "/report", "/learner-report", "/quiz", "/concept", "/career", "/notes",
 ]
 
 type NavItem = {
@@ -66,6 +68,17 @@ type NavItem = {
 }
 
 const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavItem[] }> = [
+  {
+    id: "personalCenter",
+    label: "个人中心",
+    icon: UserRound,
+    items: [
+      { label: "岗位能力画像", to: "/capability-profile", icon: GraduationCap },
+      { label: "个人学情与资源匹配度报告", to: "/learner-report", icon: BarChart3 },
+      { label: "实时学习报告", to: "/report", icon: BarChart3 },
+      { label: "我的荣誉墙", to: "/honors", icon: Award },
+    ],
+  },
   {
     id: "roleAlignment",
     label: "岗位对标设置",
@@ -83,8 +96,6 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
       { label: "岗位训练中心", to: "/competency", icon: ShieldCheck },
       { label: "智能测验", to: "/quiz", icon: BookOpenCheck },
       { label: "智能笔记", to: "/notes", icon: NotebookPen },
-      { label: "实时学习报告", to: "/report", icon: BarChart3 },
-      { label: "我的荣誉墙", to: "/honors", icon: Award },
     ],
   },
   {
@@ -432,7 +443,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             <ShellLink item={{ label: "岗位知识库", to: "/enterprise?view=knowledge", icon: Library }} compact={effectiveCollapsed} pathname={pathname} search={search} />
             <ShellLink item={{ label: "成员加入", to: "/enterprise?view=members", icon: UsersRound }} compact={effectiveCollapsed} pathname={pathname} search={search} />
           </> : <>
-          <ShellLink item={{ label: "今日学习", to: "/", icon: Home, exact: true }} compact={effectiveCollapsed} pathname={pathname} />
           {GROUPS.slice(0, 3).map(renderGroup)}
           <ShellLink item={{ label: "转岗培训", to: "/career", icon: GraduationCap }} compact={effectiveCollapsed} pathname={pathname} />
           {GROUPS.slice(3).map(renderGroup)}

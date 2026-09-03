@@ -25,6 +25,8 @@ const EXAMPLES = [
   "拥塞控制的 cwnd 怎么变化",
 ]
 
+const DEFAULT_SHOWCASE_QUERY = "FDE这个岗位是干什么的？"
+
 export function ConceptDemo() {
   useTrackPage("concept")
   const user = useCurrentUser()
@@ -47,7 +49,7 @@ export function ConceptDemo() {
   const [searchParams] = useSearchParams()
   const initialAnimKey = searchParams.get("anim")
   const initialMatchedAnim = initialAnimKey ? CONCEPT_ANIMS.find((item) => item.key === initialAnimKey) : null
-  const initialQuery = initialMatchedAnim?.title ?? searchParams.get("q")?.trim() ?? ""
+  const initialQuery = initialMatchedAnim?.title ?? searchParams.get("q")?.trim() ?? DEFAULT_SHOWCASE_QUERY
   const initialNeedsExplain = !initialMatchedAnim && Boolean(initialQuery)
   const initialResult: ExplainResult | null = initialMatchedAnim
     ? {
@@ -127,7 +129,7 @@ export function ConceptDemo() {
               <div className="pointer-events-none absolute -right-20 -top-28 size-64 rounded-full border border-[#DDD4BF]" />
               <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] text-[#6F8A69]"><Sparkles className="size-3.5 text-[#B1842C]" />岗位能力可视化引擎</span>
               <h2 className="relative mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D] sm:text-2xl">把岗位能力与任务原理，变成可以播放的过程</h2>
-              <p className="relative mt-2 text-sm leading-6 text-[#66717B]">输入岗位能力点、任务步骤或技术概念，系统会自动选择合适的讲解方式；遇到需要展示岗位流程的问题，可确认生成带声音的视频。</p>
+        <p className="relative mt-2 text-sm leading-6 text-[#66717B]">输入岗位能力点、任务步骤或技术概念，系统会自动选择合适的讲解方式；岗位流程会生成可播放的动画、黑板讲解脚本和语音。</p>
 
         {/* Agent 提问框 */}
         <form

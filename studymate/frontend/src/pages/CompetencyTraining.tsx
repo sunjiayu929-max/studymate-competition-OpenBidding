@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import {
   ArrowRight,
   Award,
   BookOpenCheck,
+  CircleAlert,
   Code2,
   FileText,
   Film,
@@ -82,6 +83,7 @@ function readEvidence(userId: number | undefined, roleId: string) {
 export function CompetencyTraining() {
   useTrackPage("competency_training")
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const role = useTargetRole()
   const user = useCurrentUser()
   const course = useCurrentCourse()
@@ -93,6 +95,7 @@ export function CompetencyTraining() {
   const [feedbackError, setFeedbackError] = useState("")
   const [selectedPathId, setSelectedPathId] = useState("")
   const [certificateOpen, setCertificateOpen] = useState(false)
+  const requestedTopic = (searchParams.get("topic") ?? "").trim()
 
   const capabilityMap = useMemo(() => role ? buildRoleCompetencyMap(role) : null, [role])
 
@@ -112,7 +115,7 @@ export function CompetencyTraining() {
   const sampleTasks = role?.sampleTasks ?? []
   const currentTopicIndex = sampleTasks.length ? (cycle - 1) % sampleTasks.length : 0
   const nextTopicIndex = sampleTasks.length ? cycle % sampleTasks.length : 0
-  const currentTopic = workspace.topic.trim() || sampleTasks[currentTopicIndex] || sampleTasks[0] || ""
+  const currentTopic = requestedTopic || workspace.topic.trim() || sampleTasks[currentTopicIndex] || sampleTasks[0] || ""
   const nextTopic = sampleTasks[nextTopicIndex] ?? sampleTasks[0] ?? currentTopic
   const roleEvaluation = useMemo(
     () => role ? evaluateRoleCertificateRounds(profile?.dims.training_rounds ?? [], role) : null,
@@ -149,6 +152,11 @@ export function CompetencyTraining() {
       return { id: node.id, name: node.name, level, state, task: node.task, prerequisites: node.prerequisites }
     })
   }, [capabilityMap, plan?.priority_competencies, role, user?.user_id])
+  useEffect(() => {
+    if (!requestedTopic) return
+    const matched = reportCapabilities.find((node) => node.name === requestedTopic || node.name.includes(requestedTopic) || requestedTopic.includes(node.name))
+    if (matched) setSelectedPathId(matched.id)
+  }, [reportCapabilities, requestedTopic])
   if (!role || !capabilityMap) return <RoleRequired />
   const pathCapabilities = reportCapabilities.length ? reportCapabilities : [{ id: "start", name: "建立目标岗位路径", level: 0, state: "ready" as const, task: "完成岗位画像后生成能力节点与训练路线。", prerequisites: [] }]
   const agentDone = workspace.agents.filter((agent) => agent.status === "done").length
@@ -163,7 +171,7 @@ export function CompetencyTraining() {
     void workspaceStore.start(topic, user.user_id, course.id, course.name)
   }
 
-  const startRound = () => startRoundForTopic(workspace.feedback ? nextTopic : currentTopic)
+  const startRound = () => startRoundForTopic(requestedTopic || (workspace.feedback ? nextTopic : currentTopic))
 
   const submitFeedback = async (): Promise<boolean> => {
     setFeedbackBusy(true)
@@ -203,9 +211,9 @@ export function CompetencyTraining() {
         <AppTopbar current="courses" appearance="paper" labelOverride="岗位训练中心" groupOverride="岗位胜任力闭环" selectionLabel={role.name} />
         {user?.user_id && course && <TheoryAssessmentModal enabled={profileLoaded} userId={user.user_id} roleId={role.id} roleName={role.name} courseId={course.id} competencies={capabilityMap.nodes.map((node) => node.name)} reopenSignal={theoryPromptSignal} onGateChange={setTheoryGate} onCompleted={(assessment: TheoryAssessment) => { setTheoryGate({ loading: false, completed: true, required: false, assessment, error: "" }); void apiGet<ProfileResponse>(`/profile/${user.user_id}`).then(setProfile).catch(() => undefined) }} />}
 
-        <section className="relative mt-4 overflow-hidden rounded-[30px] border border-[#C9D9ED] bg-[#122C4D] px-4 py-5 text-white shadow-[0_24px_64px_rgba(32,73,130,.18)] sm:px-6 sm:py-7 lg:px-8">
+        <section id="training-focus" className="relative mt-4 scroll-mt-24 overflow-hidden rounded-[30px] border border-[#C9D9ED] bg-[#122C4D] px-4 py-5 text-white shadow-[0_24px_64px_rgba(32,73,130,.18)] sm:px-6 sm:py-7 lg:px-8">
           <div className="pointer-events-none absolute -right-20 -top-28 size-80 rounded-full bg-[#7654DC]/25 blur-3xl" /><div className="pointer-events-none absolute -bottom-32 left-1/3 size-80 rounded-full bg-[#16A6A1]/20 blur-3xl" />
-          <div className="relative flex flex-col gap-5 xl:flex-row xl:items-center"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold tracking-[.12em] text-[#CFE2FF]"><Target className="size-3.5 text-[#F1D47D]" />第 {cycle} 轮岗位训练</span><span className="inline-flex items-center gap-1.5 rounded-full bg-[#C9F3E7]/12 px-3 py-1.5 text-[10px] font-bold text-[#BFECDD]"><span className="size-1.5 rounded-full bg-[#5ED5B5]" />路径、协作与验收实时同步</span></div><h1 className="mt-4 text-2xl font-bold leading-tight tracking-[-.045em] sm:text-3xl">{role.name} · 本轮学习路径</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[#C2D2E6]">路径终点是当前目标岗位，能力节点会根据画像、测评结果和训练反馈持续更新。</p><div className="mt-4 flex flex-wrap gap-3 text-[10px] text-[#C2D2E6]"><span>能力节点 {reportCapabilities.length} 项</span><span>·</span><span>理论测评 {theoryEvidence?.score ?? "—"} 分</span><span>·</span><span>Agent 进度 {agentProgress}%</span><span>·</span><span>{released ? "已通过发布门禁" : "等待本轮决策"}</span></div></div><div className="w-full shrink-0 xl:w-[740px]"><ReportPathMap capabilities={pathCapabilities} targetRoleName={role.name} selectedId={selectedPathId || pathCapabilities[0]?.id} onSelect={setSelectedPathId} /><ReportPathProgress capabilities={pathCapabilities} targetRoleName={role.name} /></div><button type="button" onClick={startRound} disabled={!course || workspace.status === "running"} className="inline-flex min-h-24 shrink-0 items-center justify-center gap-2 rounded-[18px] border border-[#B9CBE4] bg-[linear-gradient(145deg,#2C65A2,#3978BC)] px-5 text-center text-xs font-bold text-white shadow-[0_12px_28px_rgba(22,61,110,.3)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-55 xl:w-[150px]"><span><Rocket className="mx-auto mb-2 size-5" /><span className="block">{workspace.status === "running" ? "本轮学习进行中" : workspace.feedback ? `启动第 ${cycle + 1} 轮学习` : "启动本轮学习"}</span><span className="mt-1 block text-[9px] font-medium text-[#D5E8FF]">{theoryCompleted ? "进入协作生成流程" : "先完成理论基线测评"}</span></span><ArrowRight className="size-4" /></button></div>
+          <div className="relative flex flex-col gap-5 xl:flex-row xl:items-center"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold tracking-[.12em] text-[#CFE2FF]"><Target className="size-3.5 text-[#F1D47D]" />第 {cycle} 轮岗位训练</span><span className="inline-flex items-center gap-1.5 rounded-full bg-[#C9F3E7]/12 px-3 py-1.5 text-[10px] font-bold text-[#BFECDD]"><span className="size-1.5 rounded-full bg-[#5ED5B5]" />路径、协作与验收实时同步</span></div><h1 className="mt-4 text-2xl font-bold leading-tight tracking-[-.045em] sm:text-3xl">{role.name} · 本轮学习路径</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[#C2D2E6]">路径终点是当前目标岗位，能力节点会根据画像、测评结果和训练反馈持续更新。</p>{requestedTopic && <div className="mt-3 inline-flex max-w-full items-start gap-2 rounded-xl border border-[#F0C3B5]/35 bg-[#A9583D]/30 px-3 py-2 text-[10px] leading-4 text-[#FFE7DE]" aria-live="polite"><CircleAlert className="mt-0.5 size-3.5 shrink-0" /><span>来自知识盲区：<strong className="text-white">{requestedTopic}</strong>。启动后将围绕该主题生成对应训练资源。</span></div>}<div className="mt-4 flex flex-wrap gap-3 text-[10px] text-[#C2D2E6]"><span>能力节点 {reportCapabilities.length} 项</span><span>·</span><span>理论测评 {theoryEvidence?.score ?? "—"} 分</span><span>·</span><span>Agent 进度 {agentProgress}%</span><span>·</span><span>{released ? "已通过发布门禁" : "等待本轮决策"}</span></div></div><div className="w-full shrink-0 xl:w-[740px]"><ReportPathMap capabilities={pathCapabilities} targetRoleName={role.name} selectedId={selectedPathId || pathCapabilities[0]?.id} onSelect={setSelectedPathId} /><ReportPathProgress capabilities={pathCapabilities} targetRoleName={role.name} /></div><button type="button" onClick={startRound} disabled={!course || workspace.status === "running"} className="inline-flex min-h-24 shrink-0 items-center justify-center gap-2 rounded-[18px] border border-[#B9CBE4] bg-[linear-gradient(145deg,#2C65A2,#3978BC)] px-5 text-center text-xs font-bold text-white shadow-[0_12px_28px_rgba(22,61,110,.3)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-55 xl:w-[150px]"><span><Rocket className="mx-auto mb-2 size-5" /><span className="block">{workspace.status === "running" ? "本轮学习进行中" : workspace.feedback ? `启动第 ${cycle + 1} 轮学习` : "启动本轮学习"}</span><span className="mt-1 block text-[9px] font-medium text-[#D5E8FF]">{theoryCompleted ? "进入协作生成流程" : "先完成理论基线测评"}</span></span><ArrowRight className="size-4" /></button></div>
         </section>
 
         <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6"><SectionTitle icon={Network} eyebrow="多智能体协作" title="从任务输入到发布门禁的一整条协作链" description="学情诊断后分为领域专家与教学策略两路，汇合到资源生成，再进入三项校验与总决策。" /><AgentCollaborationFlow workspace={workspace} /></section>
