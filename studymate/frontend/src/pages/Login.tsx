@@ -160,7 +160,7 @@ export function Login() {
             <Sparkles className="size-5" strokeWidth={1.8} />
           </span>
           <div>
-            <div className="text-[17px] font-extrabold tracking-[-0.04em] sm:text-lg">学途职伴</div>
+            <div className="text-[17px] font-extrabold tracking-[-0.04em] sm:text-lg">因材智训</div>
             <div className="hidden text-[9px] font-bold tracking-[0.14em] text-[#777E7B] uppercase sm:block">Intelligent Learning Studio</div>
           </div>
         </div>
@@ -221,7 +221,7 @@ export function Login() {
                 transition={{ duration: 0.55, delay: 0.18 }}
                 className="mt-5 hidden max-w-[620px] text-[15px] leading-7 text-[#66717B] lg:block xl:text-base"
               >
-                StudyMate 让岗位能力画像、多 Agent 决策与训练验收围绕目标岗位协同工作，把岗位标准、资源和成果证据连接起来。
+                因材智训让岗位能力画像、多 Agent 决策与训练验收围绕目标岗位协同工作，把岗位标准、资源和成果证据连接起来。
               </motion.p>
 
               <div className="hidden sm:block">
@@ -241,7 +241,7 @@ export function Login() {
                   <span className="grid size-8 place-items-center rounded-lg border border-[#DED8CC] bg-[#F1EDE4] text-[#315E83]"><Sparkles className="size-4" /></span>
                 </div>
                 <h2 className="text-[27px] font-extrabold tracking-[-0.045em] text-[#18232D] sm:text-[30px]">{mode === "login" ? "继续你的学习旅程" : "创建你的学习星图"}</h2>
-                <p className="mt-2 text-sm leading-6 text-[#66717B]">{mode === "login" ? "使用邮箱和密码进入 StudyMate" : "验证邮箱后，即可建立专属岗位能力画像"}</p>
+                <p className="mt-2 text-sm leading-6 text-[#66717B]">{mode === "login" ? "使用邮箱和密码进入因材智训" : "验证邮箱后，即可建立专属岗位能力画像"}</p>
               </div>
 
               <div className="mb-5 grid grid-cols-2 rounded-xl border border-[#DED8CC] bg-[#ECE8DE] p-1" role="tablist" aria-label="登录或注册">
@@ -331,7 +331,7 @@ export function Login() {
 
                 <Button type="submit" size="lg" disabled={loading} className="group relative mt-1 w-full overflow-hidden border-0 bg-[#244C66] text-[#FFFEFA] shadow-[0_10px_22px_rgba(36,76,102,.20)] hover:bg-[#193B50]">
                   <span className="relative z-10 inline-flex items-center gap-2">
-                    {loading ? <Loader2 className="animate-spin" /> : <>{mode === "login" ? "进入 StudyMate" : "验证并创建账号"}<ArrowRight /></>}
+                    {loading ? <Loader2 className="animate-spin" /> : <>{mode === "login" ? "进入因材智训" : "验证并创建账号"}<ArrowRight /></>}
                   </span>
                 </Button>
               </form>
@@ -416,7 +416,7 @@ function OrbitalLearningSystem({ reduced }: { reduced: boolean }) {
         </motion.g>
         <circle cx="320" cy="122" r="69" fill="none" stroke="#193B50" strokeOpacity=".55" strokeWidth="1.2" />
         <text x="320" y="118" textAnchor="middle" fill="#FFFEFA" fontSize="13" fontWeight="800" letterSpacing="1">学习者</text>
-        <text x="320" y="137" textAnchor="middle" fill="#F3E4C5" fontSize="8" fontWeight="700" letterSpacing="1.8">STUDYMATE</text>
+        <text x="320" y="137" textAnchor="middle" fill="#F3E4C5" fontSize="8" fontWeight="700" letterSpacing="1.8">因材智训</text>
       </svg>
 
       <div className="absolute inset-x-0 bottom-0 grid grid-cols-3 gap-x-3 gap-y-1.5 px-1 sm:grid-cols-6 sm:gap-2 xl:border-t xl:border-[#BFC7C1] xl:px-3 xl:pt-2">

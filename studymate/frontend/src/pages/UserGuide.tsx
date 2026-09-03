@@ -127,13 +127,13 @@ export function UserGuide() {
             <div className="relative grid gap-7 lg:grid-cols-[minmax(0,1.1fr)_minmax(390px,.9fr)] lg:items-center">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#D8C9A8] bg-[#FBF7ED] px-3 py-1.5 text-[10px] font-bold tracking-[0.12em] text-[#8E6925]">
-                  <Compass className="size-3.5" /> STUDYMATE 使用手册
+                  <Compass className="size-3.5" /> 因材智训使用手册
                 </div>
                 <h1 className="mt-4 max-w-2xl text-[32px] font-black leading-[1.12] tracking-[-0.045em] text-[#18232D] sm:text-[40px] lg:text-[46px]">
                   不必认识所有功能，<br className="hidden sm:block" />先完成一次学习闭环
                 </h1>
                 <p className="mt-4 max-w-2xl text-[13px] leading-6 text-[#66717B] sm:text-sm">
-                  StudyMate 会把目标岗位、岗位知识、个人画像、训练资源、测验证据和报告回写连在一起。第一次使用建议跟随 3 分钟指引，之后再按当前岗位目标选择功能。
+                  因材智训会把目标岗位、岗位知识、个人画像、训练资源、测验证据和报告回写连在一起。第一次使用建议跟随 3 分钟指引，之后再按当前岗位目标选择功能。
                 </p>
                 <div className="mt-6 flex flex-wrap gap-2.5">
                   <button type="button" onClick={openQuickGuide} className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] shadow-[0_10px_24px_rgba(36,76,102,.18)] transition-all hover:-translate-y-px hover:bg-[#193B50]">
@@ -293,7 +293,7 @@ export function UserGuide() {
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#E8EDE5] text-[#5D7658]"><CheckCircle2 className="size-[18px]" /></span>
                 <div>
                   <div className="text-[13px] font-bold text-[#18232D]">准备好了，就从一个目标岗位开始</div>
-                  <p className="mt-1 text-[10px] leading-4 text-[#66717B]">不必一次配置完所有内容，StudyMate 会在真实学习过程中逐步了解你。</p>
+                  <p className="mt-1 text-[10px] leading-4 text-[#66717B]">不必一次配置完所有内容，因材智训会在真实学习过程中逐步了解你。</p>
                 </div>
               </div>
               <Link to="/courses" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-[#6F8A69] px-5 text-[11px] font-bold text-white hover:bg-[#5D7658]">选择目标岗位 <ArrowRight className="size-3.5" /></Link>

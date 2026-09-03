@@ -110,7 +110,7 @@ class Settings(BaseSettings):
     SMTP_USERNAME: str = ""
     SMTP_PASSWORD: str = ""  # QQ 邮箱 SMTP 授权码，不是 QQ 密码
     SMTP_FROM_EMAIL: str = ""
-    SMTP_FROM_NAME: str = "StudyMate"
+    SMTP_FROM_NAME: str = "因材智训"
     EMAIL_CODE_EXPIRE_MINUTES: int = 10
     EMAIL_CODE_RESEND_SECONDS: int = 60
     EMAIL_CODE_MAX_ATTEMPTS: int = 5

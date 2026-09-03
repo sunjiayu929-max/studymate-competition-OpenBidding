@@ -3,7 +3,7 @@
     <view class="brand-row">
       <view class="brand-mark">SM</view>
       <view class="brand-copy">
-        <text class="brand-name">StudyMate</text>
+        <text class="brand-name">因材智训</text>
         <text class="brand-subtitle">INTELLIGENT LEARNING STUDIO</text>
       </view>
     </view>

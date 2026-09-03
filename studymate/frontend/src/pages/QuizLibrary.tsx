@@ -114,7 +114,7 @@ export function QuizLibrary() {
               <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><BookOpen className="size-4" /></span>
               <div className="min-w-0 flex-1">
-                <h1 className="truncate text-[15px] font-bold text-[#18232D]">StudyMate 智能测验</h1>
+                <h1 className="truncate text-[15px] font-bold text-[#18232D]">因材智训智能测验</h1>
                 <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">{course ? `围绕“${targetRole?.name || course.name}”岗位知识库生成个性化题目 · 完成评分、错题归档与针对性复习` : targetRole ? `已选择“${targetRole.name}” · 专属知识库接入后开放岗位测验` : "选择目标岗位后生成个性化题目，并把错题准确归档"}</p>
               </div>
             </div>

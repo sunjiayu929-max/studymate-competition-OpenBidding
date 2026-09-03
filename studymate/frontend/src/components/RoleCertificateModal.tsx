@@ -136,7 +136,7 @@ export function RoleCertificateModal({
               >
                 <img src={certificateBackground} alt="" aria-hidden className="absolute inset-0 size-full object-cover" />
                 <div className="absolute inset-x-[13%] top-[12.5%] bottom-[12%] text-center text-[#183756]">
-                  <p className="font-semibold tracking-[0.28em] text-[#8A6A2E]" style={{ fontSize: "1.25cqw" }}>STUDYMATE · 岗位胜任力训练</p>
+                  <p className="font-semibold tracking-[0.28em] text-[#8A6A2E]" style={{ fontSize: "1.25cqw" }}>因材智训 · 岗位胜任力训练</p>
                   <h3 className="mt-[1.1cqw] font-serif font-bold tracking-[0.16em]" style={{ fontSize: "4.1cqw" }}>岗位学习荣誉证书</h3>
                   <p className="mt-[0.2cqw] font-medium tracking-[0.32em] text-[#B18A43]" style={{ fontSize: "1.1cqw" }}>CERTIFICATE OF ACHIEVEMENT</p>
 
@@ -152,7 +152,7 @@ export function RoleCertificateModal({
                   </p>
 
                   <div className="absolute bottom-[10.5cqw] left-[15cqw] text-left text-[#5E625F]" style={{ fontSize: "1cqw" }}>
-                    <p className="font-semibold text-[#263D52]" style={{ fontSize: "1.25cqw" }}>StudyMate 学习平台</p>
+                    <p className="font-semibold text-[#263D52]" style={{ fontSize: "1.25cqw" }}>因材智训学习平台</p>
                     <p className="mt-[0.4cqw]">颁发日期：{issuedDate}</p>
                     <p className="mt-[0.15cqw] tracking-[0.04em]">证书编号：{record.serial}</p>
                     <p className="mt-[0.3cqw] text-[#827A6D]">电子学习成就证明 · 非职业资格证书</p>
@@ -161,7 +161,7 @@ export function RoleCertificateModal({
                   <div className="absolute bottom-[0.2cqw] right-[2.2cqw] grid size-[12.4cqw] place-items-center rounded-full border-[0.35cqw] border-double border-[#BD954A] bg-[#FFF8E8]/80 text-[#9A722C]">
                     <div>
                       <span className="mx-auto grid size-[3.6cqw] place-items-center rounded-full border-[0.18cqw] border-[#B88936] font-bold leading-none" style={{ fontSize: "2.1cqw" }}>✓</span>
-                      <strong className="mt-[0.2cqw] block tracking-[0.12em]" style={{ fontSize: "1.35cqw" }}>STUDYMATE</strong>
+                      <strong className="mt-[0.2cqw] block tracking-[0.12em]" style={{ fontSize: "1.35cqw" }}>因材智训</strong>
                       <span className="mt-[0.1cqw] block tracking-[0.16em]" style={{ fontSize: "0.8cqw" }}>学习完成认证</span>
                     </div>
                   </div>

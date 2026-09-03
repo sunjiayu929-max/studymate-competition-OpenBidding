@@ -211,7 +211,7 @@ async def redeem_oj_ticket(request: Request, db: AsyncSession = Depends(get_db))
         select(OJLaunchTicket).where(OJLaunchTicket.token_hash == _token_hash(payload.ticket))
     )
     if ticket is None or ticket.expires_at < now:
-        raise HTTPException(status_code=410, detail="OJ 启动票据已过期，请返回 StudyMate 重新进入")
+        raise HTTPException(status_code=410, detail="OJ 启动票据已过期，请返回因材智训重新进入")
     user = await db.get(User, ticket.user_id)
     if user is None or not user.is_active:
         raise HTTPException(status_code=403, detail="当前学习者不可用")
@@ -226,7 +226,7 @@ async def redeem_oj_ticket(request: Request, db: AsyncSession = Depends(get_db))
         .values(consumed_at=now)
     )
     if consume.rowcount != 1:
-        raise HTTPException(status_code=410, detail="OJ 启动票据已使用，请返回 StudyMate 重新进入")
+        raise HTTPException(status_code=410, detail="OJ 启动票据已使用，请返回因材智训重新进入")
     await db.commit()
     return {
         "user": {

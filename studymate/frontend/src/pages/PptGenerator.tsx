@@ -403,7 +403,7 @@ export function PptGenerator() {
       const pptx = new PptxGenJS()
       const palette = STYLE_OPTIONS[styleId]
       populateEditableDeck(pptx, slides, { topic, palette })
-      const safeName = (topic || "StudyMate-演示文稿").replace(/[\\/:*?"<>|]/g, "-")
+      const safeName = (topic || "因材智训-演示文稿").replace(/[\\/:*?"<>|]/g, "-")
       await pptx.writeFile({ fileName: `${safeName}.pptx` })
       setMessage("可编辑 .pptx 已导出，标题、正文和版式元素均可在 PowerPoint 中继续修改")
     } catch (error) {

@@ -290,7 +290,7 @@ try {
 
   await page.getByPlaceholder("例如 name@example.com").fill("judge.fixture@example.test")
   await page.getByPlaceholder("输入你的密码").fill("safe-test-password")
-  await page.getByRole("button", { name: "进入 StudyMate" }).click()
+  await page.getByRole("button", { name: "进入因材智训" }).click()
   await page.waitForURL((url) => url.pathname === "/")
 
   // 该段专门验证保留的旧版指挥舱契约；默认首页现为浅色品牌首页。
@@ -300,7 +300,7 @@ try {
   await page.getByTestId("platform-capabilities").getByText("1,709", { exact: true }).waitFor()
   assert.equal(await page.getByTestId("agents-live").locator(".universe-agent-row").count(), 7, "learning universe must show all 7 Agents")
   assert.equal(await page.locator(".universe-planet").count(), 7, "learning universe must show all 7 capability planets")
-  assert.equal(await page.getByRole("button", { name: /打开 StudyMate 真人学习助手/u }).count(), 0, "global digital human must be hidden over the learning universe")
+  assert.equal(await page.getByRole("button", { name: /打开因材智训真人学习助手/u }).count(), 0, "global digital human must be hidden over the learning universe")
   assert.equal(await page.getByText("演示数据", { exact: false }).count(), 0, "formal home must not show simulated personal data")
   assert.equal(await page.getByText("模拟观测", { exact: false }).count(), 0, "formal home must not show simulated observations")
   const skipGuide = page.getByRole("button", { name: /暂时跳过/u })
@@ -359,11 +359,11 @@ try {
   await page.getByLabel("讲解播放速度").last().selectOption("1.25")
   assert.equal(await page.getByLabel("讲解播放速度").last().inputValue(), "1.25")
 
-  const avatarButton = page.getByRole("button", { name: /打开 StudyMate 真人学习助手/u })
+  const avatarButton = page.getByRole("button", { name: /打开因材智训真人学习助手/u })
   assert.equal(await avatarButton.count(), 0, "Dense concept controls should not be covered by the global avatar")
   await page.goto(`${baseUrl}/courses`)
   await avatarButton.click()
-  await page.locator('aside[aria-label="StudyMate 学习助手"]').waitFor()
+  await page.locator('aside[aria-label="因材智训学习助手"]').waitFor()
   await page.getByRole("button", { name: "关闭（Esc）" }).click()
 
   await page.goto(`${baseUrl}/tutor/voice`)
@@ -376,8 +376,8 @@ try {
     { path: "/knowledge", marker: "创建第一个私有知识库" },
     { path: "/ppt", marker: "让模型先讲好故事，再生成可编辑演示文稿" },
     { path: "/tutor", marker: "本次讲解会如何适配你" },
-    { path: "/report", marker: "StudyMate 学习报告" },
-    { path: "/tests", marker: "StudyMate 测试管理" },
+    { path: "/report", marker: "因材智训学习报告" },
+    { path: "/tests", marker: "因材智训测试管理" },
   ]
   await page.setViewportSize({ width: 1440, height: 900 })
   for (const target of competitionPages) {

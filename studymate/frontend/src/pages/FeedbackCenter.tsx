@@ -200,7 +200,7 @@ export function FeedbackCenter() {
               <Link to="/" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]"><ArrowLeft className="size-3.5" /><span className="hidden sm:inline">返回首页</span></Link>
               <span className="h-6 w-px bg-[#D7D1C4]" />
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#DFC9BE] bg-[#F4E8E2] text-[#9A4E35]"><MessageSquare className="size-4" /></span>
-              <div className="min-w-0 flex-1"><h1 className="truncate text-[15px] font-bold text-[#18232D]">StudyMate 反馈中心</h1><p className="mt-0.5 truncate text-[11px] text-[#6F787A]">{canManage ? "查看全部用户反馈，并由管理员统一回复" : canReview ? "评审观察视图：查看反馈统计与处理进度" : "查看我的反馈以及管理员回复"}</p></div>
+              <div className="min-w-0 flex-1"><h1 className="truncate text-[15px] font-bold text-[#18232D]">因材智训反馈中心</h1><p className="mt-0.5 truncate text-[11px] text-[#6F787A]">{canManage ? "查看全部用户反馈，并由管理员统一回复" : canReview ? "评审观察视图：查看反馈统计与处理进度" : "查看我的反馈以及管理员回复"}</p></div>
             </div>
             <Button size="sm" variant="outline" onClick={load} disabled={loading} className="border-[#D7D1C4] bg-[#FFFEFA] text-[#59636B] hover:bg-[#F1EDE4]">
               {loading ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}

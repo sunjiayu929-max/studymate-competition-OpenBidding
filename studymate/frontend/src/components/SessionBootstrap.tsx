@@ -23,7 +23,7 @@ export function SessionBootstrap() {
             <Sparkles className="size-6" />
             <span className="absolute inset-[-7px] animate-pulse rounded-[25px] border border-[#9FB1BC]/60" />
           </div>
-          <div className="mt-5 text-sm font-bold tracking-[-0.025em] text-[#18232D]">StudyMate</div>
+          <div className="mt-5 text-sm font-bold tracking-[-0.025em] text-[#18232D]">因材智训</div>
           <div className="mt-1 text-xs text-[#66717B]">正在核对登录状态与学习进度…</div>
           <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[#ECE8DE]">
             <div className="h-full w-2/3 animate-pulse rounded-full bg-[#6F8A69]" />

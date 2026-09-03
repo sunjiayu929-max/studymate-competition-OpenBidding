@@ -556,7 +556,7 @@ export function Notes() {
       await new Promise((r) => requestAnimationFrame(() => r(null)))
       await new Promise((r) => requestAnimationFrame(() => r(null)))
       if (!batchPrintRef.current) throw new Error("打印区未就绪")
-      const fname = `StudyMate-笔记合集-${picked.length}条-${new Date().toISOString().slice(0, 10)}.pdf`
+      const fname = `因材智训-笔记合集-${picked.length}条-${new Date().toISOString().slice(0, 10)}.pdf`
       await renderNodeToPdf(batchPrintRef.current, fname)
       showNotice(`${picked.length} 条笔记已导出为 PDF`)
     } catch (e) {
@@ -581,7 +581,7 @@ export function Notes() {
               <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83]"><NotebookText className="size-4" /></span>
               <div className="min-w-0 flex-1">
-                <h1 className="truncate text-[15px] font-bold text-[#18232D]">StudyMate 智能笔记</h1>
+                <h1 className="truncate text-[15px] font-bold text-[#18232D]">因材智训智能笔记</h1>
                 <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">管理岗位训练笔记、错题与讲解摘录 · 支持 Markdown 编辑、识图总结及 Markdown / PDF 下载</p>
               </div>
             </div>
@@ -776,7 +776,7 @@ export function Notes() {
         >
           <div ref={batchPrintRef}>
             <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4, color: "#111" }}>
-              StudyMate 笔记合集
+              因材智训笔记合集
             </h1>
             <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 24 }}>
               共 {batchPrintNotes.length} 条 · 导出于 {new Date().toLocaleString("zh-CN")}

@@ -1,6 +1,9 @@
-import { careerDomains } from "@/lib/domainCareerCatalog"
+import { apiGet } from "@/lib/api"
+import { careerDomains, type CareerRole } from "@/lib/domainCareerCatalog"
 
 const CERTIFICATE_PREFIX = "sm:role-certificate:"
+
+export const CERTIFICATE_ACCURACY_THRESHOLD = 85
 
 export interface RoleCertificateRecord {
   userId: number
@@ -12,12 +15,29 @@ export interface RoleCertificateRecord {
   serial: string
 }
 
+export interface RoleTrainingRound {
+  run_id: string
+  target_role: string
+  accuracy: number | null
+  completed_at: string
+}
+
+export interface RoleCertificateEvaluation {
+  rounds: RoleTrainingRound[]
+  completedRoundCount: number
+  requiredRoundCount: number
+  latestAccuracy: number | null
+  eligible: boolean
+}
+
 export interface CertificateIdentity {
   userId: number
   learnerName: string
   roleId: string
   roleName: string
   completedRounds: number
+  /** 预置/演示证书的颁发时间；正常颁发不传，取当前时间。 */
+  issuedAt?: string
 }
 
 function certificateStorageKey(userId: number, roleId: string) {
@@ -42,7 +62,7 @@ function normalizeCertificate(
   value: Partial<RoleCertificateRecord>,
   identity: CertificateIdentity,
 ): RoleCertificateRecord {
-  const issuedAt = value.issuedAt || new Date().toISOString()
+  const issuedAt = value.issuedAt || identity.issuedAt || new Date().toISOString()
   return {
     userId: identity.userId,
     learnerName: value.learnerName || identity.learnerName,
@@ -71,6 +91,81 @@ export function getOrCreateCertificateRecord(identity: CertificateIdentity): Rol
     // Ignore browsers that disable localStorage.
   }
   return record
+}
+
+export function hasCertificateRecord(userId: number, roleId: string) {
+  try {
+    return localStorage.getItem(certificateStorageKey(userId, roleId)) !== null
+  } catch {
+    return false
+  }
+}
+
+export function evaluateRoleCertificateRounds(
+  rounds: readonly RoleTrainingRound[],
+  role: Pick<CareerRole, "name" | "sampleTasks">,
+): RoleCertificateEvaluation {
+  const seen = new Set<string>()
+  const completed: RoleTrainingRound[] = []
+  for (const round of rounds) {
+    if (round.target_role !== role.name || seen.has(round.run_id)) continue
+    seen.add(round.run_id)
+    completed.push(round)
+  }
+  const requiredRoundCount = Math.max(1, role.sampleTasks.length)
+  const latestAccuracy = completed[0]?.accuracy ?? null
+  const eligible = completed.length >= requiredRoundCount
+    && latestAccuracy !== null
+    && latestAccuracy >= CERTIFICATE_ACCURACY_THRESHOLD
+  return { rounds: completed, completedRoundCount: completed.length, requiredRoundCount, latestAccuracy, eligible }
+}
+
+// 荣誉墙打开时补发：学完岗位全部训练且最近一轮达标，却从未手动领取过的证书在这里自动入账。
+export async function syncEarnedCertificates(userId: number, learnerName: string): Promise<RoleCertificateRecord[]> {
+  ensureDemoCertificates(userId, learnerName)
+  const profile = await apiGet<{ dims?: { training_rounds?: RoleTrainingRound[] } }>(`/profile/${userId}`)
+  const rounds = profile.dims?.training_rounds ?? []
+  const issued: RoleCertificateRecord[] = []
+  for (const domain of careerDomains) {
+    for (const role of domain.roles) {
+      const evaluation = evaluateRoleCertificateRounds(rounds, role)
+      if (!evaluation.eligible) continue
+      const alreadyStored = hasCertificateRecord(userId, role.id)
+      const record = getOrCreateCertificateRecord({
+        userId,
+        learnerName,
+        roleId: role.id,
+        roleName: role.name,
+        completedRounds: evaluation.completedRoundCount,
+      })
+      if (!alreadyStored) issued.push(record)
+    }
+  }
+  return issued
+}
+
+// 演示预置：前三个领域各预置一张证书（软件开发领域跳过 FDE），保证任意账号进入荣誉墙即有成果可看。
+const DEMO_PRESET_DOMAIN_IDS = ["ai", "software", "industrial"]
+const DEMO_PRESET_DAYS_AGO = [90, 60, 30]
+
+export function ensureDemoCertificates(userId: number, learnerName: string): void {
+  try {
+    DEMO_PRESET_DOMAIN_IDS.forEach((domainId, index) => {
+      const domain = careerDomains.find((item) => item.id === domainId)
+      const role = domain?.roles.find((item) => item.id !== "fde")
+      if (!role) return
+      getOrCreateCertificateRecord({
+        userId,
+        learnerName,
+        roleId: role.id,
+        roleName: role.name,
+        completedRounds: Math.max(1, role.sampleTasks.length),
+        issuedAt: new Date(Date.now() - DEMO_PRESET_DAYS_AGO[index] * 86400000).toISOString(),
+      })
+    })
+  } catch {
+    // 预置失败不阻塞荣誉墙展示。
+  }
 }
 
 export function listUserCertificates(userId: number, learnerName: string): RoleCertificateRecord[] {

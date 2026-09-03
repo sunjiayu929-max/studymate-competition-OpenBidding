@@ -202,6 +202,16 @@ function runPersistentEval(
   return task
 }
 
+const DIM_LABEL: Record<string, string> = {
+  math: "数学", programming: "编程", cs_foundation: "计算机基础", data_sql: "数据与SQL",
+  subject_prior: "领域先验", ml_prior: "ML 先验",  // ml_prior 兼容旧画像
+  statistics: "统计", english: "英语",  // 旧维度，兼容历史快照
+  practice_first: "实践优先", stepwise: "循序渐进", challenge_seeking: "挑战导向", reflective: "复盘总结",
+  visual: "视觉", hands_on: "实操", auditory: "听觉",  // 旧维度，兼容历史快照
+  document: "文档", mindmap: "导图", quiz: "题目", code: "代码", video: "视频", reading: "阅读",
+  algorithms: "算法建模", data_ai: "数据AI", systems: "系统网络", engineering: "工程实践", professional: "职业素养",
+}
+
 const RESOURCE_LABEL: Record<string, string> = {
   doc: "讲解文档", mindmap: "思维导图", quiz: "智能题目", reading: "拓展阅读",
   code: "代码案例", path: "学习路径", concept: "可视讲解", note: "学习笔记", video: "视频",
@@ -336,7 +346,7 @@ export function Report() {
         profile_delta: {},
         suggestions: latest.suggestions || [],
         next_topics: [],
-        summary_markdown: "这是最近一次阶段评估的实时数据快照。完成新的测验或一轮资源学习后，StudyMate 会在关键里程碑更新阶段总结。",
+        summary_markdown: "这是最近一次阶段评估的实时数据快照。完成新的测验或一轮资源学习后，因材智训会在关键里程碑更新阶段总结。",
         generated_at: latest.created_at || undefined,
         evidence: {
           course_id: evidenceCourseId,
@@ -476,7 +486,7 @@ export function Report() {
         pdf.addImage(imgData, "PNG", 10, position, imgW, imgH)
         heightLeft -= pageH - 20
       }
-      const fname = `StudyMate-学习报告-${ws.topic || "未命名"}-${new Date().toISOString().slice(0, 10)}.pdf`
+      const fname = `因材智训-学习报告-${ws.topic || "未命名"}-${new Date().toISOString().slice(0, 10)}.pdf`
       pdf.save(fname)
       showNotice("学习报告 PDF 已导出")
     } catch (e) {
@@ -562,7 +572,7 @@ export function Report() {
               <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><BarChart3 className="size-4" /></span>
               <div className="min-w-0">
-                <h1 className="text-[15px] font-bold text-[#18232D]">StudyMate 学习报告</h1>
+                <h1 className="text-[15px] font-bold text-[#18232D]">因材智训学习报告</h1>
                 <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">{ws.topic ? `围绕《${ws.topic}》分析掌握程度、训练投入与下一轮路径` : "汇总答题、资源使用与岗位能力画像，形成可以行动的胜任力反馈"}</p>
               </div>
             </div>
@@ -771,7 +781,7 @@ export function Report() {
             </div>
 
             <div className="text-center text-[10px] text-[var(--muted-foreground)] pt-2">
-              本报告由 StudyMate 评估智能体根据答题数据与学习行为生成 · {formatReportTime(report.generated_at)}
+              本报告由因材智训评估智能体根据答题数据与学习行为生成 · {formatReportTime(report.generated_at)}
             </div>
           </div>
         )}

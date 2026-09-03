@@ -26,7 +26,7 @@ interface DigitalHumanVideoProps {
 
 export function DigitalHumanVideo({
   state,
-  alt = "StudyMate 真人讲师视频",
+  alt = "因材智训真人讲师视频",
   className,
   mediaClassName,
   priority = false,

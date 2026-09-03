@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""生成 StudyMate 的 DOCX 与 PDF 部署交付文档。
+"""生成因材智训的 DOCX 与 PDF 部署交付文档。
 
 封面和视觉样式沿用参考文档，正文按逻辑块自然分页；目录页码由
 最终正文分页动态生成，不再通过固定 44/9 页制造留白或整页缩字。
@@ -200,7 +200,7 @@ def generate_architecture_long(path: Path) -> None:
     main = load_pil_font(HEADING_FONT_FILE, 34)
     small = load_pil_font(BODY_FONT_FILE, 28)
 
-    draw.text((60, 36), "StudyMate 生产部署架构", font=title, fill="#17365D")
+    draw.text((60, 36), "因材智训生产部署架构", font=title, fill="#17365D")
     rounded_box(draw, (620, 120, 1180, 230), "用户浏览器\nHTTPS / SSE", main, "#EAF2F8")
     rounded_box(draw, (620, 300, 1180, 410), "Caddy 公网网关\n80 / 443 · 自动 HTTPS", main, "#D9EAF7")
     rounded_box(draw, (620, 480, 1180, 590), "Frontend Nginx\nReact 静态站点 · /api 代理", main, "#E2F0D9", "#70AD47")
@@ -229,7 +229,7 @@ def generate_architecture_short(path: Path) -> None:
     main = load_pil_font(HEADING_FONT_FILE, 36)
     small = load_pil_font(BODY_FONT_FILE, 29)
 
-    draw.text((70, 45), "StudyMate 系统架构", font=title, fill="#17365D")
+    draw.text((70, 45), "因材智训系统架构", font=title, fill="#17365D")
     rounded_box(draw, (150, 145, 1050, 275), "访问层：浏览器 / PC / 移动端", main, "#EAF2F8")
     rounded_box(draw, (150, 365, 1050, 510), "公网网关：Caddy\nDNS · HTTPS · HTTP/2 · 压缩", main, "#D9EAF7")
     rounded_box(draw, (150, 600, 1050, 745), "展示层：React + Nginx\n静态资源 · SPA · /api 反向代理", main, "#E2F0D9", "#70AD47")
@@ -252,7 +252,7 @@ def generate_deployment_flow(path: Path) -> None:
     title = load_pil_font(HEADING_FONT_FILE, 40)
     font = load_pil_font(HEADING_FONT_FILE, 28)
     small = load_pil_font(BODY_FONT_FILE, 23)
-    draw.text((55, 35), "StudyMate 部署流程", font=title, fill="#17365D")
+    draw.text((55, 35), "因材智训部署流程", font=title, fill="#17365D")
     labels = [
         ("1 服务器与 DNS", "Ubuntu 22.04\nA 记录 / 安全组"),
         ("2 安装 Docker", "国内 CE 源\n镜像加速 / UFW"),
@@ -280,13 +280,13 @@ def generate_mobile_web(path: Path) -> None:
     main = load_pil_font(HEADING_FONT_FILE, 29)
     small = load_pil_font(BODY_FONT_FILE, 24)
 
-    draw.text((55, 35), "StudyMate 响应式移动 Web", font=title, fill="#333333")
+    draw.text((55, 35), "因材智训响应式移动 Web", font=title, fill="#333333")
     draw.rounded_rectangle((185, 120, 715, 1080), radius=54, fill="#202020", outline="#202020", width=4)
     draw.rounded_rectangle((215, 170, 685, 1015), radius=30, fill="#FAFAFA", outline="#BFBFBF", width=3)
     draw.rounded_rectangle((330, 137, 570, 165), radius=14, fill="#555555")
     draw.rounded_rectangle((245, 205, 655, 265), radius=20, fill="#F2F2F2", outline="#BFBFBF", width=2)
     draw.text((275, 220), "https://matropic.cn", font=small, fill="#333333")
-    draw.text((255, 310), "StudyMate", font=main, fill="#17365D")
+    draw.text((255, 310), "因材智训", font=main, fill="#17365D")
     draw.text((255, 355), "随时继续你的学习闭环", font=small, fill="#595959")
     cards = [
         ("五门课程", "课程隔离 · RAG 来源追溯"),
@@ -520,7 +520,7 @@ def add_cover(doc: Document, long_doc: bool) -> None:
             doc.add_paragraph()
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = p.add_run("StudyMate：基于大模型的")
+        run = p.add_run("因材智训：基于大模型的")
         set_run_font(run, DOC_HEADING_FONT, 18, True)
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -858,7 +858,7 @@ def make_docx(path: Path, long_doc: bool, heading_pages=None) -> None:
     doc = Document()
     doc.core_properties.title = "项目部署文档" if long_doc else "系统部署说明书"
     doc.core_properties.subject = PROJECT_TITLE
-    doc.core_properties.author = "StudyMate 项目组"
+    doc.core_properties.author = "因材智训项目组"
     doc.core_properties.comments = "按竞赛示例版式生成；作者信息请由项目组补充。"
     set_section_size(doc.sections[0], long_doc)
     configure_doc_styles(doc, long_doc)
@@ -1075,7 +1075,7 @@ def draw_pdf_cover(c, page_size, long_doc: bool) -> None:
         c.drawImage(str(school), 108, h - 69, width=118, height=24, preserveAspectRatio=True, mask="auto")
         c.setFont("SimHei", 18)
         c.setFillColor(colors.black)
-        c.drawCentredString(w / 2, h - 195, "StudyMate：基于大模型的")
+        c.drawCentredString(w / 2, h - 195, "因材智训：基于大模型的")
         c.drawCentredString(w / 2, h - 230, "个性化资源生成与学习多智能体系统")
         c.setFont("SimHei", 29)
         c.drawCentredString(w / 2, h - 315, "项目部署文档")
@@ -1166,7 +1166,7 @@ class StudyMatePDFDocument(BaseDocTemplate):
             pagesize=self.page_size,
             pageCompression=1,
             title="项目部署文档" if long_doc else "系统部署说明书",
-            author="StudyMate 项目组",
+            author="因材智训项目组",
             subject=PROJECT_TITLE,
             leftMargin=0,
             rightMargin=0,

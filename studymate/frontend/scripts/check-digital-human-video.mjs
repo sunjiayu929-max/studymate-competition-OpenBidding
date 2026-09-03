@@ -61,7 +61,7 @@ assert.match(tutorBubble, /localStorage\.setItem\(TUTOR_POSITION_KEY/u, "floatin
 assert.match(tutorBubble, /TUTOR_GREETING = "我是你的学习助教，有问题随时来问我。"/u, "floating tutor must introduce itself")
 assert.match(tutorBubble, /greetingDue \? 2200 : 75000/u, "the greeting must appear promptly while later hints stay low-frequency")
 assert.match(tutorBubble, /localStorage\.setItem\(TUTOR_HIDDEN_KEY/u, "the hidden preference must persist")
-assert.match(tutorBubble, /显示 StudyMate 学习助教/u, "a hidden tutor must retain an accessible restore control")
+assert.match(tutorBubble, /显示因材智训学习助教/u, "a hidden tutor must retain an accessible restore control")
 assert.match(mediaConfig, /idleSrc/u, "closed-mouth idle video source must be configured")
 assert.match(mediaConfig, /speakingSrc/u, "real speaking video source must be configured separately")
 assert.match(mediaConfig, /floatingIdleSrc/u, "transparent floating video source must be configured separately")

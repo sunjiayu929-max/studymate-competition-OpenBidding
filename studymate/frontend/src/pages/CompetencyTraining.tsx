@@ -26,6 +26,7 @@ import { ReportPathMap, ReportPathProgress, type ReportCapability } from "@/comp
 import { RoleCertificateModal } from "@/components/RoleCertificateModal"
 import { TheoryAssessmentModal, type TheoryAssessment, type TheoryGateState } from "@/components/TheoryAssessmentModal"
 import { apiGet } from "@/lib/api"
+import { CERTIFICATE_ACCURACY_THRESHOLD, evaluateRoleCertificateRounds, getOrCreateCertificateRecord } from "@/lib/certificates"
 import { buildRoleCompetencyMap, type CompetencyLevel } from "@/lib/roleCompetencyMap"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { cn } from "@/lib/utils"
@@ -116,21 +117,27 @@ export function CompetencyTraining() {
   const nextTopicIndex = sampleTasks.length ? cycle % sampleTasks.length : 0
   const currentTopic = requestedTopic || workspace.topic.trim() || sampleTasks[currentTopicIndex] || sampleTasks[0] || ""
   const nextTopic = sampleTasks[nextTopicIndex] ?? sampleTasks[0] ?? currentTopic
-  const completedRoleRounds = useMemo(() => {
-    if (!role) return []
-    const seen = new Set<string>()
-    return (profile?.dims.training_rounds ?? []).filter((round) => {
-      if (round.target_role !== role.name || seen.has(round.run_id)) return false
-      seen.add(round.run_id)
-      return true
-    })
-  }, [profile?.dims.training_rounds, role])
+  const roleEvaluation = useMemo(
+    () => role ? evaluateRoleCertificateRounds(profile?.dims.training_rounds ?? [], role) : null,
+    [profile?.dims.training_rounds, role],
+  )
+  const completedRoleRounds = roleEvaluation?.rounds ?? []
   const activeFeedbackIsRecorded = completedRoleRounds.some((round) => round.run_id === workspace.feedback?.run_id)
   const activeFeedbackMatchesRole = Boolean(workspace.feedback && workspace.targetRole === role?.name)
-  const completedRoundCount = completedRoleRounds.length + (activeFeedbackMatchesRole && !activeFeedbackIsRecorded ? 1 : 0)
-  const requiredRoundCount = Math.max(1, sampleTasks.length)
-  const latestAccuracy = activeFeedbackMatchesRole ? workspace.feedback?.accuracy ?? null : completedRoleRounds[0]?.accuracy ?? null
-  const certificateEligible = completedRoundCount >= requiredRoundCount && latestAccuracy !== null && latestAccuracy >= 85
+  const completedRoundCount = (roleEvaluation?.completedRoundCount ?? 0) + (activeFeedbackMatchesRole && !activeFeedbackIsRecorded ? 1 : 0)
+  const requiredRoundCount = roleEvaluation?.requiredRoundCount ?? Math.max(1, sampleTasks.length)
+  const latestAccuracy = activeFeedbackMatchesRole ? workspace.feedback?.accuracy ?? null : roleEvaluation?.latestAccuracy ?? null
+  const certificateEligible = completedRoundCount >= requiredRoundCount && latestAccuracy !== null && latestAccuracy >= CERTIFICATE_ACCURACY_THRESHOLD
+  useEffect(() => {
+    if (!certificateEligible || !user || !role) return
+    getOrCreateCertificateRecord({
+      userId: user.user_id,
+      learnerName: user.name,
+      roleId: role.id,
+      roleName: role.name,
+      completedRounds: completedRoundCount,
+    })
+  }, [certificateEligible, user, role, completedRoundCount])
   const reportCapabilities = useMemo<ReportCapability[]>(() => {
     if (!role || !capabilityMap) return []
     const stored = readEvidence(user?.user_id, role.id)
@@ -300,8 +307,8 @@ function AcceptancePanel({
       <SectionTitle
         icon={certificateEligible ? Award : Flag}
         eyebrow={certificateEligible ? "05 · 全部训练完成" : "05 · 本轮验收"}
-        title={certificateEligible ? "祝贺你完成岗位学习，领取专属电子奖状" : "本轮验收"}
-        description={certificateEligible ? "系统已核对全部学习轮次与最终验收结果，现在可以生成并下载岗位奖状。" : "根据本轮已完成题目的正确率选择下一步。"}
+        title={certificateEligible ? "祝贺你完成岗位学习，专属电子奖状已收入荣誉墙" : "本轮验收"}
+        description={certificateEligible ? "系统已核对全部学习轮次与最终验收结果，证书已自动发放，可随时查看和下载。" : "根据本轮已完成题目的正确率选择下一步。"}
       />
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
@@ -313,7 +320,7 @@ function AcceptancePanel({
         <div className="flex min-h-32 flex-wrap items-center gap-3 rounded-2xl border border-[#DCE5F1] bg-white px-5 py-4">
           {certificateEligible ? (
             <>
-              <button type="button" onClick={onOpenCertificate} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[linear-gradient(135deg,#B7872D,#D0A64C)] px-4 text-xs font-bold text-white shadow-[0_8px_18px_rgba(183,135,45,.22)]"><Award className="size-4" />生成岗位奖状</button>
+              <button type="button" onClick={onOpenCertificate} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[linear-gradient(135deg,#B7872D,#D0A64C)] px-4 text-xs font-bold text-white shadow-[0_8px_18px_rgba(183,135,45,.22)]"><Award className="size-4" />查看岗位奖状</button>
               <span className="text-[10px] font-bold text-[#8A651F]">已完成 {completedRoundCount} 轮岗位学习</span>
             </>
           ) : (

@@ -1,4 +1,4 @@
-# StudyMate 后端
+# 因材智训后端
 
 后端基于 FastAPI、SQLAlchemy 和 SQLite，负责认证、学习画像、课程 RAG、多智能体生成、助教对话、测验、报告、外部资源适配与在线代码运行代理。
 

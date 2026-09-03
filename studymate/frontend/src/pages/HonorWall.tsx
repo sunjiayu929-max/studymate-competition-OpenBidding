@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
 import { ArrowRight, Award, CalendarDays, Eye, Sparkles, Trophy } from "lucide-react"
@@ -6,7 +6,7 @@ import { ArrowRight, Award, CalendarDays, Eye, Sparkles, Trophy } from "lucide-r
 import certificateBackground from "@/assets/certificate/studymate-certificate-bg.png"
 import { AppTopbar } from "@/components/AppTopbar"
 import { RoleCertificateModal } from "@/components/RoleCertificateModal"
-import { formatCertificateDate, listUserCertificates, type RoleCertificateRecord } from "@/lib/certificates"
+import { formatCertificateDate, ensureDemoCertificates, listUserCertificates, syncEarnedCertificates, type RoleCertificateRecord } from "@/lib/certificates"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useCurrentUser } from "@/store/user"
 
@@ -14,10 +14,29 @@ export function HonorWall() {
   useTrackPage("honor_wall")
   const user = useCurrentUser()
   const [selected, setSelected] = useState<RoleCertificateRecord | null>(null)
-  const certificates = useMemo(
-    () => user ? listUserCertificates(user.user_id, user.name) : [],
-    [user],
-  )
+  const [certificates, setCertificates] = useState<RoleCertificateRecord[]>(() => {
+    if (!user) return []
+    ensureDemoCertificates(user.user_id, user.name)
+    return listUserCertificates(user.user_id, user.name)
+  })
+  const userId = user?.user_id
+  const learnerName = user?.name ?? ""
+
+  const refreshCertificates = useCallback(() => {
+    // 演示预置放在读取前：首次进入也不会闪现空状态。
+    if (userId) ensureDemoCertificates(userId, learnerName)
+    setCertificates(userId ? listUserCertificates(userId, learnerName) : [])
+  }, [userId, learnerName])
+
+  useEffect(() => {
+    refreshCertificates()
+    if (!userId) return
+    let active = true
+    syncEarnedCertificates(userId, learnerName)
+      .then((issued) => { if (active && issued.length) refreshCertificates() })
+      .catch(() => undefined)
+    return () => { active = false }
+  }, [refreshCertificates, userId, learnerName])
   const roleCount = new Set(certificates.map((record) => record.roleId)).size
   const latestIssuedAt = certificates[0]?.issuedAt
 
@@ -72,7 +91,7 @@ export function HonorWall() {
                     <div className="relative aspect-[4/3] overflow-hidden border-b border-[#D8C9A8]">
                       <img src={certificateBackground} alt="" aria-hidden className="absolute inset-0 size-full object-cover" />
                       <div className="absolute inset-x-[14%] top-[18%] text-center text-[#173653]">
-                        <p className="text-[7px] font-bold tracking-[.24em] text-[#9B7429] sm:text-[8px]">STUDYMATE</p>
+                        <p className="text-[7px] font-bold tracking-[.24em] text-[#9B7429] sm:text-[8px]">因材智训</p>
                         <h3 className="mt-1 font-serif text-[clamp(16px,2vw,25px)] font-bold tracking-[.12em]">岗位学习荣誉证书</h3>
                         <div className="mx-auto mt-3 h-px w-20 bg-[#C49A4C]" />
                         <strong className="mt-3 block truncate font-serif text-[clamp(18px,2.4vw,30px)] tracking-[.08em]">{record.learnerName}</strong>
@@ -97,7 +116,7 @@ export function HonorWall() {
                 <span className="mx-auto grid size-16 place-items-center rounded-[22px] border border-[#DDCB9D] bg-[#FFF8E6] text-[#AD7F2B]"><Award className="size-7" /></span>
                 <p className="mt-5 text-[10px] font-bold tracking-[.15em] text-[#A87822]">第一张荣誉等待点亮</p>
                 <h3 className="mt-2 text-xl font-bold tracking-[-.03em] text-[#18232D]">完成一个岗位的全部学习内容</h3>
-                <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#6F787A]">完成所有训练轮次并通过最终验收后，在岗位训练中心领取证书，它会永久收藏在这里。</p>
+                <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#6F787A]">完成所有训练轮次并通过最终验收后，岗位证书会自动点亮在这里，永久收藏。</p>
                 <Link to="/competency" className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white shadow-[0_8px_18px_rgba(36,76,102,.16)] hover:bg-[#193B50]">开始岗位训练<Sparkles className="size-3.5" /></Link>
               </div>
             </div>
