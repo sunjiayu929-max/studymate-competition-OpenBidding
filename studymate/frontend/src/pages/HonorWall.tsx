@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
 import { ArrowRight, Award, CalendarDays, Eye, Sparkles, Trophy } from "lucide-react"
@@ -6,7 +6,7 @@ import { ArrowRight, Award, CalendarDays, Eye, Sparkles, Trophy } from "lucide-r
 import certificateBackground from "@/assets/certificate/studymate-certificate-bg.png"
 import { AppTopbar } from "@/components/AppTopbar"
 import { RoleCertificateModal } from "@/components/RoleCertificateModal"
-import { formatCertificateDate, listUserCertificates, type RoleCertificateRecord } from "@/lib/certificates"
+import { formatCertificateDate, listUserCertificates, syncEarnedCertificates, type RoleCertificateRecord } from "@/lib/certificates"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useCurrentUser } from "@/store/user"
 
@@ -14,10 +14,25 @@ export function HonorWall() {
   useTrackPage("honor_wall")
   const user = useCurrentUser()
   const [selected, setSelected] = useState<RoleCertificateRecord | null>(null)
-  const certificates = useMemo(
-    () => user ? listUserCertificates(user.user_id, user.name) : [],
-    [user],
+  const [certificates, setCertificates] = useState<RoleCertificateRecord[]>(() =>
+    user ? listUserCertificates(user.user_id, user.name) : [],
   )
+  const userId = user?.user_id
+  const learnerName = user?.name ?? ""
+
+  const refreshCertificates = useCallback(() => {
+    setCertificates(userId ? listUserCertificates(userId, learnerName) : [])
+  }, [userId, learnerName])
+
+  useEffect(() => {
+    refreshCertificates()
+    if (!userId) return
+    let active = true
+    syncEarnedCertificates(userId, learnerName)
+      .then((issued) => { if (active && issued.length) refreshCertificates() })
+      .catch(() => undefined)
+    return () => { active = false }
+  }, [refreshCertificates, userId, learnerName])
   const roleCount = new Set(certificates.map((record) => record.roleId)).size
   const latestIssuedAt = certificates[0]?.issuedAt
 
@@ -97,7 +112,7 @@ export function HonorWall() {
                 <span className="mx-auto grid size-16 place-items-center rounded-[22px] border border-[#DDCB9D] bg-[#FFF8E6] text-[#AD7F2B]"><Award className="size-7" /></span>
                 <p className="mt-5 text-[10px] font-bold tracking-[.15em] text-[#A87822]">第一张荣誉等待点亮</p>
                 <h3 className="mt-2 text-xl font-bold tracking-[-.03em] text-[#18232D]">完成一个岗位的全部学习内容</h3>
-                <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#6F787A]">完成所有训练轮次并通过最终验收后，在岗位训练中心领取证书，它会永久收藏在这里。</p>
+                <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#6F787A]">完成所有训练轮次并通过最终验收后，岗位证书会自动点亮在这里，永久收藏。</p>
                 <Link to="/competency" className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white shadow-[0_8px_18px_rgba(36,76,102,.16)] hover:bg-[#193B50]">开始岗位训练<Sparkles className="size-3.5" /></Link>
               </div>
             </div>
