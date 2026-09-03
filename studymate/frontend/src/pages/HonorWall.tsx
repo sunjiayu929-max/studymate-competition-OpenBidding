@@ -6,7 +6,7 @@ import { ArrowRight, Award, CalendarDays, Eye, Sparkles, Trophy } from "lucide-r
 import certificateBackground from "@/assets/certificate/studymate-certificate-bg.png"
 import { AppTopbar } from "@/components/AppTopbar"
 import { RoleCertificateModal } from "@/components/RoleCertificateModal"
-import { formatCertificateDate, listUserCertificates, syncEarnedCertificates, type RoleCertificateRecord } from "@/lib/certificates"
+import { formatCertificateDate, ensureDemoCertificates, listUserCertificates, syncEarnedCertificates, type RoleCertificateRecord } from "@/lib/certificates"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useCurrentUser } from "@/store/user"
 
@@ -14,13 +14,17 @@ export function HonorWall() {
   useTrackPage("honor_wall")
   const user = useCurrentUser()
   const [selected, setSelected] = useState<RoleCertificateRecord | null>(null)
-  const [certificates, setCertificates] = useState<RoleCertificateRecord[]>(() =>
-    user ? listUserCertificates(user.user_id, user.name) : [],
-  )
+  const [certificates, setCertificates] = useState<RoleCertificateRecord[]>(() => {
+    if (!user) return []
+    ensureDemoCertificates(user.user_id, user.name)
+    return listUserCertificates(user.user_id, user.name)
+  })
   const userId = user?.user_id
   const learnerName = user?.name ?? ""
 
   const refreshCertificates = useCallback(() => {
+    // 演示预置放在读取前：首次进入也不会闪现空状态。
+    if (userId) ensureDemoCertificates(userId, learnerName)
     setCertificates(userId ? listUserCertificates(userId, learnerName) : [])
   }, [userId, learnerName])
 

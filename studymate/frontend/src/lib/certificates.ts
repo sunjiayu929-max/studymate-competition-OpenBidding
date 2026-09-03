@@ -36,6 +36,8 @@ export interface CertificateIdentity {
   roleId: string
   roleName: string
   completedRounds: number
+  /** 预置/演示证书的颁发时间；正常颁发不传，取当前时间。 */
+  issuedAt?: string
 }
 
 function certificateStorageKey(userId: number, roleId: string) {
@@ -60,7 +62,7 @@ function normalizeCertificate(
   value: Partial<RoleCertificateRecord>,
   identity: CertificateIdentity,
 ): RoleCertificateRecord {
-  const issuedAt = value.issuedAt || new Date().toISOString()
+  const issuedAt = value.issuedAt || identity.issuedAt || new Date().toISOString()
   return {
     userId: identity.userId,
     learnerName: value.learnerName || identity.learnerName,
@@ -120,6 +122,7 @@ export function evaluateRoleCertificateRounds(
 
 // 荣誉墙打开时补发：学完岗位全部训练且最近一轮达标，却从未手动领取过的证书在这里自动入账。
 export async function syncEarnedCertificates(userId: number, learnerName: string): Promise<RoleCertificateRecord[]> {
+  ensureDemoCertificates(userId, learnerName)
   const profile = await apiGet<{ dims?: { training_rounds?: RoleTrainingRound[] } }>(`/profile/${userId}`)
   const rounds = profile.dims?.training_rounds ?? []
   const issued: RoleCertificateRecord[] = []
@@ -139,6 +142,30 @@ export async function syncEarnedCertificates(userId: number, learnerName: string
     }
   }
   return issued
+}
+
+// 演示预置：前三个领域各预置一张证书（软件开发领域跳过 FDE），保证任意账号进入荣誉墙即有成果可看。
+const DEMO_PRESET_DOMAIN_IDS = ["ai", "software", "industrial"]
+const DEMO_PRESET_DAYS_AGO = [90, 60, 30]
+
+export function ensureDemoCertificates(userId: number, learnerName: string): void {
+  try {
+    DEMO_PRESET_DOMAIN_IDS.forEach((domainId, index) => {
+      const domain = careerDomains.find((item) => item.id === domainId)
+      const role = domain?.roles.find((item) => item.id !== "fde")
+      if (!role) return
+      getOrCreateCertificateRecord({
+        userId,
+        learnerName,
+        roleId: role.id,
+        roleName: role.name,
+        completedRounds: Math.max(1, role.sampleTasks.length),
+        issuedAt: new Date(Date.now() - DEMO_PRESET_DAYS_AGO[index] * 86400000).toISOString(),
+      })
+    })
+  } catch {
+    // 预置失败不阻塞荣誉墙展示。
+  }
 }
 
 export function listUserCertificates(userId: number, learnerName: string): RoleCertificateRecord[] {
