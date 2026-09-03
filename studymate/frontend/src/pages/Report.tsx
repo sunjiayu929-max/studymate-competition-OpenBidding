@@ -332,7 +332,7 @@ export function Report() {
         profile_delta: {},
         suggestions: latest.suggestions || [],
         next_topics: [],
-        summary_markdown: "这是最近一次阶段评估的实时数据快照。完成新的测验或一轮资源学习后，StudyMate 会在关键里程碑更新阶段总结。",
+        summary_markdown: "这是最近一次阶段评估的实时数据快照。完成新的测验或一轮资源学习后，因材智训会在关键里程碑更新阶段总结。",
         generated_at: latest.created_at || undefined,
         evidence: {
           course_id: evidenceCourseId,
@@ -526,7 +526,7 @@ export function Report() {
         pdf.addImage(imgData, "PNG", 10, position, imgW, imgH)
         heightLeft -= pageH - 20
       }
-      const fname = `StudyMate-学习报告-${ws.topic || "未命名"}-${new Date().toISOString().slice(0, 10)}.pdf`
+      const fname = `因材智训-学习报告-${ws.topic || "未命名"}-${new Date().toISOString().slice(0, 10)}.pdf`
       pdf.save(fname)
       showNotice("学习报告 PDF 已导出")
     } catch (e) {
@@ -636,7 +636,7 @@ export function Report() {
               <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><BarChart3 className="size-4" /></span>
               <div className="min-w-0">
-                <h1 className="text-[15px] font-bold text-[#18232D]">StudyMate 学习报告</h1>
+                <h1 className="text-[15px] font-bold text-[#18232D]">因材智训学习报告</h1>
                 <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">{ws.topic ? `围绕《${ws.topic}》分析掌握程度、训练投入与下一轮路径` : "汇总答题、资源使用与岗位能力画像，形成可以行动的胜任力反馈"}</p>
               </div>
             </div>
@@ -919,7 +919,7 @@ export function Report() {
             <CareerRecommendations profileVersion={profile?.version || 0} />
 
             <div className="text-center text-[10px] text-[var(--muted-foreground)] pt-2">
-              本报告由 StudyMate 评估智能体根据答题数据与学习行为生成 · {formatReportTime(report.generated_at)}
+              本报告由因材智训评估智能体根据答题数据与学习行为生成 · {formatReportTime(report.generated_at)}
             </div>
           </div>
         )}

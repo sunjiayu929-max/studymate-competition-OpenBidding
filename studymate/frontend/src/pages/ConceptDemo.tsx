@@ -113,7 +113,7 @@ export function ConceptDemo() {
               <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Film className="size-4" /></span>
               <div className="min-w-0">
-                <h1 className="text-[15px] font-bold text-[#18232D]">StudyMate 可视讲解</h1>
+                <h1 className="text-[15px] font-bold text-[#18232D]">因材智训可视讲解</h1>
         <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">用动画、推演和视频理解岗位知识</p>
               </div>
             </div>

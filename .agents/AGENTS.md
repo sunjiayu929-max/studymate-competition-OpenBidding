@@ -1,4 +1,4 @@
-# StudyMate 工作区协作规则
+# 因材智训工作区协作规则
 
 本文件是本仓库中供 Codex、Claude Code 等开发代理共同读取的项目规则。`AGENTS.md` 为普通文件；Claude Code 可在同目录下创建 `CLAUDE.md` 软链接或复制本文件，在 Windows 上直接复制即可。
 

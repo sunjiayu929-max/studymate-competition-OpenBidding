@@ -317,7 +317,7 @@ export function ProfileChat() {
                 <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
                 <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83]"><Bot className="size-4" /></span>
                 <div className="min-w-0 flex-1">
-                  <h2 className="truncate text-[15px] font-bold text-[#18232D]">StudyMate 岗位画像助手</h2>
+                  <h2 className="truncate text-[15px] font-bold text-[#18232D]">因材智训岗位画像助手</h2>
                   <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">补充目标、经历和学习安排</p>
                 </div>
               </div>

@@ -89,7 +89,7 @@ export function ConceptLibrary() {
               <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Library className="size-4" /></span>
               <div className="min-w-0">
-                <h1 className="text-[15px] font-bold text-[#18232D]">StudyMate 动画库</h1>
+                <h1 className="text-[15px] font-bold text-[#18232D]">因材智训动画库</h1>
                 <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">{total} 个精品动画 · 围绕{targetRole?.name || "目标岗位"}按能力方向检索、自由播放和单步拆解</p>
               </div>
             </div>

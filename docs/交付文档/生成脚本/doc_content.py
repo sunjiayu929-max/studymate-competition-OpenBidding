@@ -1,7 +1,7 @@
-"""Structured content for the StudyMate deployment documents."""
+"""Structured content for the 因材智训 deployment documents."""
 
-PROJECT_TITLE = "StudyMate：基于大模型的个性化资源生成与学习多智能体系统"
-SHORT_TITLE = "StudyMate 智能学习伙伴"
+PROJECT_TITLE = "因材智训：基于大模型的个性化资源生成与学习多智能体系统"
+SHORT_TITLE = "因材智训智能学习伙伴"
 DOMAIN = "https://matropic.cn"
 SERVER_IP = "121.40.64.199"
 ICP = "豫ICP备2026028221号"
@@ -124,7 +124,7 @@ LONG_PAGES = [
     [
         h("1. 项目概述"),
         h("1.1 项目简介", 2),
-        p("StudyMate 是面向高校计算机类课程的个性化资源生成与学习多智能体系统，围绕“学习画像—知识检索—资源生成—练习评估—画像更新”构建学习闭环。"),
+        p("因材智训是面向高校计算机类课程的个性化资源生成与学习多智能体系统，围绕“学习画像—知识检索—资源生成—练习评估—画像更新”构建学习闭环。"),
         p("系统覆盖机器学习、数据结构与算法、操作系统、计算机网络、计算机组成原理五门课程。七个智能体分别负责检索、讲解、导图、测验、阅读、代码和学习路径，并通过课程上下文与七维画像提供个性化内容。"),
         p("平台同时提供可追溯 RAG、SSE 流式助教、图片与文档附件、语音交互、笔记测验、学习报告和 Python/C/C++ 在线运行，生成结果统一保存到工作台。"),
         h("1.2 技术栈", 2),
@@ -152,7 +152,7 @@ LONG_PAGES = [
     ],
     [
         h("1.3 架构图", 2),
-        image("architecture_long.png", "图 1-1 StudyMate 基本部署架构图", 16.0),
+        image("architecture_long.png", "图 1-1 因材智训基本部署架构图", 16.0),
         h("2. 系统要求"),
         h("2.1 硬件要求", 2),
         table(
@@ -271,7 +271,7 @@ ss -lntp"""),
         p("上述组件均设置 restart: unless-stopped。宿主机重启后 Docker 服务会自动拉起容器；数据库、语言运行时和证书保存在命名卷中，镜像更新不会改变已有业务数据。"),
         h("4.2.6 与传统部署组件的对应关系", 3),
         table(
-            ["参考文档组件", "StudyMate 等价实现", "说明"],
+            ["参考文档组件", "因材智训等价实现", "说明"],
             [
                 ["阿里云/本地服务器", "阿里云 ECS + Ubuntu 22.04.5", "提供计算、存储、公网和备案域名。"],
                 ["Nginx", "Caddy + Frontend Nginx", "分别负责 TLS、静态站点和 /api/SSE 代理。"],
@@ -298,7 +298,7 @@ ss -lntp"""),
     ],
     [
         h("4.3 部署流程概述", 2),
-        image("deployment_flow.png", "图 4-2 StudyMate 部署流程", 15.5),
+        image("deployment_flow.png", "图 4-2 因材智训部署流程", 15.5),
         table(
             ["阶段", "主要工作", "阶段输出", "验证成功标志"],
             [
@@ -530,7 +530,7 @@ docker compose --env-file .deploy.env config --services"""),
     ],
     [
         h("5.3 Uvicorn 与 Piston 运行环境", 2),
-        p("参考文档使用 Gunicorn 承载 Flask；StudyMate 是 FastAPI ASGI 应用，由 backend 容器内的 Uvicorn 提供 HTTP/SSE 服务，并通过 /api/ping 健康检查。在线编程则由独立 Piston 容器提供隔离运行环境。"),
+        p("参考文档使用 Gunicorn 承载 Flask；因材智训是 FastAPI ASGI 应用，由 backend 容器内的 Uvicorn 提供 HTTP/SSE 服务，并通过 /api/ping 健康检查。在线编程则由独立 Piston 容器提供隔离运行环境。"),
         h("5.3.1 导入 Piston 镜像", 3),
         p("Piston 镜像位于 GHCR，Docker Hub 镜像加速不能覆盖该仓库。先尝试项目导入脚本："),
         code("""cd ~/studymate
@@ -706,7 +706,7 @@ docker volume inspect studymate_caddy_data"""),
     ],
     [
         h("5.5 自动恢复与一键更新", 2),
-        p("参考文档使用 Supervisor 守护应用；StudyMate 由 Docker 的 restart: unless-stopped 与 Compose 统一承担自动启动、故障恢复、状态查询、日志和版本更新。"),
+        p("参考文档使用 Supervisor 守护应用；因材智训由 Docker 的 restart: unless-stopped 与 Compose 统一承担自动启动、故障恢复、状态查询、日志和版本更新。"),
         h("5.5.1 首次启动", 3),
         code("""ssh studymate-server
 cd ~/studymate
@@ -991,7 +991,7 @@ PY"""),
             ],
             widths=[4.4, 11.2],
         ),
-        p("结论：StudyMate 已在 Ubuntu 22.04 服务器完成可重复 Docker 部署，满足竞赛公网展示、评委账号访问、核心业务演示和后续前端快速更新要求。"),
+        p("结论：因材智训已在 Ubuntu 22.04 服务器完成可重复 Docker 部署，满足竞赛公网展示、评委账号访问、核心业务演示和后续前端快速更新要求。"),
         p("验收记录应与具体版本绑定，至少保存部署日期、Git 提交号、镜像摘要、数据库备份文件名和测试人员。出现回归时可据此快速判断是代码、配置、数据还是外部模型服务发生变化。"),
         bullets([
             "上线前：备份数据库并记录当前容器、镜像状态。",
@@ -1107,7 +1107,7 @@ docker exec studymate-backend rm -f /app/data/studymate-backup.db"""),
     ],
     [
         h("10.2 测试网址与账号", 2),
-        image("site_qr.png", "图 10-1 StudyMate 公网访问二维码", 5.0),
+        image("site_qr.png", "图 10-1 因材智训公网访问二维码", 5.0),
         p("公网访问地址：https://matropic.cn"),
         p("管理员账号：admin@studymate.com　密码：admin123456"),
         p("评委账号：judge01@studymate.com 至 judge10@studymate.com　统一密码：judge123456"),
@@ -1423,7 +1423,7 @@ LONG_PAGES[28:] = [
     [
         h("6. SSL 证书配置"),
         h("6.1 本地与测试环境访问", 2),
-        p("适用场景：开发机、局域网联调或域名尚未生效的临时环境。StudyMate 默认以 SITE_ADDRESS=http://localhost 启动本地 HTTP，不需要证书，也不会影响生产环境的 Caddy 数据卷。"),
+        p("适用场景：开发机、局域网联调或域名尚未生效的临时环境。因材智训默认以 SITE_ADDRESS=http://localhost 启动本地 HTTP，不需要证书，也不会影响生产环境的 Caddy 数据卷。"),
         table(
             ["测试方案", "配置方式", "浏览器表现", "建议"],
             [
@@ -1448,7 +1448,7 @@ curl http://127.0.0.1:8000/api/ping
         h("6.2 Let's Encrypt 生产证书", 2),
         p("生产环境由 Caddy 根据 SITE_ADDRESS 自动申请、保存和续期 Let's Encrypt 证书，等价替代参考文档中的 Certbot 与 Nginx SSL 手工配置。"),
         table(
-            ["前提条件", "StudyMate 当前配置"],
+            ["前提条件", "因材智训当前配置"],
             [
                 ["DNS", "matropic.cn 的 A 记录指向 121.40.64.199"],
                 ["网络", "云安全组与 UFW 同时开放 80、443"],
@@ -1576,7 +1576,7 @@ docker logs --tail=200 studymate-frontend"""),
             font_size=7.8,
         ),
         h("8.2 502 Bad Gateway", 2),
-        p("症状：浏览器或 Caddy 返回 502。StudyMate 请求链为 Caddy → frontend Nginx → backend:8000，应逐层定位。"),
+        p("症状：浏览器或 Caddy 返回 502。因材智训请求链为 Caddy → frontend Nginx → backend:8000，应逐层定位。"),
         code("""# 1. FastAPI 宿主机回环
 curl -v http://127.0.0.1:8000/api/ping
 # 2. 前端容器访问后端
@@ -1622,7 +1622,7 @@ PY"""),
             font_size=7.8,
         ),
         h("8.4 SSE 或语音流异常", 2),
-        p("参考文档的 WebSocket 实时通信在 StudyMate 中对应 AI 助教 SSE 单向流和独立语音 HTTP 接口。SSE 无需 Upgrade 头，但代理必须关闭响应缓冲并保留足够超时。"),
+        p("参考文档的 WebSocket 实时通信在因材智训中对应 AI 助教 SSE 单向流和独立语音 HTTP 接口。SSE 无需 Upgrade 头，但代理必须关闭响应缓冲并保留足够超时。"),
         code("""curl -N https://matropic.cn/api/tutor/chat \\
   -H 'Content-Type: application/json' \\
   -b '有效测试会话 Cookie' \\
@@ -1789,7 +1789,7 @@ PY"""),
     [
         h("10.1 文件说明（续）", 2),
         table(
-            ["参考文档部署文件", "StudyMate 对应文件/机制"],
+            ["参考文档部署文件", "因材智训对应文件/机制"],
             [
                 ["gunicorn_config.py", "backend 容器内 Uvicorn 启动入口"],
                 ["Nginx sites-available", "frontend/nginx.conf + Caddyfile"],
@@ -1814,8 +1814,8 @@ PY"""),
             font_size=7.8,
         ),
         h("10.2 移动端与小程序部署情况", 2),
-        p("StudyMate 当前交付形态是响应式 Web，不另行发布微信小程序。手机浏览器可直接通过备案域名访问，复用同一套 HTTPS、账号、课程和后端接口，不存在体验版、审核中或独立小程序服务器。"),
-        image("mobile_web.png", "图 10-1 StudyMate 移动端 Web 访问示意", 7.0),
+        p("因材智训当前交付形态是响应式 Web，不另行发布微信小程序。手机浏览器可直接通过备案域名访问，复用同一套 HTTPS、账号、课程和后端接口，不存在体验版、审核中或独立小程序服务器。"),
+        image("mobile_web.png", "图 10-1 因材智训移动端 Web 访问示意", 7.0),
     ],
     [
         h("10.2 移动端与小程序部署情况（续）", 2),
@@ -1830,7 +1830,7 @@ PY"""),
             font_size=7.8,
         ),
         h("10.3 测试网址与账号", 2),
-        image("site_qr.png", "图 10-2 StudyMate 网页端直达二维码", 5.0),
+        image("site_qr.png", "图 10-2 因材智训网页端直达二维码", 5.0),
         p("公网安全访问网址：https://matropic.cn；公网 IP：121.40.64.199。浏览器应直接显示可信 HTTPS。"),
         table(
             ["账号组", "账号范围", "数量", "竞赛测试密码"],
@@ -1906,7 +1906,7 @@ SHORT_PAGES = [
     [
         h("1 系统概述"),
         h("1.1 项目简介", 2),
-        p("StudyMate 是面向高校计算机类课程的个性化资源生成与学习多智能体系统，融合学习画像、混合检索、资源生成、测验评估、语音交互和在线代码执行。"),
+        p("因材智训是面向高校计算机类课程的个性化资源生成与学习多智能体系统，融合学习画像、混合检索、资源生成、测验评估、语音交互和在线代码执行。"),
         p("系统覆盖五门计算机课程，七个智能体分别负责检索、讲解、导图、测验、阅读、代码和学习路径，生成内容可保存并追溯来源。"),
         h("1.2 环境地址", 2),
         p("开发环境：http://localhost:5173"),
@@ -2166,7 +2166,7 @@ _insert_before_heading(
     "2. 系统要求",
     [
         h("1.4 部署目标、适用范围与非目标", 2),
-        p("本方案的目标是在一台已备案的 Ubuntu 服务器上，以可复现、可备份、可回滚的方式运行 StudyMate，并为竞赛评委和小规模公网用户提供统一 HTTPS 入口。Docker Compose 负责服务编排，命名卷负责业务数据、代码运行时和证书持久化。"),
+        p("本方案的目标是在一台已备案的 Ubuntu 服务器上，以可复现、可备份、可回滚的方式运行因材智训，并为竞赛评委和小规模公网用户提供统一 HTTPS 入口。Docker Compose 负责服务编排，命名卷负责业务数据、代码运行时和证书持久化。"),
         table(
             ["边界项", "当前定义", "部署含义"],
             [

@@ -655,7 +655,7 @@ async def _ensure_private_demo_knowledge(conn):
             {
                 "user_id": user_id,
                 "name": "岗位转岗公开资料库",
-                "description": "StudyMate 自动建立的私有起点，可继续上传自己的岗位资料。",
+                "description": "因材智训自动建立的私有起点，可继续上传自己的岗位资料。",
                 "created_at": now,
                 "updated_at": now,
             },
@@ -843,7 +843,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="StudyMate Backend",
+    title="因材智训 Backend",
     description="基于大模型的个性化资源生成与学习多智能体系统",
     version="0.1.0",
     lifespan=lifespan,
@@ -907,4 +907,4 @@ async def get_video_media(user_id: int, file_id: str, user=Depends(require_user)
 
 @app.get("/")
 async def root():
-    return {"name": "StudyMate", "docs": "/docs"}
+    return {"name": "因材智训", "docs": "/docs"}

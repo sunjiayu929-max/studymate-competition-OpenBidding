@@ -1,6 +1,6 @@
 # AI 面试生产部署指南
 
-本文针对当前服务器和域名：`deploy@121.40.64.199`、`matropic.cn`。AI 面试保留独立 Flask + MySQL Compose 项目，但通过 StudyMate 的同一 Caddy 入口发布，不需要新增域名、DNS 记录、证书或公网端口。
+本文针对当前服务器和域名：`deploy@121.40.64.199`、`matropic.cn`。AI 面试保留独立 Flask + MySQL Compose 项目，但通过因材智训的同一 Caddy 入口发布，不需要新增域名、DNS 记录、证书或公网端口。
 
 > 当前服务器实况（2026-08-27）：Caddy 使用宿主机标准 `80/443` 映射，公网 `https://matropic.cn/`、`/api/ping` 和 `/interview/health` 探针正常。学习者入口是带一次性 ticket 的 `/interview/integrations/studymate/launch?...`，`/interview/` 根路径按白名单返回 `404`，不要把它作为面试首页。生产环境必须关闭固定演示种子（`SEED_DEMO_USERS=0`）。
 
@@ -10,18 +10,18 @@
 
 ```text
 https://matropic.cn/
-  ├── /                         StudyMate 前端与 FastAPI
-  └── /interview/*               StudyMate 学习者 AI 面试流（由 ticket 启动）
+  ├── /                         因材智训前端与 FastAPI
+  └── /interview/*               因材智训学习者 AI 面试流（由 ticket 启动）
       ├── /integrations/...     一次性启动票据
       ├── /practice/...         面试准备与作答页面
       ├── /api/practice/...     面试会话、答案和报告
       ├── /api/speech/asr-url   短时语音识别凭据
       └── /static/...           面试前端资源
 
-StudyMate backend <--签名 HTTP--> ai-interview <---> 独立 MySQL
+因材智训 backend <--签名 HTTP--> ai-interview <---> 独立 MySQL
 ```
 
-主项目 Caddy 会拒绝其余 `/interview/*` 请求。原项目保留的求职者/企业 legacy 页面使用根路径和 `/api`，尚未完成命名空间改造，不能在 `matropic.cn` 同域直接公开。这不会影响 StudyMate 中“创建岗位面试 -> 作答 -> 回写能力报告”的学习者流程。
+主项目 Caddy 会拒绝其余 `/interview/*` 请求。原项目保留的求职者/企业 legacy 页面使用根路径和 `/api`，尚未完成命名空间改造，不能在 `matropic.cn` 同域直接公开。这不会影响因材智训中“创建岗位面试 -> 作答 -> 回写能力报告”的学习者流程。
 
 ## 服务器目录
 
@@ -134,7 +134,7 @@ PRACTICE_AVATAR_MODE=video
 # MYSQL_IMAGE=...
 ```
 
-保持 `DATABASE_URL` 为空即可由面试 Compose 根据 MySQL 配置生成连接串。应用首版公开的是 StudyMate 学习者的岗位模拟面试、语音交互和评估报告；`PRACTICE_RESUME_ENABLED=0` 时准备页面不显示简历上传入口，但相关表和 API 为兼容性保留。`PRACTICE_AVATAR_MODE=video` 使用主系统课堂讲师的待机/讲解视频，视频加载失败会先显示海报，再懒加载 GLB；故障排查时可临时设置为 `glb`。`PRACTICE_AVATAR_MODEL` 可指定经过授权且兼容的静态 GLB 文件名。`LLM_API_KEY` 为空时可以演示问答页面，但不会生成可回写的岗位能力报告。不要将任何真实值写入仓库、Shell 历史、截图或部署日志。
+保持 `DATABASE_URL` 为空即可由面试 Compose 根据 MySQL 配置生成连接串。应用首版公开的是因材智训学习者的岗位模拟面试、语音交互和评估报告；`PRACTICE_RESUME_ENABLED=0` 时准备页面不显示简历上传入口，但相关表和 API 为兼容性保留。`PRACTICE_AVATAR_MODE=video` 使用主系统课堂讲师的待机/讲解视频，视频加载失败会先显示海报，再懒加载 GLB；故障排查时可临时设置为 `glb`。`PRACTICE_AVATAR_MODEL` 可指定经过授权且兼容的静态 GLB 文件名。`LLM_API_KEY` 为空时可以演示问答页面，但不会生成可回写的岗位能力报告。不要将任何真实值写入仓库、Shell 历史、截图或部署日志。
 
 ## 部署与健康检查
 

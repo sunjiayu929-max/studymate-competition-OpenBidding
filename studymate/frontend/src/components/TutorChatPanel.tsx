@@ -318,7 +318,7 @@ export function TutorChatPanel({
             <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
             <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#DDD4BF] bg-[#F4ECD8] text-[#9B7429]"><Bot className="size-4" /></span>
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-[15px] font-bold text-[#18232D]">StudyMate 岗位助教</h2>
+              <h2 className="truncate text-[15px] font-bold text-[#18232D]">因材智训岗位助教</h2>
               <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">正在学习「{courseLabel}」· {learningMethod === "feynman" ? "讲清后复述" : "一次解决一个问题"}</p>
             </div>
           </div>

@@ -11,14 +11,14 @@ StudyMate 的 AI 面试是独立部署的 Git submodule，服务代码位于同�
 - AI 与语音：OpenAI 兼容大模型、讯飞语音识别/合成、实时会话和数字人资源。
 - 技术结构：Flask、Flask-SocketIO、SQLAlchemy、MySQL、Jinja 模板和 JavaScript/CSS 静态资源。
 
-本次改造保留上述 legacy 路由、模型、模板和企业流程，同时新增 StudyMate 学习者实践流。数据库、上传文件和会话仍由面试服务独立拥有；主系统不读取面试服务的 MySQL 表。
+本次改造保留上述 legacy 路由、模型、模板和企业流程，同时新增因材智训学习者实践流。数据库、上传文件和会话仍由面试服务独立拥有；主系统不读取面试服务的 MySQL 表。
 
 ## 当前学习者流程
 
 ```mermaid
 sequenceDiagram
     participant U as 学习者浏览器
-    participant S as StudyMate FastAPI
+    participant S as 因材智训 FastAPI
     participant I as AI 面试 Flask
     participant M as 面试 MySQL
 
@@ -35,9 +35,9 @@ sequenceDiagram
     S-->>U: 岗位历史与学习画像证据
 ```
 
-岗位目录由 StudyMate 后端维护，前端只提交 `role_id` 和可选 `course_id`。岗位能力要求从服务端快照传给面试服务，浏览器 URL 不包含正式用户身份、画像或能力列表。面试服务的 StudyMate 学习者流使用一次性外部身份会话，不重复创建本地密码登录界面。
+岗位目录由因材智训后端维护，前端只提交 `role_id` 和可选 `course_id`。岗位能力要求从服务端快照传给面试服务，浏览器 URL 不包含正式用户身份、画像或能力列表。面试服务的因材智训学习者流使用一次性外部身份会话，不重复创建本地密码登录界面。
 
-报告只有在以下条件同时满足时才会写回 StudyMate：
+报告只有在以下条件同时满足时才会写回因材智训：
 
 - 报告 schema、attempt、岗位能力集合和时间字段校验通过；
 - 岗位匹配分、通用能力分和总分符合岗位 60%、通用能力 40% 的固定计算；
@@ -50,10 +50,10 @@ sequenceDiagram
 ```text
 浏览器 -> Caddy
           └── matropic.cn
-              ├── /                    -> StudyMate frontend -> backend
+              ├── /                    -> 因材智训 frontend -> backend
               └── /interview/*         -> ai-interview:5000
 
-StudyMate backend <----签名 HTTP----> ai-interview
+因材智训 backend <----签名 HTTP----> ai-interview
                                       │
                                       └── 私有 MySQL + uploads volume
 ```
@@ -63,7 +63,7 @@ StudyMate backend <----签名 HTTP----> ai-interview
 - 面试端口只绑定 `127.0.0.1`；生产公网入口由主项目 Caddy 在现有域名的 `/interview/` 路径提供，无需新增 DNS、证书或公网端口。
 - 双方共享的 `AI_INTERVIEW_SERVICE_SECRET` 只放在两个后端容器环境变量中，绝不进入前端构建产物。
 
-StudyMate 学习者面试流以 `/interview/` 发布。原项目 legacy 前后台的旧路由大量使用根路径和 `/api`，会与 StudyMate 主系统命名空间冲突，因此不通过该同域路径直接公开；相关代码和独立容器能力仍保留。若后续确实需要对外启用旧后台，应先完成其路由命名空间迁移，而不是增加一条简单反向代理规则。
+因材智训学习者面试流以 `/interview/` 发布。原项目 legacy 前后台的旧路由大量使用根路径和 `/api`，会与因材智训主系统命名空间冲突，因此不通过该同域路径直接公开；相关代码和独立容器能力仍保留。若后续确实需要对外启用旧后台，应先完成其路由命名空间迁移，而不是增加一条简单反向代理规则。
 
 ## 配置
 
@@ -100,7 +100,7 @@ SESSION_COOKIE_SECURE=1
 
 ## Docker 启动
 
-先启动 StudyMate，确保它创建共享网络：
+先启动因材智训，确保它创建共享网络：
 
 ```bash
 cd studymate
@@ -132,7 +132,7 @@ docker compose --env-file .deploy.env --profile public up -d --build
 
 ## 迁移与运维
 
-面试服务启动时执行命名迁移 `schema_migrations`，StudyMate 学习者表包括 `external_identities`、`practice_launches`、`practice_resumes`、`practice_interviews` 和 `practice_interview_turns`。不要用共享数据库或启动时无条件覆盖表结构替代迁移。生产升级前备份 `ai_interview_mysql` 和 `ai_interview_uploads` 卷。
+面试服务启动时执行命名迁移 `schema_migrations`，因材智训学习者表包括 `external_identities`、`practice_launches`、`practice_resumes`、`practice_interviews` 和 `practice_interview_turns`。不要用共享数据库或启动时无条件覆盖表结构替代迁移。生产升级前备份 `ai_interview_mysql` 和 `ai_interview_uploads` 卷。
 
 当前 Socket.IO 生产配置是单 Gunicorn worker、多线程；需要横向扩容时必须先引入 Redis message queue，并为会话与回调增加跨实例一致性方案。
 
@@ -140,7 +140,7 @@ docker compose --env-file .deploy.env --profile public up -d --build
 
 - 文字面试、浏览器朗读、主动语音输入和本地数字人模型属于首期学习者流；摄像头不参与评分。
 - 当前同域发布入口为 `https://matropic.cn/interview/`；Caddy 会把该路径转发到独立面试容器。
-- 原项目 legacy 招聘后台仍保留在独立服务中，但其根路径与 `/api` 路由尚未命名空间化，不能与 StudyMate 同域直接公开。
+- 原项目 legacy 招聘后台仍保留在独立服务中，但其根路径与 `/api` 路由尚未命名空间化，不能与因材智训同域直接公开。
 - 未配置 LLM 时可以进行问答演示，但不会产生可回传的能力评分。
 - 未配置讯飞语音时文字面试仍可用，语音按钮会返回明确的配置提示。
 - 完整 Docker/跨容器验收需要 Docker daemon、Python 3.11 镜像和实际 MySQL；本地 Python 3.14 不作为后端运行环境。

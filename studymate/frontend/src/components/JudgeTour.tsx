@@ -484,7 +484,7 @@ export function JudgeTour() {
               </span>
               <button type="button" onClick={() => setMinimized(false)} className="min-w-0 flex-1 text-left">
                 <div className="text-[10px] font-bold tracking-[0.1em] text-[#8E6925]">新手指引 · {completedCount}/{guideSteps.length}</div>
-                <div className="mt-0.5 truncate text-xs font-bold text-[#18232D]">{showWelcome ? "从这里开始认识 StudyMate" : `${stepIndex + 1}. ${currentStep.label}`}</div>
+                <div className="mt-0.5 truncate text-xs font-bold text-[#18232D]">{showWelcome ? "从这里开始认识因材智训" : `${stepIndex + 1}. ${currentStep.label}`}</div>
               </button>
               <button type="button" onClick={() => setMinimized(false)} className="grid size-8 place-items-center rounded-lg border border-[#D7D1C4] text-[#315E83] hover:bg-[#E7EDF3]" aria-label="展开新手指引"><ListChecks className="size-4" /></button>
               <button type="button" onClick={closeTour} className="grid size-8 place-items-center rounded-lg text-[#7A817F] hover:bg-[#F1EDE4] hover:text-[#18232D]" aria-label="关闭新手指引"><X className="size-4" /></button>
@@ -537,7 +537,7 @@ export function JudgeTour() {
                 <div className="min-h-0 flex-1 overflow-y-auto p-4">
                   <div className="rounded-[18px] border border-[#D8C9A8] bg-[#FBF7ED] p-4">
                     <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.12em] text-[#8E6925]">
-                      <Sparkles className="size-3.5" /> 第一次来 StudyMate？
+                      <Sparkles className="size-3.5" /> 第一次来因材智训？
                     </div>
                     <h2 className="mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D]">先完成一次最短学习闭环</h2>
                     <p className="mt-1.5 text-[12px] leading-5 text-[#66717B]">不用一次看懂所有功能。跟着下面三步走一遍，你就知道它如何真正帮助学习。</p>

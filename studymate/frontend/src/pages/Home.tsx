@@ -391,7 +391,7 @@ function LearningUniverse(props: LearningUniverseProps) {
       data-active={active ? "true" : "false"}
       data-intro={firstEntrance && !reduceMotion ? "true" : "false"}
       data-testid="learning-universe-command-center"
-      aria-label="StudyMate 学习总览"
+      aria-label="因材智训学习总览"
     >
       <div ref={farLayerRef} className="pointer-events-none absolute inset-0 transition-transform duration-300 ease-out" aria-hidden="true"><div className="universe-stars universe-stars-far" /></div>
       <div ref={midLayerRef} className="pointer-events-none absolute inset-0 transition-transform duration-300 ease-out" aria-hidden="true"><div className="universe-stars universe-stars-mid" /></div>
@@ -426,7 +426,7 @@ function LearningUniverse(props: LearningUniverseProps) {
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[10px] font-bold tracking-[.16em] text-[#C9B581]">
               <Orbit className="size-3.5" />
-              STUDYMATE
+              因材智训
             </div>
             <h1 className="mt-0.5 text-[clamp(16px,1.55vw,23px)] font-semibold tracking-[-.035em] text-[#F1EFE9]">
               学习总览
@@ -955,7 +955,7 @@ export function Home() {
     : weakTopics[0]
       ? `「${weakTopics[0]}」来自你的薄弱岗位能力画像，适合作为今天的第一站。`
       : targetTopics[0]
-        ? `这个任务来自你的岗位目标，StudyMate 已把它放到今日路线的中心。`
+        ? `这个任务来自你的岗位目标，因材智训已把它放到今日路线的中心。`
         : hasTargetRole
           ? `围绕当前岗位「${targetRoleName}」给出一条清晰起点，完成后再依据表现调整下一步。`
           : "选定目标岗位后，笔记、测验与画像会汇成一条只属于你的训练路线。"
@@ -1569,7 +1569,7 @@ export function Home() {
               ) : (
                 <div className="mt-5 rounded-2xl border border-dashed border-[#C9C2B4] bg-[#FFFEFA] p-5 text-center">
                   <span className="mx-auto grid size-11 place-items-center rounded-full bg-[#E8ECEE] text-[#315E83]"><UserRoundSearch className="size-5" /></span>
-                  <strong className="mt-3 block text-sm text-[#18232D]">先让 StudyMate 认识你</strong>
+                  <strong className="mt-3 block text-sm text-[#18232D]">先让因材智训认识你</strong>
                   <p className="mx-auto mt-1 max-w-sm text-[11px] leading-5 text-[#66717B]">补充岗位目标、学习时间和待提升能力，获得更合适的训练安排。</p>
                   <Link to="/profile" className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-[#315E83] hover:underline">开始建立画像 <ArrowRight className="size-3" /></Link>
                 </div>
@@ -1579,7 +1579,7 @@ export function Home() {
 
           <footer className="mt-5 flex flex-col gap-3 border-t border-[#CFC8B9] px-1 pt-4 text-[11px] text-[#747C7D] sm:flex-row sm:items-center sm:justify-between">
             <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-[#6F8A69]" />学习数据仅用于生成你的个性化路线</span>
-            <span>StudyMate · 个性化学习工作台</span>
+            <span>因材智训 · 个性化学习工作台</span>
           </footer>
         </main>
       </div>

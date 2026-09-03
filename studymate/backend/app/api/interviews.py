@@ -436,7 +436,7 @@ async def redeem_launch_ticket(request: Request, db: AsyncSession = Depends(get_
     )
     now = datetime.utcnow()
     if ticket is None or ticket.expires_at < now:
-        raise HTTPException(status_code=410, detail="启动票据已过期，请返回 StudyMate 重新开始")
+        raise HTTPException(status_code=410, detail="启动票据已过期，请返回因材智训重新开始")
     attempt = await db.get(InterviewAttempt, ticket.attempt_id)
     if attempt is None:
         raise HTTPException(status_code=404, detail="对应的面试记录不存在")
@@ -457,7 +457,7 @@ async def redeem_launch_ticket(request: Request, db: AsyncSession = Depends(get_
         .values(consumed_at=now)
     )
     if consume.rowcount != 1:
-        raise HTTPException(status_code=410, detail="启动票据已使用，请返回 StudyMate 重新开始")
+        raise HTTPException(status_code=410, detail="启动票据已使用，请返回因材智训重新开始")
     if attempt.status == "launch_ready":
         attempt.status = "launched"
         attempt.launched_at = now

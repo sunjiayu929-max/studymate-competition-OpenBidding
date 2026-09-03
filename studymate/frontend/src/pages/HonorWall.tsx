@@ -72,7 +72,7 @@ export function HonorWall() {
                     <div className="relative aspect-[4/3] overflow-hidden border-b border-[#D8C9A8]">
                       <img src={certificateBackground} alt="" aria-hidden className="absolute inset-0 size-full object-cover" />
                       <div className="absolute inset-x-[14%] top-[18%] text-center text-[#173653]">
-                        <p className="text-[7px] font-bold tracking-[.24em] text-[#9B7429] sm:text-[8px]">STUDYMATE</p>
+                        <p className="text-[7px] font-bold tracking-[.24em] text-[#9B7429] sm:text-[8px]">因材智训</p>
                         <h3 className="mt-1 font-serif text-[clamp(16px,2vw,25px)] font-bold tracking-[.12em]">岗位学习荣誉证书</h3>
                         <div className="mx-auto mt-3 h-px w-20 bg-[#C49A4C]" />
                         <strong className="mt-3 block truncate font-serif text-[clamp(18px,2.4vw,30px)] tracking-[.08em]">{record.learnerName}</strong>

@@ -379,12 +379,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           shellHidden && !mobileOpen && "lg:pointer-events-none lg:-translate-x-full lg:opacity-0",
         )}
-        aria-label="StudyMate 应用导航"
+        aria-label="因材智训应用导航"
       >
         <div className="flex h-[70px] shrink-0 items-center gap-3 border-b border-[#DED8CC] px-4">
-          <Link to="/" className="flex min-w-0 flex-1 items-center gap-2.5" aria-label="StudyMate 今日学习">
+          <Link to="/" className="flex min-w-0 flex-1 items-center gap-2.5" aria-label="因材智训今日学习">
             <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#244C66] text-[#F0D6A4] shadow-[0_8px_18px_rgba(36,76,102,.18)]"><Sparkles className="size-[18px]" /></span>
-            {!effectiveCollapsed && <span className="min-w-0"><strong className="block text-base tracking-[-.03em] text-[#18232D]">StudyMate</strong><small className="block truncate text-[10px] font-bold tracking-[.12em] text-[#8A8172]">LEARNING OS</small></span>}
+            {!effectiveCollapsed && <span className="min-w-0"><strong className="block text-base tracking-[-.03em] text-[#18232D]">因材智训</strong><small className="block truncate text-[10px] font-bold tracking-[.12em] text-[#8A8172]">LEARNING OS</small></span>}
           </Link>
           <button type="button" onClick={() => setMobileOpen(false)} className="grid size-8 place-items-center rounded-lg text-[#66717B] hover:bg-[#ECE8DE] lg:hidden" aria-label="关闭导航"><X className="size-4" /></button>
         </div>
@@ -489,7 +489,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <ConfirmDialog
         open={logoutOpen}
-        title="确认退出 StudyMate？"
+        title="确认退出因材智训？"
         description="当前账号会安全退出；待上报行为队列会先停止，已保存的目标岗位、笔记与训练进度不会丢失。"
         confirmLabel="退出登录"
         busy={logoutBusy}

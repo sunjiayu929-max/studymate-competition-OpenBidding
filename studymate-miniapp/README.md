@@ -1,6 +1,6 @@
-# StudyMate 从业者端微信小程序
+# 因材智训从业者端微信小程序
 
-这是 StudyMate 的微信原生小程序端，当前提供从业者的注册、登录和企业任务闭环：
+这是因材智训的微信原生小程序端，当前提供从业者的注册、登录和企业任务闭环：
 
 ```text
 注册/登录 -> 今日任务 -> 任务详情 -> 接受/开始/完成
@@ -76,7 +76,7 @@ const API_BASE_URL = "http://172.20.10.3:8000/api"
 
 ```powershell
 netsh interface portproxy add v4tov4 listenaddress=电脑WLAN_IP listenport=8000 connectaddress=WSL_IP connectport=8000
-New-NetFirewallRule -DisplayName "StudyMate 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow
+New-NetFirewallRule -DisplayName "因材智训 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow
 ```
 
 6. 先在 Windows 浏览器访问 `http://电脑WLAN_IP:8000/api/ping`。
@@ -135,7 +135,7 @@ git commit -m "fix(miniapp): center logout button text"
 
 如果仍报错，移除微信开发者工具中的旧项目后重新导入准确目录，单纯清缓存可能不会解决问题。
 
-### 登录提示“暂时无法连接 StudyMate 服务”
+### 登录提示“暂时无法连接因材智训服务”
 
 先确认后端能返回 `http://127.0.0.1:8000/api/ping`。模拟器使用 `localhost`；真机必须使用电脑 WLAN IP，并完成 Windows 到 WSL 的端口转发。这个错误通常不是 AppID 导致的。
 

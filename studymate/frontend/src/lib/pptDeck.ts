@@ -156,7 +156,7 @@ function addCover(pptx: PptxGenJS, slide: PptSlide, draft: PptSlideDraft, palett
     fill: { color: palette.panel },
     line: { color: palette.panel },
   })
-  addText(slide, draft.kicker || "STUDYMATE STORY", {
+  addText(slide, draft.kicker || "因材智训 STORY", {
     x: 0.82,
     y: 1.35,
     w: 5.6,
@@ -213,7 +213,7 @@ function addCover(pptx: PptxGenJS, slide: PptSlide, draft: PptSlideDraft, palett
     h: 0,
     line: { color: palette.accent, width: 3 },
   })
-  addText(slide, "STUDYMATE  ·  EDITABLE DECK", {
+  addText(slide, "因材智训  ·  EDITABLE DECK", {
     x: 0.84,
     y: 5.88,
     w: 4,
@@ -889,10 +889,10 @@ export function populateEditableDeck(
 ) {
   const { palette, topic } = options
   pptx.layout = "LAYOUT_WIDE"
-  pptx.author = "StudyMate"
+  pptx.author = "因材智训"
   pptx.subject = topic
   pptx.title = topic
-  pptx.company = "StudyMate"
+  pptx.company = "因材智训"
   pptx.theme = {
     headFontFace: TITLE_FONT,
     bodyFontFace: TITLE_FONT,
