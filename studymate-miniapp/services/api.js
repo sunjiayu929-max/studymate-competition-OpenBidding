@@ -26,8 +26,8 @@ function errorMessage(status, data, path) {
   if (status === 403) return "当前账号没有执行此操作的权限"
   if (status === 404) return "请求的内容不存在或已被移除"
   if (status === 422) return "请求参数格式不正确，请检查后重试"
-  if (status >= 500) return "StudyMate 服务暂时不可用，请稍后重试"
-  if (status === 0) return "暂时无法连接 StudyMate 服务，请检查网络后重试"
+  if (status >= 500) return "因材智训服务暂时不可用，请稍后重试"
+  if (status === 0) return "暂时无法连接因材智训服务，请检查网络后重试"
   return `请求失败（${status}）：${path}`
 }
 
