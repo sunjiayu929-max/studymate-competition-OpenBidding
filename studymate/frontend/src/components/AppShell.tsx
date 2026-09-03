@@ -405,13 +405,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                 ? <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#668064]">企业管理员</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{user?.name || "企业管理员"}</strong><span className="mt-1 block truncate text-[10px] text-[#66717B]">{user?.company || "河南本线商贸有限公司"}</span></span>
                 : <span className="min-w-0 flex-1 text-center"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">{learnerIdentity.kind}</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{user?.name || "学习者"}</strong><span className="mt-1 block truncate text-[10px] text-[#66717B]">{learnerIdentity.detail}</span><span className="mt-0.5 block truncate text-[10px] text-[#66717B]">{learnerTargetRole}</span></span>)}
           </Link>
-          <div className="mt-2">
-            <ShellLink item={{ label: "新手指引", to: "/guide", icon: Compass }} compact={effectiveCollapsed} pathname={pathname} />
-          </div>
-          {!effectiveCollapsed && user && enterpriseVisible && (
+          {!enterpriseAdmin && !systemAdmin && (
+            <div className="mt-2">
+              <ShellLink item={{ label: "新手指引", to: "/guide", icon: Compass }} compact={effectiveCollapsed} pathname={pathname} />
+            </div>
+          )}
+          {!enterpriseAdmin && !effectiveCollapsed && user && enterpriseVisible && (
             <Link to="/enterprise" className="mt-2 block rounded-2xl border border-[#DCE5D7] bg-[#F5FAF3] px-3 py-2.5 transition-colors hover:bg-[#EAF4E7]">
-              <span className="flex items-center gap-2 text-[10px] font-bold text-[#52704D]"><BriefcaseBusiness className="size-3.5" />{enterpriseAdmin ? "企业管理员工作台" : "企业任务中心"}<ChevronRight className="ml-auto size-3" /></span>
-              <span className="mt-1 block truncate text-[10px] text-[#758372]">{enterpriseAdmin ? "发布任务 · 管理岗位资料" : "查看企业下发的学习任务"}</span>
+              <span className="flex items-center gap-2 text-[10px] font-bold text-[#52704D]"><BriefcaseBusiness className="size-3.5" />企业任务中心<ChevronRight className="ml-auto size-3" /></span>
+              <span className="mt-1 block truncate text-[10px] text-[#758372]">查看企业下发的学习任务</span>
             </Link>
           )}
         </div>
@@ -440,7 +442,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="shrink-0 border-t border-[#DED8CC] p-3">
-          {isPrivilegedRole(user?.role) && (
+          {!systemAdmin && isPrivilegedRole(user?.role) && (
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent(JUDGE_DEMO_EVENT))}
@@ -454,7 +456,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {!effectiveCollapsed && <><span>评委演示</span><span className="ml-auto rounded-full border border-[#D9CFB7] px-1.5 py-0.5 text-[8px]">3–5 分钟</span></>}
             </button>
           )}
-          {isPrivilegedRole(user?.role) && <ShellLink item={{ label: "测试管理", to: "/tests", icon: ClipboardCheck }} compact={effectiveCollapsed} pathname={pathname} />}
+          {!systemAdmin && isPrivilegedRole(user?.role) && <ShellLink item={{ label: "测试管理", to: "/tests", icon: ClipboardCheck }} compact={effectiveCollapsed} pathname={pathname} />}
           <button
             type="button"
             onClick={() => setLogoutOpen(true)}

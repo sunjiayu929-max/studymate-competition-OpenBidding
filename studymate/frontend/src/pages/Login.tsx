@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import {
   AlertCircle,
+  ArrowLeft,
   ArrowRight,
   ChevronDown,
   CheckCircle2,
@@ -163,12 +164,21 @@ export function Login() {
             <div className="hidden text-[9px] font-bold tracking-[0.14em] text-[#777E7B] uppercase sm:block">Intelligent Learning Studio</div>
           </div>
         </div>
-        <div className="hidden items-center gap-2 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3.5 py-2 text-[11px] font-semibold text-[#59645F] shadow-[0_6px_18px_rgba(24,35,45,.06)] sm:flex">
+        <div className="flex items-center gap-2">
+          <a
+            href="/landing/index.html"
+            className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3 text-[11px] font-bold text-[#415966] shadow-[0_6px_18px_rgba(24,35,45,.06)] transition-colors hover:bg-[#F0ECE3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5D4D9] sm:h-10 sm:px-3.5"
+          >
+            <ArrowLeft className="size-3.5" />
+            返回介绍页
+          </a>
+          <div className="hidden items-center gap-2 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3.5 py-2 text-[11px] font-semibold text-[#59645F] shadow-[0_6px_18px_rgba(24,35,45,.06)] sm:flex">
           <span className="relative flex size-2">
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#718B6A] opacity-35" />
             <span className="relative inline-flex size-2 rounded-full bg-[#718B6A]" />
           </span>
           7 个智能体在线
+          </div>
         </div>
       </header>
 
