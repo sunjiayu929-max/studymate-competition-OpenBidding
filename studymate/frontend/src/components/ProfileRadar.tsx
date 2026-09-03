@@ -26,14 +26,20 @@ interface RadarAxisTickProps {
 const labelMap: Record<string, string> = {
   math: "数学",
   programming: "编程",
-  statistics: "统计",
-  english: "英语",
+  cs_foundation: "计算机基础",
+  data_sql: "数据与SQL",
   subject_prior: "领域先验",
   ml_prior: "ML 先验",  // 向后兼容旧画像
-  visual: "视觉",
+  statistics: "统计",    // 旧维度，兼容历史快照
+  english: "英语",       // 旧维度，兼容历史快照
+  practice_first: "实践优先",
+  stepwise: "循序渐进",
+  challenge_seeking: "挑战导向",
+  reflective: "复盘总结",
+  visual: "视觉",        // 旧维度，兼容历史快照
   reading: "阅读",
-  hands_on: "实操",
-  auditory: "听觉",
+  hands_on: "实操",      // 旧维度，兼容历史快照
+  auditory: "听觉",      // 旧维度，兼容历史快照
   document: "文档",
   mindmap: "导图",
   quiz: "题目",

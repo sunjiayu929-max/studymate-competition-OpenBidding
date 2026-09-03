@@ -744,8 +744,8 @@ function shanghaiDayKey(value: string | number | Date | null | undefined) {
 function calculateProfileCompleteness(profile: ProfileResponse | null) {
   if (!profile) return 0
   const defaults: Required<ProfileDims> = {
-    knowledge_base: { math: 3, programming: 3, statistics: 3, english: 3, subject_prior: 3 },
-    cognitive_style: { visual: 3, reading: 3, hands_on: 3, auditory: 3 },
+    knowledge_base: { math: 3, programming: 3, cs_foundation: 3, data_sql: 3, subject_prior: 3 },
+    cognitive_style: { practice_first: 3, stepwise: 3, challenge_seeking: 3, reflective: 3 },
     goals: { primary: "", deadline: "", target_topics: [] },
     weak_points: { topics: [], error_types: [] },
     pace: { hours_per_week: 0, intensity: "" },
