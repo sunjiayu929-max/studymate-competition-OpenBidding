@@ -35,6 +35,8 @@ export type PageId =
   | "resources"
   | "career"
   | "report"
+  | "learnerReport"
+  | "capabilityProfile"
   | "tests"
   | "courses"
   | "notes"
@@ -50,13 +52,15 @@ const PAGE_META: Record<PageId, { label: string; group: string; icon: typeof Hom
   home: { label: "今日学习", group: "学习中心", icon: Home },
   workspace: { label: "训练资源", group: "岗位训练中心", icon: WandSparkles },
   tutor: { label: "AI 助教", group: "AI 学习工具", icon: Bot },
-  profile: { label: "岗位能力画像", group: "学习中心", icon: GraduationCap },
+  profile: { label: "学情画像构建", group: "岗位对标设置", icon: GraduationCap },
+  capabilityProfile: { label: "岗位能力画像", group: "个人中心", icon: GraduationCap },
   rag: { label: "岗位知识库", group: "知识与笔记", icon: Database },
   knowledge: { label: "自建知识库", group: "知识与笔记", icon: Database },
   ppt: { label: "PPT 生成", group: "AI 学习工具", icon: Presentation },
   resources: { label: "学习资源", group: "发现与拓展", icon: Compass },
   career: { label: "转岗培训", group: "发现与拓展", icon: GraduationCap },
-  report: { label: "实时学习报告", group: "练习与成长", icon: BarChart3 },
+  report: { label: "实时学习报告", group: "个人中心", icon: BarChart3 },
+  learnerReport: { label: "个人学情与资源匹配度报告", group: "个人中心", icon: BarChart3 },
   tests: { label: "测试管理", group: "辅助入口", icon: ClipboardCheck },
   courses: { label: "岗位空间", group: "求职准备", icon: Library },
   notes: { label: "智能笔记", group: "知识与笔记", icon: NotebookPen },
@@ -66,7 +70,7 @@ const PAGE_META: Record<PageId, { label: string; group: string; icon: typeof Hom
   guide: { label: "新手指引", group: "辅助入口", icon: Compass },
   interview: { label: "AI 面试", group: "求职准备", icon: MessageSquare },
   oj: { label: "机考备战中心", group: "求职备战中心", icon: Code2 },
-  honor: { label: "我的荣誉墙", group: "练习与成长", icon: Award },
+  honor: { label: "我的荣誉墙", group: "个人中心", icon: Award },
 }
 
 interface AppTopbarProps {

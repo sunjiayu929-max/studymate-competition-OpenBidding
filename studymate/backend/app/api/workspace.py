@@ -179,9 +179,9 @@ async def generate(req: GenerateRequest, user: User = Depends(require_user)):
                             citations = []
                         elif out_type == "video":
                             content_str = json.dumps({
-                                "provider": out.get("provider", "minimax"),
-                                "model": out.get("model", "MiniMax-H3"),
-                                "status": out.get("status", "unconfigured"),
+                                "provider": out.get("provider", "frontend"),
+                                "model": out.get("model", "scripted-lecture"),
+                                "status": out.get("status", "script_ready"),
                                 "message": out.get("message", ""),
                                 "video_url": out.get("video_url", ""),
                                 "assembled_video_url": out.get("assembled_video_url", ""),
@@ -202,7 +202,7 @@ async def generate(req: GenerateRequest, user: User = Depends(require_user)):
                                 "segment_count": out.get("segment_count", 0),
                                 "completed_segments": out.get("completed_segments", 0),
                                 "total_duration": out.get("total_duration", out.get("duration", 0)),
-                                "assembly_status": out.get("assembly_status", "pending"),
+                                "assembly_status": out.get("assembly_status", "not_applicable"),
                             }, ensure_ascii=False)
                             citations = (out.get("script") or {}).get("citations", [])
                         else:

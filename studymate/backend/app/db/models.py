@@ -231,6 +231,17 @@ class Resource(Base, TimestampMixin):
     ai_generated: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class ConceptArchive(Base, TimestampMixin):
+    """跨账号共享的可视讲解归档；按主题复用生成结果。"""
+    __tablename__ = "concept_archives"
+    __table_args__ = (UniqueConstraint("question_key", name="uq_concept_archive_question_key"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    question_key: Mapped[str] = mapped_column(String(512), index=True)
+    question: Mapped[str] = mapped_column(String(500))
+    result: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class LearningPath(Base, TimestampMixin):
     __tablename__ = "learning_paths"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

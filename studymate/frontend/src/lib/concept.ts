@@ -51,63 +51,6 @@ export interface ConceptRoleContext {
   sample_tasks?: string[]
 }
 
-export interface ConceptVideoResult {
-  type: "video"
-  title: string
-  provider: string
-  model: string
-  status: "unconfigured" | "succeeded" | "failed" | string
-  job_id?: string
-  message?: string
-  video_url: string
-  assembled_video_url?: string
-  task_id?: string
-  resolution: string
-  duration: number
-  ratio: string
-  has_audio: boolean
-  script: {
-    title: string
-    voiceover: string
-    prompt: string
-    shots: Array<{ duration: number; description: string }>
-  }
-  complexity?: "focused" | "workflow" | "complex" | string
-  scope?: string
-  duration_reason?: string
-  estimated_cost_rmb?: number
-  actual_cost_rmb?: number
-  total_duration?: number
-  segment_count?: number
-  completed_segments?: number
-  assembly_status?: "pending" | "assembled" | "unavailable" | "failed" | "not_started" | string
-  segment_urls?: string[]
-  segments?: Array<{
-    index: number
-    title: string
-    purpose: string
-    voiceover: string
-    duration: number
-    status: string
-    task_id?: string
-    video_url?: string
-    message?: string
-  }>
-}
-
-export interface ConceptVideoPlan {
-  duration: number
-  resolution: string
-  ratio: string
-  complexity: "focused" | "workflow" | "complex" | string
-  scope: string
-  duration_reason: string
-  estimated_cost_rmb: number
-  total_duration: number
-  segment_count: number
-  segments: Array<{ index: number; title: string; purpose: string; voiceover: string; duration: number; status: string }>
-}
-
 interface ExplainCacheEntry {
   promise: Promise<ExplainResult>
   expiresAt: number
