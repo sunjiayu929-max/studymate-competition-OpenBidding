@@ -152,7 +152,30 @@ class QuizAgent(AgentBase):
             f"[{index + 1}] {item['source']} p.{item.get('page') or '-'}: {item['content'][:160]}"
             for index, item in enumerate(chunks)
         )
-        sys = f"""你是一位{persona}，同时是{course_name}出题专家。请围绕岗位“{target_role}”为「{topic}」出 3 道不同类型、至少覆盖两个难度等级的题：
+        quality_contract = training_plan.get("quality_contract") or {}
+        strict_level = quality_contract.get("difficulty_level")
+        required_points = training_plan.get("required_knowledge_points") or []
+        difficulty_rule = (
+            f"本轮为严格适配回归：三道题的 difficulty 必须全部填写为 {int(strict_level)}，"
+            "不得为了制造梯度而加入其他等级；题目实际认知负荷也必须与该等级一致。"
+            if strict_level is not None else
+            "三道题应分别承担基础理解、场景应用、迁移挑战，并覆盖至少两个相邻难度等级。"
+        )
+        coverage_rule = (
+            "本轮必须在题干或解析中覆盖以下黄金知识点："
+            + "、".join(
+                str(item.get("point", item.get("knowledge_point", item)))
+                if isinstance(item, dict) else str(item)
+                for item in required_points
+            )
+            if required_points else "题目必须围绕训练计划中的岗位能力和知识点。"
+        )
+        question_scope = (
+            f"三道题的认知负荷统一控制在难度 {int(strict_level)}。"
+            if strict_level is not None
+            else "三道题至少覆盖两个相邻难度等级。"
+        )
+        sys = f"""你是一位{persona}，同时是{course_name}出题专家。请围绕岗位“{target_role}”为「{topic}」出 3 道不同类型的题，{question_scope}
 1 题选择题（mcq）：4 选项，answer 是 0..3 的索引
 1 题填空题（fill）：answer 是简短答案字符串
 1 题编程题（code）：给 starter 起步代码 + 标答 answer + 说明
@@ -177,7 +200,9 @@ class QuizAgent(AgentBase):
 审核返工意见：{feedback_text}
 本轮知识库证据（每题必须通过 source_index 绑定其中一条）：
 {references}
-题目必须体现岗位任务情境，并与学生当前难度相邻，避免跨度过大；三题应分别承担基础理解、场景应用、迁移挑战，并可用于下一轮升降阶判断。
+{difficulty_rule}
+{coverage_rule}
+题目必须体现岗位任务情境，并可用于下一轮升降阶判断。若资料未提供某个具体参数或阈值，不得自行补充确定数值。
 """
         msgs = [{"role": "system", "content": sys}, {"role": "user", "content": topic}]
         raw = await llm.chat_structured(messages=msgs, temperature=0.4)
@@ -188,6 +213,10 @@ class QuizAgent(AgentBase):
             items = data.get("items", [])
         except Exception:
             items = MOCK_QUIZ
+        if strict_level is not None:
+            expected = int(strict_level)
+            if len(items) != 3 or any(int(item.get("difficulty", -1)) != expected for item in items):
+                raise ValueError(f"模型返回题目难度未满足严格适配回归要求：expected={expected}")
         return items
 
     def _difficulty_from_profile(self, profile: dict) -> int:
