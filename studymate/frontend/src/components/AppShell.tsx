@@ -397,16 +397,20 @@ export function AppShell({ children }: { children: ReactNode }) {
             to={systemAdmin ? "/admin" : enterpriseAdmin ? "/enterprise/dashboard" : "/courses"}
             title={systemAdmin ? "系统管理工作台" : enterpriseAdmin ? user?.company || "企业管理工作台" : learnerTargetRole}
             className={cn(
-              "flex items-center rounded-2xl border border-[#C9DCE8] bg-white/80 shadow-[0_8px_24px_rgba(35,88,124,.07)] transition-colors hover:border-[#AFCBDD] hover:bg-white",
-              effectiveCollapsed ? "h-11 justify-center" : "gap-2.5 px-3 py-2.5",
+              "app-shell-profile-card flex items-center rounded-2xl border transition-colors",
+              effectiveCollapsed ? "app-shell-profile-card-collapsed h-11 justify-center" : "gap-2.5 px-3 py-2.5",
             )}
           >
-            {systemAdmin ? <ShieldCheck className="size-4 shrink-0 text-[#9A4E35]" /> : enterpriseAdmin ? <BriefcaseBusiness className="size-4 shrink-0 text-[#52704D]" /> : <Library className="size-4 shrink-0 text-[#315E83]" />}
-            {!effectiveCollapsed && (systemAdmin
-              ? <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">系统管理</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">平台运营工作台</strong></span>
-              : enterpriseAdmin
-                ? <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#668064]">企业管理员</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{user?.name || "企业管理员"}</strong><span className="mt-1 block truncate text-[10px] text-[#66717B]">{user?.company || "河南本线商贸有限公司"}</span></span>
-              : <span className="min-w-0 flex-1 text-center"><small className="block text-[10px] font-bold tracking-[.08em] text-[#718692]">{learnerIdentity.kind}</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{user?.name || "学习者"}</strong><span className="mt-1 block truncate text-[10px] text-[#607583]">{learnerIdentity.detail}</span><span className="mt-0.5 block truncate text-[10px] text-[#607583]">{learnerTargetRole}</span></span>)}
+            {systemAdmin ? <span className="app-shell-profile-mark is-admin"><ShieldCheck className="size-4" /></span> : enterpriseAdmin ? <span className="app-shell-profile-mark is-enterprise"><BriefcaseBusiness className="size-4" /></span> : <span className="app-shell-profile-mark"><UserRound className="size-4" /></span>}
+            {!effectiveCollapsed && (
+              <span className="app-shell-profile-copy">
+                <small className="app-shell-profile-kicker">{systemAdmin ? "系统管理" : enterpriseAdmin ? "企业管理员" : learnerIdentity.kind}</small>
+                <strong>{systemAdmin ? "平台运营工作台" : enterpriseAdmin ? (user?.name || "企业管理员") : (user?.name || "学习者")}</strong>
+                <span className="app-shell-profile-meta">{systemAdmin ? "全局配置与运行监控" : enterpriseAdmin ? (user?.company || "河南本线商贸有限公司") : learnerIdentity.detail}</span>
+                {!systemAdmin && !enterpriseAdmin && <span className="app-shell-profile-target"><Library className="size-3" />{learnerTargetRole}</span>}
+              </span>
+            )}
+            {!effectiveCollapsed && <ChevronRight className="app-shell-profile-arrow size-3.5 shrink-0" />}
           </Link>
           {!enterpriseAdmin && !systemAdmin && (
             <div className="mt-2">

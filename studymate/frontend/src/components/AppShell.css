@@ -6,6 +6,122 @@
   --app-shell-navigation-width: 72px;
 }
 
+/* 个人入口是侧栏的身份锚点：用更明确的层级承载姓名、身份和目标岗位，避免多行文字挤在卡片中央。 */
+.app-shell-profile-card {
+  position: relative;
+  isolation: isolate;
+  min-height: 92px;
+  overflow: hidden;
+  border-color: rgba(157, 195, 214, .76);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(255, 255, 255, .74), transparent 42%),
+    linear-gradient(135deg, rgba(250, 254, 255, .96), rgba(232, 245, 250, .88));
+  box-shadow: 0 8px 24px rgba(35, 88, 124, .07), inset 0 1px 0 rgba(255, 255, 255, .82);
+}
+
+.app-shell-profile-card-collapsed {
+  min-height: 0;
+}
+
+.app-shell-profile-card::before {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  content: "";
+  background: linear-gradient(90deg, #2f7ca2, #6ec7df 62%, rgba(110, 199, 223, 0));
+}
+
+.app-shell-profile-card:hover {
+  border-color: #9fc6d9;
+  background-color: rgba(255, 255, 255, .92);
+  box-shadow: 0 10px 26px rgba(35, 88, 124, .11), inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+
+.app-shell-profile-mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(63, 131, 166, .3);
+  border-radius: 12px;
+  color: #fff;
+  background: linear-gradient(145deg, #2b7298, #1f506f);
+  box-shadow: 0 5px 12px rgba(37, 103, 143, .2), inset 0 1px 0 rgba(255, 255, 255, .24);
+}
+
+.app-shell-profile-mark.is-enterprise {
+  border-color: rgba(111, 146, 102, .34);
+  background: linear-gradient(145deg, #6f9365, #466649);
+}
+
+.app-shell-profile-mark.is-admin {
+  border-color: rgba(176, 111, 83, .34);
+  background: linear-gradient(145deg, #b36a4e, #814431);
+}
+
+.app-shell-profile-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.15;
+}
+
+.app-shell-profile-kicker {
+  overflow: hidden;
+  color: #6e8794;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell-profile-copy strong {
+  overflow: hidden;
+  color: #182f3e;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell-profile-meta,
+.app-shell-profile-target {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 3px;
+  overflow: hidden;
+  color: #607985;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell-profile-target {
+  margin-top: 2px;
+  color: #285f7d;
+  font-weight: 700;
+}
+
+.app-shell-profile-arrow {
+  color: #7da3b6;
+  transition: transform 180ms ease, color 180ms ease;
+}
+
+.app-shell-profile-card:hover .app-shell-profile-arrow {
+  color: #2f7297;
+  transform: translateX(2px);
+}
+
 @media (min-width: 1024px) {
   .app-shell-workspace:not(.app-shell-universe) .app-shell-content > .app-page {
     width: calc(100% + var(--app-shell-navigation-width));
