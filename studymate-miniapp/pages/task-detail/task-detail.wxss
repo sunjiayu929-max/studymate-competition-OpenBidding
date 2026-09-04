@@ -10,7 +10,7 @@
 .detail-title {
   display: block;
   margin-top: 22rpx;
-  color: #293d2a;
+  color: #21465e;
   font-size: 42rpx;
   font-weight: 800;
   line-height: 1.4;
@@ -19,7 +19,7 @@
 .detail-meta {
   display: block;
   margin-top: 12rpx;
-  color: #7a8677;
+  color: #718b99;
   font-size: 23rpx;
 }
 
@@ -29,7 +29,8 @@
   justify-content: space-between;
   gap: 22rpx;
   padding: 24rpx;
-  background: #f4f9f2;
+  border-color: #bcd9e7;
+  background: linear-gradient(135deg, #f4fafd 0%, #e5f3f8 100%);
 }
 
 .action-copy {
@@ -42,13 +43,13 @@
 }
 
 .action-label {
-  color: #7a8677;
+  color: #718b99;
   font-size: 21rpx;
 }
 
 .action-status {
   margin-top: 6rpx;
-  color: #293d2a;
+  color: #21465e;
   font-size: 28rpx;
   font-weight: 800;
 }
@@ -61,7 +62,7 @@
 
 .completed-mark {
   flex: 0 0 160rpx;
-  color: #52704d;
+  color: #2f7196;
   font-size: 25rpx;
   font-weight: 800;
   text-align: right;
@@ -74,7 +75,7 @@
 .material-section {
   margin-top: 30rpx;
   padding: 34rpx 26rpx 30rpx;
-  border-top: 1rpx solid #e4ebe1;
+  border-top: 1rpx solid #cfe3ed;
   background: #fff;
 }
 
@@ -82,7 +83,7 @@
 .knowledge-detail {
   display: block;
   margin-top: 18rpx;
-  color: #536153;
+  color: #526f80;
   font-size: 28rpx;
   line-height: 1.9;
   white-space: pre-wrap;
@@ -94,12 +95,12 @@
 
 .material-block + .material-block {
   margin-top: 12rpx;
-  border-top: 1rpx solid #edf1eb;
+  border-top: 1rpx solid #e5f0f5;
 }
 
 .material-subtitle {
   display: block;
-  color: #334934;
+  color: #2d5871;
   font-size: 30rpx;
   font-weight: 800;
   line-height: 1.55;
@@ -111,7 +112,7 @@
 
 .knowledge-item {
   padding: 22rpx 0;
-  border-bottom: 1rpx solid #edf1eb;
+  border-bottom: 1rpx solid #e5f0f5;
 }
 
 .knowledge-item:last-child {
@@ -120,7 +121,7 @@
 
 .knowledge-title {
   display: block;
-  color: #52704d;
+  color: #2f7196;
   font-size: 27rpx;
   font-weight: 800;
   line-height: 1.5;

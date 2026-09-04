@@ -1,11 +1,11 @@
 page {
-  background: #f3f0e7;
+  background: #edf7fb;
 }
 
 .auth-page {
   min-height: 100vh;
   padding: 28rpx 28rpx calc(54rpx + env(safe-area-inset-bottom));
-  background: #f3f0e7;
+  background: linear-gradient(180deg, #f6fbfd 0%, #edf7fb 48%, #e8f4f9 100%);
   color: #18232d;
 }
 
@@ -24,10 +24,11 @@ page {
 .auth-topbar .brand-mark {
   width: 78rpx;
   height: 78rpx;
-  border-radius: 26rpx;
-  background: #244c66;
-  color: #f0d6a4;
-  box-shadow: 0 8rpx 18rpx rgba(24, 35, 45, .13);
+  border: 1rpx solid #8fc3db;
+  border-radius: 18rpx;
+  background: #286486;
+  color: #fff;
+  box-shadow: 0 7rpx 18rpx rgba(42, 101, 133, .14);
 }
 
 .brand-copy {
@@ -40,14 +41,14 @@ page {
 }
 
 .brand-name {
-  color: #18232d;
+  color: #18384d;
   font-size: 34rpx;
   font-weight: 800;
 }
 
 .brand-subtitle {
   margin-top: 4rpx;
-  color: #777e7b;
+  color: #6e8997;
   font-size: 15rpx;
   font-weight: 800;
   letter-spacing: 1.7rpx;
@@ -59,13 +60,13 @@ page {
   flex-shrink: 0;
   gap: 10rpx;
   padding: 14rpx 16rpx;
-  border: 1rpx solid #d7d1c4;
+  border: 1rpx solid #c4dfeb;
   border-radius: 999rpx;
-  background: #fffefa;
-  color: #59645f;
+  background: rgba(255, 255, 255, .82);
+  color: #52758a;
   font-size: 19rpx;
   font-weight: 700;
-  box-shadow: 0 6rpx 18rpx rgba(24, 35, 45, .06);
+  box-shadow: 0 6rpx 18rpx rgba(42, 101, 133, .06);
 }
 
 .online-dot,
@@ -74,7 +75,7 @@ page {
   width: 12rpx;
   height: 12rpx;
   border-radius: 50%;
-  background: #718b6a;
+  background: #3e9abf;
 }
 
 .auth-shell {
@@ -92,25 +93,25 @@ page {
   align-items: center;
   gap: 12rpx;
   padding: 14rpx 18rpx;
-  border: 1rpx solid #d5ccbc;
+  border: 1rpx solid #c4dfeb;
   border-radius: 999rpx;
-  background: #fffefa;
-  color: #395c74;
+  background: rgba(255, 255, 255, .82);
+  color: #356d8b;
   font-size: 20rpx;
   font-weight: 800;
-  box-shadow: 0 5rpx 15rpx rgba(24, 35, 45, .05);
+  box-shadow: 0 5rpx 15rpx rgba(42, 101, 133, .05);
 }
 
 .hero-dot {
   width: 12rpx;
   height: 12rpx;
-  background: #b85f4b;
+  background: #62b5d4;
 }
 
 .hero-title {
   display: block;
   margin-top: 34rpx;
-  color: #18232d;
+  color: #18384d;
   font-size: 60rpx;
   font-weight: 800;
   letter-spacing: -2rpx;
@@ -119,16 +120,16 @@ page {
 
 .hero-title-accent {
   margin-top: 6rpx;
-  color: #315e83;
+  color: #2f7196;
 }
 
 .auth-panel {
   margin-top: 44rpx;
   padding: 34rpx 28rpx 28rpx;
-  border: 1rpx solid #d7d1c4;
-  border-radius: 24rpx;
-  background: #fffefa;
-  box-shadow: 0 18rpx 48rpx rgba(24, 35, 45, .11);
+  border: 1rpx solid #c6dfeb;
+  border-radius: 20rpx;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 16rpx 42rpx rgba(42, 101, 133, .1);
 }
 
 .panel-heading {
@@ -139,7 +140,7 @@ page {
   display: flex;
   align-items: center;
   gap: 12rpx;
-  color: #315e83;
+  color: #2f7196;
   font-size: 20rpx;
   font-weight: 800;
   letter-spacing: 1rpx;
@@ -152,17 +153,17 @@ page {
   width: 42rpx;
   height: 42rpx;
   margin-left: auto;
-  border: 1rpx solid #ded8cc;
+  border: 1rpx solid #c8e1ec;
   border-radius: 12rpx;
-  background: #f1ede4;
-  color: #315e83;
+  background: #e8f4f9;
+  color: #2f7196;
   font-size: 24rpx;
 }
 
 .panel-title {
   display: block;
   margin-top: 20rpx;
-  color: #18232d;
+  color: #18384d;
   font-size: 42rpx;
   font-weight: 800;
   letter-spacing: -1.5rpx;
@@ -171,7 +172,7 @@ page {
 .panel-detail {
   display: block;
   margin-top: 10rpx;
-  color: #66717b;
+  color: #688596;
   font-size: 24rpx;
   line-height: 1.6;
 }
@@ -182,9 +183,9 @@ page {
   gap: 8rpx;
   margin-bottom: 28rpx;
   padding: 6rpx;
-  border: 1rpx solid #ded8cc;
+  border: 1rpx solid #c6dfeb;
   border-radius: 16rpx;
-  background: #ece8de;
+  background: #e7f2f7;
 }
 
 .auth-tab {
@@ -194,16 +195,16 @@ page {
   min-height: 78rpx;
   border: 1rpx solid transparent;
   border-radius: 13rpx;
-  color: #727a78;
+  color: #698392;
   font-size: 26rpx;
   font-weight: 800;
 }
 
 .auth-tab.active {
-  border-color: #d7d1c4;
-  background: #fffefa;
-  color: #244c66;
-  box-shadow: 0 3rpx 10rpx rgba(24, 35, 45, .07);
+  border-color: #b9d9e7;
+  background: #fff;
+  color: #286486;
+  box-shadow: 0 3rpx 10rpx rgba(42, 101, 133, .07);
 }
 
 .auth-form {
@@ -213,7 +214,7 @@ page {
 .form-label,
 .identity-label {
   display: block;
-  color: #394950;
+  color: #315268;
   font-size: 22rpx;
   font-weight: 800;
 }
@@ -232,15 +233,15 @@ page {
   align-items: center;
   width: 100%;
   min-height: 100rpx;
-  border: 1rpx solid #d7d1c4;
-  border-radius: 16rpx;
+  border: 1rpx solid #c5deea;
+  border-radius: 14rpx;
   background: #fff;
 }
 
 .field-shell:focus-within,
 .select-shell:active {
-  border-color: #244c66;
-  box-shadow: 0 0 0 6rpx rgba(197, 212, 217, .7);
+  border-color: #4a91b6;
+  box-shadow: 0 0 0 5rpx rgba(198, 225, 237, .7);
 }
 
 .field-symbol {
@@ -249,7 +250,7 @@ page {
   justify-content: center;
   flex: 0 0 42rpx;
   margin-left: 22rpx;
-  color: #8a918f;
+  color: #7893a1;
   font-size: 23rpx;
   font-weight: 800;
 }
@@ -259,7 +260,7 @@ page {
   flex: 1;
   height: 98rpx;
   padding: 0 18rpx;
-  color: #24323a;
+  color: #18384d;
   font-size: 27rpx;
 }
 
@@ -273,14 +274,14 @@ page {
   height: 72rpx;
   flex-shrink: 0;
   margin-right: 22rpx;
-  color: #8a918f;
+  color: #7893a1;
 }
 
 .eye-icon {
   position: relative;
   width: 34rpx;
   height: 22rpx;
-  border: 3rpx solid #8a918f;
+  border: 3rpx solid #7893a1;
   border-radius: 50% / 65%;
 }
 
@@ -291,7 +292,7 @@ page {
   width: 9rpx;
   height: 9rpx;
   border-radius: 50%;
-  background: #8a918f;
+  background: #7893a1;
   content: "";
   transform: translate(-50%, -50%);
 }
@@ -302,14 +303,14 @@ page {
   left: -7rpx;
   width: 48rpx;
   height: 3rpx;
-  background: #8a918f;
+  background: #7893a1;
   content: "";
   transform: rotate(-35deg);
 }
 
 .input-placeholder,
 .placeholder-value {
-  color: #9a9f9c;
+  color: #93a7b1;
 }
 
 .auth-submit {
@@ -320,12 +321,12 @@ page {
   min-height: 96rpx;
   margin-top: 28rpx;
   border: 0;
-  border-radius: 16rpx;
-  background: #244c66;
-  color: #fffefa;
+  border-radius: 14rpx;
+  background: #2f7196;
+  color: #fff;
   font-size: 27rpx;
   font-weight: 800;
-  box-shadow: 0 10rpx 22rpx rgba(36, 76, 102, .2);
+  box-shadow: 0 9rpx 20rpx rgba(47, 113, 150, .18);
 }
 
 .auth-submit[disabled] {
@@ -347,15 +348,15 @@ page {
 }
 
 .auth-error {
-  border: 1rpx solid #f0c9c2;
-  background: #fff1ef;
-  color: #a9473d;
+  border: 1rpx solid #c9dfeb;
+  background: #f1f8fc;
+  color: #2d6b8c;
 }
 
 .auth-notice {
-  border: 1rpx solid #bde0c3;
-  background: #eef9ef;
-  color: #2e7951;
+  border: 1rpx solid #bcdbe8;
+  background: #f0f8fc;
+  color: #2f7196;
 }
 
 .auth-security {
@@ -364,13 +365,13 @@ page {
   justify-content: center;
   gap: 10rpx;
   margin-top: 26rpx;
-  color: #8a918f;
+  color: #7893a1;
   font-size: 19rpx;
   line-height: 1.5;
 }
 
 .security-symbol {
-  color: #718b6a;
+  color: #3e8fb3;
   font-size: 22rpx;
   font-weight: 800;
 }
