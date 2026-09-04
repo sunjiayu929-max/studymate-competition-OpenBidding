@@ -19,6 +19,8 @@ import { AppTopbar } from "@/components/AppTopbar"
 import { apiGet } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
+import "./AdminDashboard.css"
+
 type View = "overview" | "enterprises" | "users" | "content"
 type Summary = Record<string, number>
 type Enterprise = {
@@ -92,7 +94,7 @@ export function AdminDashboard() {
   useEffect(() => { setPage(1) }, [query, view])
 
   return (
-    <main className="app-page paper-theme min-h-dvh bg-[#F3F0E7] px-3 pb-8 pt-3 sm:px-5 lg:px-7">
+    <main className="app-page paper-theme admin-dashboard-page min-h-dvh bg-[#F3F0E7] px-3 pb-8 pt-3 sm:px-5 lg:px-7">
       <div className="mx-auto max-w-[1500px]">
         <AppTopbar current="home" appearance="paper" labelOverride="系统管理工作台" groupOverride="平台运营" selectionLabel="全平台" />
         <header className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-[24px] border border-[#E1CFC6] bg-[#FFF9F5] p-5 shadow-[0_14px_38px_rgba(120,76,58,.07)] sm:p-7">
