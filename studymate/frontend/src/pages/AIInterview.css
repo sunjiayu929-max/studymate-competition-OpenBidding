@@ -20,6 +20,32 @@
   backdrop-filter: blur(18px);
 }
 
+/* AppTopbar still exposes its paper-compatible markup for other pages. Keep
+   the interview workspace fully in the blue signal-studio palette without
+   changing that shared component's legacy appearance contract. */
+.interview-prep-studio .app-topbar-copy > div {
+  color: #347092 !important;
+}
+
+.interview-prep-studio .app-topbar-copy > div > svg {
+  color: #3aa6c4 !important;
+}
+
+.interview-prep-studio .app-topbar-copy > h1 {
+  color: #172e49 !important;
+}
+
+.interview-prep-studio .app-topbar-role-context {
+  border-color: #a8ccdc !important;
+  color: #285f83 !important;
+  background: rgba(236, 248, 253, .86) !important;
+}
+
+.interview-prep-studio .app-topbar-role-context:hover {
+  border-color: #5eafd0 !important;
+  background: #e0f2f8 !important;
+}
+
 .app-shell-content > .paper-theme.app-page.interview-prep-studio .app-topbar {
   min-height: 70px;
 }
