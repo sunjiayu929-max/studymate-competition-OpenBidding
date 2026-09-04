@@ -154,7 +154,7 @@ export function Login() {
         </div>
         <div className="login-topbar-actions">
           <a href="/landing/index.html" className="login-back-link"><ArrowLeft /><span>返回介绍页</span></a>
-          <div className="login-online-status" role="status"><span className="login-online-dot" aria-hidden><i /></span><span>7 个智能体在线</span></div>
+          <div className="login-online-status" role="status"><span className="login-online-dot" aria-hidden><i /></span><span>8 个智能体在线</span></div>
         </div>
       </header>
 
