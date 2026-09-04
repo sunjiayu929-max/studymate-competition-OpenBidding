@@ -34,9 +34,9 @@ export function OjCenter() {
   }, [])
 
   return (
-    <main className="app-page paper-theme oj-prep-studio min-h-dvh pb-12">
+    <main className="app-page oj-prep-studio min-h-dvh pb-12">
       <div className="w-full px-2 py-3 sm:px-4 sm:py-4 lg:px-5">
-        <AppTopbar className="rounded-none border-x-0 shadow-none" current="oj" appearance="paper" iconImage="/images/quality-inspection-instrument-v1.png" showRocketFormation rocketVariant="honor" />
+        <AppTopbar className="rounded-none border-x-0 shadow-none" current="oj" appearance="default" iconImage="/images/quality-inspection-instrument-v1.png" showRocketFormation rocketVariant="honor" />
         <section className="oj-prep-hero relative mt-3 overflow-hidden border-y px-3 py-5 sm:px-5 lg:px-6">
           <div className="oj-prep-live-row flex items-center justify-between border-b pb-4">
             <div className="flex items-center gap-3"><span className="oj-prep-live-dot size-2 rounded-full" /><span>EXAM TERMINAL</span><span>READY · 01</span></div>
