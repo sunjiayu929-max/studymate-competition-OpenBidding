@@ -2,9 +2,11 @@ import { useEffect, useState } from "react"
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import {
+  Activity,
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  BrainCircuit,
   ChevronDown,
   CheckCircle2,
   Eye,
@@ -22,6 +24,8 @@ import { Button } from "@/components/ui/button"
 import { apiPost } from "@/lib/api"
 import { setCurrentUser, useCurrentUser, type CurrentUser } from "@/store/user"
 
+import "./Login.css"
+
 type Mode = "login" | "register"
 interface AuthResponse extends CurrentUser { created: boolean }
 interface LocationState { from?: { pathname?: string; search?: string; hash?: string } }
@@ -37,20 +41,6 @@ function landingPath(user: Pick<CurrentUser, "role">, requestedPath: string): st
   if (requestedPath === "/admin" || requestedPath === "/enterprise/dashboard") return "/"
   return requestedPath
 }
-
-const ORBIT_PATHS = [
-  "M320 122 m -140 0 a 140 98 0 1 0 280 0 a 140 98 0 1 0 -280 0",
-  "M320 122 m -232 0 a 232 112 0 1 0 464 0 a 232 112 0 1 0 -464 0",
-]
-
-const ORBIT_PLANETS = [
-  { label: "岗位能力画像", color: "#355C8A", radius: 10, orbit: 0, duration: 20, begin: "0s", staticPosition: [180, 122] },
-  { label: "AI 助教", color: "#B85C3E", radius: 13, orbit: 0, duration: 20, begin: "-10s", staticPosition: [460, 122] },
-  { label: "岗位空间", color: "#C49A3A", radius: 11, orbit: 1, duration: 32, begin: "0s", staticPosition: [88, 122] },
-  { label: "智能笔记", color: "#6F8A69", radius: 9, orbit: 1, duration: 32, begin: "-8s", staticPosition: [320, 10] },
-  { label: "智能测验", color: "#3E7774", radius: 12, orbit: 1, duration: 32, begin: "-16s", staticPosition: [552, 122] },
-  { label: "学习路径", color: "#7E6B83", radius: 14, orbit: 1, duration: 32, begin: "-24s", staticPosition: [320, 234] },
-] as const
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
@@ -151,136 +141,130 @@ export function Login() {
   }
 
   return (
-    <main className="relative min-h-[100dvh] overflow-x-hidden bg-[#F3F0E7] text-[#18232D]">
-      <PaperBackdrop />
+    <main className="login-page">
+      <LoginBackdrop />
 
-      <header className="relative z-20 mx-auto flex h-[72px] max-w-[1600px] items-center justify-between px-4 sm:h-[84px] sm:px-7 lg:px-9 xl:px-10">
-        <div className="flex items-center gap-3">
-          <span className="grid size-10 place-items-center rounded-[13px] bg-[#244C66] text-[#F0D6A4] shadow-[0_8px_18px_rgba(24,35,45,.13)] sm:size-11">
-            <Sparkles className="size-5" strokeWidth={1.8} />
+      <header className="login-topbar">
+        <div className="login-brand" aria-label="因材智训">
+          <span className="login-brand-mark"><Sparkles strokeWidth={1.8} /></span>
+          <span className="login-brand-copy">
+            <strong>因材智训</strong>
+            <small>INTELLIGENT LEARNING STUDIO</small>
           </span>
-          <div>
-            <div className="text-[17px] font-extrabold tracking-[-0.04em] sm:text-lg">因材智训</div>
-            <div className="hidden text-[9px] font-bold tracking-[0.14em] text-[#777E7B] uppercase sm:block">Intelligent Learning Studio</div>
-          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <a
-            href="/landing/index.html"
-            className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3 text-[11px] font-bold text-[#415966] shadow-[0_6px_18px_rgba(24,35,45,.06)] transition-colors hover:bg-[#F0ECE3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5D4D9] sm:h-10 sm:px-3.5"
-          >
-            <ArrowLeft className="size-3.5" />
-            返回介绍页
-          </a>
-          <div className="hidden items-center gap-2 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3.5 py-2 text-[11px] font-semibold text-[#59645F] shadow-[0_6px_18px_rgba(24,35,45,.06)] sm:flex">
-          <span className="relative flex size-2">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#718B6A] opacity-35" />
-            <span className="relative inline-flex size-2 rounded-full bg-[#718B6A]" />
-          </span>
-          7 个智能体在线
-          </div>
+        <div className="login-topbar-actions">
+          <a href="/landing/index.html" className="login-back-link"><ArrowLeft /><span>返回介绍页</span></a>
+          <div className="login-online-status" role="status"><span className="login-online-dot" aria-hidden><i /></span><span>7 个智能体在线</span></div>
         </div>
       </header>
 
-      <div className="relative z-10 mx-auto max-w-[1600px] px-3 pb-3 sm:px-5 sm:pb-5 lg:px-8 lg:pb-8">
+      <div className="login-shell">
         <motion.div
           initial={reduceMotion ? false : { opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.62, ease: [0.22, 1, 0.36, 1] }}
-          className="relative isolate grid overflow-hidden rounded-[24px] border border-[#D7D1C4] bg-[#F8F6F0] shadow-[0_24px_70px_rgba(24,35,45,.10)] sm:rounded-[30px] lg:min-h-[calc(100dvh-116px)] lg:grid-cols-[52%_48%] xl:grid-cols-2"
+          transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
+          className="login-stage"
         >
-          <div className="pointer-events-none absolute inset-0 bg-[#F8F6F0]" aria-hidden />
-          <div className="pointer-events-none absolute bottom-0 left-0 h-[48%] w-[61%] bg-[#E7EDE5] opacity-80" style={{ clipPath: "polygon(0 28%, 100% 0, 88% 100%, 0 100%)" }} aria-hidden />
-          <div className="pointer-events-none absolute right-0 top-0 h-[46%] w-[47%] bg-[#E8ECEE] opacity-65" style={{ clipPath: "polygon(18% 0, 100% 0, 100% 100%, 0 72%)" }} aria-hidden />
-
-          <section className="relative z-10 flex min-w-0 items-center px-5 pb-4 pt-7 sm:px-9 sm:pb-8 sm:pt-12 lg:px-11 lg:py-12 xl:px-14 2xl:px-16">
-            <div className="w-full max-w-[700px] lg:-translate-y-8 xl:-translate-y-12">
-              <motion.div
-                initial={reduceMotion ? false : { opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.08 }}
-                className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#D5CCBC] bg-[#FFFEFA] px-3 py-2 text-[10px] font-bold tracking-[0.035em] text-[#395C74] shadow-[0_5px_15px_rgba(24,35,45,.05)] sm:mb-5 sm:px-3.5 sm:text-[11px]"
-              >
-                <span className="size-1.5 rounded-full bg-[#B85F4B]" />
-                为每个目标组织一支 AI 学习团队
+          <section className="login-story" aria-labelledby="login-story-title">
+            <div className="login-story-copy">
+              <motion.div initial={reduceMotion ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.08 }} className="login-kicker">
+                <Activity /><span>AI LEARNING WORKSPACE · LIVE</span>
               </motion.div>
-
-              <motion.h1
-                initial={reduceMotion ? false : { opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.62, delay: 0.12 }}
-                className="text-[32px] font-extrabold leading-[1.08] tracking-[-0.055em] text-[#18232D] sm:text-[40px] lg:text-[clamp(42px,3.15vw,56px)]"
-              >
-                <span className="block">让学习路径清晰可见</span>
-                <span className="mt-1 block text-[#315E83]">让每一步都有回应</span>
+              <motion.h1 id="login-story-title" initial={reduceMotion ? false : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.68, delay: 0.12 }}>
+                让学习路径清晰可见<span>让每一步都有回应</span>
               </motion.h1>
-
-              <motion.p
-                initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.55, delay: 0.18 }}
-                className="mt-5 hidden max-w-[620px] text-[15px] leading-7 text-[#66717B] lg:block xl:text-base"
-              >
-                因材智训让岗位能力画像、多 Agent 决策与训练验收围绕目标岗位协同工作，把岗位标准、资源和成果证据连接起来。
+              <motion.p initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.58, delay: 0.18 }}>
+                岗位能力画像、多 Agent 协作与训练验收围绕同一个目标持续同步，把标准、资源与成果证据连接成可执行的学习闭环。
               </motion.p>
+            </div>
 
-              <div className="hidden sm:block">
-                <OrbitalLearningSystem reduced={Boolean(reduceMotion)} />
-              </div>
+            <div className="login-story-launches" aria-hidden="true">
+              <span className="login-story-rocket is-escort is-left">
+                <img src="/images/profile-launch-rocket-v1.png" alt="" />
+                <em>能力画像</em><i />
+              </span>
+              <span className="login-story-rocket is-main">
+                <b /><img src="/images/profile-launch-rocket-v1.png" alt="" />
+                <em>今日任务</em><i />
+              </span>
+              <span className="login-story-rocket is-escort is-right">
+                <img src="/images/profile-launch-rocket-v1.png" alt="" />
+                <em>训练验收</em><i />
+              </span>
+            </div>
+
+            <LearningNetwork reduced={Boolean(reduceMotion)} />
+
+            <div className="login-signal-strip" aria-label="平台能力状态">
+              <span><i>01</i><b>岗位画像</b><small>目标持续校准</small></span>
+              <span><i>07</i><b>协作 Agent</b><small>实时在线</small></span>
+              <span><i>∞</i><b>学习闭环</b><small>证据持续回写</small></span>
             </div>
           </section>
 
-          <section className="relative z-20 flex items-center px-5 py-5 sm:px-9 sm:py-10 lg:px-10 lg:py-10 xl:px-12">
-            <div className="relative mx-auto w-full max-w-[460px] lg:rounded-[20px] lg:border lg:border-[#D7D1C4] lg:bg-[#FFFEFA] lg:p-8 lg:shadow-[0_18px_48px_rgba(24,35,45,.11)]">
-              <div className="mb-5 sm:mb-6">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="inline-flex items-center gap-2 text-[10px] font-extrabold tracking-[0.08em] text-[#315E83]">
-                    <span className="size-1.5 rounded-full bg-[#718B6A]" />
-                    安全邮箱登录
-                  </span>
-                  <span className="grid size-8 place-items-center rounded-lg border border-[#DED8CC] bg-[#F1EDE4] text-[#315E83]"><Sparkles className="size-4" /></span>
+          <section className="login-auth-zone" aria-label={mode === "login" ? "登录因材智训" : "注册因材智训"}>
+            <div className="login-flight-scene" aria-hidden="true">
+              <picture>
+                <source media="(max-width: 700px)" srcSet="/landing/assets/skillops-glider-hero-mobile-v1.webp" />
+                <img src="/landing/assets/skillops-glider-hero-desktop-v1.webp" alt="" />
+              </picture>
+              <span className="login-flight-trail"><i /><i /><i /></span>
+              <span className="login-flight-aircraft">
+                <i className="login-aircraft-exhaust" />
+                <img src="/images/learner-transition-route-jet-v1.png" alt="" />
+              </span>
+              <span className="login-flight-aircraft is-return">
+                <i className="login-aircraft-exhaust" />
+                <img src="/images/learner-transition-route-jet-v1.png" alt="" />
+              </span>
+            </div>
+            <div className="login-auth-card">
+              <div className="login-auth-heading">
+                <div className="login-auth-heading-row">
+                  <span className="login-security-label"><span />安全邮箱认证</span>
+                  <span className="login-auth-icon"><BrainCircuit /></span>
                 </div>
-                <h2 className="text-[27px] font-extrabold tracking-[-0.045em] text-[#18232D] sm:text-[30px]">{mode === "login" ? "继续你的学习旅程" : "创建你的学习星图"}</h2>
-                <p className="mt-2 text-sm leading-6 text-[#66717B]">{mode === "login" ? "使用邮箱和密码进入因材智训" : "验证邮箱后，即可建立专属岗位能力画像"}</p>
+                <h2>{mode === "login" ? "继续你的学习旅程" : "创建你的学习星图"}</h2>
+                <p>{mode === "login" ? "使用邮箱和密码进入因材智训" : "验证邮箱后，即可建立专属岗位能力画像"}</p>
               </div>
 
-              <div className="mb-5 grid grid-cols-2 rounded-xl border border-[#DED8CC] bg-[#ECE8DE] p-1" role="tablist" aria-label="登录或注册">
+              <div className="login-mode-tabs" role="tablist" aria-label="登录或注册">
                 {(["login", "register"] as Mode[]).map((item) => (
-                  <button key={item} type="button" role="tab" aria-selected={mode === item} onClick={() => switchMode(item)} className={`relative h-10 rounded-[9px] text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5D4D9] ${mode === item ? "text-[#244C66]" : "text-[#727A78] hover:text-[#3D4B50]"}`}>
-                    {mode === item && <motion.span layoutId="light-auth-tab" className="absolute inset-0 rounded-[9px] border border-[#D7D1C4] bg-[#FFFEFA] shadow-[0_3px_10px_rgba(24,35,45,.07)]" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
-                    <span className="relative z-10">{item === "login" ? "登录" : "注册"}</span>
+                  <button key={item} type="button" role="tab" aria-selected={mode === item} onClick={() => switchMode(item)}>
+                    {mode === item && <motion.span layoutId="light-auth-tab" transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 34 }} />}
+                    <b>{item === "login" ? "登录" : "注册"}</b>
                   </button>
                 ))}
               </div>
 
-              <form onSubmit={submit} className="space-y-3.5" aria-busy={loading}>
+              <form onSubmit={submit} className="login-form" aria-busy={loading}>
                 <AnimatePresence initial={false} mode="popLayout">
                   {mode === "register" && (
-                    <motion.div key="name" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+                    <motion.div key="name" initial={reduceMotion ? false : { opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}>
                       <Field label="昵称" icon={<UserRound />} value={name} onChange={setName} placeholder="如何称呼你" autoComplete="name" />
                     </motion.div>
                   )}
                 </AnimatePresence>
 
                 {mode === "register" && (
-                  <div className="rounded-xl border border-[#DED8CC] bg-[#F7F3EA] p-3">
-                    <span className="mb-2 block text-[11px] font-bold text-[#394950]">注册身份</span>
-                    <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="注册身份">
-                      <button type="button" onClick={() => setAccountType("learner")} className={`h-9 rounded-lg text-xs font-bold transition ${accountType === "learner" ? "bg-[#244C66] text-white shadow-sm" : "bg-white text-[#69736F] hover:bg-[#EFEAE0]"}`}>学习者</button>
-                      <button type="button" onClick={() => setAccountType("enterprise_admin")} className={`h-9 rounded-lg text-xs font-bold transition ${accountType === "enterprise_admin" ? "bg-[#B85C3E] text-white shadow-sm" : "bg-white text-[#69736F] hover:bg-[#EFEAE0]"}`}>企业管理员</button>
+                  <div className="login-identity-panel">
+                    <span className="login-field-label">注册身份</span>
+                    <div className="login-choice-grid" role="tablist" aria-label="注册身份">
+                      <button type="button" role="tab" aria-selected={accountType === "learner"} onClick={() => setAccountType("learner")}>学习者</button>
+                      <button type="button" role="tab" aria-selected={accountType === "enterprise_admin"} onClick={() => setAccountType("enterprise_admin")}>企业管理员</button>
                     </div>
                     {accountType === "learner" ? (
                       <>
-                        <div className="mt-3 grid grid-cols-2 gap-2" role="tablist" aria-label="学习者类型">
-                          <button type="button" onClick={() => setLearnerType("student")} className={`h-9 rounded-lg border text-xs font-bold transition ${learnerType === "student" ? "border-[#9FB1BC] bg-[#E7EDF3] text-[#244C66]" : "border-[#DED8CC] bg-white text-[#69736F]"}`}>学生</button>
-                          <button type="button" onClick={() => setLearnerType("worker")} className={`h-9 rounded-lg border text-xs font-bold transition ${learnerType === "worker" ? "border-[#A8C8B0] bg-[#E7F0E8] text-[#356A46]" : "border-[#DED8CC] bg-white text-[#69736F]"}`}>从业者</button>
+                        <div className="login-choice-grid login-choice-grid-secondary" role="tablist" aria-label="学习者类型">
+                          <button type="button" role="tab" aria-selected={learnerType === "student"} onClick={() => setLearnerType("student")}>学生</button>
+                          <button type="button" role="tab" aria-selected={learnerType === "worker"} onClick={() => setLearnerType("worker")}>从业者</button>
                         </div>
                         {learnerType === "student" ? (
-                          <label className="mt-3 block">
-                            <span className="mb-1.5 block text-[11px] font-bold text-[#394950]">学习阶段</span>
-                            <span className="group relative flex h-[50px] items-center rounded-xl border border-[#D7D1C4] bg-white transition-[border-color,box-shadow,background] focus-within:border-[#244C66] focus-within:shadow-[0_0_0_3px_rgba(197,212,217,.7)]">
-                              <span className="ml-3.5 grid size-5 shrink-0 place-items-center text-[#8A918F] transition-colors group-focus-within:text-[#244C66]"><GraduationCap className="size-4" /></span>
-                              <select value={studyStage} onChange={(event) => setStudyStage(event.target.value)} className={`h-full min-w-0 flex-1 appearance-none bg-transparent px-3 pr-9 text-sm outline-none ${studyStage ? "text-[#24323A]" : "text-[#9A9F9C]"}`} required>
+                          <label className="login-field login-identity-field">
+                            <span className="login-field-label">学习阶段</span>
+                            <span className="login-field-control">
+                              <span className="login-field-icon"><GraduationCap /></span>
+                              <select value={studyStage} onChange={(event) => setStudyStage(event.target.value)} className={studyStage ? "has-value" : ""} required>
                                 <option value="" disabled>请选择学习阶段</option>
                                 <option value="本科">本科</option>
                                 <option value="研究生">研究生</option>
@@ -300,9 +284,9 @@ export function Login() {
 
                 <AnimatePresence initial={false} mode="popLayout">
                   {mode === "register" && (
-                    <motion.div key="code" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2.5">
+                    <motion.div key="code" initial={reduceMotion ? false : { opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }} className="login-code-row">
                       <Field label="邮箱验证码" icon={<ShieldCheck />} value={code} onChange={(value) => setCode(value.replace(/\D/g, "").slice(0, 6))} placeholder="6 位验证码" inputMode="numeric" />
-                      <Button type="button" variant="outline" disabled={sending || countdown > 0} onClick={sendCode} className="h-[50px] min-w-[108px] rounded-xl border-[#D7D1C4] bg-[#FFFEFA] px-3 text-xs text-[#415966] shadow-none hover:bg-[#F0ECE3]">
+                      <Button type="button" variant="outline" disabled={sending || countdown > 0} onClick={sendCode} className="login-send-code">
                         {sending ? <Loader2 className="animate-spin" /> : countdown > 0 ? `${countdown}s 后重发` : "发送验证码"}
                       </Button>
                     </motion.div>
@@ -318,26 +302,26 @@ export function Login() {
                   type={showPassword ? "text" : "password"}
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
                   action={
-                    <button type="button" onClick={() => setShowPassword((value) => !value)} className="grid size-8 place-items-center rounded-lg text-[#8A918F] hover:bg-[#EFEAE0] hover:text-[#43545B]" aria-label={showPassword ? "隐藏密码" : "显示密码"}>
-                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    <button type="button" onClick={() => setShowPassword((value) => !value)} className="login-password-toggle" aria-label={showPassword ? "隐藏密码" : "显示密码"}>
+                      {showPassword ? <EyeOff /> : <Eye />}
                     </button>
                   }
                 />
 
                 <AnimatePresence mode="popLayout">
-                  {notice && <motion.div role="status" aria-live="polite" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50/85 px-3 py-2.5 text-xs leading-5 text-emerald-700"><CheckCircle2 className="mt-0.5 size-3.5 shrink-0" />{notice}</motion.div>}
-                  {error && <motion.div role="alert" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50/90 px-3 py-2.5 text-xs leading-5 text-rose-700"><AlertCircle className="mt-0.5 size-3.5 shrink-0" />{error}</motion.div>}
+                  {notice && <motion.div role="status" aria-live="polite" initial={reduceMotion ? false : { opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="login-message is-success"><CheckCircle2 />{notice}</motion.div>}
+                  {error && <motion.div role="alert" initial={reduceMotion ? false : { opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="login-message is-error"><AlertCircle />{error}</motion.div>}
                 </AnimatePresence>
 
-                <Button type="submit" size="lg" disabled={loading} className="group relative mt-1 w-full overflow-hidden border-0 bg-[#244C66] text-[#FFFEFA] shadow-[0_10px_22px_rgba(36,76,102,.20)] hover:bg-[#193B50]">
-                  <span className="relative z-10 inline-flex items-center gap-2">
+                <Button type="submit" size="lg" disabled={loading} className="login-submit">
+                  <span>
                     {loading ? <Loader2 className="animate-spin" /> : <>{mode === "login" ? "进入因材智训" : "验证并创建账号"}<ArrowRight /></>}
                   </span>
                 </Button>
               </form>
 
-              <div className="mt-5 flex items-center justify-center gap-1.5 text-center text-[10px] leading-5 text-[#8A918F]">
-                <ShieldCheck className="size-3.5" /> 安全邮箱验证 · 认证信息加密保护
+              <div className="login-auth-footnote">
+                <ShieldCheck /> 安全邮箱验证 · 认证信息加密保护
               </div>
             </div>
           </section>
@@ -347,86 +331,82 @@ export function Login() {
   )
 }
 
-function PaperBackdrop() {
+function LoginBackdrop() {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      <div className="absolute inset-0 bg-[#F3F0E7]" />
-      <div className="absolute -left-[8vw] -top-[18vh] h-[48vh] w-[46vw] rotate-[-7deg] bg-[#E9E3D7] opacity-75" />
-      <div className="absolute -bottom-[18vh] -right-[8vw] h-[52vh] w-[52vw] rotate-[8deg] bg-[#DEE6E2] opacity-70" />
-      <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(rgba(24,35,45,.16) .55px, transparent .55px)", backgroundSize: "7px 7px" }} />
-      <div className="absolute inset-0 opacity-35" style={{ backgroundImage: "linear-gradient(rgba(24,35,45,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(24,35,45,.035) 1px, transparent 1px)", backgroundSize: "48px 48px", maskImage: "radial-gradient(circle at 45% 48%, black, transparent 76%)" }} />
+    <div className="login-backdrop" aria-hidden>
+      <span className="login-aurora login-aurora-one" />
+      <span className="login-aurora login-aurora-two" />
+      <span className="login-aurora login-aurora-three" />
+      <span className="login-grid" />
+      <span className="login-horizon" />
     </div>
   )
 }
 
-function OrbitalLearningSystem({ reduced }: { reduced: boolean }) {
+function LearningNetwork({ reduced }: { reduced: boolean }) {
   return (
     <motion.div
       initial={reduced ? false : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: .65, delay: .24 }}
-      className="relative mt-3 h-[136px] w-full max-w-[660px] sm:mt-5 sm:h-[205px] xl:mt-6 xl:h-[270px]"
+      transition={{ duration: .68, delay: .24 }}
+      className="login-network"
     >
-      <svg viewBox="0 0 640 250" className="absolute inset-x-0 top-0 h-[108px] w-full overflow-visible sm:h-[170px] xl:h-[230px]" role="img" aria-label="学习者位于中心，六个生成智能体沿轨道协同运行，RAG 检索智能体提供知识依据">
+      <div className="login-network-meta">
+        <span>LEARNING PATH · SIGNAL FLOW</span>
+        <b><i />路径同步中</b>
+      </div>
+      <svg viewBox="0 0 680 288" role="img" aria-label="从岗位目标出发，经过能力画像、智能体协作与训练验收的学习路径关系图">
         <defs>
-          <radialGradient id="paper-core" cx="30%" cy="24%">
-            <stop offset="0%" stopColor="#F3D79D" />
-            <stop offset="18%" stopColor="#5D7891" />
-            <stop offset="66%" stopColor="#315873" />
-            <stop offset="100%" stopColor="#1E3C50" />
+          <linearGradient id="login-path-gradient" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor="#2379b2" />
+            <stop offset=".55" stopColor="#4ebbd5" />
+            <stop offset="1" stopColor="#43a88e" />
+          </linearGradient>
+          <radialGradient id="login-core-gradient" cx="34%" cy="24%">
+            <stop offset="0" stopColor="#76d8ec" />
+            <stop offset=".42" stopColor="#2c88b7" />
+            <stop offset="1" stopColor="#163f69" />
           </radialGradient>
-          <clipPath id="paper-core-clip">
-            <circle cx="320" cy="122" r="69" />
-          </clipPath>
-          <filter id="paper-planet-shadow" x="-80%" y="-80%" width="260%" height="260%">
-            <feDropShadow dx="0" dy="6" stdDeviation="7" floodColor="#18232D" floodOpacity=".16" />
+          <filter id="login-node-shadow" x="-80%" y="-80%" width="260%" height="260%">
+            <feDropShadow dx="0" dy="8" stdDeviation="9" floodColor="#1d6f9d" floodOpacity=".2" />
+          </filter>
+          <filter id="login-signal-glow" x="-150%" y="-150%" width="400%" height="400%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
         </defs>
 
-        {ORBIT_PATHS.map((path, index) => (
-          <path key={path} d={path} fill="none" stroke={index === 2 ? "#A8B3AE" : "#B8C1BC"} strokeWidth={index === 2 ? 1.15 : .9} strokeOpacity={index === 0 ? .72 : .58} strokeDasharray={index === 1 ? "3 7" : undefined} />
-        ))}
+        <g className="login-network-gridlines" aria-hidden>
+          <path d="M30 62H650M30 144H650M30 226H650" />
+          <path d="M104 28V258M266 28V258M428 28V258M590 28V258" />
+        </g>
+        <path className="login-network-path" d="M93 160 C155 112 201 111 260 145 S370 200 430 153 S540 104 606 142" />
+        <path className="login-network-branch" d="M260 145 C306 102 333 76 375 64" />
+        <path className="login-network-branch" d="M430 153 C475 188 501 214 548 224" />
+        <path className="login-network-trace" d="M93 160 C155 112 201 111 260 145 S370 200 430 153 S540 104 606 142" />
 
-        {ORBIT_PLANETS.map((planet) => {
-          const [staticX, staticY] = planet.staticPosition
-          return (
-            <g key={planet.label} transform={reduced ? `translate(${staticX} ${staticY})` : undefined} filter="url(#paper-planet-shadow)">
-              <circle r={planet.radius + 3} fill="#FFFEFA" stroke="#D7D1C4" strokeWidth="1" />
-              <circle r={planet.radius} fill={planet.color} />
-              <path d={`M-${planet.radius * .65} -${planet.radius * .12} Q0 ${planet.radius * .38} ${planet.radius * .7} -${planet.radius * .18}`} fill="none" stroke="#FFFEFA" strokeOpacity=".45" strokeWidth="1" />
-              {!reduced && <animateMotion dur={`${planet.duration}s`} begin={planet.begin} repeatCount="indefinite" path={ORBIT_PATHS[planet.orbit]} />}
-            </g>
-          )
-        })}
+        {!reduced && (
+          <>
+            <circle r="5" fill="#dffbff" stroke="#3fc4df" strokeWidth="2" filter="url(#login-signal-glow)"><animateMotion dur="5.8s" repeatCount="indefinite" path="M93 160 C155 112 201 111 260 145 S370 200 430 153 S540 104 606 142" /></circle>
+            <circle r="3.5" fill="#ffffff" filter="url(#login-signal-glow)" opacity=".9"><animateMotion dur="5.8s" begin="-2.9s" repeatCount="indefinite" path="M93 160 C155 112 201 111 260 145 S370 200 430 153 S540 104 606 142" /></circle>
+          </>
+        )}
 
-        <circle cx="320" cy="122" r="78" fill="#F8F6F0" stroke="#C9C2B5" strokeWidth="1" />
-        <circle cx="320" cy="122" r="69" fill="url(#paper-core)" filter="url(#paper-planet-shadow)" />
-        <motion.g
-          clipPath="url(#paper-core-clip)"
-          animate={reduced ? undefined : { rotate: 360 }}
-          transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
-          style={{ transformOrigin: "320px 122px" }}
-        >
-          <ellipse cx="320" cy="122" rx="53" ry="68" fill="none" stroke="#F3E4C5" strokeOpacity=".28" strokeWidth="1" />
-          <ellipse cx="320" cy="122" rx="27" ry="68" fill="none" stroke="#F3E4C5" strokeOpacity=".24" strokeWidth="1" />
-          <path d="M251 108 C278 96 299 105 320 99 C343 92 364 96 389 111" fill="none" stroke="#F3E4C5" strokeOpacity=".38" strokeWidth="1.4" />
-          <path d="M252 139 C278 151 300 141 322 147 C348 153 367 144 388 134" fill="none" stroke="#F3E4C5" strokeOpacity=".32" strokeWidth="1.2" />
-          <path d="M286 79 C299 88 304 101 296 113 C289 124 297 135 310 137 C324 139 327 151 321 170" fill="none" stroke="#E5C17A" strokeOpacity=".5" strokeWidth="6" strokeLinecap="round" />
-          <path d="M353 79 C343 92 346 103 358 111 C368 118 365 132 352 139 C341 145 345 158 356 166" fill="none" stroke="#E5C17A" strokeOpacity=".42" strokeWidth="5" strokeLinecap="round" />
-        </motion.g>
-        <circle cx="320" cy="122" r="69" fill="none" stroke="#193B50" strokeOpacity=".55" strokeWidth="1.2" />
-        <text x="320" y="118" textAnchor="middle" fill="#FFFEFA" fontSize="13" fontWeight="800" letterSpacing="1">学习者</text>
-        <text x="320" y="137" textAnchor="middle" fill="#F3E4C5" fontSize="8" fontWeight="700" letterSpacing="1.8">因材智训</text>
+        <g className="login-network-core" transform="translate(93 160)" filter="url(#login-node-shadow)">
+          <circle r="42" /><circle r="31" /><path d="M-14 4L-3 15 18-12" /><text y="58">岗位目标</text>
+        </g>
+        <g className="login-network-node" transform="translate(260 145)">
+          <circle r="21" /><circle r="7" /><text y="40">能力画像</text><text className="login-network-node-index" y="55">01 · PROFILE</text>
+        </g>
+        <g className="login-network-node is-agent" transform="translate(430 153)">
+          <circle r="23" /><path d="M-9 1H9M0-9V11" /><text y="42">Agent 协作</text><text className="login-network-node-index" y="57">07 · ONLINE</text>
+        </g>
+        <g className="login-network-node is-finish" transform="translate(606 142)">
+          <circle r="24" /><path d="M-10 1L-2 9 12-8" /><text y="44">训练验收</text><text className="login-network-node-index" y="59">LOOP · SYNC</text>
+        </g>
+        <g className="login-network-mini" transform="translate(375 64)"><circle r="10" /><text x="17" y="4">资源生成</text></g>
+        <g className="login-network-mini is-mint" transform="translate(548 224)"><circle r="10" /><text x="17" y="4">证据回写</text></g>
       </svg>
-
-      <div className="absolute inset-x-0 bottom-0 grid grid-cols-3 gap-x-3 gap-y-1.5 px-1 sm:grid-cols-6 sm:gap-2 xl:border-t xl:border-[#BFC7C1] xl:px-3 xl:pt-2">
-        {ORBIT_PLANETS.map((planet) => (
-          <div key={planet.label} className="flex items-center justify-center gap-1.5 text-[8px] font-extrabold tracking-[0.01em] text-[#43525A] sm:text-[9px] xl:text-[11px] 2xl:text-[12px]">
-            <span className="size-1.5 shrink-0 rounded-full xl:size-2 2xl:size-2.5" style={{ backgroundColor: planet.color }} />
-            <span className="whitespace-nowrap">{planet.label}</span>
-          </div>
-        ))}
-      </div>
     </motion.div>
   )
 }
@@ -439,12 +419,12 @@ function Field({ label, icon, value, onChange, action, ...props }: {
   action?: React.ReactNode
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-[11px] font-bold text-[#394950]">{label}</span>
-      <span className="group relative flex h-[50px] items-center rounded-xl border border-[#D7D1C4] bg-white transition-[border-color,box-shadow,background] focus-within:border-[#244C66] focus-within:shadow-[0_0_0_3px_rgba(197,212,217,.7)]">
-        <span className="ml-3.5 grid size-5 shrink-0 place-items-center text-[#8A918F] transition-colors group-focus-within:text-[#244C66] [&_svg]:size-[16px]">{icon}</span>
-        <input {...props} required value={value} onChange={(event) => onChange(event.target.value)} className="h-full min-w-0 flex-1 bg-transparent px-3 text-sm text-[#24323A] outline-none placeholder:text-[#9A9F9C]" />
-        {action && <span className="mr-2">{action}</span>}
+    <label className="login-field">
+      <span className="login-field-label">{label}</span>
+      <span className="login-field-control">
+        <span className="login-field-icon">{icon}</span>
+        <input {...props} required value={value} onChange={(event) => onChange(event.target.value)} />
+        {action && <span className="login-field-action">{action}</span>}
       </span>
     </label>
   )

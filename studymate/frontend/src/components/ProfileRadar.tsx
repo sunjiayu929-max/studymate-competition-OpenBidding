@@ -1,5 +1,6 @@
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts"
 import { motion } from "framer-motion"
+import type { CSSProperties } from "react"
 import { cn } from "@/lib/utils"
 
 interface ProfileRadarProps {
@@ -92,6 +93,7 @@ export function ProfileRadar({ title, data, max = 5, color = "#6366f1", height =
     value: typeof v === "number" ? Math.max(0, Math.min(max, v)) : 0,
   }))
   const values = Object.fromEntries(chartData.map((item) => [item.dim, item.value]))
+  const radarStyle = { "--profile-radar-accent": color } as CSSProperties
 
   return (
     <motion.div
@@ -99,11 +101,13 @@ export function ProfileRadar({ title, data, max = 5, color = "#6366f1", height =
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4 }}
       data-testid="profile-radar"
+      style={radarStyle}
       className={cn(
-        "rounded-[22px] border border-[#CFC8B9] bg-[#FFFEFA] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]",
+        "profile-radar-card rounded-[22px] border border-[#CFC8B9] bg-[#FFFEFA] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]",
         fill && "flex min-h-[220px] flex-1 flex-col",
       )}
     >
+      <span className="profile-radar-live-layer" aria-hidden="true"><i /><i /><b /></span>
       <div className="mb-1 flex items-center justify-between gap-3">
         <div className="text-xs font-bold text-[#18232D]">{title}</div>
         <div className="flex items-center gap-2 text-[10px] font-semibold text-[#8A8172]">
@@ -148,7 +152,8 @@ export function ProfileRadar({ title, data, max = 5, color = "#6366f1", height =
               stroke={color}
               fill={color}
               fillOpacity={0.35}
-              animationDuration={500}
+              dot={{ r: 2.6, fill: color, stroke: "#fff", strokeWidth: 1.2 }}
+              animationDuration={900}
             />
           </RadarChart>
         </ResponsiveContainer>

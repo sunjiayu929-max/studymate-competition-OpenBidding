@@ -43,7 +43,7 @@ python -m pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-首次启动会创建或补齐本地 SQLite 表，并初始化固定演示账号。真实 API Key 只写入 `backend/.env`，不要写入仓库中的示例文件。
+首次启动只创建或补齐本地 SQLite 表，不再逐账号生成演示历史。固定演示账号与历史已经写入数据库种子；需要重建时显式运行维护脚本。真实 API Key 只写入 `backend/.env`，不要写入仓库中的示例文件。
 
 ### 安全离线启动（巡检/验收）
 
@@ -121,7 +121,7 @@ bash scripts/deploy.sh up
 
 Docker 部署时，`DATABASE_URL` 由 Compose 环境变量控制，默认使用持久化卷中的
 `sqlite:///./data/studymate.db`；需要 PostgreSQL 或其他 SQLAlchemy 驱动时，在实际的
-Compose 环境文件中显式填写完整连接串。生产环境同时设置 `SEED_DEMO_USERS=0`，避免后端重启时重新写入固定演示账号；本地演示才保留默认值 `1`。
+Compose 环境文件中显式填写完整连接串。固定演示账号和历史记录已经永久写入脱敏种子库，后端重启不会再创建、校验或修复演示账号；需要重建时应显式运行维护脚本并重新生成种子快照。
 
 ## 数据库与演示种子
 

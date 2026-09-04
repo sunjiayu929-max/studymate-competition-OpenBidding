@@ -17,6 +17,18 @@ export interface RoleCapabilityProfileData {
       score?: number
       knowledge_level?: string
       weak_topics?: string[]
+      competency_scores?: Record<string, number>
+    }>
+    interview_assessments?: Record<string, {
+      overall_score?: number
+      competency_scores?: Record<string, number>
+    }>
+    training_rounds?: Array<{
+      target_role?: string
+      topic?: string
+      accuracy?: number | null
+      answered_count?: number
+      completed_at?: string
     }>
   }
 }
@@ -72,6 +84,26 @@ export function useRoleCapabilityData() {
   const capabilities = useMemo<ReportCapability[]>(() => {
     if (!role || !capabilityMap) return []
     const stored = readCapabilityEvidence(user?.user_id, capabilityMap.roleId)
+    const roleTrainingRounds = (profile?.dims.training_rounds ?? []).filter((round) => round.target_role === role.name)
+    const theoryScores = profile?.dims.theory_assessments?.[role.id]?.competency_scores ?? {}
+    const interviewScores = profile?.dims.interview_assessments?.[role.id]?.competency_scores ?? {}
+    const overallEvidenceLevel: CompetencyLevel = roleTrainingRounds.length >= 10
+      ? 3
+      : roleTrainingRounds.length >= 5
+        ? 2
+        : roleTrainingRounds.length > 0
+          ? 1
+          : 0
+    const evidenceLevel = (nodeName: string): CompetencyLevel => {
+      const directScores = [theoryScores[nodeName], interviewScores[nodeName]].filter((score): score is number => typeof score === "number")
+      const relatedRounds = roleTrainingRounds.filter((round) => round.topic?.includes(nodeName) || nodeName.includes(round.topic || "__none__"))
+      const scores = [...directScores, ...relatedRounds.map((round) => round.accuracy).filter((score): score is number => typeof score === "number")]
+      const best = scores.length ? Math.max(...scores) : null
+      if (best !== null && best >= 85) return 3
+      if (best !== null && best >= 65) return 2
+      if (best !== null) return 1
+      return overallEvidenceLevel
+    }
     const priorityNames = new Set(workspace.outputs.training_plan?.priority_competencies ?? [])
     const feedbackLevel = workspace.feedback?.accuracy == null
       ? 0
@@ -82,7 +114,7 @@ export function useRoleCapabilityData() {
           : 1
     const levels = new Map(capabilityMap.nodes.map((node) => [
       node.id,
-      Math.min(3, Math.max(0, stored[node.id]?.level ?? (priorityNames.has(node.name) ? feedbackLevel || 1 : 0))) as CompetencyLevel,
+      Math.min(3, Math.max(0, stored[node.id]?.level ?? evidenceLevel(node.name), priorityNames.has(node.name) ? feedbackLevel || 1 : 0)) as CompetencyLevel,
     ]))
 
     return capabilityMap.nodes.map((node) => {
@@ -102,7 +134,7 @@ export function useRoleCapabilityData() {
         prerequisites: node.prerequisites,
       }
     })
-  }, [capabilityMap, role, user?.user_id, workspace.feedback?.accuracy, workspace.outputs.training_plan])
+  }, [capabilityMap, profile?.dims.interview_assessments, profile?.dims.theory_assessments, profile?.dims.training_rounds, role, user?.user_id, workspace.feedback?.accuracy, workspace.outputs.training_plan])
 
   return {
     role,

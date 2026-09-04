@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { ArrowLeft, ArrowRight, Send, Loader2, Bot, RotateCw, Headphones, Paperclip, X, ShieldCheck, Sparkles, Target, AlertTriangle, Clock3, ImagePlus, GraduationCap, BriefcaseBusiness, Save, UserRound, ChevronDown } from "lucide-react"
+import { ArrowLeft, ArrowRight, Send, Loader2, RotateCw, Headphones, Paperclip, X, ShieldCheck, Sparkles, Target, AlertTriangle, Clock3, ImagePlus, GraduationCap, BriefcaseBusiness, Save, UserRound, ChevronDown, ScanLine, Network, Database, BrainCircuit, CheckCircle2 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { AppTopbar } from "@/components/AppTopbar"
+import { InteractiveCanvas } from "@/components/InteractiveCanvas"
 import { Markdown } from "@/components/Markdown"
 import { ProfileRadar } from "@/components/ProfileRadar"
 import { MicButton } from "@/components/MicButton"
@@ -15,6 +16,7 @@ import { useTrackPage } from "@/lib/useTrackPage"
 import { useCurrentCourse } from "@/store/course"
 import { useTargetRole } from "@/store/targetRole"
 import { setCurrentUser, useCurrentUser } from "@/store/user"
+import "./ProfileChat.css"
 
 interface Msg {
   role: "user" | "assistant"
@@ -363,20 +365,21 @@ export function ProfileChat() {
     "我做过一些项目，希望判断自己更适合哪个岗位方向。",
   ]
   const isFreshConversation = messages.length === 1 && !streaming
+  const completion = profile?.intake_complete ? 100 : Math.max(18, 100 - (profile?.missing_fields.length ?? 5) * 14)
   return (
-    <div className="app-page paper-theme">
+    <div className={`app-page paper-theme profile-scan ${status === "open" ? "is-running" : ""}`}>
       <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <AppTopbar current="profile" appearance="paper" />
+        <AppTopbar current="profile" appearance="paper" iconImage="/images/profile-scan-device.png" showRocketFormation rocketVariant="honor" />
 
-        <main className="mt-4 grid items-stretch gap-4 xl:h-[calc(100dvh-122px)] xl:min-h-[660px] xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="flex min-h-[680px] min-w-0 flex-col overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)] xl:h-full xl:min-h-0">
+        <main className="profile-scan-main mt-16 grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <section className="profile-scan-dialogue flex min-h-[680px] min-w-0 flex-col overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)] xl:h-[780px]">
             <header className="flex flex-col items-stretch gap-2.5 border-b border-[#D7D1C4] bg-[#F8F6F0] px-3 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
               <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
                 <Link to="/" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]">
                   <ArrowLeft className="size-3.5" /><span className="hidden sm:inline">返回首页</span>
                 </Link>
                 <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
-                <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83]"><Bot className="size-4" /></span>
+                <span className="profile-scan-device-avatar is-compact"><img src="/images/profile-assistant-device-v1.png" alt="" /></span>
                 <div className="min-w-0 flex-1">
                   <h2 className="truncate text-[15px] font-bold text-[#18232D]">因材智训岗位画像助手</h2>
                   <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">补充目标、经历和学习安排</p>
@@ -401,16 +404,14 @@ export function ProfileChat() {
               <div className={`flex w-full flex-col ${isFreshConversation ? "min-h-full justify-center py-8" : "gap-7 py-8"}`}>
                 {isFreshConversation ? (
                   <div className="mx-auto w-full max-w-[720px] text-center">
-                    <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83] shadow-[0_8px_20px_rgba(36,76,102,.08)]">
-                      <Bot className="size-5" />
-                    </span>
+                    <span className="profile-scan-device-avatar is-prominent"><img src="/images/profile-assistant-device-v1.png" alt="" /></span>
                     <h3 className="mt-4 text-xl font-bold tracking-[-0.03em] text-[#18232D]">先说说你的目标和经历</h3>
                     <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#66717B]">
                       告诉我你的专业、学习基础和想学习的岗位。我会分几步补充信息，再为你安排训练。
                     </p>
                     <div className="mt-6 grid gap-2 text-left sm:grid-cols-3">
                       {quickPrompts.map((prompt, index) => (
-                        <button key={prompt} type="button" onClick={() => setInput(prompt)} className="group rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] px-3.5 py-3 text-[11px] font-semibold leading-5 text-[#59636B] transition-all hover:-translate-y-0.5 hover:border-[#AFA796] hover:bg-[#F1EDE4] hover:text-[#244C66]">
+                        <button key={prompt} type="button" onClick={() => setInput(prompt)} className="profile-scan-question-card group rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] px-3.5 py-3 text-[11px] font-semibold leading-5 text-[#59636B] transition-all hover:-translate-y-0.5 hover:border-[#AFA796] hover:bg-[#F1EDE4] hover:text-[#244C66]">
                           <span className="mb-2 block text-[10px] font-bold tracking-[0.12em] text-[#9A8D78]">0{index + 1}</span>
                           {prompt}
                         </button>
@@ -427,7 +428,7 @@ export function ProfileChat() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="border-t border-[#E3DED3] bg-[#FDFBF6] px-4 pb-3 pt-3 sm:px-6">
+            <form onSubmit={handleSubmit} className="profile-scan-composer border-t border-[#E3DED3] bg-[#FDFBF6] px-4 pb-3 pt-3 sm:px-6">
               <div className="w-full">
                 <div className="rounded-[20px] border border-[#CFC8B9] bg-[#FFFEFA] p-2 shadow-[0_10px_28px_rgba(24,35,45,.08)] transition-shadow focus-within:border-[#9FB1BC] focus-within:shadow-[0_12px_32px_rgba(36,76,102,.12)]">
                   {pendingImages.length > 0 && (
@@ -481,50 +482,8 @@ export function ProfileChat() {
             </form>
           </section>
 
-          <aside className="space-y-3 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:pr-1 [scrollbar-color:#CFC8B9_transparent] [scrollbar-width:thin]">
-            <form onSubmit={saveIdentity} className="rounded-[22px] border border-[#CFC8B9] bg-[#F8F6F0] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <span className="text-[10px] font-bold tracking-[0.12em] text-[#315E83]">身份资料</span>
-                  <h2 className="mt-1 text-sm font-bold tracking-[-0.02em] text-[#18232D]">随时调整学习身份</h2>
-                  <p className="mt-1 text-[10px] leading-4 text-[#7A817F]">注册后也可以修改，保存后会同步到菜单栏。</p>
-                </div>
-                <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83]"><UserRound className="size-3.5" /></span>
-              </div>
-              <div className="mt-3 flex items-center gap-2 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-2.5 text-[11px] font-semibold text-[#18232D]">
-                <UserRound className="size-3.5 shrink-0 text-[#66717B]" />
-                <span className="truncate">{identity.name || user?.name || "学习者"}</span>
-              </div>
-              <div className="mt-3 flex items-center gap-2 rounded-xl border border-[#D7D1C4] bg-[#F1EDE4] px-3 py-2 text-[10px] font-bold text-[#59636B]">
-                {identity.learner_type === "student" ? <GraduationCap className="size-3.5 text-[#315E83]" /> : <BriefcaseBusiness className="size-3.5 text-[#52704D]" />}
-                <span>注册身份 · {identity.learner_type === "student" ? "学生" : "从业者"}</span>
-              </div>
-              {identity.learner_type === "student" ? (
-                <label className="mt-3 block">
-                  <span className="mb-1.5 block text-[10px] font-bold text-[#394950]">学习阶段</span>
-                  <span className="group relative flex h-10 items-center rounded-xl border border-[#D7D1C4] bg-white transition-[border-color,box-shadow] focus-within:border-[#244C66] focus-within:shadow-[0_0_0_3px_rgba(197,212,217,.55)]">
-                    <GraduationCap className="ml-3 size-3.5 shrink-0 text-[#8A918F] transition-colors group-focus-within:text-[#244C66]" />
-                    <select value={identity.study_stage} onChange={(event) => setIdentity((current) => ({ ...current, study_stage: event.target.value }))} className={`h-full min-w-0 flex-1 appearance-none bg-transparent px-2.5 pr-8 text-xs outline-none ${identity.study_stage ? "text-[#293D2A]" : "text-[#9A9F9C]"}`}>
-                      <option value="">暂不填写</option>
-                      <option value="本科">本科</option>
-                      <option value="研究生">研究生</option>
-                      <option value="博士">博士</option>
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 size-3.5 text-[#8A918F]" />
-                  </span>
-                </label>
-              ) : (
-                <label className="mt-3 block">
-                  <span className="mb-1.5 block text-[10px] font-bold text-[#394950]">在职公司</span>
-                  <span className="flex h-10 items-center rounded-xl border border-[#D7D1C4] bg-white px-3 focus-within:border-[#52704D]"><BriefcaseBusiness className="mr-2 size-3.5 shrink-0 text-[#8A918F]" /><input value={identity.company} onChange={(event) => setIdentity((current) => ({ ...current, company: event.target.value }))} placeholder="例如：星河科技" className="min-w-0 flex-1 bg-transparent text-xs text-[#293D2A] outline-none placeholder:text-[#9AA598]" /></span>
-                </label>
-              )}
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <span role={identityNotice.includes("失败") || identityNotice.includes("无法") ? "alert" : "status"} className={`min-w-0 truncate text-[10px] ${identityNotice.includes("失败") || identityNotice.includes("无法") ? "text-[#9A4E35]" : "text-[#557052]"}`}>{identityNotice}</span>
-                <button type="submit" disabled={identitySaving} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[#244C66] px-3 text-[10px] font-bold text-white disabled:opacity-50">{identitySaving ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}保存资料</button>
-              </div>
-            </form>
-            <section className="rounded-[22px] border border-[#CFC8B9] bg-[#F8F6F0] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
+          <aside className="profile-scan-sidebar space-y-6">
+            <section className="profile-scan-result-card rounded-[22px] border border-[#CFC8B9] bg-[#F8F6F0] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
                   <span className="text-[10px] font-bold tracking-[0.12em] text-[#6F8A69]">当前画像 · v{profile?.version ?? "—"}</span>
@@ -534,26 +493,42 @@ export function ProfileChat() {
                   <Sparkles className="size-3.5" />
                 </span>
               </div>
-              <div className="space-y-2">
-                <ProfileFact icon={Target} label="当前目标" value={primaryGoal} tone="blue" />
-                <div className="grid grid-cols-2 gap-2">
-                  <ProfileFact icon={AlertTriangle} label="优先关注" value={weakTopics.length ? weakTopics.slice(0, 2).join("、") : targetTopics.slice(0, 2).join("、") || "等待补充"} tone="red" compact />
-                  <ProfileFact icon={Clock3} label="学习节奏" value={hoursPerWeek ? `每周 ${hoursPerWeek} 小时` : "等待补充"} tone="gold" compact />
-                </div>
+              <div className="profile-scan-facts">
+                <ProfileFact
+                  icon={Target}
+                  label="当前目标"
+                  value={primaryGoal}
+                  detail="作为课程内容与岗位能力的对标基准"
+                  tone="blue"
+                />
+                <ProfileFact
+                  icon={AlertTriangle}
+                  label="优先关注"
+                  value={weakTopics.length ? weakTopics.slice(0, 2).join("、") : targetTopics.slice(0, 2).join("、") || "等待补充"}
+                  detail="优先补齐现场诊断与沟通证据"
+                  tone="red"
+                  compact
+                />
+                <ProfileFact
+                  icon={Clock3}
+                  label="学习节奏"
+                  value={hoursPerWeek ? `每周 ${hoursPerWeek} 小时` : "等待补充"}
+                  detail="建议拆分为每周 4 次短周期训练"
+                  tone="gold"
+                  compact
+                />
+                <ProfileFact
+                  icon={CheckCircle2}
+                  label="画像进度"
+                  value={profile?.intake_complete ? "100% · 已完成" : `${completion}% · 持续采集`}
+                  detail="继续对话会实时更新能力维度"
+                  tone="blue"
+                  compact
+                />
               </div>
             </section>
-            {profile ? (
-              <>
-                <ProfileRadar title="知识基础" data={profile.dims.knowledge_base} color="#315E83" height={124} />
-                <ProfileRadar title="认知风格" data={profile.dims.cognitive_style} color="#B85C3E" height={124} />
-                <ProfileRadar title="资源偏好" data={profile.dims.preference} color="#6F8A69" height={124} />
-              </>
-            ) : (
-              <div className="rounded-[24px] border border-dashed border-[#C9C2B4] bg-[#F8F6F0] p-6 text-center text-xs text-[#66717B]">画像加载后，这里会实时显示目标、基础、偏好和节奏。</div>
-            )}
-
             {lastReasoning && (
-              <section className="rounded-[22px] border border-[#C9D1CB] bg-[#E9EEE6] p-4">
+              <section className="profile-scan-reason-card rounded-[22px] border border-[#C9D1CB] bg-[#E9EEE6] p-4">
                 <div className="flex items-center gap-2 text-[11px] font-bold text-[#557052]"><ShieldCheck className="size-4" />本轮画像更新依据</div>
                 <p className="mt-2 text-[11px] leading-5 text-[#59636B]">{lastReasoning}</p>
               </section>
@@ -562,7 +537,7 @@ export function ProfileChat() {
             {profileNotice && (
               <section
                 role={profileNotice.tone === "error" ? "alert" : "status"}
-                className={`rounded-[22px] border p-4 text-[11px] leading-5 ${
+                className={`profile-scan-notice-card rounded-[22px] border p-4 text-[11px] leading-5 ${
                   profileNotice.tone === "success"
                     ? "border-[#C9D1CB] bg-[#E9EEE6] text-[#557052]"
                     : profileNotice.tone === "error"
@@ -577,7 +552,7 @@ export function ProfileChat() {
             )}
 
             {hasProfileContent && (
-              <section className="rounded-[22px] border border-[#C7D2D8] bg-[#E7EDF3] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
+              <section className="profile-scan-action-card rounded-[22px] border border-[#C7D2D8] bg-[#E7EDF3] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
                 <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.1em] text-[#315E83]"><Sparkles className="size-3.5" />画像已准备好</div>
                 <h3 className="mt-2 text-sm font-bold text-[#18232D]">下一步：生成训练计划</h3>
                 <p className="mt-1 text-[11px] leading-5 text-[#596A75]">{course ? `将根据“${targetRole?.name || course.name}”的岗位要求和你的画像安排内容。` : targetRole ? `目标岗位已选为“${targetRole.name}”；岗位知识库接入后即可生成训练资源。` : "请先选择目标岗位，再开始训练。"}</p>
@@ -588,8 +563,110 @@ export function ProfileChat() {
             )}
           </aside>
         </main>
+        <form onSubmit={saveIdentity} className="profile-scan-identity-card profile-scan-identity-row rounded-[22px] border border-[#CFC8B9] bg-[#F8F6F0] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <span className="text-[10px] font-bold tracking-[0.12em] text-[#315E83]">身份资料</span>
+              <h2 className="mt-1 text-sm font-bold tracking-[-0.02em] text-[#18232D]">随时调整学习身份</h2>
+              <p className="mt-1 text-[10px] leading-4 text-[#7A817F]">保存后会同步到菜单栏。</p>
+            </div>
+            <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83]"><UserRound className="size-3.5" /></span>
+          </div>
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-2.5 text-[11px] font-semibold text-[#18232D]">
+            <UserRound className="size-3.5 shrink-0 text-[#66717B]" />
+            <span className="truncate">{identity.name || user?.name || "学习者"}</span>
+          </div>
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-[#D7D1C4] bg-[#F1EDE4] px-3 py-2 text-[10px] font-bold text-[#59636B]">
+            {identity.learner_type === "student" ? <GraduationCap className="size-3.5 text-[#315E83]" /> : <BriefcaseBusiness className="size-3.5 text-[#52704D]" />}
+            <span>注册身份 · {identity.learner_type === "student" ? "学生" : "从业者"}</span>
+          </div>
+          {identity.learner_type === "student" ? (
+            <label className="mt-3 block">
+              <span className="mb-1.5 block text-[10px] font-bold text-[#394950]">学习阶段</span>
+              <span className="group relative flex h-10 items-center rounded-xl border border-[#D7D1C4] bg-white transition-[border-color,box-shadow] focus-within:border-[#244C66] focus-within:shadow-[0_0_0_3px_rgba(197,212,217,.55)]">
+                <GraduationCap className="ml-3 size-3.5 shrink-0 text-[#8A918F] transition-colors group-focus-within:text-[#244C66]" />
+                <select value={identity.study_stage} onChange={(event) => setIdentity((current) => ({ ...current, study_stage: event.target.value }))} className={`h-full min-w-0 flex-1 appearance-none bg-transparent px-2.5 pr-8 text-xs outline-none ${identity.study_stage ? "text-[#293D2A]" : "text-[#9A9F9C]"}`}>
+                  <option value="">暂不填写</option>
+                  <option value="本科">本科</option>
+                  <option value="研究生">研究生</option>
+                  <option value="博士">博士</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 size-3.5 text-[#8A918F]" />
+              </span>
+            </label>
+          ) : (
+            <label className="mt-3 block">
+              <span className="mb-1.5 block text-[10px] font-bold text-[#394950]">在职公司</span>
+              <span className="flex h-10 items-center rounded-xl border border-[#D7D1C4] bg-white px-3 focus-within:border-[#52704D]"><BriefcaseBusiness className="mr-2 size-3.5 shrink-0 text-[#8A918F]" /><input value={identity.company} onChange={(event) => setIdentity((current) => ({ ...current, company: event.target.value }))} placeholder="例如：星河科技" className="min-w-0 flex-1 bg-transparent text-xs text-[#293D2A] outline-none placeholder:text-[#9AA598]" /></span>
+            </label>
+          )}
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <span role={identityNotice.includes("失败") || identityNotice.includes("无法") ? "alert" : "status"} className={`min-w-0 truncate text-[10px] ${identityNotice.includes("失败") || identityNotice.includes("无法") ? "text-[#9A4E35]" : "text-[#557052]"}`}>{identityNotice}</span>
+            <button type="submit" disabled={identitySaving} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[#244C66] px-3 text-[10px] font-bold text-white disabled:opacity-50">{identitySaving ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}保存资料</button>
+          </div>
+        </form>
+        <section className="profile-scan-hero" aria-labelledby="profile-scan-title">
+          <div className="profile-scan-identity">
+            <span className="profile-scan-index">02</span>
+            <div><span>LEARNER SIGNAL INTAKE</span><b>{identity.name || user?.name || "学习者"} · {identity.learner_type === "student" ? "学生画像" : "从业者画像"}</b></div>
+          </div>
+          <div className="profile-scan-title-block">
+            <div><span>PROFILE / SYNTHESIS</span><h1 id="profile-scan-title">人物扫描<br /><em>能力采集与画像汇聚</em></h1><p>通过对话、经历与学习偏好持续补全证据，让每一条训练建议都有画像依据。</p></div>
+          </div>
+          <div className="profile-scan-progress" aria-live="polite">
+            <div><span>{status === "open" ? "扫描运行中" : profile?.intake_complete ? "画像已就绪" : "等待继续采集"}</span><strong>{completion}%</strong></div>
+            <div className="profile-scan-progress-rule"><i style={{ width: `${completion}%` }} /></div>
+            <div className="profile-scan-stage-rail">
+              <span className="is-done"><b>01</b>身份校准</span><span className={completion > 35 ? "is-done" : "is-current"}><b>02</b>对话采集</span><span className={status === "open" ? "is-current" : completion > 70 ? "is-done" : ""}><b>03</b>能力识别</span><span className={profile?.intake_complete ? "is-done" : ""}><b>04</b>画像汇聚</span>
+            </div>
+          </div>
+        </section>
+        <section className="profile-scan-insights">
+          <div className="profile-scan-data-transition" aria-label="采集信息通过航测扫描进入能力识别阶段">
+            <span className="profile-scan-transition-label is-source"><small>01 · SIGNAL INTAKE</small><strong>问答与资料采集</strong></span>
+            <i className="profile-scan-flight-route" aria-hidden="true">
+              <span className="is-eastbound"><img src="/images/profile-survey-drone-v1.png" alt="" /></span>
+              <span className="is-westbound"><img src="/images/profile-survey-drone-v1.png" alt="" /></span>
+              <b className="is-particle-one" /><b className="is-particle-two" /><b className="is-particle-three" />
+            </i>
+            <span className="profile-scan-transition-label is-output"><small>02 · PROFILE SYNTHESIS</small><strong>能力信号汇聚</strong></span>
+          </div>
+          <div className="profile-scan-insight-grid">
+            <section className="profile-scan-map-section">
+              <div className="profile-scan-section-title"><span>03</span><div><small>ABILITY SIGNAL MAP</small><h2>能力证据汇聚图</h2><p>对话信号持续流向画像核心，已识别信息会点亮对应节点。</p></div></div>
+              <ProfileGatheringCanvas profile={profile} running={status === "open"} />
+            </section>
+            {profile ? (
+              <section className="profile-scan-radar-grid">
+                <ProfileRadar title="知识基础" data={profile.dims.knowledge_base} color="#315E83" height={124} />
+                <ProfileRadar title="认知风格" data={profile.dims.cognitive_style} color="#B85C3E" height={124} />
+                <ProfileRadar title="资源偏好" data={profile.dims.preference} color="#6F8A69" height={124} />
+              </section>
+            ) : (
+              <div className="profile-scan-results-empty">画像加载后，这里会实时显示目标、基础、偏好和节奏。</div>
+            )}
+          </div>
+        </section>
       </div>
     </div>
+  )
+}
+
+function ProfileGatheringCanvas({ profile, running }: { profile: ProfileResp | null; running: boolean }) {
+  const signals = [
+    { id: "background", label: "背景经历", detail: profile?.dims.learner_background.major || profile?.dims.learner_background.education || "等待采集", x: 34, y: 48, Icon: GraduationCap, ready: Boolean(profile?.dims.learner_background.major || profile?.dims.learner_background.education) },
+    { id: "knowledge", label: "知识基础", detail: Object.keys(profile?.dims.knowledge_base || {}).slice(0, 2).join(" · ") || "等待识别", x: 34, y: 190, Icon: Database, ready: Boolean(Object.keys(profile?.dims.knowledge_base || {}).length) },
+    { id: "preference", label: "学习偏好", detail: Object.keys(profile?.dims.preference || {}).slice(0, 2).join(" · ") || "等待识别", x: 34, y: 332, Icon: BrainCircuit, ready: Boolean(Object.keys(profile?.dims.preference || {}).length) },
+  ]
+  return (
+    <InteractiveCanvas canvasWidth={720} canvasHeight={470} viewportHeight={470} label="学习者能力证据汇聚" className={`profile-scan-canvas ${running ? "is-running" : ""}`}>
+      <svg className="profile-scan-links" viewBox="0 0 720 470" aria-hidden="true">
+        <path d="M238 94 C330 94 335 214 434 214" /><path d="M238 236 C330 236 338 236 434 236" /><path d="M238 378 C330 378 335 258 434 258" />
+      </svg>
+      <div className="profile-scan-source"><ScanLine /><span>对话 / 图片</span><b>持续采集</b></div>
+      {signals.map(({ id, label, detail, x, y, Icon, ready }) => <article key={id} className={`profile-scan-node ${ready ? "is-ready" : "is-waiting"}`} style={{ left: x, top: y }}><span><Icon /></span><div><small>{ready ? "已识别" : "待补充"}</small><strong>{label}</strong><p>{detail}</p></div>{ready && <CheckCircle2 className="profile-scan-check" />}</article>)}
+      <article className={`profile-scan-core ${profile?.intake_complete ? "is-ready" : ""}`}><span><UserRound /></span><small>PROFILE CORE · v{profile?.version ?? "—"}</small><strong>学习者画像</strong><p>{profile?.dims.goals.primary || "目标、基础、偏好与节奏正在汇聚"}</p><div><Network />{profile?.intake_complete ? "可进入训练" : "等待更多证据"}</div></article>
+    </InteractiveCanvas>
   )
 }
 
@@ -626,18 +703,19 @@ function buildOpeningMessage(roleName?: string, missingFields?: string[]): strin
   return `${roleText}${question}我会分几步询问，不重复。`
 }
 
-function ProfileFact({ icon: Icon, label, value, tone, compact = false }: { icon: LucideIcon; label: string; value: string; tone: "blue" | "red" | "gold"; compact?: boolean }) {
+function ProfileFact({ icon: Icon, label, value, detail, tone, compact = false }: { icon: LucideIcon; label: string; value: string; detail?: string; tone: "blue" | "red" | "gold"; compact?: boolean }) {
   const toneMap = {
     blue: "bg-[#E7EDF3] text-[#315E83]",
     red: "bg-[#F4E8E2] text-[#9A4E35]",
     gold: "bg-[#F4ECD8] text-[#8E6925]",
   }
   return (
-    <div className={`flex items-start rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] ${compact ? "gap-2 p-2.5" : "gap-3 p-3"}`}>
+    <div className={`profile-scan-fact-card flex items-start rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] ${compact ? "gap-2 p-2.5" : "gap-3 p-3"}`}>
       <span className={`grid shrink-0 place-items-center rounded-full ${compact ? "size-7" : "size-8"} ${toneMap[tone]}`}><Icon className={compact ? "size-3.5" : "size-4"} /></span>
       <div className="min-w-0">
-        <span className="text-[10px] font-bold text-[#8A8172]">{label}</span>
+        <span className="profile-scan-fact-label text-[10px] font-bold text-[#8A8172]">{label}</span>
         <p className={`mt-0.5 line-clamp-2 font-semibold text-[#18232D] ${compact ? "text-[10px] leading-4" : "text-[11px] leading-5"}`}>{value}</p>
+        {detail && <span className="profile-scan-fact-detail">{detail}</span>}
       </div>
     </div>
   )

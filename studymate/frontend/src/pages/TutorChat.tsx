@@ -1,35 +1,31 @@
-import { useCallback, useEffect, useState } from "react"
-import { AlertTriangle, BookOpen, Clock3, ShieldCheck, Target } from "lucide-react"
+import { useCallback, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
 import { AppTopbar } from "@/components/AppTopbar"
-import type { ProfileMiniData } from "@/components/ProfileMiniCard"
-import { ProfileRadar } from "@/components/ProfileRadar"
+import { DigitalHumanVideo } from "@/components/DigitalHumanVideo"
+import type { SpeakerStatus } from "@/components/SpeakerButton"
 import { TutorChatPanel } from "@/components/TutorChatPanel"
-import { apiGet } from "@/lib/api"
-import { useTrackPage } from "@/lib/useTrackPage"
 import { useTutorContext } from "@/hooks/useTutorContext"
+import type { DigitalHumanState } from "@/lib/digitalHuman"
+import { useTrackPage } from "@/lib/useTrackPage"
 import { useCurrentCourse } from "@/store/course"
 import { useTargetRole } from "@/store/targetRole"
+import { useTutorGeneration } from "@/store/tutorGeneration"
 import { useCurrentUser } from "@/store/user"
+import "./TutorChat.css"
 
 export function TutorChat() {
   useTrackPage("tutor")
   const user = useCurrentUser()
-  const USER_ID = user?.user_id ?? 0
   const course = useCurrentCourse()
   const targetRole = useTargetRole()
+  const generation = useTutorGeneration(user?.user_id ?? 0, course?.id ?? null)
   const [searchParams, setSearchParams] = useSearchParams()
+  const [speechStatus, setSpeechStatus] = useState<SpeakerStatus>("idle")
+  const [conversationState, setConversationState] = useState<DigitalHumanState | null>(null)
   const captureMode = searchParams.get("capture") === "1"
-  const [profile, setProfile] = useState<ProfileMiniData | null>(null)
-  const [radarView, setRadarView] = useState<"knowledge" | "style" | "preference">("knowledge")
 
   useTutorContext(null)
-
-  useEffect(() => {
-    if (!USER_ID) return
-    apiGet<ProfileMiniData>(`/profile/${USER_ID}`).then(setProfile).catch(() => {})
-  }, [USER_ID])
 
   const handleCaptureModeChange = useCallback((enabled: boolean) => {
     const next = new URLSearchParams(searchParams)
@@ -38,86 +34,108 @@ export function TutorChat() {
     setSearchParams(next, { replace: true })
   }, [searchParams, setSearchParams])
 
-  const goal = profile?.dims.goals.primary?.trim() || "等待画像补充"
-  const weakPoints = profile?.dims.weak_points.topics?.filter(Boolean) || []
-  const targetTopics = profile?.dims.goals.target_topics?.filter(Boolean) || []
-  const focus = weakPoints.slice(0, 3).join("、") || targetTopics.slice(0, 3).join("、") || "暂未标记薄弱岗位能力点"
-  const hours = profile?.dims.pace.hours_per_week
-  const radarOptions = profile ? {
-    knowledge: { label: "知识基础", data: profile.dims.knowledge_base, color: "#315E83" },
-    style: { label: "认知风格", data: profile.dims.cognitive_style, color: "#B85C3E" },
-    preference: { label: "资源偏好", data: profile.dims.preference, color: "#6F8A69" },
-  } : null
-  const activeRadar = radarOptions?.[radarView]
+  const digitalHumanState = useMemo<DigitalHumanState>(() => {
+    if (conversationState) return conversationState
+    if (speechStatus === "playing") return "speaking"
+    if (speechStatus === "loading" || generation.status === "open") return "thinking"
+    return "idle"
+  }, [conversationState, generation.status, speechStatus])
+
+  const stateCopy = digitalHumanState === "speaking"
+    ? { label: "正在讲解", detail: "数字人正在同步播报助教回答", dot: "bg-[#6F8A69]" }
+    : digitalHumanState === "thinking"
+      ? { label: "正在思考", detail: "正在组织答案或准备朗读", dot: "bg-[#B1842C]" }
+      : { label: "随时在线", detail: "可以在左侧输入问题开始学习", dot: "bg-[#6F8A69]" }
+
+  const signalStep = generation.status === "open" ? 2 : digitalHumanState === "speaking" ? 3 : 0
 
   return (
-    <div className="app-page paper-theme">
-      <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <AppTopbar current="tutor" appearance="paper" />
+    <div className="app-page paper-theme tutor-signal-studio">
+      <div className="mx-auto max-w-[1580px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
+        <AppTopbar current="tutor" appearance="paper" labelOverride="AI 岗位助教" groupOverride="智能通信学习中心" selectionLabel={targetRole?.name || course?.name || "通用学习频道"} iconImage="/images/tutor-ai-terminal-v1.png" showRocketFormation rocketVariant="honor" />
 
-        <main className={`mt-4 grid items-stretch gap-4 xl:min-h-[620px] xl:grid-cols-[minmax(0,1fr)_360px] ${captureMode ? "" : "xl:h-[calc(100dvh-108px)]"}`}>
-          <section className={`flex min-h-[680px] min-w-0 flex-col rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)] ${captureMode ? "overflow-visible" : "overflow-hidden xl:h-full xl:min-h-0"}`}>
-            <TutorChatPanel variant="fullscreen" captureMode={captureMode} onCaptureModeChange={handleCaptureModeChange} />
+        <section className={`tutor-signal-hero ${generation.status === "open" ? "is-running" : ""}`} aria-labelledby="tutor-signal-title">
+          <div className="tutor-signal-hero-copy">
+            <div className="tutor-signal-index"><strong>01</strong><span>对话工作区</span><i>LIVE TUTOR CHANNEL</i></div>
+            <div><h1 id="tutor-signal-title">提问即刻进入<span>智能反馈闭环</span></h1><p>围绕「{targetRole?.name || course?.name || "当前学习目标"}」输入问题，支持文字、语音与附件。</p></div>
+          </div>
+          <div className="tutor-signal-wave" aria-hidden="true">
+            <span className="tutor-signal-wave-core"><img src="/images/tutor-communication-core-v1.png" alt="" /></span>
+            <i /><i /><i /><i /><i /><i /><i />
+            <b className="is-ring-one" /><b className="is-ring-two" />
+          </div>
+          <div className="tutor-signal-hero-status">
+            <span className="is-channel"><small>通信状态</small><strong>{generation.status === "open" ? "传输中" : "频道就绪"}</strong></span><span className="is-feedback"><small>助教反馈</small><strong>{stateCopy.label}</strong></span>
+          </div>
+        </section>
+
+        <main className="tutor-signal-workspace grid items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
+          <section className={`tutor-signal-chat flex min-h-[680px] min-w-0 flex-col ${generation.status === "open" ? "is-running" : ""} ${captureMode ? "overflow-visible" : "overflow-hidden xl:min-h-0"}`}>
+            <TutorChatPanel
+              variant="fullscreen"
+              captureMode={captureMode}
+              onCaptureModeChange={handleCaptureModeChange}
+              onSpeechStatusChange={setSpeechStatus}
+              onVoiceConversationStateChange={setConversationState}
+            />
           </section>
 
-          <aside data-testid="tutor-context-sidebar" className="h-fit space-y-3 xl:flex xl:h-[calc(100dvh-108px)] xl:min-h-[620px] xl:flex-col">
-            <section className="rounded-[22px] border border-[#CFC8B9] bg-[#F8F6F0] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div>
-                  <span className="text-[10px] font-bold tracking-[0.12em] text-[#6F8A69]">画像已注入 · v{profile?.version ?? "—"}</span>
-                  <h2 className="mt-1 text-sm font-bold text-[#18232D]">本次讲解会如何适配你</h2>
-                </div>
-                <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[#C9D1CB] bg-[#E9EEE6] text-[#557052]">
-                  <ShieldCheck className="size-3.5" />
-                </span>
-              </div>
-              <div className="space-y-2">
-                <TutorFact icon={Target} label="当前目标" value={goal} tone="blue" />
-                <TutorFact icon={AlertTriangle} label="优先关注" value={focus} tone="red" />
-                <div className="grid grid-cols-2 gap-2">
-                  <TutorFact icon={Clock3} label="学习节奏" value={hours ? `每周 ${hours} 小时` : "等待补充"} tone="gold" compact />
-                  <TutorFact icon={BookOpen} label="当前岗位" value={targetRole?.name || course?.name || "尚未选择岗位"} tone="green" compact />
-                </div>
-              </div>
-            </section>
+          <aside
+            data-testid="tutor-digital-human-sidebar"
+            className={`tutor-signal-avatar relative min-h-[680px] overflow-hidden xl:min-h-0 ${captureMode ? "xl:sticky xl:top-4" : ""}`}
+            aria-label="AI 助教数字人"
+          >
+            <DigitalHumanVideo
+              state={digitalHumanState}
+              priority
+              active={!captureMode}
+              idlePoster="/digital-human/studymate-lecturer-idle-hd-v2.png"
+              showFallbackStatus
+              className="absolute inset-0 size-full"
+              mediaClassName="object-cover object-center"
+              alt="AI 助教数字讲师"
+            />
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-40 bg-gradient-to-b from-[#142631]/55 via-[#142631]/15 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-[38%] bg-gradient-to-t from-[#10232D]/92 via-[#142631]/48 to-transparent" />
 
-            {profile ? (
-              <section aria-label="画像维度切换" className="xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
-                <div role="tablist" aria-label="选择画像维度" className="mb-2 grid grid-cols-3 rounded-2xl border border-[#CFC8B9] bg-[#F8F6F0] p-1">
-                  {(["knowledge", "style", "preference"] as const).map((key) => {
-                    const option = radarOptions![key]
-                    return <button key={key} type="button" role="tab" aria-selected={radarView === key} onClick={() => setRadarView(key)} className={`h-8 rounded-xl text-[10px] font-bold transition-colors ${radarView === key ? "bg-[#FFFEFA] text-[#244C66] shadow-[0_3px_9px_rgba(24,35,45,.08)]" : "text-[#7A817F] hover:text-[#244C66]"}`}>{option.label}</button>
-                  })}
-                </div>
-                {activeRadar && <ProfileRadar key={radarView} title={activeRadar.label} data={activeRadar.data} color={activeRadar.color} height={112} fill showScores />}
-              </section>
-            ) : (
-              <div className="rounded-[22px] border border-dashed border-[#C9C2B4] bg-[#F8F6F0] p-6 text-center text-xs leading-6 text-[#66717B] xl:flex-1">
-                建立岗位能力画像后，这里会显示助教本轮回答所依据的目标、能力证据与偏好。
+            <div className="absolute left-4 right-4 top-4 z-[3] rounded-2xl border border-white/20 bg-[#142631]/72 px-4 py-3 text-white shadow-lg backdrop-blur-md">
+              <div className="flex items-center gap-2">
+                <span className={`size-2 rounded-full border border-white/70 ${stateCopy.dot} ${digitalHumanState !== "idle" ? "animate-pulse" : ""}`} />
+                <span className="text-[10px] font-bold tracking-[.12em] text-white/65">AI DIGITAL TUTOR</span>
+                <span className="ml-auto text-xs font-bold">{stateCopy.label}</span>
               </div>
-            )}
+              <p className="mt-1.5 text-[10px] leading-4 text-white/72">{stateCopy.detail}</p>
+            </div>
+
+            <div className="absolute inset-x-4 bottom-4 z-[3] rounded-[22px] border border-white/20 bg-[#FFFEFA]/94 p-3.5 shadow-[0_16px_38px_rgba(10,25,34,.22)] backdrop-blur-md">
+              <div className="flex items-center gap-3 px-1">
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#E7EDF3] text-[#315E83]">
+                  <img src={digitalHumanState === "thinking" ? "/images/tutor-communication-core-v1.png" : digitalHumanState === "speaking" ? "/images/tutor-signal-relay-v1.png" : "/images/tutor-ai-terminal-v1.png"} alt="" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <strong className="block text-xs text-[#18232D]">{targetRole?.name || course?.name || "AI 岗位助教"}</strong>
+                  <span className="mt-0.5 block truncate text-[10px] text-[#66717B]">点击回答旁的朗读按钮，数字人会同步讲解</span>
+                </div>
+              </div>
+            </div>
           </aside>
         </main>
-      </div>
-    </div>
-  )
-}
 
-function TutorFact({ icon: Icon, label, value, tone, compact = false }: { icon: typeof Target; label: string; value: string; tone: "blue" | "red" | "gold" | "green"; compact?: boolean }) {
-  const colors = {
-    blue: "bg-[#E7EDF3] text-[#315E83]",
-    red: "bg-[#F4E8E2] text-[#9A4E35]",
-    gold: "bg-[#F4ECD8] text-[#8E6925]",
-    green: "bg-[#E9EEE6] text-[#557052]",
-  }
-  return (
-    <div className={`flex items-start rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] ${compact ? "gap-2 p-2.5" : "gap-3 p-3"}`}>
-      <span className={`grid shrink-0 place-items-center rounded-full ${compact ? "size-7" : "size-8"} ${colors[tone]}`}>
-        <Icon className={compact ? "size-3.5" : "size-4"} />
-      </span>
-      <div className="min-w-0">
-        <span className="text-[10px] font-bold text-[#8A8172]">{label}</span>
-        <p className={`mt-0.5 line-clamp-2 font-semibold text-[#18232D] ${compact ? "text-[10px] leading-4" : "text-[11px] leading-5"}`}>{value}</p>
+        <section className="tutor-signal-relay" aria-labelledby="tutor-relay-title">
+          <div className="tutor-signal-section-title"><span><img src="/images/tutor-signal-relay-v1.png" alt="" aria-hidden="true" /></span><div><b>02 · 回答中继</b><h2 id="tutor-relay-title">一条可感知的消息传输链</h2><p>从接收问题到生成答案，再由朗读与追问完成理解校准。</p></div></div>
+          <div className="tutor-signal-beam" aria-hidden="true"><i /><i /><i /><b /><b /></div>
+          <div className="tutor-signal-rail" aria-label="对话反馈流程">
+            <span className="tutor-signal-packet" aria-hidden="true" />
+            {[{ image: "/images/tutor-feedback-capsule-v1.png", label: "接收问题" }, { image: "/images/tutor-ai-terminal-v1.png", label: "理解语境" }, { image: "/images/tutor-communication-core-v1.png", label: "生成传输" }, { image: "/images/tutor-signal-relay-v1.png", label: "反馈校准" }].map(({ image, label }, index) => (
+              <div key={label} className={index === signalStep ? "is-current" : index < signalStep ? "is-done" : ""}><i>{String(index + 1).padStart(2, "0")}</i><img src={image} alt="" aria-hidden="true" /><strong>{label}</strong></div>
+            ))}
+          </div>
+        </section>
+
+        <section className="tutor-signal-guide">
+          <div className="tutor-signal-section-title"><span><img src="/images/tutor-feedback-capsule-v1.png" alt="" aria-hidden="true" /></span><div><b>03 · 高质量提问</b><h2>从问题到行动，只差一个清晰上下文</h2><p>推荐问题位于新会话中央；输入区持续固定在对话容器底部，不被动态装饰干扰。</p></div></div>
+          <div className="tutor-signal-guide-grid"><p><strong>补充目标</strong><span>说明你要理解、完成或排查什么。</span></p><p><strong>携带材料</strong><span>可上传图片、PDF、文本或代码作为本轮参考。</span></p><p><strong>闭环追问</strong><span>用朗读、复述或继续提问校准理解结果。</span></p></div>
+        </section>
       </div>
     </div>
   )

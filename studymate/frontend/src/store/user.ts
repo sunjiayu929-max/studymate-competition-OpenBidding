@@ -6,6 +6,8 @@
  *
  */
 import { useSyncExternalStore } from "react"
+import { careerDomains } from "@/lib/domainCareerCatalog"
+import { getTargetRoleSelection, setTargetRole } from "@/store/targetRole"
 
 export type UserRole = "student" | "worker" | "enterprise_admin" | "judge" | "admin"
 
@@ -99,6 +101,17 @@ export function useCurrentUser(): CurrentUser | null {
 
 export function setCurrentUser(u: CurrentUser | null) {
   userStore.set(u)
+  // 固定演示账号的目标岗位来自数据库；新浏览器登录后应立即恢复，
+  // 不能要求用户再手动选择一次才看见测验、面试和能力画像数据。
+  if (u?.target_role && !getTargetRoleSelection()) {
+    for (const domain of careerDomains) {
+      const role = domain.roles.find((item) => item.name === u.target_role)
+      if (role) {
+        setTargetRole({ domainId: domain.id, roleId: role.id })
+        break
+      }
+    }
+  }
 }
 
 export function logoutUser() {

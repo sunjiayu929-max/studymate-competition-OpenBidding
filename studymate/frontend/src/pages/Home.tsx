@@ -41,6 +41,8 @@ import { fallbackSamplesFor, isShowcaseCourse, useCurrentCourse } from "@/store/
 import { useTargetRole } from "@/store/targetRole"
 import { useCurrentUser } from "@/store/user"
 import { useWorkspaceStore, type RunStatus, type WorkspaceState } from "@/store/workspace"
+import "./LearnerMatchReportPage.css"
+import "./RoleCapabilityProfile.css"
 
 type NoteSource = "manual" | "doc" | "quiz" | "tutor"
 
@@ -129,6 +131,27 @@ const MODULES = [
   { to: "/quiz", label: "智能测验", short: "测验", detail: "用练习确认真正掌握", icon: BookOpenCheck, color: "#3E7774", wash: "#E2EEEB" },
   { to: "/competency", label: "岗位训练中心", short: "训练", detail: "查看能力范围与当前进度", icon: Route, color: "#7E6B83", wash: "#EEE9EF" },
   { to: "/report", label: "学习报告", short: "报告", detail: "查看成长变化与阶段反馈", icon: BarChart3, color: "#6D748B", wash: "#EAEBF0" },
+] as const
+
+const HOME_MODULE_GROUPS = [
+  {
+    number: "01",
+    label: "定位方向",
+    detail: "目标与能力基线",
+    modules: [MODULES[0], MODULES[2]],
+  },
+  {
+    number: "02",
+    label: "学习深化",
+    detail: "提问、记录与掌握",
+    modules: [MODULES[1], MODULES[3], MODULES[4]],
+  },
+  {
+    number: "03",
+    label: "训练复盘",
+    detail: "实战推进与结果回写",
+    modules: [MODULES[5], MODULES[6]],
+  },
 ] as const
 
 function resolveHomeModulePath(path: string) {
@@ -421,8 +444,115 @@ function LearningUniverse(props: LearningUniverseProps) {
       </div>
       <div className="universe-color-grade pointer-events-none absolute inset-0" />
 
+      <div className="flight-home-shell relative z-10">
+        <header className="flight-home-topbar">
+          <div className="flight-home-brand">
+            <span><Route className="size-4" /> 因材智训 · 学习航站</span>
+            <h1>今日学习发射中心</h1>
+          </div>
+          <div className="flight-home-meta">
+            <div><span>目的地</span><strong>{courseName}</strong></div>
+            <div><span>北京时间 · {formatBeijingDate(now)}</span><strong>{formatBeijingTime(now)}</strong></div>
+            <div className={`universe-sync-badge universe-sync-${syncState}`} title={syncDetail}><span className="universe-sync-dot" />{syncLabel}</div>
+          </div>
+        </header>
+
+        <div className="flight-home-grid">
+          <main className="flight-mission-board launch-mission-board" aria-label="今日学习发射任务">
+            <div className="launch-atmosphere" aria-hidden="true">
+              <i className="launch-light-column" />
+              <i className="launch-ring launch-ring-one" />
+              <i className="launch-ring launch-ring-two" />
+              <i className="launch-cloud launch-cloud-left" />
+              <i className="launch-cloud launch-cloud-right" />
+              <i className="launch-cloud launch-cloud-bottom" />
+              <span className="launch-particles">{Array.from({ length: 18 }, (_, index) => <i key={index} />)}</span>
+            </div>
+
+            <div className="launch-mission-copy">
+              <span className="flight-eyebrow"><i /> MISSION SM-{String(new Date().getDate()).padStart(2, "0")} · READY TO LAUNCH</span>
+              <h2><span className="launch-learner-name">{learnerName}</span><span className="launch-headline-line">今天，向目标发射</span></h2>
+              <p>{courseSelected ? `主任务已锁定「${courseName}」。知识、测验、笔记与能力画像将作为伴飞任务，协同完成今天的学习闭环。` : "先锁定目标岗位，学习任务群将自动完成编队并进入发射序列。"}</p>
+              <div className="launch-mission-status">
+                <div><span>MISSION</span><strong>{todayProgress}%</strong><small>今日完成度</small></div>
+                <div><span>PROFILE</span><strong>V{profileVersion || 0}</strong><small>画像版本</small></div>
+                <div><span>PAYLOAD</span><strong>{generatedResourceCount}/6</strong><small>资源载荷</small></div>
+              </div>
+              <div className="flight-mission-actions">
+                <button type="button" onClick={enterDesk} className="flight-primary-cta launch-primary-cta" data-testid="universe-primary-cta">启动今日任务 <ArrowRight className="size-4" /></button>
+                {!courseSelected && <Link to="/courses" className="flight-secondary-cta">锁定目标岗位</Link>}
+                <Link to="/honors" className="flight-secondary-cta"><Award className="size-4" />任务勋章</Link>
+              </div>
+            </div>
+
+            <div className="launch-formation" aria-label="动态火箭学习任务编队">
+              <div className="launch-rocket-main" aria-hidden="true">
+                <span className="launch-rocket-halo" />
+                <img src="/images/profile-launch-rocket-v1.png" alt="" />
+                <em className="launch-rocket-main-module">今日任务</em>
+                <i className="launch-exhaust-core" />
+              </div>
+              {[
+                { className: "escort-one", module: "能力画像" },
+                { className: "escort-two", module: "知识库" },
+                { className: "escort-three", module: "智能测验" },
+                { className: "escort-four", module: "学习报告" },
+              ].map(({ className, module }) => (
+                <span key={className} className={`launch-rocket-escort ${className}`} aria-hidden="true">
+                  <img src="/images/profile-launch-rocket-v1.png" alt="" />
+                  <em className="launch-rocket-module">{module}</em>
+                  <i />
+                </span>
+              ))}
+              <div className="launch-altitude"><span>ALTITUDE</span><strong>12,840</strong><small>LEARNING FT</small></div>
+              <div className="launch-ground" aria-hidden="true"><span><i /><i /><i /><i /><i /></span><b /><em /></div>
+            </div>
+
+            <nav className="launch-module-dock" aria-label="学习任务舱">
+              {UNIVERSE_PLANETS.map(({ id, to, label, icon: Icon }, index) => {
+                const planet = planetValues[id]
+                return (
+                  <Link key={id} to={resolveHomeModulePath(to)} className={`launch-module launch-module-${index + 1}`} aria-label={`${label}：${planet.value}`}>
+                    <span><Icon /></span><strong>{label}</strong><small>{planet.value}</small>
+                  </Link>
+                )
+              })}
+            </nav>
+          </main>
+
+          <aside className="flight-control-column">
+            <section className="flight-brief-card" aria-label="今日飞行简报">
+              <div className="flight-card-heading"><div><span>DAILY BRIEFING</span><h2>今日飞行简报</h2></div><Activity className="size-5" /></div>
+              <div className="flight-brief-metrics">
+                {metrics.map((metric) => <div key={metric.label}><span>{metric.label}</span><strong>{metric.value}</strong><small>{metric.detail}</small></div>)}
+              </div>
+              <div className="flight-platform-row"><span><b>{platform.courseCount}</b> 岗位库</span><span><b>{formatPlatformChunkCount(platform.chunkCount)}</b> 知识片段</span><span><b>300</b> 可视主题</span></div>
+            </section>
+
+            <section className="flight-tower-card" aria-label="7 Agents 协作塔台">
+              <div className="flight-card-heading"><div><span>CONTROL TOWER</span><h2>7 Agents 协作塔台</h2></div><span className={`flight-tower-state ${workspace.status}`}>{workspace.status === "running" ? `${activeAgentCount} 工作中` : workspace.status === "done" ? `${doneAgentCount} 已完成` : "全部待命"}</span></div>
+              <div className="flight-agent-list">
+                {visibleAgents.map((agent) => {
+                  const live = agent.status === "running" || agent.status === "streaming"
+                  return <Link key={agent.id} to="/competency" className={`flight-agent-row status-${agent.status}`}><i className={live && !reduceMotion ? "is-live" : ""} /><span><strong>{agent.name}</strong><small>{agent.message}</small></span><b>{agentStatusCopy(agent.status, workspace.status)}</b></Link>
+                })}
+              </div>
+              <Link to="/competency" className="flight-tower-link">进入岗位训练中心 <ArrowRight className="size-4" /></Link>
+            </section>
+          </aside>
+        </div>
+
+        <section className="flight-log-strip" aria-label="学习航程记录">
+          <div className="flight-log-heading"><span>LEARNING LOG</span><h2>学习航程记录</h2></div>
+          <div className="flight-log-events">
+            {activities.length ? activities.slice(0, 3).map((event) => <Link key={event.key} to={event.to}><i style={{ backgroundColor: event.tone }} /><span><strong>{event.title}</strong><small>{event.detail}</small></span><time>{new Date(event.timestamp).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })}</time></Link>) : <span className="flight-log-empty">暂无学习记录，完成首次训练后将形成航程日志。</span>}
+          </div>
+          <div className="flight-weekly-trend"><span>近 7 日</span>{trend.map((point) => <i key={point.key} style={{ height: point.value ? `${Math.max(8, (point.value / maxTrend) * 28)}px` : "4px" }} title={`${point.label} ${point.value} 条`} />)}</div>
+        </section>
+      </div>
+
       <motion.div
-        className="universe-command-shell relative z-10"
+        className="universe-command-shell universe-legacy-shell relative z-10"
         initial={reduceMotion || !firstEntrance ? false : { opacity: 0, scale: 1.045, y: 10, filter: "blur(3px)" }}
         animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
         transition={{ duration: 1.9, ease: [0.22, 1, 0.36, 1] }}
@@ -575,7 +705,7 @@ function LearningUniverse(props: LearningUniverseProps) {
               )}
             </div>
             <div className="universe-core-actions">
-              <button type="button" onClick={enterDesk} className="universe-primary-cta" data-testid="universe-primary-cta">
+              <button type="button" onClick={enterDesk} className="universe-primary-cta" data-testid="universe-primary-cta-legacy">
                 进入今日学习 <ArrowDown className="size-3.5" />
               </button>
               <Link to="/honors" className="universe-course-cta"><Award className="size-3.5" />我的荣誉墙</Link>
@@ -1175,7 +1305,7 @@ export function Home() {
   }, [data.evaluations, data.notes.items, data.quizzes, todayKey, workspaceFinishedToday])
 
   return (
-    <div className="app-page paper-theme">
+    <div className="app-page paper-theme home-dashboard-v2">
       <LearningUniverse
         learnerName={user?.name || "学习者"}
         courseName={targetRoleName || "尚未选择目标岗位"}
@@ -1196,7 +1326,7 @@ export function Home() {
         lastSyncedAt={data.lastSyncedAt}
         workspace={workspace}
       />
-      <div id="learning-desk" className="w-full scroll-mt-2 p-3 sm:p-4">
+      <div id="learning-desk" className="learning-desk-v2 w-full scroll-mt-2 px-3 pb-5 pt-4 sm:px-5 sm:pb-8 sm:pt-5 lg:px-7">
         <div className="mb-2 flex justify-end">
           <button
             type="button"
@@ -1208,7 +1338,7 @@ export function Home() {
         </div>
         <AppTopbar current="home" appearance="paper" />
 
-        <main className="pb-14 pt-6 sm:pt-8">
+        <main className="home-learning-surface pb-14 pt-6 sm:pt-8">
           <motion.header
             initial={reduceMotion ? false : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1340,28 +1470,28 @@ export function Home() {
               </div>
 
               <div className="relative z-10 mt-7 sm:mt-9">
-                <div className="absolute left-[8%] right-[8%] top-5 hidden border-t border-dashed border-[#BEB7AA] sm:block" />
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                <div className="home-route-rail grid grid-cols-2 sm:grid-cols-4">
                   {routeSteps.map(({ number, label, title, hint, to, icon: Icon, color, active }, index) => (
                     <motion.div
                       key={number}
+                      className={`home-route-stop-shell${active ? " is-active" : ""}`}
                       initial={reduceMotion ? false : { opacity: 0, y: 9 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.22 + index * 0.08 }}
                     >
                       <Link
                         to={to}
-                        className="group relative flex min-h-[132px] h-full flex-col rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA]/95 p-4 transition-all hover:-translate-y-1 hover:border-[#B7B0A2] hover:shadow-[0_10px_22px_rgba(24,35,45,.08)]"
+                        className="home-route-stop group flex h-full min-h-[136px] flex-col p-4 sm:p-5"
                       >
-                        <div className="mb-3 flex items-center justify-between gap-2">
+                        <div className="mb-4 flex items-center justify-between gap-2">
                           <span
-                            className="relative grid size-10 place-items-center rounded-full border-[3px] border-[#FFFEFA] text-white shadow-[0_0_0_1px_#CFC8B9]"
+                            className="home-route-stop-icon relative grid size-10 place-items-center rounded-full text-white"
                             style={{ backgroundColor: color }}
                           >
                             <Icon className="size-4" />
                             {active && !reduceMotion && <span className="absolute inset-[-7px] -z-10 animate-ping rounded-full border" style={{ borderColor: `${color}66` }} />}
                           </span>
-                          <span className="text-[11px] font-bold tracking-[0.14em] text-[#8A8F8A]">{number}</span>
+                          <span className="home-route-stop-number">{number}</span>
                         </div>
                         <span className="text-[11px] font-bold tracking-[0.1em]" style={{ color }}>{label}</span>
                         <strong className="mt-1 line-clamp-1 text-[13px] text-[#18232D]">{title}</strong>
@@ -1382,7 +1512,7 @@ export function Home() {
                     </p>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 divide-x divide-[#D7D1C4] rounded-xl border border-[#D7D1C4] bg-[#F8F6F0] px-2 py-2.5 text-center">
+                <div className="home-route-metrics grid grid-cols-3 divide-x divide-[#D7D1C4] px-1 py-1.5 text-center">
                   <div className="px-3"><strong className="block text-base text-[#244C66]">{loading ? "—" : data.notes.count}</strong><span className="text-[11px] text-[#7A817F]">{hasTargetRole ? "岗位笔记" : "全部笔记"}</span></div>
                   <div className="px-3"><strong className="block text-base text-[#3E7774]">{loading ? "—" : submittedQuizzes.length}</strong><span className="text-[11px] text-[#7A817F]">近期完成</span></div>
                   <div className="px-3"><strong className="block text-base text-[#B85C3E]">{loading ? "—" : readyQuizzes.length}</strong><span className="text-[11px] text-[#7A817F]">近期待办</span></div>
@@ -1450,15 +1580,29 @@ export function Home() {
               <div className="flex items-center gap-2"><Sparkles className="size-4 text-[#B1842C]" /><strong className="text-xs text-[#18232D]">常用工具，一条学习路径</strong></div>
               <span className="text-[11px] tracking-[0.05em] text-[#7A817F]">按需要进入对应工具</span>
             </div>
-            <div className="grid grid-cols-2 gap-px bg-[#DDD7CB] sm:grid-cols-3 xl:grid-cols-7">
-              {MODULES.map(({ to, label, detail, icon: Icon, color, wash }) => (
-                <Link key={to} to={resolveHomeModulePath(to)} className="group flex min-h-[104px] items-start gap-3 bg-[#FFFEFA] p-4 transition-colors hover:bg-[#F8F6F0]">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-xl" style={{ color, backgroundColor: wash }}><Icon className="size-[17px]" /></span>
-                  <span className="min-w-0 pt-0.5">
-                    <span className="flex items-center gap-1 text-xs font-bold text-[#18232D]">{label}<ChevronRight className="size-3 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" /></span>
-                    <span className="mt-1.5 block text-[11px] leading-4 text-[#727A7E]">{detail}</span>
-                  </span>
-                </Link>
+            <div className="home-tool-groups grid lg:grid-cols-3">
+              {HOME_MODULE_GROUPS.map(({ number, label, detail, modules }) => (
+                <section key={number} className="home-tool-group">
+                  <header className="home-tool-group-heading">
+                    <span>{number}</span>
+                    <div>
+                      <strong>{label}</strong>
+                      <small>{detail}</small>
+                    </div>
+                  </header>
+                  <nav className="home-tool-group-links" aria-label={`${label}工具`}>
+                    {modules.map(({ to, label: moduleLabel, detail: moduleDetail, icon: Icon, color, wash }) => (
+                      <Link key={to} to={resolveHomeModulePath(to)} className="home-tool-link group">
+                        <span className="home-tool-link-icon" style={{ color, backgroundColor: wash }}><Icon className="size-[16px]" /></span>
+                        <span className="min-w-0 flex-1">
+                          <strong>{moduleLabel}</strong>
+                          <small>{moduleDetail}</small>
+                        </span>
+                        <ChevronRight className="size-3.5 shrink-0 opacity-40 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
+                      </Link>
+                    ))}
+                  </nav>
+                </section>
               ))}
             </div>
           </motion.section>

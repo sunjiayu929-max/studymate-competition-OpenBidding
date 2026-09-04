@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { Link } from "react-router-dom"
-import { AlertCircle, BookOpen, CircleHelp, Database, ExternalLink, FileSearch, FileText, Hash, Loader2, Search, ShieldCheck, Sparkles } from "lucide-react"
+import { AlertCircle, CircleHelp, ExternalLink, FileSearch, FileText, GitBranch, Hash, Loader2, Radar, Search } from "lucide-react"
 
-import { PageHeader } from "@/components/PageHeader"
+import { AppTopbar } from "@/components/AppTopbar"
 import { Markdown } from "@/components/Markdown"
 import { apiGet } from "@/lib/api"
 import { formatSourceLabel, sourceLink, visibleMetadata } from "@/lib/ragSource"
@@ -96,9 +96,9 @@ export function RagDemo() {
 
   if (!course) {
     return (
-      <div className="app-page paper-theme">
+      <div className="app-page paper-theme rag-atlas">
         <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-          <PageHeader current="rag" title="岗位知识库检索" subtitle="岗位知识只在已接入的目标岗位范围内检索，不跨岗位借用无关资料。" icon={Database} iconColor="text-[#315E83]" appearance="paper" />
+          <AppTopbar current="rag" appearance="paper" labelOverride="岗位知识库" groupOverride="知识检索与引用" selectionLabel={targetRole?.name} showRocketFormation rocketVariant="honor" />
           <section className="mt-4 grid min-h-[420px] place-items-center rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] p-7 text-center shadow-[0_16px_42px_rgba(24,35,45,.065)]" role="status">
             <div className="max-w-md">
               <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#D8C9A8] bg-[#F4ECD8] text-[#8E6925]"><AlertCircle className="size-5" /></span>
@@ -116,33 +116,27 @@ export function RagDemo() {
   }
 
   return (
-    <div className="app-page paper-theme">
+    <div className="app-page paper-theme rag-atlas">
       <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <PageHeader
-          current="rag"
-          title="岗位知识库检索"
-          subtitle={`在《${targetRole?.name || course?.name || "当前岗位"}》知识库中定位岗位能力与任务依据，查看来源和相关片段。`}
-          icon={Database}
-          iconColor="text-[#315E83]"
-          appearance="paper"
-        />
+        <AppTopbar current="rag" appearance="paper" labelOverride="岗位知识库" groupOverride="知识检索与引用" selectionLabel={targetRole?.name || course?.name} showRocketFormation rocketVariant="honor" />
 
-        <section className="relative overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#F8F6F0] p-5 shadow-[0_16px_42px_rgba(24,35,45,.065)] sm:p-7">
+        <section className={`rag-atlas-hero relative overflow-hidden border-y p-5 sm:p-7 ${loading ? "is-running" : ""}`}>
           <div className="pointer-events-none absolute -right-24 -top-32 size-72 rounded-full border border-[#D8D1C3] opacity-60" />
           <div className="pointer-events-none absolute -right-10 -top-20 size-48 rounded-full border border-[#D8D1C3] opacity-60" />
           <div className="relative grid items-stretch gap-5 lg:grid-cols-[minmax(0,1fr)_390px] lg:gap-8">
             <div className="min-w-0">
-              <span className="inline-flex items-center gap-2 text-[10px] font-bold tracking-[0.14em] text-[#6F8A69]"><Sparkles className="size-3.5 text-[#B1842C]" />有依据的学习检索</span>
-              <h2 className="mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D] sm:text-2xl">从岗位资料里，找到可以引用的答案</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#66717B]">输入岗位任务、能力点或现场问题。系统会返回最相关的原文片段，而不是只给出无法核实的结论。</p>
+              <div className="rag-atlas-live-row"><span className="rag-atlas-kicker inline-flex items-center gap-2 text-[10px] font-bold tracking-[0.14em]"><Radar className="size-3.5" />01 · 检索控制台 / RETRIEVAL CONSOLE</span><b><i />{loading ? "正在扫描知识域" : resp ? `${resp.count} 个节点已就绪` : "检索服务待命"}</b></div>
+              <h2 className="mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D] sm:text-2xl">输入问题，立即定位可引用原文</h2>
 
-              <form onSubmit={(event) => { event.preventDefault(); doSearch(q) }} className="mt-6 flex items-center gap-2 rounded-[20px] border border-[#CFC8B9] bg-[#FFFEFA] p-2 shadow-[0_10px_28px_rgba(24,35,45,.07)] focus-within:border-[#9FB1BC]">
+              <form onSubmit={(event) => { event.preventDefault(); doSearch(q) }} className="mt-4 flex items-center gap-2 rounded-[20px] border border-[#CFC8B9] bg-[#FFFEFA] p-2 shadow-[0_10px_28px_rgba(24,35,45,.07)] focus-within:border-[#9FB1BC]">
                 <span className="grid size-10 shrink-0 place-items-center text-[#315E83]"><Search className="size-4.5" /></span>
                 <input value={q} onChange={(event) => setQ(event.target.value)} placeholder="搜索岗位任务、能力点或现场问题…" className="h-11 min-w-0 flex-1 bg-transparent text-sm text-[#18232D] outline-none placeholder:text-[#929792]" />
                 <button type="submit" disabled={loading || !q.trim()} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] shadow-[0_7px_16px_rgba(36,76,102,.18)] transition-all hover:-translate-y-0.5 hover:bg-[#193B50] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45">
                   {loading ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}{loading ? "检索中" : "开始检索"}
                 </button>
               </form>
+
+              <p className="mt-3 max-w-2xl text-xs leading-5 text-[#66717B]">输入岗位任务、能力点或现场问题，系统直接返回原文片段、相对匹配度和来源坐标。</p>
 
               <div className="mt-4 flex flex-wrap items-center gap-2.5">
                 <span className="mr-1 text-xs font-bold text-[#736958]">已展示默认知识片段，也可继续搜索</span>
@@ -152,21 +146,28 @@ export function RagDemo() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-[20px] border border-[#D7D1C4] bg-[#FFFEFA]/95 shadow-[0_10px_28px_rgba(24,35,45,.055)]">
-              <InfoCard icon={BookOpen} eyebrow="当前检索范围" title={targetRole?.name || course?.name || "全部岗位资料"} description={stats ? `${stats.count} 条岗位知识片段可被检索` : "正在读取岗位知识片段数量"} tone="blue" />
-              <InfoCard icon={ShieldCheck} eyebrow="结果可信度" title="每条答案都有来源" description="保留文件名、页码、相关度与原文入口，便于验证。" tone="green" />
-              <InfoCard icon={Database} eyebrow="检索引擎" title={stats?.engine || "正在连接"} description="先检索相关材料，再把依据交给学习智能体使用。" tone="gold" />
+            <div className="rag-atlas-radar overflow-hidden rounded-[20px] border">
+              <InfoCard image="/images/rag-scope-handbook-real-v1.png" alt="打开的岗位技术知识手册" eyebrow="当前检索范围" title={targetRole?.name || course?.name || "全部岗位资料"} description={stats ? `${stats.count} 条岗位知识片段可被检索` : "正在读取岗位知识片段数量"} tone="blue" />
+              <InfoCard image="/images/rag-source-shield-real-v1.png" alt="通过来源验证的金属盾牌" eyebrow="结果可信度" title="每条答案都有来源" description="保留文件名、页码、相关度与原文入口，便于验证。" tone="green" />
+              <InfoCard image="/images/rag-retrieval-engine-real-v1.png" alt="运行中的数据库检索模块" eyebrow="检索引擎" title={stats?.engine || "正在连接"} description="先检索相关材料，再把依据交给学习智能体使用。" tone="gold" />
             </div>
           </div>
         </section>
 
+        <div className={`rag-atlas-relay ${loading ? "is-running" : ""}`} aria-label="检索请求到来源引用的数据中继">
+          <div className="rag-atlas-relay-track" aria-hidden="true"><i /><i /><i /><i /></div>
+          <span><b><img src="/images/rag-relay-request-real-v1.png" alt="光学检索请求扫描器" /></b><small>REQUEST</small><strong>检索请求</strong></span>
+          <span><b><img src="/images/rag-relay-match-real-v1.png" alt="知识命中聚焦器" /></b><small>MATCH</small><strong>知识命中</strong></span>
+          <span><b><img src="/images/rag-relay-citation-real-v1.png" alt="三路来源引用连接器" /></b><small>CITATION</small><strong>来源引用</strong></span>
+        </div>
+
         {error && <div className="mt-4 rounded-2xl border border-[#DFC9BE] bg-[#F6ECE7] p-4 text-sm text-[#9A4E35]">检索暂时失败：{error}</div>}
 
-        <main className="mt-4">
+        <main className="rag-atlas-longform mt-4">
           <section className="min-w-0">
             {resp ? (
               <div className="space-y-3">
-                <div className="flex flex-wrap items-end justify-between gap-2 px-1 py-2">
+                <div className="rag-atlas-section-title flex flex-wrap items-end justify-between gap-2 px-1 py-5">
                   <div>
                     <span className="text-[10px] font-bold tracking-[0.12em] text-[#6F8A69]">{resp.query === defaultQuery ? "默认知识片段" : "检索结果"}</span>
                     <h2 className="mt-1 text-lg font-bold text-[#18232D]">“{resp.query}” 找到 {resp.count} 条依据</h2>
@@ -174,13 +175,13 @@ export function RagDemo() {
                   <span className="text-[10px] font-semibold text-[#8A8172]">按相对匹配度排序 · 最多显示 {resp.k} 条</span>
                 </div>
 
-                <div className="flex items-start gap-2 rounded-2xl border border-[#C7D2D8] bg-[#F3F6F7] px-3.5 py-3 text-[11px] leading-5 text-[#59666E]">
+                <div className="rag-atlas-score-note flex items-start gap-2 rounded-2xl border px-3.5 py-3 text-[11px] leading-5">
                   <CircleHelp className="mt-0.5 size-3.5 shrink-0 text-[#315E83]" />
                   <p><strong className="text-[#315E83]">相对匹配度如何计算：</strong>{resp.score_meta?.note || "根据岗位知识库资料中的词法与语义排序融合后换算，仅用于区分本次结果先后，不代表答案正确概率。"}</p>
                 </div>
 
                 {resp.results.map((result, index) => (
-                  <motion.article key={result.chunk_id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }} className="rounded-[22px] border border-[#CFC8B9] bg-[#FFFEFA] p-5 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
+                  <motion.article key={result.chunk_id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }} className={`rag-atlas-result is-tone-${index % 3} rounded-[22px] border p-5`}>
                     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#E3DED3] pb-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="grid size-7 place-items-center rounded-lg bg-[#E7EDF3] text-[11px] font-bold text-[#315E83]">{String(result.rank ?? index + 1).padStart(2, "0")}</span>
@@ -204,7 +205,11 @@ export function RagDemo() {
                       </span>
                     </div>
                     <Markdown content={result.content} wrapLongContent className="mt-4 text-sm leading-7 text-[#27343D] [&_table]:text-left [&_th]:whitespace-nowrap [&_td]:align-top" />
-                    {visibleMetadata(result.meta).length > 0 && <div className="mt-4 flex flex-wrap gap-1.5">{visibleMetadata(result.meta).map(([key, value]) => <span key={key} className="rounded-lg bg-[#F1EDE4] px-2 py-1 text-[10px] text-[#66717B]">{key}={String(value)}</span>)}</div>}
+                    <footer className="rag-atlas-citation-footer">
+                      <div className="rag-atlas-source-route" aria-hidden="true"><i /><span /><span /><span /></div>
+                      <div>{visibleMetadata(result.meta).length > 0 && visibleMetadata(result.meta).map(([key, value]) => <span key={key} className="rounded-lg px-2 py-1 text-[10px]">{key}={String(value)}</span>)}</div>
+                      <a href={sourceLink(result.chunk_id, result.url).href} target={sourceLink(result.chunk_id, result.url).external ? "_blank" : undefined} rel={sourceLink(result.chunk_id, result.url).external ? "noreferrer" : undefined}><GitBranch className="size-3" />引用链已连接</a>
+                    </footer>
                   </motion.article>
                 ))}
 
@@ -226,12 +231,12 @@ export function RagDemo() {
   )
 }
 
-function InfoCard({ icon: Icon, eyebrow, title, description, tone }: { icon: typeof Database; eyebrow: string; title: string; description: string; tone: "blue" | "green" | "gold" }) {
+function InfoCard({ image, alt, eyebrow, title, description, tone }: { image: string; alt: string; eyebrow: string; title: string; description: string; tone: "blue" | "green" | "gold" }) {
   const colors = { blue: "bg-[#E7EDF3] text-[#315E83]", green: "bg-[#E9EEE6] text-[#557052]", gold: "bg-[#F4ECD8] text-[#8E6925]" }
   return (
     <article className="border-b border-[#E3DED3] p-3.5 last:border-b-0">
       <div className="flex items-start gap-3">
-        <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${colors[tone]}`}><Icon className="size-4" /></span>
+        <span className={`rag-atlas-real-icon grid size-9 shrink-0 place-items-center rounded-xl ${colors[tone]}`}><img src={image} alt={alt} /></span>
         <div className="min-w-0"><span className="text-[10px] font-bold tracking-[0.1em] text-[#8A8172]">{eyebrow}</span><h3 className="mt-1 text-sm font-bold text-[#18232D]">{title}</h3></div>
       </div>
       <p className="mt-1.5 pl-12 text-[11px] leading-5 text-[#66717B]">{description}</p>

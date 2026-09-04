@@ -14,7 +14,6 @@ import {
   Compass,
   Database,
   GraduationCap,
-  Headphones,
   Home,
   Library,
   LogOut,
@@ -44,6 +43,8 @@ import { useWorkspaceStore } from "@/store/workspace"
 import { isPrivilegedRole, logoutUser, useCurrentUser } from "@/store/user"
 import { discardPendingEventsForLogout } from "@/lib/track"
 import { JUDGE_DEMO_EVENT } from "@/components/JudgeDemoMode"
+
+import "./AppShell.css"
 
 const SIDEBAR_KEY = "sm:app-shell:collapsed"
 const GROUP_KEY = "sm:app-shell:groups"
@@ -105,15 +106,6 @@ const GROUPS: Array<{ id: string; label: string; icon: typeof Home; items: NavIt
     items: [
       { label: "机考备战中心", to: "/oj-center", icon: Code2 },
       { label: "面试备战中心", to: "/ai-interview", icon: MessageSquare },
-    ],
-  },
-  {
-    id: "qaTools",
-    label: "智能答疑工具",
-    icon: Bot,
-    items: [
-      { label: "AI 助教", to: "/tutor", icon: Bot, exact: true },
-      { label: "实时语音", to: "/tutor/voice", icon: Headphones },
     ],
   },
   {
@@ -194,7 +186,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       : { kind: "学生学习者", detail: user?.study_stage || "未填写学习阶段" }
   const learnerTargetRole = user?.target_role || targetRole?.name || course?.name || "未选择目标岗位"
 
-  const immersive = pathname === "/tutor/voice" || /^\/quiz\/[^/]+$/u.test(pathname)
+  const immersive = /^\/quiz\/[^/]+$/u.test(pathname)
   const shellHidden = pathname === "/" && homeUniverseVisible
   const effectiveCollapsed = collapsed || immersive
   const showcaseBlocked = showcaseCourse && SHOWCASE_BLOCKED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
@@ -296,7 +288,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           type="button"
           onClick={() => toggleGroup(group.id)}
           className={cn(
-            "flex h-10 w-full items-center rounded-xl text-xs font-bold tracking-[.02em] text-[#727A7E] transition-colors hover:bg-[#ECE8DE] hover:text-[#244C66]",
+            "flex h-10 w-full items-center rounded-xl text-xs font-bold tracking-[.02em] text-[#657783] transition-colors hover:bg-[#E5F1F8] hover:text-[#1F5578]",
             effectiveCollapsed ? "justify-center" : "gap-2 px-2.5",
             active && "text-[#244C66]",
           )}
@@ -307,12 +299,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           {!effectiveCollapsed && <><span>{group.label}</span><ChevronDown className={cn("ml-auto size-3.5 transition-transform", opened && "rotate-180")} /></>}
         </button>
         {!effectiveCollapsed && opened && (
-          <div className="mt-0.5 space-y-0.5 border-l border-[#D7D1C4] pl-2.5">
+          <div className="mt-0.5 space-y-0.5 border-l border-[#CDDFEB] pl-2.5">
             {group.items.map((item) => {
               if (!item.children) {
                 const trainingStatus = item.to === "/competency" ? (
-                  <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-[#F4ECD8] px-1.5 py-0.5 text-[9px] font-extrabold text-[#8E6925]">
-                    {workspace.status === "running" && <span className="size-1.5 animate-pulse rounded-full bg-[#B1842C]" />}
+                  <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-[#C7DEEC] bg-[#EAF5FB] px-1.5 py-0.5 text-[9px] font-extrabold text-[#316785]">
+                    {workspace.status === "running" && <span className="size-1.5 animate-pulse rounded-full bg-[#38A4D8]" />}
                     {workspace.status === "running" ? `${readyResources}/6` : "14 Agents"}
                   </span>
                 ) : undefined
@@ -328,7 +320,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     type="button"
                     onClick={() => setOpenGroups((current) => ({ ...current, [nestedId]: !current[nestedId] }))}
                     className={cn(
-                      "flex h-10 w-full items-center gap-2.5 rounded-xl px-2.5 text-xs font-semibold text-[#59636B] transition-colors hover:bg-[#ECE8DE] hover:text-[#244C66]",
+                      "flex h-10 w-full items-center gap-2.5 rounded-xl px-2.5 text-xs font-semibold text-[#596C76] transition-colors hover:bg-[#E5F1F8] hover:text-[#1F5578]",
                       nestedActive && "text-[#244C66]",
                     )}
                     aria-expanded={nestedOpen}
@@ -338,7 +330,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <ChevronDown className={cn("ml-auto size-3.5 transition-transform", nestedOpen && "rotate-180")} />
                   </button>
                   {nestedOpen && (
-                    <div className="ml-3 border-l border-[#D7D1C4] pl-2">
+                    <div className="ml-3 border-l border-[#CDDFEB] pl-2">
                       {item.children.map((child) => <ShellLink key={`${child.to}-${child.label}`} item={child} compact={false} pathname={pathname} search={search} />)}
                     </div>
                   )}
@@ -361,12 +353,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   ].filter(Boolean).length
 
   return (
-    <div className={cn("app-shell-workspace min-h-dvh", shellHidden && "app-shell-universe")}>
+    <div className={cn("app-shell-workspace min-h-dvh", effectiveCollapsed && "is-navigation-collapsed", shellHidden && "app-shell-universe")}>
       <button
         type="button"
         onClick={() => setMobileOpen(true)}
         className={cn(
-          "fixed left-3 top-3 z-[72] grid size-10 place-items-center rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] text-[#244C66] shadow-md lg:hidden",
+          "fixed left-3 top-3 z-[72] grid size-10 place-items-center rounded-xl border border-[#C8DCE9] bg-white text-[#244C66] shadow-md lg:hidden",
           shellHidden && "border-white/15 bg-[#101722]/75 text-white backdrop-blur",
         )}
         aria-label="打开应用导航"
@@ -385,19 +377,19 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <aside
         className={cn(
-          "app-shell-navigation fixed inset-y-0 left-0 z-[74] flex flex-col border-r border-[#D7D1C4]/55 transition-[width,transform,opacity] duration-300",
+          "app-shell-navigation fixed inset-y-0 left-0 z-[74] flex flex-col border-r border-[#B8D3E1]/80 transition-[width,transform,opacity] duration-300",
           effectiveCollapsed ? "w-[72px]" : "w-[240px]",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           shellHidden && !mobileOpen && "lg:pointer-events-none lg:-translate-x-full lg:opacity-0",
         )}
         aria-label="因材智训应用导航"
       >
-        <div className="flex h-[70px] shrink-0 items-center gap-3 border-b border-[#DED8CC] px-4">
+        <div className="flex h-[70px] shrink-0 items-center gap-3 border-b border-[#D5E4ED] px-4">
           <Link to="/" className="flex min-w-0 flex-1 items-center gap-2.5" aria-label="因材智训今日学习">
             <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#244C66] text-[#F0D6A4] shadow-[0_8px_18px_rgba(36,76,102,.18)]"><Sparkles className="size-[18px]" /></span>
-            {!effectiveCollapsed && <span className="min-w-0"><strong className="block text-base tracking-[-.03em] text-[#18232D]">因材智训</strong><small className="block truncate text-[10px] font-bold tracking-[.12em] text-[#8A8172]">LEARNING OS</small></span>}
+            {!effectiveCollapsed && <span className="min-w-0"><strong className="block text-base tracking-[-.03em] text-[#18232D]">因材智训</strong><small className="block truncate text-[10px] font-bold tracking-[.12em] text-[#6F8492]">LEARNING OS</small></span>}
           </Link>
-          <button type="button" onClick={() => setMobileOpen(false)} className="grid size-8 place-items-center rounded-lg text-[#66717B] hover:bg-[#ECE8DE] lg:hidden" aria-label="关闭导航"><X className="size-4" /></button>
+          <button type="button" onClick={() => setMobileOpen(false)} className="grid size-8 place-items-center rounded-lg text-[#667985] hover:bg-[#E5F1F8] lg:hidden" aria-label="关闭导航"><X className="size-4" /></button>
         </div>
 
         <div className="shrink-0 px-3 pt-3">
@@ -405,7 +397,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             to={systemAdmin ? "/admin" : enterpriseAdmin ? "/enterprise/dashboard" : "/courses"}
             title={systemAdmin ? "系统管理工作台" : enterpriseAdmin ? user?.company || "企业管理工作台" : learnerTargetRole}
             className={cn(
-              "flex items-center rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] shadow-[0_5px_14px_rgba(24,35,45,.045)] transition-colors hover:bg-[#F7F2E7]",
+              "flex items-center rounded-2xl border border-[#C9DCE8] bg-white/80 shadow-[0_8px_24px_rgba(35,88,124,.07)] transition-colors hover:border-[#AFCBDD] hover:bg-white",
               effectiveCollapsed ? "h-11 justify-center" : "gap-2.5 px-3 py-2.5",
             )}
           >
@@ -414,7 +406,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               ? <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">系统管理</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">平台运营工作台</strong></span>
               : enterpriseAdmin
                 ? <span className="min-w-0"><small className="block text-[10px] font-bold tracking-[.08em] text-[#668064]">企业管理员</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{user?.name || "企业管理员"}</strong><span className="mt-1 block truncate text-[10px] text-[#66717B]">{user?.company || "河南本线商贸有限公司"}</span></span>
-                : <span className="min-w-0 flex-1 text-center"><small className="block text-[10px] font-bold tracking-[.08em] text-[#8A8172]">{learnerIdentity.kind}</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{user?.name || "学习者"}</strong><span className="mt-1 block truncate text-[10px] text-[#66717B]">{learnerIdentity.detail}</span><span className="mt-0.5 block truncate text-[10px] text-[#66717B]">{learnerTargetRole}</span></span>)}
+              : <span className="min-w-0 flex-1 text-center"><small className="block text-[10px] font-bold tracking-[.08em] text-[#718692]">{learnerIdentity.kind}</small><strong className="mt-0.5 block truncate text-xs text-[#18232D]">{user?.name || "学习者"}</strong><span className="mt-1 block truncate text-[10px] text-[#607583]">{learnerIdentity.detail}</span><span className="mt-0.5 block truncate text-[10px] text-[#607583]">{learnerTargetRole}</span></span>)}
           </Link>
           {!enterpriseAdmin && !systemAdmin && (
             <div className="mt-2">
@@ -445,13 +437,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           </> : <>
           {GROUPS.slice(0, 3).map(renderGroup)}
           <ShellLink item={{ label: "转岗培训", to: "/career", icon: GraduationCap }} compact={effectiveCollapsed} pathname={pathname} />
-          {GROUPS.slice(3).map(renderGroup)}
+          {GROUPS.slice(3, 4).map(renderGroup)}
+          <ShellLink item={{ label: "AI 助教", to: "/tutor", icon: Bot }} compact={effectiveCollapsed} pathname={pathname} />
+          {GROUPS.slice(4).map(renderGroup)}
           {enterpriseVisible && <ShellLink item={{ label: enterpriseAdmin ? "企业工作台" : "企业任务", to: "/enterprise", icon: BriefcaseBusiness }} compact={effectiveCollapsed} pathname={pathname} />}
           <ShellLink item={{ label: "反馈中心", to: "/feedback", icon: MessageSquare }} compact={effectiveCollapsed} pathname={pathname} />
           </>}
         </nav>
 
-        <div className="shrink-0 border-t border-[#DED8CC] p-3">
+        <div className="shrink-0 border-t border-[#D5E4ED] bg-white/25 p-3">
           {!systemAdmin && isPrivilegedRole(user?.role) && (
             <button
               type="button"
@@ -480,7 +474,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button
               type="button"
               onClick={() => setCollapsed((value) => !value)}
-              className={cn("mt-auto hidden h-9 w-full items-center rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] text-[11px] font-bold text-[#66717B] hover:bg-[#ECE8DE] lg:flex", effectiveCollapsed ? "justify-center" : "gap-2 px-2.5")}
+              className={cn("mt-auto hidden h-9 w-full items-center rounded-xl border border-[#C9DCE8] bg-white/75 text-[11px] font-bold text-[#607583] hover:bg-[#E5F1F8] lg:flex", effectiveCollapsed ? "justify-center" : "gap-2 px-2.5")}
               aria-label={collapsed ? "展开侧栏" : "折叠侧栏"}
             >
               {collapsed ? <PanelLeftOpen className="size-4" /> : <><PanelLeftClose className="size-4" /><span>折叠导航</span><ChevronLeft className="ml-auto size-3.5" /></>}
@@ -529,12 +523,14 @@ function ShellLink({
   const Icon = item.icon
   const active = matches(pathname, item, search)
   const className = cn(
-    "group relative mb-0.5 flex h-11 items-center rounded-xl text-xs font-semibold transition-colors",
+    "group relative mb-0.5 flex h-11 items-center rounded-xl border text-xs font-semibold transition-[color,background-color,border-color,box-shadow]",
     compact ? "justify-center" : "gap-2.5 px-2.5",
-    active ? "bg-[#E7EDF3] text-[#244C66]" : "text-[#59636B] hover:bg-[#ECE8DE] hover:text-[#244C66]",
+    active
+      ? "border-[#8FC5DF] bg-[linear-gradient(90deg,#CBE6F4_0%,#DDF0F7_100%)] text-[#123F5F] shadow-[0_5px_14px_rgba(41,107,145,.13),inset_0_1px_0_rgba(255,255,255,.72)]"
+      : "border-transparent text-[#566A77] hover:border-[#C5DCE7] hover:bg-[#DDECF3]/80 hover:text-[#1F5578]",
   )
   const content = <>
-      {active && <span className="absolute -left-3 h-5 w-1 rounded-r-full bg-[#315E83]" />}
+      {active && <span className="absolute -left-3 h-7 w-1.5 rounded-r-full bg-gradient-to-b from-[#17628F] to-[#35A9D2] shadow-[0_0_12px_rgba(38,145,190,.52)]" />}
       <Icon className="size-4 shrink-0" />
       {!compact && <span className="truncate">{item.label}</span>}
       {trailing}

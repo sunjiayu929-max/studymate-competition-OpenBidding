@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
-import { ArrowRight, Award, CalendarDays, Eye, Sparkles, Trophy } from "lucide-react"
-
+import { Award, BadgeCheck, CalendarDays, Download, Eye, Loader2, ShieldCheck, Sparkles } from "lucide-react"
 import certificateBackground from "@/assets/certificate/studymate-certificate-bg.png"
 import { AppTopbar } from "@/components/AppTopbar"
 import { RoleCertificateModal } from "@/components/RoleCertificateModal"
 import { formatCertificateDate, ensureDemoCertificates, listUserCertificates, syncEarnedCertificates, type RoleCertificateRecord } from "@/lib/certificates"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useCurrentUser } from "@/store/user"
+import "./HonorWall.css"
 
 export function HonorWall() {
   useTrackPage("honor_wall")
   const user = useCurrentUser()
   const [selected, setSelected] = useState<RoleCertificateRecord | null>(null)
+  const [syncing, setSyncing] = useState(true)
   const [certificates, setCertificates] = useState<RoleCertificateRecord[]>(() => {
     if (!user) return []
     ensureDemoCertificates(user.user_id, user.name)
@@ -21,129 +22,43 @@ export function HonorWall() {
   })
   const userId = user?.user_id
   const learnerName = user?.name ?? ""
-
   const refreshCertificates = useCallback(() => {
-    // 演示预置放在读取前：首次进入也不会闪现空状态。
     if (userId) ensureDemoCertificates(userId, learnerName)
     setCertificates(userId ? listUserCertificates(userId, learnerName) : [])
   }, [userId, learnerName])
-
   useEffect(() => {
     refreshCertificates()
-    if (!userId) return
+    if (!userId) { setSyncing(false); return }
     let active = true
-    syncEarnedCertificates(userId, learnerName)
-      .then((issued) => { if (active && issued.length) refreshCertificates() })
-      .catch(() => undefined)
+    setSyncing(true)
+    syncEarnedCertificates(userId, learnerName).then((records) => { if (active) setCertificates(records) }).catch(() => undefined).finally(() => { if (active) setSyncing(false) })
     return () => { active = false }
   }, [refreshCertificates, userId, learnerName])
   const roleCount = new Set(certificates.map((record) => record.roleId)).size
   const latestIssuedAt = certificates[0]?.issuedAt
+  const unlocked = certificates.length > 0
 
-  return (
-    <main className="app-page paper-theme min-h-dvh pb-14">
-      <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <AppTopbar current="honor" appearance="paper" />
-
-        <section className="relative mt-4 overflow-hidden rounded-[30px] border border-[#DCC78D] bg-[#102D4D] px-5 py-7 text-white shadow-[0_24px_64px_rgba(20,49,82,.2)] sm:px-8 sm:py-9">
-          <div className="pointer-events-none absolute -right-24 -top-32 size-96 rounded-full bg-[#D1A64B]/20 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-36 left-[28%] size-80 rounded-full bg-[#537FA8]/24 blur-3xl" />
-          <div className="relative grid gap-7 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-[#E6CF91]/30 bg-[#E6CF91]/10 px-3 py-1.5 text-[10px] font-bold tracking-[.14em] text-[#F1D891]"><Trophy className="size-3.5" />MY HONOR WALL</span>
-              <h1 className="mt-4 text-3xl font-bold tracking-[-.045em] sm:text-4xl">我的荣誉墙</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#CAD8E6]">每一张证书都记录了一段完整的岗位学习旅程。这里收藏你的坚持、成长与已经具备的专业能力。</p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <Link to="/" className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 text-[11px] font-bold text-white transition hover:bg-white/15">返回个人中心</Link>
-                <Link to="/competency" className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#D0A64C] px-4 text-[11px] font-bold text-[#17334F] shadow-[0_8px_20px_rgba(208,166,76,.24)] transition hover:bg-[#DDB65E]">继续岗位训练<ArrowRight className="size-3.5" /></Link>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 rounded-[22px] border border-white/12 bg-white/[.075] p-3 backdrop-blur-sm">
-              <HeroStat label="已获证书" value={`${certificates.length}`} suffix="张" />
-              <HeroStat label="完成岗位" value={`${roleCount}`} suffix="个" />
-              <HeroStat label="最近获得" value={latestIssuedAt ? formatCertificateDate(latestIssuedAt).replace(/年|月/g, ".").replace("日", "") : "等待点亮"} compact />
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-4 rounded-[26px] border border-[#D7D1C4] bg-[#FFFEFA] p-5 shadow-[0_14px_36px_rgba(24,35,45,.06)] sm:p-7">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <span className="text-[10px] font-bold tracking-[.14em] text-[#A87822]">ACHIEVEMENTS</span>
-              <h2 className="mt-1 text-xl font-bold tracking-[-.035em] text-[#18232D]">已获得的岗位证书</h2>
-              <p className="mt-1 text-xs leading-5 text-[#6F787A]">点击任意证书可查看完整奖状，并再次下载高清图片。</p>
-            </div>
-            {certificates.length > 0 && <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-[#DCC78D] bg-[#FFF7E2] px-3 py-1.5 text-[10px] font-bold text-[#916A21]"><Award className="size-3.5" />已点亮 {certificates.length} 项荣誉</span>}
-          </div>
-
-          {certificates.length > 0 ? (
-            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {certificates.map((record, index) => (
-                <motion.article
-                  key={`${record.roleId}:${record.serial}`}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: index * 0.05 }}
-                  className="group overflow-hidden rounded-[22px] border border-[#D8C9A8] bg-[#F8F2E5] shadow-[0_10px_26px_rgba(36,53,67,.07)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(36,53,67,.12)]"
-                >
-                  <button type="button" onClick={() => setSelected(record)} className="block w-full text-left" aria-label={`查看${record.roleName}岗位证书`}>
-                    <div className="relative aspect-[4/3] overflow-hidden border-b border-[#D8C9A8]">
-                      <img src={certificateBackground} alt="" aria-hidden className="absolute inset-0 size-full object-cover" />
-                      <div className="absolute inset-x-[14%] top-[18%] text-center text-[#173653]">
-                        <p className="text-[7px] font-bold tracking-[.24em] text-[#9B7429] sm:text-[8px]">因材智训</p>
-                        <h3 className="mt-1 font-serif text-[clamp(16px,2vw,25px)] font-bold tracking-[.12em]">岗位学习荣誉证书</h3>
-                        <div className="mx-auto mt-3 h-px w-20 bg-[#C49A4C]" />
-                        <strong className="mt-3 block truncate font-serif text-[clamp(18px,2.4vw,30px)] tracking-[.08em]">{record.learnerName}</strong>
-                        <p className="mx-auto mt-2 line-clamp-2 max-w-[82%] text-[clamp(7px,.8vw,10px)] leading-relaxed text-[#5E645F]">完成「{record.roleName}」岗位全部学习内容与综合验收</p>
-                      </div>
-                      <span className="absolute bottom-[8%] right-[11%] grid size-[14%] place-items-center rounded-full border-2 border-double border-[#BE9345] bg-[#FFF7E5]/85 text-[clamp(8px,1vw,12px)] font-black text-[#9A722C]">✓</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 bg-[#FFFEFA] px-4 py-3.5">
-                      <div className="min-w-0">
-                        <strong className="block truncate text-xs text-[#243B51]">{record.roleName}</strong>
-                        <span className="mt-1 flex items-center gap-1.5 text-[10px] text-[#7A817F]"><CalendarDays className="size-3" />{formatCertificateDate(record.issuedAt)} · {record.completedRounds} 轮训练</span>
-                      </div>
-                      <span className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-[#D6C69E] bg-[#FFF8E8] px-2.5 text-[10px] font-bold text-[#8C6726]"><Eye className="size-3" />查看</span>
-                    </div>
-                  </button>
-                </motion.article>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-6 grid min-h-[360px] place-items-center rounded-[22px] border border-dashed border-[#D9CCAE] bg-[#FBF7ED] px-5 text-center">
-              <div className="max-w-md py-12">
-                <span className="mx-auto grid size-16 place-items-center rounded-[22px] border border-[#DDCB9D] bg-[#FFF8E6] text-[#AD7F2B]"><Award className="size-7" /></span>
-                <p className="mt-5 text-[10px] font-bold tracking-[.15em] text-[#A87822]">第一张荣誉等待点亮</p>
-                <h3 className="mt-2 text-xl font-bold tracking-[-.03em] text-[#18232D]">完成一个岗位的全部学习内容</h3>
-                <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#6F787A]">完成所有训练轮次并通过最终验收后，岗位证书会自动点亮在这里，永久收藏。</p>
-                <Link to="/competency" className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white shadow-[0_8px_18px_rgba(36,76,102,.16)] hover:bg-[#193B50]">开始岗位训练<Sparkles className="size-3.5" /></Link>
-              </div>
-            </div>
-          )}
-        </section>
+  return <main className="honors-v2 app-page paper-theme min-h-dvh pb-16"><div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 lg:px-7">
+    <AppTopbar current="honor" appearance="paper" labelOverride="我的荣誉墙" groupOverride="成果认证中心" statusLabel={syncing ? "正在核验新成果" : unlocked ? `${certificates.length} 项荣誉已点亮` : "等待首项荣誉"} iconImage="/images/honors-certification-vault-v1.png" showRocketFormation rocketVariant="honor" />
+    <motion.section className={`honors-v2-hero honors-v2-hero-compact ${syncing ? "is-running" : ""}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .55 }}>
+      <div className="honors-v2-live"><span /><b>MY HONOR WALL</b><small>学习成果与岗位认证档案</small><em>{syncing ? "正在核验新成果" : unlocked ? "认证库已同步" : "等待成果解锁"}</em></div>
+      <div className="honors-v2-overview">
+        <div className="honors-v2-overview-title"><span><img src="/images/honors-reward-medal-web-v1.png" alt="" aria-hidden="true" /></span><div><small>荣誉认证中心</small><h1>我的荣誉墙</h1><p>所有已解锁证书都在下方，点击即可查看或下载。</p></div></div>
+        <div className="honors-v2-overview-stats"><HeroStat label="已获证书" value={`${certificates.length}`} suffix="张" /><HeroStat label="完成岗位" value={`${roleCount}`} suffix="个" /><HeroStat label="最近认证" value={latestIssuedAt ? formatCertificateDate(latestIssuedAt).replace(/年|月/g, ".").replace("日", "") : "WAIT"} compact /></div>
+        <div className="honors-v2-overview-actions">{certificates[0] ? <button type="button" onClick={() => setSelected(certificates[0])} aria-label={`查看最近证书：${certificates[0].roleName}`}><img className="honors-v2-action-object" src="/images/training-acceptance-beacon-v1.png" alt="" aria-hidden="true" /><span><small>最近获得</small><strong>{certificates[0].roleName}</strong></span></button> : <Link to="/competency"><img className="honors-v2-action-object" src="/images/training-acceptance-beacon-v1.png" alt="" aria-hidden="true" /><span><small>暂无证书</small><strong>完成训练解锁荣誉</strong></span></Link>}<Link to="/competency" className="is-primary"><img className="honors-v2-action-object is-route" src="/images/courses-career-route-compass-v1.png" alt="" aria-hidden="true" /><span>继续岗位训练</span></Link></div>
       </div>
-
-      {selected && (
-        <RoleCertificateModal
-          open
-          learnerName={selected.learnerName}
-          roleName={selected.roleName}
-          roleId={selected.roleId}
-          userId={selected.userId}
-          completedRounds={selected.completedRounds}
-          onClose={() => setSelected(null)}
-        />
-      )}
-    </main>
-  )
+      <div className="honors-v2-stage"><span />{["完成训练", "通过验收", "签发证书", "收入荣誉墙"].map((label, index) => <div className={index < (unlocked ? 4 : syncing ? 3 : 1) ? "is-done" : ""} key={label}><i>{String(index + 1).padStart(2, "0")}</i><b>{label}</b></div>)}</div>
+    </motion.section>
+    <HonorTransit compact label="VERIFIED INTAKE · 签发成果进入荣誉墙" />
+    <section className="honors-v2-longform"><Header syncing={syncing} count={certificates.length} />
+      {unlocked ? <div className="honors-v2-cards">{certificates.map((record, index) => <CertificateCard key={`${record.roleId}:${record.serial}`} record={record} index={index} onOpen={() => setSelected(record)} />)}</div> : <div className="honors-v2-empty"><span><Award /></span><p>FIRST HONOR · WAITING</p><h3>第一张荣誉等待点亮</h3><small>完成所有训练轮次并通过最终验收后，岗位证书会自动归档在这里。</small><Link to="/competency">开始岗位训练<Sparkles /></Link></div>}
+      <HonorTransit reverse label="SEALED RECORD · 荣誉凭据写入认证档案" />
+      <motion.section className={`honors-v2-console ${unlocked ? "is-complete" : ""}`} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}><div className="honors-v2-console-title"><span><img src="/images/quality-inspection-instrument-v1.png" alt="" aria-hidden="true" /></span><div><small>03 · 认证控制台</small><h2>{unlocked ? "成果已通过签发门禁" : "等待首项成果进入验收"}</h2><p>{unlocked ? "证书已写入个人荣誉档案，可随时查看并下载高清图片。" : "完成岗位训练和综合验收后，系统将自动签发证书。"}</p></div></div><div className="honors-v2-console-grid"><div className="honors-v2-metric"><span>认证成果总数</span><strong>{String(certificates.length).padStart(2, "0")}</strong><i /></div><div className="honors-v2-console-action"><i><b /><b /><b /></i>{certificates[0] ? <button onClick={() => setSelected(certificates[0])}><Award />查看最近证书</button> : <Link to="/competency"><Sparkles />进入岗位训练</Link>}<p>{unlocked ? `${roleCount} 个岗位已完成成果认证` : "当前状态：等待训练成果"}</p></div></div></motion.section>
+    </section>
+  </div>{selected && <RoleCertificateModal open learnerName={selected.learnerName} roleName={selected.roleName} roleId={selected.roleId} userId={selected.userId} completedRounds={selected.completedRounds} onClose={() => setSelected(null)} />}</main>
 }
 
-function HeroStat({ label, value, suffix, compact = false }: { label: string; value: string; suffix?: string; compact?: boolean }) {
-  return (
-    <div className="min-w-0 rounded-2xl border border-white/10 bg-[#0C2744]/40 px-3 py-4 text-center">
-      <span className="block text-[9px] font-semibold tracking-[.08em] text-[#9EB2C4]">{label}</span>
-      <strong className={`mt-1 block truncate text-[#F0D48C] ${compact ? "text-[11px] sm:text-xs" : "text-2xl"}`}>{value}{suffix && <small className="ml-0.5 text-[10px] font-semibold text-[#C7D3DE]">{suffix}</small>}</strong>
-    </div>
-  )
-}
+function Header({ syncing, count }: { syncing: boolean; count: number }) { return <motion.div className="honors-v2-heading" initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}><span><img src="/images/honors-certification-vault-v1.png" alt="" aria-hidden="true" /></span><div><small>02 · 荣誉陈列</small><h2>已获得的岗位证书</h2><p>认证信息、完成进度与查看下载入口各自分层，点击证书进入完整奖状。</p></div><i className="honors-v2-flight" /><em className={syncing ? "is-running" : count ? "is-released" : ""}>{syncing ? <><Loader2 />核验中</> : count ? <><BadgeCheck />已发布 {count} 项</> : "待发布"}</em></motion.div> }
+function HonorTransit({ label, compact = false, reverse = false }: { label: string; compact?: boolean; reverse?: boolean }) { return <div className={`honors-v2-air-transit ${compact ? "is-compact" : ""} ${reverse ? "is-reverse" : ""}`} aria-hidden="true"><span className="honors-v2-air-route" /><i className="honors-v2-air-beacon is-one" /><i className="honors-v2-air-beacon is-two" /><i className="honors-v2-air-beacon is-three" /><b>{label}</b><img src="/images/honors-courier-aircraft-v1.png" alt="" /></div> }
+function CertificateCard({ record, index, onOpen }: { record: RoleCertificateRecord; index: number; onOpen: () => void }) { const tones = ["is-gold", "is-blue", "is-cyan"]; return <motion.article className={`honors-v2-card ${tones[index % tones.length]}`} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .2 }} transition={{ duration: .5, delay: index * .06 }} whileHover={{ y: -4 }}><span className="honors-v2-card-no">{String(index + 1).padStart(2, "0")}</span><button onClick={onOpen} aria-label={`查看${record.roleName}岗位证书`}><div className="honors-v2-certificate"><img src={certificateBackground} alt="" /><div><small>因材智训 · VERIFIED</small><h3>岗位学习荣誉证书</h3><i /><strong>{record.learnerName}</strong><p>完成「{record.roleName}」岗位全部学习内容与综合验收</p></div><span>✓</span></div><div className="honors-v2-card-meta"><div><span><ShieldCheck />已认证</span><strong>{record.roleName}</strong><small><CalendarDays />{formatCertificateDate(record.issuedAt)} · {record.completedRounds} 轮训练</small></div><span className="honors-v2-view"><Eye />查看 / 下载<Download /></span></div></button></motion.article> }
+function HeroStat({ label, value, suffix, compact = false }: { label: string; value: string; suffix?: string; compact?: boolean }) { return <div><span>{label}</span><strong className={compact ? "compact" : ""}>{value}{suffix && <small>{suffix}</small>}</strong></div> }

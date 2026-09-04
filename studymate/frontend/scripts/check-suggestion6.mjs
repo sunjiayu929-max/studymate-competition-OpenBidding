@@ -131,16 +131,16 @@ for (const assistant of await page.locator('[data-tutor-message="assistant"]').a
   assert.ok(width.scroll <= width.client + 1, "长链接和长代码不应撑宽助教消息")
 }
 
-const sidebar = page.getByTestId("tutor-context-sidebar")
-const radar = page.getByTestId("profile-radar")
+const sidebar = page.getByTestId("tutor-digital-human-sidebar")
 const sidebarBox = await sidebar.boundingBox()
-const radarBox = await radar.boundingBox()
-assert.ok(sidebarBox && radarBox)
-assert.ok(Math.abs((sidebarBox.y + sidebarBox.height) - (radarBox.y + radarBox.height)) < 3, "画像雷达应填满右栏剩余高度")
-assert.ok(radarBox.height > 250, "桌面雷达图应明显放大")
-assert.equal(await page.getByText("满分 5 分", { exact: true }).count(), 1)
-assert.equal(await page.getByLabel("数学：3/5").count(), 1)
-assert.equal(await page.getByLabel("领域先验：2/5").count(), 1)
+assert.ok(sidebarBox)
+assert.ok(sidebarBox.height > 600, "数字人应占满助教右侧栏")
+assert.equal(await sidebar.locator("video").count(), 2, "数字人应复用待机与讲解视频轨道")
+assert.equal(await page.getByText("进入实时语音", { exact: false }).count(), 0, "AI 助教页面不应再展示实时语音入口")
+assert.equal(await page.getByRole("button", { name: "数字人对话" }).count(), 1, "语音输入旁应提供当前页数字人对话按钮")
+if (process.env.STUDYMATE_RADAR_SCREENSHOT) {
+  await sidebar.screenshot({ path: process.env.STUDYMATE_RADAR_SCREENSHOT })
+}
 
 await page.getByRole("button", { name: "长截图模式" }).click()
 await page.waitForURL(/\/tutor\?capture=1$/)
@@ -153,12 +153,9 @@ const captureMetrics = await messageScroller.evaluate((element) => ({
 assert.equal(captureMetrics.overflowY, "visible")
 assert.ok(await page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight))
 assert.ok(captureMetrics.clientHeight >= captureMetrics.scrollHeight - 1, "长截图模式应把完整对话展开到文档流")
-const captureRadarBox = await radar.boundingBox()
-assert.ok(captureRadarBox)
-assert.ok(Math.abs(captureRadarBox.height - radarBox.height) < 3, "长截图模式下应保持普通模式的画像雷达高度")
-if (process.env.STUDYMATE_RADAR_SCREENSHOT) {
-  await radar.screenshot({ path: process.env.STUDYMATE_RADAR_SCREENSHOT })
-}
+const captureSidebarBox = await sidebar.boundingBox()
+assert.ok(captureSidebarBox)
+assert.ok(captureSidebarBox.height > 600, "长截图模式下应保留完整数字人侧栏")
 
 await page.getByRole("button", { name: "退出长截图" }).click()
 await page.waitForURL((url) => url.pathname === "/tutor" && !url.searchParams.has("capture"))

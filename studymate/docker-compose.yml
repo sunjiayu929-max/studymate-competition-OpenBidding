@@ -40,8 +40,6 @@ services:
       # Compose 的根 .env/.deploy.env 控制数据库；不要在这里写死 SQLite，
       # 否则会覆盖 backend/.env，导致切换 PostgreSQL 或其他兼容驱动失效。
       DATABASE_URL: "${DATABASE_URL:-sqlite:///./data/studymate.db}"
-      # 本地默认保留演示数据，生产 .deploy.env 必须显式设为 0。
-      SEED_DEMO_USERS: "${SEED_DEMO_USERS:-1}"
     networks:
       - default
       - studymate_edge

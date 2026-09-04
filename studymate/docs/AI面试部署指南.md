@@ -2,7 +2,7 @@
 
 本文针对当前服务器和域名：`deploy@121.40.64.199`、`matropic.cn`。AI 面试保留独立 Flask + MySQL Compose 项目，但通过因材智训的同一 Caddy 入口发布，不需要新增域名、DNS 记录、证书或公网端口。
 
-> 当前服务器实况（2026-08-27）：Caddy 使用宿主机标准 `80/443` 映射，公网 `https://matropic.cn/`、`/api/ping` 和 `/interview/health` 探针正常。学习者入口是带一次性 ticket 的 `/interview/integrations/studymate/launch?...`，`/interview/` 根路径按白名单返回 `404`，不要把它作为面试首页。生产环境必须关闭固定演示种子（`SEED_DEMO_USERS=0`）。
+> 当前服务器实况（2026-08-27）：Caddy 使用宿主机标准 `80/443` 映射，公网 `https://matropic.cn/`、`/api/ping` 和 `/interview/health` 探针正常。学习者入口是带一次性 ticket 的 `/interview/integrations/studymate/launch?...`，`/interview/` 根路径按白名单返回 `404`，不要把它作为面试首页。固定演示数据已写入数据库种子，服务启动时不会重复生成。
 
 代码审查期间曾发现一次 Caddy `SITE_ADDRESS` 漂移导致 HTTPS 短时不可用；当前已恢复。部署脚本现在会拒绝 Shell 环境覆盖 `.deploy.env`，并校验最终 Compose 配置。线上验收仍需使用授权学习者账号完成一次完整面试闭环。
 
@@ -93,7 +93,6 @@ COMPOSE_PROFILES=public,code-runner
 SITE_ADDRESS=matropic.cn
 AI_INTERVIEW_ENABLED=1
 AI_INTERVIEW_DIR=../ai-interview
-SEED_DEMO_USERS=0
 # 无 Git 元数据的部署目录必须记录 CI 产物提交号或镜像 digest：
 # DEPLOY_SOURCE_REVISION=release-commit-or-image-digest
 HTTP_PORT=80

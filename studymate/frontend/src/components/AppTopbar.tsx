@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react"
 import { Link } from "react-router-dom"
 import {
   Award,
@@ -23,6 +24,8 @@ import { cn } from "@/lib/utils"
 import { useCurrentCourse } from "@/store/course"
 import { useTargetRole } from "@/store/targetRole"
 import { useCurrentUser } from "@/store/user"
+
+import "./AppTopbar.css"
 
 export type PageId =
   | "home"
@@ -73,6 +76,31 @@ const PAGE_META: Record<PageId, { label: string; group: string; icon: typeof Hom
   honor: { label: "我的荣誉墙", group: "个人中心", icon: Award },
 }
 
+const PAGE_ICON_TONES: Record<PageId, { accent: string; soft: string }> = {
+  home: { accent: "#167fa9", soft: "#d9f2fb" },
+  workspace: { accent: "#4e62c8", soft: "#e7e8ff" },
+  tutor: { accent: "#168aa7", soft: "#d9f5f5" },
+  profile: { accent: "#376dcb", soft: "#e2ecff" },
+  rag: { accent: "#157a70", soft: "#dcf3ed" },
+  knowledge: { accent: "#256da3", soft: "#deeffb" },
+  ppt: { accent: "#a65d32", soft: "#fae7da" },
+  resources: { accent: "#397ab6", soft: "#e0f1fb" },
+  career: { accent: "#5c64bd", soft: "#e9e7ff" },
+  report: { accent: "#167ba9", soft: "#dff3fb" },
+  learnerReport: { accent: "#2972c0", soft: "#e2edff" },
+  capabilityProfile: { accent: "#4564c4", soft: "#e8e9ff" },
+  tests: { accent: "#9a6332", soft: "#f7ead9" },
+  courses: { accent: "#2774a4", soft: "#def2f8" },
+  notes: { accent: "#7455bd", soft: "#eee6ff" },
+  feedback: { accent: "#39776d", soft: "#e2f2ec" },
+  quiz: { accent: "#266bc4", soft: "#e0ecff" },
+  concept: { accent: "#6458bd", soft: "#ebe7ff" },
+  guide: { accent: "#2d7893", soft: "#dff2f5" },
+  interview: { accent: "#985270", soft: "#f7e4ee" },
+  oj: { accent: "#345e9f", soft: "#e2eaff" },
+  honor: { accent: "#a16f24", soft: "#faedcf" },
+}
+
 interface AppTopbarProps {
   current?: PageId
   className?: string
@@ -80,6 +108,11 @@ interface AppTopbarProps {
   labelOverride?: string
   groupOverride?: string
   selectionLabel?: string
+  statusLabel?: string
+  iconImage?: string
+  showRocketFormation?: boolean
+  rocketCount?: number
+  rocketVariant?: "default" | "honor"
 }
 
 export function AppTopbar({
@@ -89,6 +122,11 @@ export function AppTopbar({
   labelOverride,
   groupOverride,
   selectionLabel,
+  statusLabel,
+  iconImage,
+  showRocketFormation = false,
+  rocketCount,
+  rocketVariant = "default",
 }: AppTopbarProps) {
   const course = useCurrentCourse()
   const targetRole = useTargetRole()
@@ -98,25 +136,26 @@ export function AppTopbar({
   const paper = appearance === "paper"
   const label = labelOverride ?? meta.label
   const group = groupOverride ?? meta.group
+  const iconTone = PAGE_ICON_TONES[current]
+  const resolvedRocketCount = rocketCount ?? (rocketVariant === "honor" ? 5 : 3)
   const roleSelectionPath = user?.role === "admin" ? "/admin" : current === "workspace" ? "/courses?returnTo=%2Fworkspace" : "/courses"
-  const identityDetail = user?.role === "admin"
-    ? `${user.name} · 系统管理员`
-    : user?.role === "enterprise_admin"
-      ? `${user.name} · 企业管理员`
-      : [user?.name, user?.learner_type === "worker" ? user.company || "从业者" : user?.study_stage || "学习者", user?.target_role || targetRole?.name || course?.name].filter(Boolean).join(" · ")
-
   return (
     <header
       className={cn(
-        "app-topbar flex min-h-14 items-center gap-3 rounded-2xl px-3 py-2 sm:px-4",
+        "app-topbar relative flex min-h-14 items-center gap-3 overflow-hidden rounded-2xl px-3 py-2 sm:px-4",
         paper
           ? "border border-[#D7D1C4] bg-[#FFFEFA] shadow-[0_8px_24px_rgba(24,35,45,.055)]"
           : "surface-card",
         className,
       )}
     >
-      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#244C66] text-[#F0D6A4] shadow-[0_7px_16px_rgba(36,76,102,.16)]">
-        <Icon className="size-[17px]" />
+      {showRocketFormation && <span className={cn("app-topbar-rocket-formation", rocketVariant === "honor" && "app-topbar-honor-rockets")} aria-hidden="true" style={{ gridTemplateColumns: `repeat(${resolvedRocketCount}, minmax(0, 1fr))` }}>{Array.from({ length: resolvedRocketCount }, (_, index) => <i key={index}><img src="/images/training-launch-rocket-cutout-v2.png" alt="" /></i>)}</span>}
+      <span
+        className={cn("app-topbar-symbol grid size-10 shrink-0 place-items-center", iconImage ? "app-topbar-real-icon size-12" : "app-topbar-symbol-fallback")}
+        data-page-icon={current}
+        style={!iconImage ? { "--app-topbar-icon-accent": iconTone.accent, "--app-topbar-icon-soft": iconTone.soft } as CSSProperties : undefined}
+      >
+        {iconImage ? <img src={iconImage} alt="" aria-hidden="true" /> : <Icon className="size-[17px]" />}
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 text-[9px] font-bold tracking-[.1em] text-[#8A8172]">
@@ -124,7 +163,7 @@ export function AppTopbar({
           {group}
         </div>
         <h1 className="truncate text-[14px] font-bold tracking-[-.02em] text-[#18232D]">{label}</h1>
-        {identityDetail && <p className="mt-0.5 truncate text-[10px] font-medium text-[#7A817E]">{identityDetail}</p>}
+        {statusLabel && <p className="app-topbar-status mt-0.5 truncate text-[10px] font-semibold text-[#315E83]">{statusLabel}</p>}
       </div>
       <Link
         to={roleSelectionPath}

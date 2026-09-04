@@ -62,6 +62,43 @@ async def role_context(course_id: int | None = None) -> dict:
     return resolve_training_role(course_cfg.name)
 
 
+@router.get("/history")
+async def workspace_history(user: User = Depends(require_user)) -> dict:
+    """返回数据库中的训练与资源历史，供新浏览器恢复真实学习状态。"""
+    async with async_session_maker() as db:
+        resources = list((await db.scalars(
+            select(Resource)
+            .where(Resource.user_id == user.id)
+            .order_by(Resource.created_at.desc())
+        )).all())
+        runs = list((await db.scalars(
+            select(TrainingRun)
+            .where(TrainingRun.user_id == user.id, TrainingRun.status == "completed")
+            .order_by(TrainingRun.updated_at.desc())
+            .limit(20)
+        )).all())
+    type_counts: dict[str, int] = {}
+    for resource in resources:
+        type_counts[resource.type] = type_counts.get(resource.type, 0) + 1
+    latest = runs[0] if runs else None
+    return {
+        "resource_count": len(resources),
+        "resource_types": type_counts,
+        "training_count": len(runs),
+        "latest_run": None if latest is None else {
+            "run_id": latest.id,
+            "target_role": latest.target_role,
+            "topic": latest.topic,
+            "diagnosis": latest.diagnosis or {},
+            "outputs": latest.outputs or {},
+            "reviews": latest.reviews or {},
+            "decision": latest.decision or {},
+            "feedback": latest.feedback or {},
+            "completed_at": latest.updated_at.isoformat() if latest.updated_at else None,
+        },
+    }
+
+
 @router.post("/generate")
 async def generate(req: GenerateRequest, user: User = Depends(require_user)):
     """SSE 流式执行岗位训练闭环，并在裁决通过后发布资源。"""

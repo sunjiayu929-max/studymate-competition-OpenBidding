@@ -39,6 +39,26 @@ APPROVED_EMAILS = (
     "zhouxiang@pramate.com",
     "tianyixin@pramate.com",
     "liufei@pramate.com",
+    "sunjiayu@yczx.com",
+    "zhangxianghui@yczx.com",
+    "baixinyue@yczx.com",
+    "yuanshicong@yczx.com",
+    "tianyixin@yczx.com",
+    "lijiayi@yczx.com",
+    "zhouxiang@yczx.com",
+    "chenzhuo@yczx.com",
+    "liufei@yczx.com",
+    "sunjiayupra@yczx.com",
+    "zhangxianghuipra@yczx.com",
+    "baixinyuepra@yczx.com",
+    "yuanshicongpra@yczx.com",
+    "tianyixinpra@yczx.com",
+    "lijiayipra@yczx.com",
+    "zhouxiangpra@yczx.com",
+    "chenzhuopra@yczx.com",
+    "liufeipra@yczx.com",
+    "test1@yczx.com",
+    "test2@yczx.com",
 )
 
 # Current seeds use course IDs 1-5 as the five active courses. Keep this map
@@ -185,6 +205,81 @@ def sanitize(conn: sqlite3.Connection, removed_ids: list[int]) -> dict[str, int]
     marks = placeholders(removed_ids)
     ids = tuple(removed_ids)
 
+    enterprise_ids = tuple(
+        int(row[0])
+        for row in conn.execute(
+            f"SELECT id FROM enterprises WHERE owner_id IN ({marks})",
+            ids,
+        )
+    ) if table_exists(conn, "enterprises") else ()
+    enterprise_marks = placeholders(list(enterprise_ids)) if enterprise_ids else ""
+
+    if table_exists(conn, "enterprise_task_assignments"):
+        if enterprise_ids:
+            deleted["enterprise_task_assignments"] = execute_count(
+                conn,
+                f"""DELETE FROM enterprise_task_assignments
+                WHERE learner_id IN ({marks})
+                   OR task_id IN (SELECT id FROM enterprise_tasks WHERE enterprise_id IN ({enterprise_marks}))""",
+                ids + enterprise_ids,
+            )
+        else:
+            deleted["enterprise_task_assignments"] = execute_count(
+                conn,
+                f"DELETE FROM enterprise_task_assignments WHERE learner_id IN ({marks})",
+                ids,
+            )
+
+    if table_exists(conn, "enterprise_audit_logs"):
+        if enterprise_ids:
+            deleted["enterprise_audit_logs"] = execute_count(
+                conn,
+                f"DELETE FROM enterprise_audit_logs WHERE actor_id IN ({marks}) OR enterprise_id IN ({enterprise_marks})",
+                ids + enterprise_ids,
+            )
+        else:
+            deleted["enterprise_audit_logs"] = execute_count(
+                conn,
+                f"DELETE FROM enterprise_audit_logs WHERE actor_id IN ({marks})",
+                ids,
+            )
+
+    for table in ("enterprise_tasks", "enterprise_knowledge_bases"):
+        if not table_exists(conn, table):
+            continue
+        if enterprise_ids:
+            deleted[table] = execute_count(
+                conn,
+                f'DELETE FROM "{table}" WHERE creator_id IN ({marks}) OR enterprise_id IN ({enterprise_marks})',
+                ids + enterprise_ids,
+            )
+        else:
+            deleted[table] = execute_count(
+                conn,
+                f'DELETE FROM "{table}" WHERE creator_id IN ({marks})',
+                ids,
+            )
+
+    if table_exists(conn, "enterprise_memberships"):
+        if enterprise_ids:
+            deleted["enterprise_memberships"] = execute_count(
+                conn,
+                f"DELETE FROM enterprise_memberships WHERE user_id IN ({marks}) OR enterprise_id IN ({enterprise_marks})",
+                ids + enterprise_ids,
+            )
+        else:
+            deleted["enterprise_memberships"] = execute_count(
+                conn,
+                f"DELETE FROM enterprise_memberships WHERE user_id IN ({marks})",
+                ids,
+            )
+    if enterprise_ids:
+        deleted["enterprises"] = execute_count(
+            conn,
+            f"DELETE FROM enterprises WHERE id IN ({enterprise_marks})",
+            enterprise_ids,
+        )
+
     if table_exists(conn, "feedback_replies"):
         deleted["feedback_replies"] = execute_count(
             conn,
@@ -207,6 +302,33 @@ def sanitize(conn: sqlite3.Connection, removed_ids: list[int]) -> dict[str, int]
                 SELECT id FROM quiz_sessions WHERE user_id IN ({marks})
             )
             """,
+            ids,
+        )
+
+    if table_exists(conn, "interview_launch_tickets"):
+        deleted["interview_launch_tickets"] = execute_count(
+            conn,
+            f"""DELETE FROM interview_launch_tickets
+            WHERE attempt_id IN (SELECT id FROM interview_attempts WHERE user_id IN ({marks}))""",
+            ids,
+        )
+
+    if table_exists(conn, "user_knowledge_chunks"):
+        deleted["user_knowledge_chunks"] = execute_count(
+            conn,
+            f"DELETE FROM user_knowledge_chunks WHERE user_id IN ({marks})",
+            ids,
+        )
+    if table_exists(conn, "user_knowledge_documents"):
+        deleted["user_knowledge_documents"] = execute_count(
+            conn,
+            f"DELETE FROM user_knowledge_documents WHERE user_id IN ({marks})",
+            ids,
+        )
+    if table_exists(conn, "user_knowledge_bases"):
+        deleted["user_knowledge_bases"] = execute_count(
+            conn,
+            f"DELETE FROM user_knowledge_bases WHERE user_id IN ({marks})",
             ids,
         )
 
@@ -243,12 +365,17 @@ def sanitize(conn: sqlite3.Connection, removed_ids: list[int]) -> dict[str, int]
         "events",
         "feedback",
         "folders",
+        "interview_attempts",
         "learning_paths",
         "notes",
+        "oj_launch_tickets",
         "profile_snapshots",
         "profiles",
         "quiz_sessions",
         "resources",
+        "role_certificates",
+        "theory_assessments",
+        "training_runs",
         "tutor_sessions",
     ):
         if table_exists(conn, table):

@@ -56,10 +56,6 @@ class Settings(BaseSettings):
     EMBEDDING_DIM: int = 1024
 
     DATABASE_URL: str = "sqlite:///./studymate.db"
-    # Local development keeps the presentation seed enabled for convenience.
-    # Production Compose overrides this to 0 so fixed demo credentials and
-    # demo records are never recreated on every backend restart.
-    SEED_DEMO_USERS: bool = True
     CHROMA_PERSIST_DIR: str = "./data/chroma"
     # 私有知识资料原文件目录。Docker 中与数据库同处 /app/data 持久卷。
     PRIVATE_KNOWLEDGE_DIR: str = "./data/private_knowledge"

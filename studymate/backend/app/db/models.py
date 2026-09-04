@@ -69,6 +69,20 @@ class ProfileSnapshot(Base, TimestampMixin):
     trigger_event: Mapped[str] = mapped_column(String(64))
 
 
+class RoleCertificate(Base, TimestampMixin):
+    """Persisted role certificate shown on the learner's honor wall."""
+    __tablename__ = "role_certificates"
+    __table_args__ = (UniqueConstraint("user_id", "role_id", name="uq_role_certificate_user_role"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    role_id: Mapped[str] = mapped_column(String(128), index=True)
+    role_name: Mapped[str] = mapped_column(String(128))
+    completed_rounds: Mapped[int] = mapped_column(Integer, default=1)
+    issued_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    serial: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+
+
 class Course(Base, TimestampMixin):
     __tablename__ = "courses"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -218,7 +232,7 @@ class UserKnowledgeChunk(Base, TimestampMixin):
 
 
 class Resource(Base, TimestampMixin):
-    """多 Agent 生成的资源。type ∈ {doc, mindmap, quiz, reading, code, video}"""
+    """多 Agent 生成的资源。type ∈ {doc, guide, mindmap, quiz, reading, code, video}"""
     __tablename__ = "resources"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
@@ -345,6 +359,11 @@ class Evaluation(Base, TimestampMixin):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     scores: Mapped[dict] = mapped_column(JSON)
     suggestions: Mapped[list] = mapped_column(JSON, default=list)
+    profile_delta: Mapped[dict] = mapped_column(JSON, default=dict)
+    evidence: Mapped[dict] = mapped_column(JSON, default=dict)
+    summary_markdown: Mapped[str] = mapped_column(Text, default="")
+    next_topics: Mapped[list] = mapped_column(JSON, default=list)
+    profile_version: Mapped[int] = mapped_column(Integer, default=1)
 
 
 class Folder(Base, TimestampMixin):

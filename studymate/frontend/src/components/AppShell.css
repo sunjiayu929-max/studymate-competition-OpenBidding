@@ -1,0 +1,47 @@
+.app-shell-workspace {
+  --app-shell-navigation-width: 240px;
+}
+
+.app-shell-workspace.is-navigation-collapsed {
+  --app-shell-navigation-width: 72px;
+}
+
+@media (min-width: 1024px) {
+  .app-shell-workspace:not(.app-shell-universe) .app-shell-content > .app-page {
+    width: calc(100% + var(--app-shell-navigation-width));
+    margin-left: calc(var(--app-shell-navigation-width) * -1);
+    padding-right: 14px !important;
+    padding-left: calc(var(--app-shell-navigation-width) + 14px) !important;
+    box-sizing: border-box;
+  }
+
+  .app-shell-workspace:not(.app-shell-universe) .app-shell-content > .app-page > .mx-auto {
+    width: 100%;
+    max-width: none !important;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .app-shell-workspace .app-shell-navigation {
+    border-right-color: rgba(126, 177, 204, .38);
+    background:
+      radial-gradient(circle at 10% 7%, rgba(70, 164, 207, .16), transparent 27%),
+      radial-gradient(circle at 88% 68%, rgba(112, 183, 207, .12), transparent 35%),
+      linear-gradient(180deg, rgba(229, 243, 249, .84), rgba(217, 236, 244, .82) 52%, rgba(231, 243, 248, .86));
+    box-shadow: 7px 0 24px rgba(36, 103, 144, .035);
+    backdrop-filter: blur(13px) saturate(108%);
+  }
+
+  .app-shell-workspace .app-shell-navigation::after {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 100%;
+    width: 28px;
+    content: "";
+    pointer-events: none;
+    background: linear-gradient(90deg, rgba(218, 238, 246, .34), transparent);
+  }
+}

@@ -1,0 +1,242 @@
+.profile-scan {
+  --profile-sky-50: #f7fcff;
+  --profile-sky-100: #edf8fd;
+  --profile-sky-200: #dff1f9;
+  --profile-sky-300: #c7e5f2;
+  --profile-sky-500: #55a9d0;
+  --profile-sky-700: #286889;
+  --profile-sky-900: #173e59;
+  background-color: #eaf6fc;
+  background-image:
+    linear-gradient(180deg, rgba(247, 252, 255, .7), rgba(226, 243, 251, .72)),
+    url("/images/learner-profile-scan-background-v1.png");
+}
+
+.profile-scan .profile-scan-dialogue {
+  border-color: rgba(94, 162, 197, .42) !important;
+  background: linear-gradient(145deg, rgba(249, 253, 255, .94), rgba(227, 243, 251, .84)) !important;
+  box-shadow: 0 18px 46px rgba(47, 112, 148, .11) !important;
+}
+
+.profile-scan .profile-scan-dialogue > header {
+  border-color: rgba(92, 158, 192, .3) !important;
+  background: linear-gradient(90deg, rgba(246, 252, 255, .96), rgba(229, 244, 251, .92)) !important;
+}
+
+.profile-scan .profile-scan-dialogue > header h2,
+.profile-scan .profile-scan-dialogue h3 {
+  color: var(--profile-sky-900) !important;
+}
+
+.profile-scan .profile-scan-dialogue > header p {
+  color: #55758a !important;
+}
+
+.profile-scan .profile-scan-dialogue > header > div:first-child > a {
+  color: #53758b !important;
+}
+
+.profile-scan .profile-scan-dialogue > header > div:first-child > a:hover {
+  color: #245f82 !important;
+  background: rgba(211, 236, 248, .78) !important;
+}
+
+.profile-scan .profile-scan-dialogue > header > div:first-child > span:nth-child(2) {
+  background: rgba(93, 157, 190, .28) !important;
+}
+
+.profile-scan .profile-scan-dialogue > header .nav-scroll > span,
+.profile-scan .profile-scan-dialogue > header .nav-scroll button,
+.profile-scan .profile-scan-dialogue > header .nav-scroll [role="button"] {
+  border-color: rgba(92, 154, 186, .32) !important;
+  color: #3f6880 !important;
+  background: rgba(249, 253, 255, .86) !important;
+  box-shadow: 0 4px 12px rgba(48, 109, 140, .05);
+}
+
+.profile-scan .profile-scan-dialogue > header .nav-scroll button:hover,
+.profile-scan .profile-scan-dialogue > header .nav-scroll [role="button"]:hover {
+  color: #1f6187 !important;
+  background: #e3f3fb !important;
+}
+
+.profile-scan .profile-scan-dialogue > header .nav-scroll svg {
+  color: #337da3;
+}
+
+.profile-scan .profile-scan-dialogue > div {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, .86), transparent 34rem),
+    linear-gradient(180deg, rgba(246, 252, 255, .82), rgba(235, 247, 252, .72)) !important;
+}
+
+.profile-scan .profile-scan-device-avatar {
+  border-color: rgba(79, 153, 188, .38);
+  background: radial-gradient(circle at 48% 40%, #f7fdff, #d9eff8 72%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .9), 0 8px 20px rgba(50, 121, 156, .16);
+}
+
+.profile-scan .profile-scan-dialogue > div p {
+  color: #55748a !important;
+}
+
+.profile-scan .profile-scan-question-card {
+  border-color: rgba(78, 157, 196, .34) !important;
+  color: #285978 !important;
+  box-shadow: 0 8px 20px rgba(46, 112, 147, .07) !important;
+}
+
+.profile-scan .profile-scan-question-card:nth-child(1) {
+  background: linear-gradient(145deg, rgba(248, 253, 255, .98), rgba(218, 239, 249, .9)) !important;
+}
+
+.profile-scan .profile-scan-question-card:nth-child(2) {
+  background: linear-gradient(145deg, rgba(245, 252, 255, .98), rgba(207, 234, 247, .88)) !important;
+}
+
+.profile-scan .profile-scan-question-card:nth-child(3) {
+  background: linear-gradient(145deg, rgba(247, 253, 255, .98), rgba(214, 241, 248, .88)) !important;
+}
+
+.profile-scan .profile-scan-question-card > span {
+  color: #4e8eae !important;
+}
+
+.profile-scan .profile-scan-question-card:hover {
+  border-color: rgba(46, 137, 181, .62) !important;
+  color: #174e70 !important;
+  background: #ddf1fa !important;
+  box-shadow: 0 13px 28px rgba(45, 111, 147, .14) !important;
+}
+
+.profile-scan .profile-scan-composer {
+  border-color: rgba(86, 153, 187, .3) !important;
+  background: linear-gradient(105deg, rgba(225, 243, 251, .96), rgba(243, 251, 255, .94)) !important;
+}
+
+.profile-scan .profile-scan-composer > div > div:first-child {
+  border-color: rgba(85, 151, 184, .4) !important;
+  background: rgba(251, 254, 255, .92) !important;
+  box-shadow: 0 10px 26px rgba(41, 101, 132, .09) !important;
+}
+
+.profile-scan .profile-scan-composer > div > div:first-child:focus-within {
+  border-color: rgba(44, 137, 182, .68) !important;
+  box-shadow: 0 0 0 3px rgba(84, 178, 218, .1), 0 13px 30px rgba(41, 101, 132, .13) !important;
+}
+
+.profile-scan .profile-scan-composer textarea {
+  color: #173e59 !important;
+}
+
+.profile-scan .profile-scan-composer textarea::placeholder {
+  color: #7894a5 !important;
+}
+
+.profile-scan .profile-scan-composer button:not([type="submit"]) {
+  color: #55778d !important;
+}
+
+.profile-scan .profile-scan-composer button:not([type="submit"]):hover {
+  color: #276d93 !important;
+  background: #e2f2fa !important;
+}
+
+.profile-scan .profile-scan-composer button[type="submit"] {
+  color: white !important;
+  background: linear-gradient(145deg, #4ca5cd, #2877a0) !important;
+  box-shadow: 0 8px 18px rgba(39, 119, 160, .24) !important;
+}
+
+.profile-scan .profile-scan-composer button[type="submit"]:hover {
+  background: linear-gradient(145deg, #429bc4, #236b91) !important;
+}
+
+.profile-scan .profile-scan-composer > div > div:last-child {
+  color: #648398 !important;
+}
+
+.profile-scan .profile-scan-composer::before {
+  background: linear-gradient(90deg, transparent, rgba(91, 199, 232, .19), transparent);
+}
+
+.profile-scan .profile-scan-identity-card {
+  border-color: rgba(83, 153, 188, .38) !important;
+  background: linear-gradient(100deg, rgba(244, 251, 255, .96), rgba(226, 242, 250, .88)) !important;
+  box-shadow: 0 10px 28px rgba(44, 105, 137, .09) !important;
+}
+
+.profile-scan .profile-scan-identity-card::before {
+  background: linear-gradient(180deg, #3c91bb, #72cce2, #4c9bc1) !important;
+}
+
+.profile-scan .profile-scan-identity-card h2 {
+  color: #173e59 !important;
+}
+
+.profile-scan .profile-scan-identity-card p {
+  color: #648196 !important;
+}
+
+.profile-scan .profile-scan-identity-card > div:first-child > span:last-child {
+  border-color: rgba(80, 150, 185, .34) !important;
+  color: #2c7195 !important;
+  background: #e2f2fa !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .76);
+}
+
+.profile-scan .profile-scan-identity-card > div:nth-child(2),
+.profile-scan .profile-scan-identity-card > div:nth-child(3),
+.profile-scan .profile-scan-identity-card > label > span:last-child {
+  border-color: rgba(80, 147, 180, .36) !important;
+  color: #254f69 !important;
+  background: rgba(249, 253, 255, .9) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85), 0 5px 14px rgba(49, 108, 137, .04);
+}
+
+.profile-scan .profile-scan-identity-card > div:nth-child(3) {
+  background: rgba(222, 240, 249, .88) !important;
+}
+
+.profile-scan .profile-scan-identity-card > div:nth-child(2) svg,
+.profile-scan .profile-scan-identity-card > div:nth-child(3) svg,
+.profile-scan .profile-scan-identity-card > label svg {
+  color: #3e82a5 !important;
+}
+
+.profile-scan .profile-scan-identity-card > label > span:first-child {
+  color: #315f7a !important;
+}
+
+.profile-scan .profile-scan-identity-card > label > span:last-child:focus-within {
+  border-color: rgba(42, 133, 179, .7) !important;
+  box-shadow: 0 0 0 3px rgba(78, 172, 211, .11), 0 7px 16px rgba(44, 109, 142, .07) !important;
+}
+
+.profile-scan .profile-scan-identity-card select,
+.profile-scan .profile-scan-identity-card input {
+  color: #214b66 !important;
+}
+
+.profile-scan .profile-scan-identity-card select:invalid,
+.profile-scan .profile-scan-identity-card input::placeholder {
+  color: #7d97a7 !important;
+}
+
+.profile-scan .profile-scan-identity-card button[type="submit"] {
+  background: linear-gradient(145deg, #438fb6, #245f80) !important;
+  box-shadow: 0 7px 16px rgba(33, 94, 127, .2);
+  transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.profile-scan .profile-scan-identity-card button[type="submit"]:hover {
+  background: linear-gradient(145deg, #3985ad, #1f5573) !important;
+  box-shadow: 0 10px 21px rgba(33, 94, 127, .27);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 680px) {
+  .profile-scan .profile-scan-dialogue {
+    border-radius: 20px !important;
+  }
+}

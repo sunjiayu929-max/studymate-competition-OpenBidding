@@ -101,6 +101,20 @@ async def eval_run(req: EvalRequest, db: AsyncSession = Depends(get_db)):
             user_id=req.user_id,
             scores=report.get("scores", {}),
             suggestions=report.get("suggestions", []),
+            profile_delta=normalized_delta,
+            evidence={
+                "course_id": req.course_id,
+                "course_name": course_cfg.name,
+                "topic": course_cfg.name,
+                "quiz_count": len(req.quiz_results),
+                "time_spent_min": req.engagement.time_spent_min,
+                "resources_consumed": list(req.engagement.resources_consumed),
+                "resources_available": list(req.engagement.resources_available),
+                "topics_studied": list(req.engagement.topics_studied),
+            },
+            summary_markdown=str(report.get("summary_markdown") or ""),
+            next_topics=list(report.get("next_topics") or []),
+            profile_version=profile.version,
         ))
         await db.commit()
 
@@ -199,6 +213,11 @@ async def eval_history(user_id: int, limit: int = 10, db: AsyncSession = Depends
                 "id": it.id,
                 "scores": it.scores,
                 "suggestions": it.suggestions,
+                "profile_delta": it.profile_delta or {},
+                "evidence": it.evidence or {},
+                "summary_markdown": it.summary_markdown or "",
+                "next_topics": it.next_topics or [],
+                "profile_version": it.profile_version or 1,
                 "created_at": it.created_at.isoformat() if it.created_at else None,
             }
             for it in items

@@ -1,79 +1,72 @@
-import { ArrowUpRight, Code2, ExternalLink, Gauge, ShieldCheck } from "lucide-react"
+import { ArrowUpRight, Clock3, ExternalLink, Gauge, MonitorCog, ScanLine, ShieldCheck } from "lucide-react"
+import { useEffect, useState } from "react"
 
 import { AppTopbar } from "@/components/AppTopbar"
 
-interface OjCollection {
-  slug: string
-  eyebrow: string
-  title: string
-  description: string
-  count: string
-}
+interface OjCollection { slug: string; eyebrow: string; title: string; description: string; count: string; cover: string; coverAlt: string }
 
 // 与 OJ 侧 oj/packages/studymate-oj/catalog.yaml 的学习者题单保持一致。
 const collections: OjCollection[] = [
-  { slug: "interview-core", eyebrow: "LeetCode 官方题单", title: "面试经典 150 题", description: "按官方章节建立完整的面试算法练习路径。", count: "150 题" },
-  { slug: "interview-must", eyebrow: "LeetCode 官方题单", title: "面试必考 75 题", description: "集中练习通用面试高频考点。", count: "75 题" },
-  { slug: "interview-variants", eyebrow: "因材智训可直接提交", title: "面试经典题变式", description: "数组、字符串、查找、图与动态规划的站内练习路径。", count: "75 题" },
-  { slug: "autumn-sprint", eyebrow: "因材智训可直接提交", title: "秋招冲刺百题计划", description: "语法、复杂度、数据处理与常见算法主线训练。", count: "100 题" },
-  { slug: "general-foundation", eyebrow: "因材智训可直接提交", title: "多岗位筑基训练计划", description: "面向后端、前端、测试、数据和 Python 方向的通用编程基础训练。", count: "30 题" },
-  { slug: "problem-bank", eyebrow: "Hydro 本地题库", title: "题库", description: "浏览已导入的官方训练题和其他公开练习。", count: "全部题目" },
+  { slug: "interview-core", eyebrow: "LeetCode 官方题单", title: "面试经典 150 题", description: "按官方章节建立完整的面试算法练习路径。", count: "150 题", cover: "/career-covers/ai-infra.webp", coverAlt: "工程师在服务器机房检查计算设备" },
+  { slug: "interview-must", eyebrow: "LeetCode 官方题单", title: "面试必考 75 题", description: "集中练习通用面试高频考点。", count: "75 题", cover: "/career-covers/ai-native-frontend.webp", coverAlt: "开发者在计算机前进行编程设计" },
+  { slug: "interview-variants", eyebrow: "因材智训可直接提交", title: "面试经典题变式", description: "数组、字符串、查找、图与动态规划的站内练习路径。", count: "75 题", cover: "/career-covers/devsecops.webp", coverAlt: "工程师查看自动化测试与交付流程" },
+  { slug: "autumn-sprint", eyebrow: "因材智训可直接提交", title: "秋招冲刺百题计划", description: "语法、复杂度、数据处理与常见算法主线训练。", count: "100 题", cover: "/career-covers/industrial-data.webp", coverAlt: "工程师在工业现场分析实时数据" },
+  { slug: "general-foundation", eyebrow: "因材智训可直接提交", title: "多岗位筑基训练计划", description: "面向后端、前端、测试、数据和 Python 方向的通用编程基础训练。", count: "30 题", cover: "/career-covers/fde.webp", coverAlt: "两位工程师协作解决计算机问题" },
+  { slug: "problem-bank", eyebrow: "Hydro 本地题库", title: "题库", description: "浏览已导入的官方训练题和其他公开练习。", count: "全部题目", cover: "/career-covers/industrial-network.webp", coverAlt: "工程师维护工业网络与计算设备" },
 ]
 
-function collectionHref(slug: string) {
-  return `/api/oj/launch?next=${encodeURIComponent(`/oj/collections/${slug}`)}`
-}
+function collectionHref(slug: string) { return `/api/oj/launch?next=${encodeURIComponent(`/oj/collections/${slug}`)}` }
+
+const beijingTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
+  timeZone: "Asia/Shanghai",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+})
 
 export function OjCenter() {
+  const [beijingTime, setBeijingTime] = useState(() => beijingTimeFormatter.format(new Date()))
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setBeijingTime(beijingTimeFormatter.format(new Date())), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+
   return (
-    <main className="app-page paper-theme min-h-dvh">
-      <div className="mx-auto max-w-[1240px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <AppTopbar current="oj" appearance="paper" />
-        <section className="mt-4 overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)]">
-          <div className="border-b border-[#D7D1C4] bg-[#F8F6F0] px-5 py-6 sm:px-8">
-            <div className="flex max-w-3xl items-start gap-3">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#E7EDF3] text-[#315E83]"><Code2 className="size-5" /></span>
-              <div>
-                <p className="text-[10px] font-bold tracking-[.14em] text-[#8E6925]">在线评测 · ONLINE JUDGE</p>
-                <h1 className="mt-1 text-2xl font-bold tracking-[-.035em] text-[#18232D]">机考备战中心</h1>
-                <p className="mt-2 text-sm leading-6 text-[#66717B]">在因材智训内置的在线判题系统中完成算法与编程练习，提交后实时查看评测结果。</p>
-              </div>
-            </div>
+    <main className="app-page paper-theme oj-prep-studio min-h-dvh pb-12">
+      <div className="w-full px-2 py-3 sm:px-4 sm:py-4 lg:px-5">
+        <AppTopbar className="rounded-none border-x-0 shadow-none" current="oj" appearance="paper" iconImage="/images/quality-inspection-instrument-v1.png" showRocketFormation rocketVariant="honor" />
+        <section className="oj-prep-hero relative mt-3 overflow-hidden border-y px-3 py-5 sm:px-5 lg:px-6">
+          <div className="oj-prep-live-row flex items-center justify-between border-b pb-4">
+            <div className="flex items-center gap-3"><span className="oj-prep-live-dot size-2 rounded-full" /><span>EXAM TERMINAL</span><span>READY · 01</span></div>
+            <span className="hidden sm:block">在线判题链路已校准</span>
           </div>
-
-          <div className="grid gap-5 p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <section className="rounded-2xl border border-[#D7D1C4] bg-[#FBF9F4] p-5" aria-labelledby="oj-start">
-              <h2 id="oj-start" className="text-sm font-bold text-[#18232D]">开始练习</h2>
-              <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-[#E0DACE] bg-[#FFFEFA] p-3"><dt className="text-[10px] font-bold text-[#8A8172]">练习方式</dt><dd className="mt-1 text-sm font-bold text-[#315E83]">在线编写并提交代码，实时评测</dd></div>
-                <div className="rounded-xl border border-[#E0DACE] bg-[#FFFEFA] p-3"><dt className="text-[10px] font-bold text-[#8A8172]">账号体系</dt><dd className="mt-1 text-sm font-bold text-[#315E83]">与因材智训账号互通，自动登录</dd></div>
-              </dl>
-              <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
-                <a href="/api/oj/launch" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white shadow-[0_8px_18px_rgba(36,76,102,.16)] hover:bg-[#1D4058]"><ExternalLink className="size-4" />进入在线评测</a>
-                <span className="text-[10px] leading-4 text-[#8A8172]">将自动使用当前因材智训账号登录在线判题系统，无需再次注册或登录。</span>
-              </div>
-            </section>
-
-            <aside className="space-y-3" aria-label="在线评测说明">
-              <div className="rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] p-4"><ShieldCheck className="size-5 text-[#6F8A69]" /><h2 className="mt-3 text-sm font-bold text-[#18232D]">账号说明</h2><p className="mt-1.5 text-xs leading-5 text-[#66717B]">首次进入时会根据当前因材智训账号自动创建对应的判题系统账号，无需注册第二套账号。</p></div>
-              <div className="rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] p-4"><Gauge className="size-5 text-[#B1842C]" /><h2 className="mt-3 text-sm font-bold text-[#18232D]">判题说明</h2><p className="mt-1.5 text-xs leading-5 text-[#66717B]">由 Hydro 判题引擎支持，常见语言均可提交，评测结果与用时内存实时返回。</p></div>
-            </aside>
-          </div>
-
-          <section className="border-t border-[#D7D1C4] bg-[#FFFEFA] px-5 py-5 sm:px-8" aria-labelledby="oj-collections">
-            <div className="flex items-center justify-between gap-3"><h2 id="oj-collections" className="text-sm font-bold text-[#18232D]">精选题单</h2><span className="text-[10px] text-[#8A8172]">点击直达对应题单</span></div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {collections.map((item) => <a key={item.slug} href={collectionHref(item.slug)} className="group rounded-xl border border-[#E0DACE] bg-[#FBF9F4] p-3.5 transition-colors hover:border-[#B8C7D4] hover:bg-[#F8F6F0]">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-[10px] font-bold tracking-[.12em] text-[#8E6925]">{item.eyebrow}</p>
-                  <ArrowUpRight className="size-3.5 shrink-0 text-[#8A8172] transition-colors group-hover:text-[#315E83]" />
-                </div>
-                <p className="mt-1.5 text-sm font-bold text-[#315E83]">{item.title}</p>
-                <p className="mt-1 text-[11px] leading-4 text-[#66717B]">{item.description}</p>
-                <p className="mt-2 text-[10px] font-bold text-[#557052]">{item.count}</p>
-              </a>)}
+          <div className="relative mt-5 grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)_250px] xl:items-center">
+            <div className="oj-prep-summary min-w-0">
+              <div className="oj-prep-index"><strong>04</strong><span>机考备战中心</span><i>EXAM READINESS</i></div>
+              <h1 className="oj-prep-title mt-5"><span>机考备战</span><span>中心</span></h1><div className="oj-prep-accent mt-5" aria-hidden="true" />
+              <p className="oj-prep-copy mt-5">在内置在线判题系统中完成算法与编程练习，提交后实时查看评测结果。</p>
+              <dl className="oj-prep-metrics mt-6 grid grid-cols-2"><div><dt>判题引擎</dt><dd>HYDRO</dd></div><div><dt>账号链路</dt><dd>AUTO</dd></div></dl>
             </div>
-          </section>
+            <div className="oj-prep-calibration" aria-label="电子答题终端校准展示">
+              <div className="oj-prep-terminal" aria-hidden="true"><span className="oj-prep-terminal-camera" /><div className="oj-prep-terminal-screen"><i /><b>{beijingTime}</b><small>北京时间 / UTC+8</small><span><em /><em /><em /><em /></span></div><span className="oj-prep-terminal-base" /></div>
+              <div className="oj-prep-scan-track" aria-hidden="true"><i /><span /><span /><span /></div><div className="oj-prep-signal-bank" aria-hidden="true"><span className="is-ready" /><span /><span /></div>
+              <div className="oj-prep-calibration-label"><ScanLine className="size-4" /><span>终端校准扫描</span><b>SYNC 100%</b></div>
+            </div>
+            <a href="/api/oj/launch" className="oj-prep-primary group flex min-h-32 items-end justify-between gap-3 rounded-[26px] border px-5 py-4"><span className="oj-prep-launch-kicker">OJ LAUNCH · READY</span><span className="relative z-10 flex items-center gap-3"><span className="oj-prep-primary-icon grid size-11 place-items-center rounded-full"><MonitorCog className="size-5" /></span><span><strong>启动在线评测</strong><small>自动登录 · 即时判题</small></span></span><span className="oj-prep-primary-arrow relative z-10 grid size-9 place-items-center rounded-full"><ExternalLink className="size-4" /></span></a>
+          </div>
+          <div className="oj-prep-stage-rail relative mt-6 grid grid-cols-4 overflow-hidden rounded-[14px] border"><span className="oj-prep-route-signal" aria-hidden="true" />{["身份同步", "环境校准", "在线作答", "即时评测"].map((label, index) => <div key={label}><span className="oj-prep-stage-label"><i>{String(index + 1).padStart(2, "0")}</i>{label}</span></div>)}</div>
+        </section>
+        <div className="oj-prep-transition is-training" aria-hidden="true"><span>PLATFORM LINK</span><i /><i /><i /><b>题单数据通道</b><em /></div>
+        <section className="oj-prep-section border-y px-3 py-8 sm:px-5 lg:px-6" aria-labelledby="oj-collections">
+          <div className="oj-prep-section-heading"><span className="oj-prep-section-icon"><ScanLine className="size-5" /></span><div><span>01 · 题目训练</span><h2 id="oj-collections">精选题单</h2><p>按目标与阶段选择练习，点击直达对应题单。</p></div><i className="oj-prep-heading-line" aria-hidden="true"><b /></i></div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{collections.map((item, index) => <a key={item.slug} href={collectionHref(item.slug)} className="oj-prep-collection group"><span className="oj-prep-cover"><img src={item.cover} alt={item.coverAlt} loading="lazy" /><i aria-hidden="true" /><b>{String(index + 1).padStart(2, "0")}</b></span><div className="oj-prep-collection-body"><div className="flex items-start justify-between gap-2"><p className="oj-prep-eyebrow">{item.eyebrow}</p><ArrowUpRight className="size-4 shrink-0" /></div><h3>{item.title}</h3><p>{item.description}</p><strong>{item.count}</strong></div></a>)}</div>
+        </section>
+        <div className="oj-prep-transition is-readiness" aria-hidden="true"><span>TRAINING COMPLETE</span><i /><i /><i /><b>考场信号中继</b><em /></div>
+        <section className="oj-prep-section border-y px-3 py-8 sm:px-5 lg:px-6" aria-labelledby="oj-start">
+          <div className="oj-prep-section-heading"><span className="oj-prep-section-icon"><Clock3 className="size-5" /></span><div><span>02 · 临场准备</span><h2 id="oj-start">评测通道就绪</h2><p>账号互通、编译运行与结果回传均在同一练习链路内完成。</p></div><i className="oj-prep-heading-line" aria-hidden="true"><b /></i></div>
+          <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_repeat(2,260px)]"><div className="oj-prep-info-panel"><span>操作说明 / OPERATION</span><h3>在线编写并提交代码，实时评测</h3><p>进入时将自动使用当前因材智训账号登录在线判题系统，无需再次注册或登录。</p></div><div className="oj-prep-note"><ShieldCheck className="size-5" /><div><h3>账号说明</h3><p>首次进入会自动创建对应判题账号，无需维护第二套账户。</p></div></div><div className="oj-prep-note"><Gauge className="size-5" /><div><h3>判题说明</h3><p>常见语言均可提交，用时、内存与评测结果实时返回。</p></div></div></div>
         </section>
       </div>
     </main>

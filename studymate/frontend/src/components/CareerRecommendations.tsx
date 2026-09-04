@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { ArrowRight, BriefcaseBusiness, CheckCircle2, ExternalLink, Loader2, Route, ShieldCheck, Sparkles, Target } from "lucide-react"
+import { ArrowRight, CheckCircle2, ExternalLink, Loader2, Route, ShieldCheck, Sparkles, Target } from "lucide-react"
 
 import { ApiError, apiGet } from "@/lib/api"
 import { careerDomains, type CareerRole, type DomainId } from "@/lib/domainCareerCatalog"
@@ -66,6 +66,17 @@ const recruitmentKeywords: Record<string, string> = {
   "iot-specialist": "物联网开发工程师",
 }
 
+const roleCoverImages: Record<string, string> = {
+  "ai-agent": "/career-covers/ai-agent.webp", "ai-infra": "/career-covers/ai-infra.webp", "embodied-ai": "/career-covers/embodied-ai.webp",
+  "llm-security": "/career-covers/llm-security.webp", "llm-application": "/career-covers/llm-application.webp", fde: "/career-covers/fde.webp",
+  devsecops: "/career-covers/devsecops.webp", "rag-implementation": "/career-covers/rag-implementation.webp", mlops: "/career-covers/mlops.webp",
+  "ai-native-frontend": "/career-covers/ai-native-frontend.webp", "industrial-architect": "/career-covers/industrial-architect.webp",
+  "industrial-data": "/career-covers/industrial-data.webp", "edge-ai": "/career-covers/edge-ai.webp", "industrial-vision": "/career-covers/industrial-vision.webp",
+  "industrial-network": "/career-covers/industrial-network.webp", "mes-engineer": "/career-covers/mes-engineer.webp",
+  "multimodal-llm": "/career-covers/multimodal-llm.webp", "industrial-ai-agent": "/career-covers/industrial-ai-agent.webp",
+  "smart-manufacturing-software": "/career-covers/smart-manufacturing-software.webp", "iot-specialist": "/career-covers/iot-specialist.webp",
+}
+
 function recruitmentLinks(role: CareerRole) {
   const query = recruitmentKeywords[role.id] ?? role.name
   const encodedQuery = encodeURIComponent(query)
@@ -89,8 +100,8 @@ export function CareerRecommendations({ compact = false }: { profileVersion?: nu
       .filter((role) => role.id !== currentRole.id && role.knowledgeBaseState === "ready")
       .map((role) => transferScore(currentRole, role, domain.id, domain.id === currentDomainId)))
       .sort((a, b) => b.score - a.score)
-      .slice(0, compact ? 2 : 4)
-  }, [compact, currentRole])
+      .slice(0, 6)
+  }, [currentRole])
 
   const enterTraining = async (candidate: TransferRole) => {
     setError("")
@@ -116,7 +127,7 @@ export function CareerRecommendations({ compact = false }: { profileVersion?: nu
 
   if (!currentRole) {
     return (
-      <section className="rounded-[22px] border border-dashed border-[#C7D2D8] bg-[#F5F8FA] p-6 text-center">
+      <section className="career-transfer-empty rounded-[22px] border border-dashed p-6 text-center">
         <Target className="mx-auto size-6 text-[#315E83]" />
         <h2 className="mt-3 text-base font-bold text-[#18232D]">先选择当前训练岗位</h2>
         <p className="mt-1 text-xs leading-5 text-[#66717B]">转岗匹配会以当前岗位知识库中的能力项为基准计算。</p>
@@ -126,8 +137,8 @@ export function CareerRecommendations({ compact = false }: { profileVersion?: nu
   }
 
   return (
-    <section className="rounded-[24px] border border-[#C7D2D8] bg-[#F5F8FA] p-4 shadow-[0_10px_28px_rgba(36,76,102,.06)] sm:p-5" aria-label="转岗岗位推荐">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <section className="career-transfer-panel rounded-[24px] border p-4 sm:p-5" aria-label="转岗岗位推荐">
+      <div className="career-transfer-panel-heading flex flex-wrap items-start justify-between gap-3">
         <div>
           <span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.12em] text-[#315E83]"><Sparkles className="size-3.5" />知识库岗位匹配</span>
           <h2 className="mt-1 text-base font-bold text-[#18232D]">从「{currentRole.name}」可平移的岗位方向</h2>
@@ -136,25 +147,36 @@ export function CareerRecommendations({ compact = false }: { profileVersion?: nu
         <span className="inline-flex items-center gap-1 rounded-xl border border-[#C9D1CB] bg-[#FFFEFA] px-3 py-1.5 text-[10px] font-bold text-[#557052]"><CheckCircle2 className="size-3" />当前训练 · {currentRole.name || course?.name}</span>
       </div>
 
-      <div className={`mt-4 grid gap-3 ${compact ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2"}`}>
-        {recommendations.map((item) => (
-          <article key={item.role.id} className="rounded-[20px] border border-[#D7D1C4] bg-[#FFFEFA] p-4">
-            <div className="flex items-start justify-between gap-3">
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#E7EDF3] text-[#315E83]"><BriefcaseBusiness className="size-4" /></span>
-              <span className="rounded-full bg-[#244C66] px-2.5 py-1 text-[10px] font-bold text-white">匹配 {item.score}%</span>
+      <div className="career-transfer-status-rail mt-4 grid grid-cols-3 overflow-hidden rounded-[14px] border" aria-label="转岗匹配状态">
+        <span><i>01</i><small>候选航线</small><strong>{recommendations.length} 条</strong></span>
+        <span><i>02</i><small>最高匹配</small><strong>{recommendations[0]?.score ?? 0}%</strong></span>
+        <span className="is-ready"><i>03</i><small>知识库状态</small><strong>READY</strong></span>
+      </div>
+
+      <div className={`career-transfer-results mt-6 grid gap-3 ${compact ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"}`}>
+        {recommendations.map((item, index) => (
+          <article key={item.role.id} className={`career-transfer-card rounded-[20px] border ${activatingRoleId === item.role.id ? "is-activating" : ""}`}>
+            <div className="career-transfer-card-cover">
+              <img src={roleCoverImages[item.role.id]} alt={`${item.role.name}职业场景`} loading="lazy" />
+              <span className="career-transfer-card-cover-shade" />
+              <span className="career-transfer-card-index">{String(index + 1).padStart(2, "0")}</span>
+              <span className="career-transfer-card-match">匹配 {item.score}%</span>
             </div>
-            <h3 className="mt-3 text-sm font-bold text-[#18232D]">{item.role.name}</h3>
-            <p className="mt-1.5 min-h-9 text-[11px] leading-4 text-[#66717B]">{item.role.summary}</p>
-            <div className="mt-3 space-y-2 border-t border-[#E3DED3] pt-3">
-              <CareerLine icon={ShieldCheck} label="可复用能力" values={item.sharedSkills} empty="基础课程可衔接" tone="green" />
-              <CareerLine icon={Route} label="转岗重点" values={item.gaps.slice(0, 2)} empty="继续积累岗位项目" tone="gold" />
+            <div className="career-transfer-card-result p-3.5">
+              <h3 className="text-sm font-bold text-[#18232D]">{item.role.name}</h3>
+              <p className="mt-1 min-h-8 text-[10px] leading-4 text-[#4E687C]">{item.role.summary}</p>
+              <div className="career-transfer-score mt-3"><span><b>{item.score}%</b><small>能力航线匹配</small></span><i><b style={{ width: `${item.score}%` }} /></i></div>
+              <div className="mt-3 space-y-1.5 border-t border-[#D8E2E9] pt-2.5">
+                <CareerLine icon={ShieldCheck} label="可复用能力" values={item.sharedSkills} empty="基础课程可衔接" tone="green" />
+                <CareerLine icon={Route} label="转岗重点" values={item.gaps.slice(0, 2)} empty="继续积累岗位项目" tone="gold" />
+              </div>
             </div>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-              <button type="button" disabled={Boolean(activatingRoleId)} onClick={() => void enterTraining(item)} className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-[#244C66] px-3 text-[10px] font-bold text-white hover:bg-[#193B50] disabled:opacity-50">{activatingRoleId === item.role.id ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}{activatingRoleId === item.role.id ? "正在进入" : "开始转岗训练"}</button>
+            <div className="career-transfer-card-actions flex flex-wrap items-center justify-between gap-2 border-t px-3.5 py-2.5">
+              <button type="button" disabled={Boolean(activatingRoleId)} onClick={() => void enterTraining(item)} className="career-transfer-primary inline-flex h-8 items-center gap-1.5 rounded-xl px-3 text-[10px] font-bold disabled:opacity-50">{activatingRoleId === item.role.id ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}{activatingRoleId === item.role.id ? "正在进入" : "开始转岗训练"}</button>
               <span className="text-[9px] font-semibold text-[#557052]">知识库已导入</span>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2 border-t border-[#E3DED3] pt-3">
-              {recruitmentLinks(item.role).map((link) => <a key={link.label} href={link.url} target="_blank" rel="noreferrer noopener" aria-label={`在${link.label}搜索${link.query}职位`} title={`搜索：${link.query}`} onClick={() => track("external_resource_open", link.event, link.query)} className="inline-flex items-center gap-1 rounded-lg border border-[#D7D1C4] bg-[#F8F6F0] px-2 py-1 text-[9px] font-bold text-[#59636B] hover:border-[#9FB1BC] hover:text-[#315E83]">在{link.label}查看需求<ExternalLink className="size-2.5" /></a>)}
+            <div className="career-transfer-card-links flex flex-wrap gap-1.5 border-t px-3.5 py-2.5">
+              {recruitmentLinks(item.role).map((link) => <a key={link.label} href={link.url} target="_blank" rel="noreferrer noopener" aria-label={`在${link.label}搜索${link.query}职位`} title={`搜索：${link.query}`} onClick={() => track("external_resource_open", link.event, link.query)} className="career-transfer-external inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[9px] font-bold">在{link.label}查看需求<ExternalLink className="size-2.5" /></a>)}
             </div>
           </article>
         ))}

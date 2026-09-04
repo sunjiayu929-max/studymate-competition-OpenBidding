@@ -13,9 +13,7 @@ from app.db.session import engine, Base
 # 导入 models 让 Base 知道所有表
 from app.db import models  # noqa: F401
 from app.deps import require_admin, require_user
-from app.api import health, profile, rag, workspace, tutor, eval as eval_api, tests as tests_api, courses as courses_api, notes as notes_api, events as events_api, feedback as feedback_api, auth as auth_api, voice as voice_api, quiz_sessions as quiz_sessions_api, theory_assessments as theory_assessments_api, run as run_api, concept as concept_api, bili as bili_api, ocr as ocr_api, rencaiya as rencaiya_api, careers as careers_api, reading as reading_api, knowledge as knowledge_api, ppt as ppt_api, interviews as interviews_api, enterprise as enterprise_api, admin as admin_api, oj as oj_api
-from app.demo_private_knowledge import ensure_demo_private_libraries
-from app.demo_notes import ensure_demo_notes_for_users
+from app.api import health, profile, rag, workspace, tutor, eval as eval_api, tests as tests_api, courses as courses_api, notes as notes_api, events as events_api, feedback as feedback_api, auth as auth_api, voice as voice_api, quiz_sessions as quiz_sessions_api, theory_assessments as theory_assessments_api, run as run_api, concept as concept_api, bili as bili_api, ocr as ocr_api, rencaiya as rencaiya_api, careers as careers_api, reading as reading_api, knowledge as knowledge_api, ppt as ppt_api, interviews as interviews_api, enterprise as enterprise_api, admin as admin_api, oj as oj_api, certificates as certificates_api
 
 
 _seed_password_hash = PasswordHash.recommended()
@@ -55,7 +53,7 @@ _PRAMATE_MEMBER_ROLES = {
 
 _PRAMATE_DEMO_ADMIN_EMAIL = "admin@pramate.com"
 _PRAMATE_DEMO_ADMIN_PASSWORD = "a123456"
-_PRAMATE_DEMO_ENTERPRISE_NAME = "河南本线商贸有限公司"
+_PRAMATE_DEMO_ENTERPRISE_NAME = "河南掌门互动网络科技有限公司"
 _PRAMATE_DEMO_INVITE_CODE = "PRAMATE-DEMO"
 _PRAMATE_STUDENT_PASSWORD = "p123456"
 _PRAMATE_EXTRA_MEMBER_EMAIL = "test@pramate.com"
@@ -164,6 +162,19 @@ async def _ensure_columns(conn):
     cols = {r[1] for r in rows.fetchall()}
     if cols and "error_tags" not in cols:
         await conn.execute(text("ALTER TABLE quiz_session_items ADD COLUMN error_tags JSON DEFAULT '[]'"))
+    # 阶段评估必须连同证据快照持久化，历史报告不能依赖当前浏览器的临时状态。
+    rows = await conn.execute(text("PRAGMA table_info(evaluations)"))
+    cols = {r[1] for r in rows.fetchall()}
+    evaluation_columns = {
+        "profile_delta": "JSON DEFAULT '{}'",
+        "evidence": "JSON DEFAULT '{}'",
+        "summary_markdown": "TEXT DEFAULT ''",
+        "next_topics": "JSON DEFAULT '[]'",
+        "profile_version": "INTEGER DEFAULT 1",
+    }
+    for column, definition in evaluation_columns.items():
+        if cols and column not in cols:
+            await conn.execute(text(f"ALTER TABLE evaluations ADD COLUMN {column} {definition}"))
     # 私有知识库后台任务字段（原文件落在受控持久目录，不通过接口暴露路径）。
     rows = await conn.execute(text("PRAGMA table_info(user_knowledge_documents)"))
     cols = {r[1] for r in rows.fetchall()}
@@ -829,13 +840,6 @@ async def lifespan(app: FastAPI):
         await _ensure_columns(conn)
     await _ensure_role_knowledge_catalog()
     await concept_api.ensure_default_archive()
-    if settings.SEED_DEMO_USERS:
-        async with engine.begin() as conn:
-            await _ensure_seed_users(conn)
-            await _ensure_pramate_demo_enterprise(conn)
-            await _ensure_demo_quiz_history(conn)
-        await ensure_demo_private_libraries()
-        await ensure_demo_notes_for_users()
     await knowledge_api.mark_interrupted_tasks_failed()
     yield
     await engine.dispose()
@@ -858,6 +862,7 @@ app.add_middleware(
 
 app.include_router(health.router, prefix="/api")
 app.include_router(auth_api.router, prefix="/api")
+app.include_router(certificates_api.router, prefix="/api")
 user_required = [Depends(require_user)]
 admin_required = [Depends(require_admin)]
 app.include_router(admin_api.router, prefix="/api")

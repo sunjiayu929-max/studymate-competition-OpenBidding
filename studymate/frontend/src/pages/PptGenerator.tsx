@@ -4,11 +4,15 @@ import {
   ArrowUp,
   CheckCircle2,
   Download,
+  FileOutput,
   GripVertical,
+  Layers3,
   Loader2,
+  MonitorPlay,
   Presentation,
   RefreshCw,
   Sparkles,
+  WandSparkles,
 } from "lucide-react"
 
 import { AppTopbar } from "@/components/AppTopbar"
@@ -32,14 +36,14 @@ type SlideDraft = PptSlideDraft
 
 const STYLE_OPTIONS = {
   paper: {
-    label: "象牙金·学术叙事",
-    background: "F7F1E5",
-    primary: "1D4A5F",
-    accent: "D08A25",
-    text: "12212B",
-    panel: "173B4E",
-    onPanel: "FFFDF8",
-    soft: "DCE7E8",
+    label: "云境蓝·学术叙事",
+    background: "EDF7FB",
+    primary: "285F7D",
+    accent: "61B8DF",
+    text: "102D43",
+    panel: "24566F",
+    onPanel: "F5FCFF",
+    soft: "CFE8F2",
   },
   graphite: {
     label: "深海蓝·电光演示",
@@ -414,45 +418,67 @@ export function PptGenerator() {
   }
 
   return (
-    <div className="app-page paper-theme">
+    <div className={`app-page paper-theme ppt-studio ${generating ? "is-generating" : ""}`}>
       <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <AppTopbar current="ppt" appearance="paper" />
-        <main className="mt-4 overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.07)]">
-          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D7D1C4] bg-[#F8F6F0] px-4 py-4 sm:px-5">
-            <div>
-              <div className="flex items-center gap-2 text-[10px] font-bold tracking-[.11em] text-[#8E6925]"><Presentation className="size-3.5" />EDITABLE PPTX WORKFLOW</div>
-              <h1 className="mt-1 text-xl font-bold tracking-[-.03em] text-[#18232D] sm:text-2xl">岗位讲解、训练汇报与答辩展示，一页看清</h1>
+        <AppTopbar current="ppt" appearance="paper" showRocketFormation rocketVariant="honor" />
+        <main className="ppt-studio-shell mt-4 overflow-hidden">
+          <header className="ppt-studio-hero relative overflow-hidden border-y px-4 py-4 sm:px-6 lg:px-8">
+            <div className="ppt-studio-hero-scan" aria-hidden="true" />
+            <div className="ppt-studio-live-row relative flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+              <div className="flex items-center gap-3"><span className="ppt-studio-live-dot size-2 rounded-full" /><span className="text-[12px] font-black tracking-[.16em] text-[#294E73]">SLIDE ASSEMBLY LIVE</span><span className="text-[12px] font-bold text-[#64758A]">{String(slides.length).padStart(2, "0")} FRAMES</span></div>
+              <span className="text-[12px] font-bold text-[#536C84]">{generating ? "内容编排中" : confirmed ? "装配就绪" : "等待确认叙事"}</span>
+            </div>
+            <div className="relative mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
+              <div>
+                <div className="ppt-studio-index"><strong>01</strong><span>智能演示工坊</span><i>PRESENTATION ENGINE</i></div>
+                <h1 className="ppt-studio-title mt-3"><span>把岗位知识装配成</span><span>可编辑的演示叙事</span></h1>
+                <p className="mt-2 max-w-2xl text-[13px] font-medium leading-6 text-[#486078]">配置内容、编排大纲、渲染页面，再导出可继续编辑的 PPTX。</p>
+              </div>
+              <div className="ppt-studio-machine-wrap" aria-hidden="true">
+                <img src="/images/ppt-slide-assembly-machine-v1.png" alt="" />
+                <span className="ppt-studio-machine-beam" />
+              </div>
+            </div>
+            <div className="ppt-studio-hero-footer relative mt-3 flex flex-wrap items-center justify-between gap-3 border-t pt-3">
+              <span className="text-[11px] font-bold text-[#315E83]">示例基线 · FDE 岗位讲解与训练汇报</span>
+              <div className="ppt-studio-hero-metrics grid grid-cols-3"><span><small>内容页</small><strong>{slides.length}</strong></span><span><small>当前构图</small><strong>{selected ? LAYOUT_LABELS[selected.layout] : "—"}</strong></span><span><small>输出状态</small><strong>{confirmed ? "READY" : "EDIT"}</strong></span></div>
             </div>
           </header>
 
-          <section className="grid gap-3 border-b border-[#D7D1C4] bg-[#FFFEFA] px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:px-5">
-            <div className="flex min-w-0 items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#E7EDF3] text-[#315E83]"><Presentation className="size-4" /></span><div><p className="text-xs font-bold text-[#18232D]">示例作品：FDE 岗位讲解与训练汇报</p><p className="mt-0.5 text-[11px] text-[#66717B]">完整展示岗位边界、场景调研、系统联调、验收证据与训练复盘，共 10 页。</p></div></div>
-            <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold text-[#315E83]"><span className="rounded-full bg-[#E7EDF3] px-2.5 py-1.5">岗位讲解</span><span className="rounded-full bg-[#E9EEE6] px-2.5 py-1.5 text-[#557052]">训练汇报</span><span className="rounded-full bg-[#F4ECD8] px-2.5 py-1.5 text-[#8E6925]">答辩展示</span><span className="rounded-full bg-[#EEE9EF] px-2.5 py-1.5 text-[#7E6B83]">能力复盘</span></div>
-          </section>
-
-          <section className="grid gap-4 border-b border-[#D7D1C4] p-4 sm:p-5">
+          <section className="ppt-studio-module px-4 py-6 sm:px-6 lg:px-8">
+            <div className="ppt-studio-section-head mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="ppt-studio-section-title flex items-start gap-4"><span><WandSparkles className="size-5" /></span><div><b>02 · 内容配置</b><h2>定义演示目标，立即开始装配</h2><p>核心输入和生成操作紧接标题出现，首屏即可开始工作。</p></div></div>
+              <button type="button" onClick={() => void generateOutline(true)} disabled={!topic.trim() || generating} className="ppt-studio-quick-generate inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-[11px] font-black text-white disabled:opacity-40">{generating ? <Loader2 className="ppt-generation-spinner size-4" /> : <Sparkles className="size-4" />}生成整套大纲</button>
+            </div>
+            <div className="ppt-studio-config grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="grid gap-4">
             <div className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_minmax(180px,.6fr)_auto]">
-              <label><span className="mb-1 block text-[11px] font-bold text-[#8A8172]">主题</span><input value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="例如：梯度下降的直觉与应用" className="h-10 w-full rounded-xl border border-[#D7D1C4] bg-[#FDFBF6] px-3 text-sm outline-none focus:border-[#9FB1BC]" /></label>
+              <label><span className="mb-1 block text-[11px] font-bold text-[#536C84]">主题</span><input value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="例如：梯度下降的直觉与应用" className="h-10 w-full rounded-xl border border-[#BFCBD6] bg-white/60 px-3 text-sm text-[#18324D] outline-none focus:border-[#52789A]" /></label>
               <label><span className="mb-1 block text-[11px] font-bold text-[#8A8172]">受众</span><input value={audience} onChange={(event) => setAudience(event.target.value)} className="h-10 w-full rounded-xl border border-[#D7D1C4] bg-[#FDFBF6] px-3 text-sm outline-none" /></label>
               <label><span className="mb-1 block text-[11px] font-bold text-[#8A8172]">页数</span><input type="number" min={7} max={18} value={pageCount} onChange={(event) => setPageCount(Math.max(7, Math.min(18, Number(event.target.value))))} className="h-10 w-full rounded-xl border border-[#D7D1C4] bg-[#FDFBF6] px-3 text-sm" /></label>
             </div>
             <div><span className="mb-2 block text-[11px] font-bold text-[#8A8172]">用途</span><div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{["岗位讲解", "训练汇报", "答辩展示", "能力复盘"].map((item) => <button key={item} type="button" onClick={() => setPurpose(item)} className={`h-10 rounded-xl border px-3 text-sm font-bold transition ${purpose === item ? "border-[#315E83] bg-[#E7EDF3] text-[#244C66]" : "border-[#D7D1C4] bg-[#FFFEFA] text-[#66717B] hover:bg-[#F8F6F0]"}`}>{item}</button>)}</div></div>
             <div><span className="mb-2 block text-[11px] font-bold text-[#8A8172]">视觉风格</span><div className="grid grid-cols-1 gap-2 sm:grid-cols-3">{Object.entries(STYLE_OPTIONS).map(([id, option]) => <button key={id} type="button" onClick={() => setStyleId(id as StyleId)} className={`flex h-11 items-center gap-2 rounded-xl border px-3 text-left text-sm font-bold transition ${styleId === id ? "border-[#315E83] bg-[#E7EDF3] text-[#244C66]" : "border-[#D7D1C4] bg-[#FFFEFA] text-[#66717B] hover:bg-[#F8F6F0]"}`}><span className="flex gap-1"><i className="size-3 rounded-full border border-black/10" style={{ backgroundColor: `#${option.background}` }} /><i className="size-3 rounded-full" style={{ backgroundColor: `#${option.primary}` }} /><i className="size-3 rounded-full" style={{ backgroundColor: `#${option.accent}` }} /></span>{option.label}</button>)}</div></div>
-            <div><span className="mb-2 block text-[11px] font-bold text-[#8A8172]">生成模型</span><ModelSelector expanded allowUnconfigured /></div>
-            <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-[11px] text-[#7A817F]">资料来源：{sourceLabel}</span><button type="button" onClick={() => void generateOutline(true)} disabled={!topic.trim() || generating} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-xs font-bold text-white disabled:opacity-40">{generating ? <Loader2 className="ppt-generation-spinner size-3.5" /> : <Sparkles className="size-3.5" />}使用所选模型生成</button></div>
+            </div>
+            <aside className="ppt-studio-model-zone border-l-0 xl:border-l xl:pl-6"><span className="mb-2 block text-[11px] font-bold text-[#536C84]">生成模型</span><ModelSelector expanded allowUnconfigured /><div className="ppt-studio-source mt-4"><Layers3 className="size-4" /><span>资料来源<strong>{sourceLabel}</strong></span></div><button type="button" onClick={() => void generateOutline(true)} disabled={!topic.trim() || generating} className="ppt-studio-generate mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-xs font-black text-white disabled:opacity-40">{generating ? <Loader2 className="ppt-generation-spinner size-4" /> : <Sparkles className="size-4" />}使用所选模型生成</button></aside>
+            </div>
           </section>
 
-          {message && <div role="status" className="mx-4 mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#C7D2D8] bg-[#EDF2F5] px-3 py-2 text-[10px] font-semibold text-[#315E83] sm:mx-5"><span>{message}</span>{fallbackAction && <button type="button" disabled={generating} onClick={() => void (fallbackAction === "outline" ? generateOutline(true) : rewriteSlide(true))} className="h-8 rounded-lg border border-[#9FB1BC] bg-white px-3 text-[9px] font-bold text-[#244C66] hover:bg-[#E7EDF3]">明确使用本地策略</button>}</div>}
+          {message && <div role="status" className="ppt-studio-message mx-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 text-[10px] font-semibold sm:mx-6"><span>{message}</span>{fallbackAction && <button type="button" disabled={generating} onClick={() => void (fallbackAction === "outline" ? generateOutline(true) : rewriteSlide(true))} className="h-8 rounded-lg border border-[#9FB1BC] bg-white/70 px-3 text-[9px] font-bold text-[#244C66] hover:bg-[#E7EDF3]">明确使用本地策略</button>}</div>}
+
+          <div className="ppt-studio-transition" aria-hidden="true"><span className="ppt-studio-transition-label">OUTLINE ASSEMBLY</span><div className="ppt-studio-conveyor"><i /><i /><i /><i /><b /></div><span className="ppt-studio-transition-state">内容配置 → 大纲装配</span></div>
 
           {slides.length === 0 ? (
             <div className="grid min-h-[420px] place-items-center p-8 text-center">
               <div><span className="mx-auto grid size-14 place-items-center rounded-2xl bg-[#F4ECD8] text-[#8E6925]"><Presentation className="size-6" /></span><h2 className="mt-4 text-base font-bold text-[#18232D]">先让模型策划整套叙事</h2><p className="mx-auto mt-2 max-w-md text-[11px] leading-5 text-[#66717B]">它会选择封面、聚焦、流程、对比、案例、图表等不同构图；图表只使用有依据的数据。</p></div>
             </div>
           ) : (
-            <div className="grid lg:min-h-[560px] lg:grid-cols-[260px_minmax(0,1fr)]">
-              <aside className="border-b border-[#D7D1C4] bg-[#F8F6F0] p-3 lg:border-b-0 lg:border-r">
-                <div className="mb-3 flex items-center justify-between px-1"><strong className="text-[11px] text-[#18232D]">{confirmed ? "页面缩略图" : "可编辑大纲"}</strong><span className="text-[9px] text-[#7A817F]">{slides.length} 页</span></div>
-                <div className="nav-scroll flex gap-2 overflow-x-auto pb-1 lg:block lg:max-h-[500px] lg:space-y-2 lg:overflow-y-auto lg:pr-1">
+            <section className="ppt-studio-module px-4 py-7 sm:px-6 lg:px-8">
+              <div className="ppt-studio-section-title mb-5 flex items-start gap-4"><span><MonitorPlay className="size-5" /></span><div><b>03 · 大纲装配 / 04 · 页面渲染</b><h2>调整叙事顺序，同步校准每一页</h2><p>大纲轨道管理顺序，渲染台负责页面内容、构图与引用。</p></div></div>
+            <div className="ppt-studio-editor grid overflow-hidden border lg:min-h-[560px] lg:grid-cols-[280px_minmax(0,1fr)]">
+              <aside className="ppt-studio-rail border-b p-3 lg:border-b-0 lg:border-r">
+                <div className="ppt-studio-pane-label mb-3 flex items-center justify-between px-1"><strong>{confirmed ? "页面装配轨道" : "可编辑大纲"}</strong><span>{slides.length} 页</span></div>
+                <div className="nav-scroll flex gap-2 overflow-x-auto pb-1 lg:block lg:max-h-[680px] lg:space-y-2 lg:overflow-y-auto lg:pr-1 xl:max-h-[760px]">
                   {slides.map((slide, index) => (
                     <div
                       key={slide.id}
@@ -471,7 +497,7 @@ export function PptGenerator() {
                         })
                         setDraggedId(null)
                       }}
-                      className={`group min-w-[178px] shrink-0 rounded-2xl border p-2.5 transition-colors lg:min-w-0 ${selected?.id === slide.id ? "border-[#9FB1BC] bg-[#E7EDF3]" : "border-[#D7D1C4] bg-[#FFFEFA]"}`}
+                      className={`ppt-studio-slide-node group min-w-[178px] shrink-0 border p-2.5 transition-colors lg:min-w-0 ${selected?.id === slide.id ? "is-selected" : ""}`}
                     >
                       <button type="button" onClick={() => setSelectedId(slide.id)} className="flex w-full items-start gap-2 text-left">
                         <span className="mt-0.5 text-[9px] font-bold tabular-nums text-[#8A8172]">{String(index + 1).padStart(2, "0")}</span>
@@ -488,7 +514,9 @@ export function PptGenerator() {
                 {!confirmed && <button type="button" onClick={() => { setConfirmed(true); setMessage("视觉叙事已确认，现在可以逐页调整构图、文案和强调重点") }} className="mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-[#6F8A69] text-[10px] font-bold text-white"><CheckCircle2 className="size-3.5" />确认叙事并生成页面</button>}
               </aside>
 
-              <section className="p-4 sm:p-6">
+              <section className="ppt-studio-preview relative p-4 sm:p-6">
+                <div className="ppt-studio-preview-scan" aria-hidden="true" />
+                <div className="ppt-studio-pane-label mb-3 flex items-center justify-between"><strong>页面渲染台</strong><span>{selected ? LAYOUT_LABELS[selected.layout] : "等待页面"}</span></div>
                 {selected && (
                   <>
                     <Suspense fallback={<div className="mx-auto aspect-video w-full max-w-[900px] animate-pulse rounded-[22px] bg-[#F0ECE3]" />}>
@@ -505,13 +533,17 @@ export function PptGenerator() {
                       <div className="text-[10px] text-[#66717B]">标题、结论、内容分区和图表均可直接编辑</div>
                       <div className="flex w-full gap-2 sm:w-auto">
                         <button type="button" onClick={() => void rewriteSlide(true)} disabled={generating} className="inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 text-[10px] font-bold text-[#315E83] hover:bg-[#E7EDF3] disabled:opacity-40 sm:flex-none">{generating ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}使用所选模型重写</button>
-                        <button type="button" onClick={exportPptx} disabled={!confirmed || exporting} className="inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-3.5 text-[10px] font-bold text-white disabled:opacity-40 sm:flex-none">{exporting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}导出可编辑 .pptx</button>
                       </div>
                     </div>
                   </>
                 )}
               </section>
             </div>
+            <div className={`ppt-studio-export-bay mt-6 grid gap-4 border p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center ${confirmed ? "is-ready" : "is-waiting"}`}>
+              <div className="flex min-w-0 items-center gap-4"><span className="ppt-studio-export-icon"><FileOutput className="size-5" /></span><div><b>05 · 导出演示</b><h3>{confirmed ? "编辑结构已锁定，可以交付" : "确认叙事后开放导出"}</h3><p>{confirmed ? "标题、正文、图表与版式元素将保持可编辑。" : "先检查页面顺序与视觉叙事，再进入最终输出。"}</p></div></div>
+              <button type="button" onClick={exportPptx} disabled={!confirmed || exporting} className="ppt-studio-export inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-xs font-black text-white disabled:opacity-40">{exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}导出可编辑 .pptx</button>
+            </div>
+            </section>
           )}
         </main>
       </div>

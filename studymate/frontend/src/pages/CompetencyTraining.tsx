@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
+import { motion } from "framer-motion"
 import {
   ArrowRight,
   Award,
@@ -55,12 +56,12 @@ interface ProfileResponse {
 }
 
 const RESOURCE_META = {
-  doc: { title: "定制讲义", icon: FileText, detail: "建立岗位任务模型与专业边界" },
-  guide: { title: "实操指南", icon: Wrench, detail: "完成可复现、可验收的岗位交付物" },
-  quiz: { title: "分阶测试", icon: BookOpenCheck, detail: "验证理解、场景判断与迁移能力" },
-  mindmap: { title: "思维导图", icon: Network, detail: "梳理岗位任务中的概念、依赖与关系" },
-  code: { title: "代码案例", icon: Code2, detail: "提供适配岗位任务的可运行示例" },
-  video: { title: "可视讲解", icon: Film, detail: "将抽象知识转成可播放的岗位讲解" },
+  doc: { title: "定制讲义", icon: FileText, detail: "建立岗位任务模型与专业边界", tone: "resource-blue", background: "/images/training-resource-doc-bg-v2.webp" },
+  guide: { title: "实操指南", icon: Wrench, detail: "完成可复现、可验收的岗位交付物", tone: "resource-green", background: "/images/training-resource-guide-bg-v2.webp" },
+  quiz: { title: "分阶测试", icon: BookOpenCheck, detail: "验证理解、场景判断与迁移能力", tone: "resource-gold", background: "/images/training-resource-quiz-bg-v2.webp" },
+  mindmap: { title: "思维导图", icon: Network, detail: "梳理岗位任务中的概念、依赖与关系", tone: "resource-violet", background: "/images/training-resource-mindmap-bg-v2.webp" },
+  code: { title: "代码案例", icon: Code2, detail: "提供适配岗位任务的可运行示例", tone: "resource-cyan", background: "/images/training-resource-code-bg-v2.webp" },
+  video: { title: "可视讲解", icon: Film, detail: "将抽象知识转成可播放的岗位讲解", tone: "resource-coral", background: "/images/training-resource-video-bg-v2.webp" },
 } as const
 
 type ResourceId = keyof typeof RESOURCE_META
@@ -161,6 +162,11 @@ export function CompetencyTraining() {
   const pathCapabilities = reportCapabilities.length ? reportCapabilities : [{ id: "start", name: "建立目标岗位路径", level: 0, state: "ready" as const, task: "完成岗位画像后生成能力节点与训练路线。", prerequisites: [] }]
   const agentDone = workspace.agents.filter((agent) => agent.status === "done").length
   const agentProgress = workspace.agents.length ? Math.round(agentDone / workspace.agents.length * 100) : 0
+  const stageStep = workspace.stage === "generation" ? 1
+    : ["review", "rework"].includes(workspace.stage) ? 2
+      : ["decision", "publishing", "published"].includes(workspace.stage) ? 3
+        : 0
+  const roleTitleLines = splitRoleTitle(role.name)
 
   const startRoundForTopic = (topic: string) => {
     if (!user?.user_id || !course || workspace.status === "running") return
@@ -206,34 +212,44 @@ export function CompetencyTraining() {
   }
 
   return (
-    <main className="app-page paper-theme min-h-dvh pb-12">
-      <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <AppTopbar current="courses" appearance="paper" labelOverride="岗位训练中心" groupOverride="岗位胜任力闭环" selectionLabel={role.name} />
+    <main className="app-page paper-theme competency-studio min-h-dvh pb-12">
+      <div className="w-full px-2 py-3 sm:px-4 sm:py-4 lg:px-5">
+        <AppTopbar className="rounded-none border-x-0 shadow-none" current="courses" appearance="paper" labelOverride="岗位训练中心" groupOverride="岗位胜任力闭环" selectionLabel={role.name} iconImage="/images/training-navigation-instrument-v1.png" showRocketFormation />
         {user?.user_id && course && <TheoryAssessmentModal enabled={profileLoaded} userId={user.user_id} roleId={role.id} roleName={role.name} courseId={course.id} competencies={capabilityMap.nodes.map((node) => node.name)} reopenSignal={theoryPromptSignal} onGateChange={setTheoryGate} onCompleted={(assessment: TheoryAssessment) => { setTheoryGate({ loading: false, completed: true, required: false, assessment, error: "" }); void apiGet<ProfileResponse>(`/profile/${user.user_id}`).then(setProfile).catch(() => undefined) }} />}
 
-        <section id="training-focus" className="relative mt-4 scroll-mt-24 overflow-hidden rounded-[30px] border border-[#C9D9ED] bg-[#122C4D] px-4 py-5 text-white shadow-[0_24px_64px_rgba(32,73,130,.18)] sm:px-6 sm:py-7 lg:px-8">
-          <div className="pointer-events-none absolute -right-20 -top-28 size-80 rounded-full bg-[#7654DC]/25 blur-3xl" /><div className="pointer-events-none absolute -bottom-32 left-1/3 size-80 rounded-full bg-[#16A6A1]/20 blur-3xl" />
-          <div className="relative flex flex-col gap-5 xl:flex-row xl:items-center"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold tracking-[.12em] text-[#CFE2FF]"><Target className="size-3.5 text-[#F1D47D]" />第 {cycle} 轮岗位训练</span><span className="inline-flex items-center gap-1.5 rounded-full bg-[#C9F3E7]/12 px-3 py-1.5 text-[10px] font-bold text-[#BFECDD]"><span className="size-1.5 rounded-full bg-[#5ED5B5]" />路径、协作与验收实时同步</span></div><h1 className="mt-4 text-2xl font-bold leading-tight tracking-[-.045em] sm:text-3xl">{role.name} · 本轮学习路径</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[#C2D2E6]">路径终点是当前目标岗位，能力节点会根据画像、测评结果和训练反馈持续更新。</p>{requestedTopic && <div className="mt-3 inline-flex max-w-full items-start gap-2 rounded-xl border border-[#F0C3B5]/35 bg-[#A9583D]/30 px-3 py-2 text-[10px] leading-4 text-[#FFE7DE]" aria-live="polite"><CircleAlert className="mt-0.5 size-3.5 shrink-0" /><span>来自知识盲区：<strong className="text-white">{requestedTopic}</strong>。启动后将围绕该主题生成对应训练资源。</span></div>}<div className="mt-4 flex flex-wrap gap-3 text-[10px] text-[#C2D2E6]"><span>能力节点 {reportCapabilities.length} 项</span><span>·</span><span>理论测评 {theoryEvidence?.score ?? "—"} 分</span><span>·</span><span>Agent 进度 {agentProgress}%</span><span>·</span><span>{released ? "已通过发布门禁" : "等待本轮决策"}</span></div></div><div className="w-full shrink-0 xl:w-[740px]"><ReportPathMap capabilities={pathCapabilities} targetRoleName={role.name} selectedId={selectedPathId || pathCapabilities[0]?.id} onSelect={setSelectedPathId} /><ReportPathProgress capabilities={pathCapabilities} targetRoleName={role.name} /></div><button type="button" onClick={startRound} disabled={!course || workspace.status === "running"} className="inline-flex min-h-24 shrink-0 items-center justify-center gap-2 rounded-[18px] border border-[#B9CBE4] bg-[linear-gradient(145deg,#2C65A2,#3978BC)] px-5 text-center text-xs font-bold text-white shadow-[0_12px_28px_rgba(22,61,110,.3)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-55 xl:w-[150px]"><span><Rocket className="mx-auto mb-2 size-5" /><span className="block">{workspace.status === "running" ? "本轮学习进行中" : workspace.feedback ? `启动第 ${cycle + 1} 轮学习` : "启动本轮学习"}</span><span className="mt-1 block text-[9px] font-medium text-[#D5E8FF]">{theoryCompleted ? "进入协作生成流程" : "先完成理论基线测评"}</span></span><ArrowRight className="size-4" /></button></div>
-        </section>
+        <motion.section id="training-focus" className={cn("competency-hero relative scroll-mt-24 overflow-hidden border-y px-3 pb-5 pt-5 sm:px-5 lg:px-6", workspace.status === "running" && "is-running")} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .72, ease: [0.22, 1, 0.36, 1] }}>
+          <div className="competency-hero-spine" aria-hidden="true" />
+          <div className="competency-live-row relative mb-5 flex items-center justify-between border-b border-[#D9E0E8] pb-4">
+            <div className="flex items-center gap-3"><span className="competency-live-dot size-2 rounded-full" /><span className="text-[13px] font-black tracking-[.16em] text-[#294E73]">LIVE TRAINING</span><span className="text-[13px] font-bold text-[#778596]">ROUND {String(cycle).padStart(2, "0")}</span></div>
+            <span className="hidden text-[12px] font-bold text-[#64758A] sm:block">{workspace.status === "running" ? "协作运行中" : released ? "已通过发布门禁" : "等待启动"}</span>
+          </div>
+          <div className="relative grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)_198px] xl:items-center">
+            <motion.div className="competency-role-summary min-w-0" initial={{ opacity: 0, x: -14 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: .12, duration: .58 }}>
+              <div className="competency-role-index"><strong>01</strong><span>岗位训练中心</span><i>ROLE TRAINING</i></div>
+              <h1 className="competency-role-title mt-5">{roleTitleLines.map((line, index) => <span className={index === roleTitleLines.length - 1 ? "is-accent" : undefined} key={line}>{line}</span>)}</h1>
+              <div className="competency-role-accent mt-5" aria-hidden="true" />
+              <div className="competency-topic mt-5"><span className="block text-[11px] font-black tracking-[.14em] text-[#708297]">本轮任务 / MISSION</span><p className="mt-2 line-clamp-2 text-[15px] font-semibold leading-6 text-[#3E566D]">{requestedTopic || currentTopic}</p></div>
+              {requestedTopic && <div className="mt-3 inline-flex items-center gap-2 text-[13px] font-bold text-[#A04D38]" aria-live="polite"><CircleAlert className="size-4 shrink-0" />知识盲区已加入本轮</div>}
+              <div className="competency-status-cluster mt-6">
+                <div className="competency-progress-figure"><div><b>{agentProgress}%</b><span>协作进度 / PROGRESS</span></div><div className="competency-progress-rule"><i style={{ width: `${Math.max(6, agentProgress)}%` }} /></div></div>
+                <div className="competency-status-list"><span><small>能力节点</small><strong>{String(reportCapabilities.length).padStart(2, "0")}</strong></span><span><small>理论测评</small><strong>{theoryEvidence?.score ?? "—"}</strong></span><span><small>发布门禁</small><strong>{released ? "PASS" : "WAIT"}</strong></span></div>
+              </div>
+            </motion.div>
+            <motion.div className="competency-map w-full min-w-0" initial={{ opacity: 0, scale: .985 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: .18, duration: .62 }}><ReportPathMap capabilities={pathCapabilities} targetRoleName={role.name} selectedId={selectedPathId || pathCapabilities[0]?.id} onSelect={setSelectedPathId} /><ReportPathProgress capabilities={pathCapabilities} targetRoleName={role.name} /></motion.div>
+            <motion.button type="button" onClick={startRound} disabled={!course || workspace.status === "running"} className="competency-primary-cta group inline-flex min-h-24 w-full shrink-0 items-end justify-between gap-3 rounded-[26px] border px-5 py-4 text-left text-[14px] font-black disabled:cursor-not-allowed disabled:opacity-55 xl:min-h-28" whileHover={{ y: -4 }} whileTap={{ scale: .98 }}><span className="relative z-10 flex min-w-0 items-center gap-3"><span className="competency-cta-icon grid size-10 shrink-0 place-items-center rounded-full"><Rocket className="size-5 transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1" /></span><span><span className="block text-[15px]">{workspace.status === "running" ? "训练进行中" : workspace.feedback ? `进入第 ${cycle + 1} 轮` : "启动本轮"}</span><span className="mt-1 block text-[12px] font-semibold text-white/75">{theoryCompleted ? "协作生成" : "先完成测评"}</span></span></span><span className="competency-cta-arrow relative z-10 grid size-9 shrink-0 place-items-center rounded-full"><ArrowRight className="size-4" /></span></motion.button>
+          </div>
+          <div className="competency-stage-rail relative mt-5 grid grid-cols-4 overflow-hidden rounded-[14px] border border-[#D7DEE7] bg-[#F7F8FA]">
+            <span className="competency-route-signal" aria-hidden="true" />
+            {["诊断", "生成", "校验", "发布"].map((label, index) => <div key={label} className={cn("relative z-10 flex min-h-14 items-center justify-center gap-2 border-r border-[#DDE3EA] text-[13px] font-black last:border-r-0", index < stageStep && "is-done", index === stageStep && "is-current")}><i>{String(index + 1).padStart(2, "0")}</i>{label}</div>)}
+          </div>
+        </motion.section>
 
-        <section className="mt-4 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6"><SectionTitle icon={Network} eyebrow="多智能体协作" title="从任务输入到发布门禁的一整条协作链" description="学情诊断后分为领域专家与教学策略两路，汇合到资源生成，再进入三项校验与总决策。" /><AgentCollaborationFlow workspace={workspace} /></section>
-
-        <DebateQualityPanel workspace={workspace} />
-
-        <section id="training-resources" className="mt-4 scroll-mt-6 rounded-[24px] border border-[#DCE5F1] bg-white p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6"><div className="flex flex-wrap items-end justify-between gap-3"><SectionTitle icon={Layers3} eyebrow="六类资源生成" title="围绕同一岗位任务形成可执行资源包" description={plan?.rationale || `本轮候选任务：${currentTopic}`} /><span className={cn("rounded-full px-3 py-1.5 text-[10px] font-bold", released ? "bg-[#E5F6F0] text-[#18745E]" : "bg-[#EEF3FA] text-[#61738D]")}>{released ? `发布门禁通过 · ${workspace.decision?.quality_score ?? 0} 分` : workspace.status === "running" ? "生成与校验进行中" : "等待协作流程"}</span></div><div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{(Object.keys(RESOURCE_META) as ResourceId[]).map((id, index) => <ResourceCard key={id} id={id} index={index} plan={plan} ready={Boolean(workspace.outputs[id])} released={released} reviewScore={reviewScoreFor(workspace.reviews, id)} videoStatus={id === "video" ? workspace.outputs.video?.status : undefined} />)}</div></section>
-
-        <AcceptancePanel
-          workspace={workspace}
-          feedbackBusy={feedbackBusy}
-          feedbackError={feedbackError}
-          completedRoundCount={completedRoundCount}
-          requiredRoundCount={requiredRoundCount}
-          certificateEligible={certificateEligible}
-          onSimplify={startSimplifiedRound}
-          onChallenge={startAdvancedChallenge}
-          onNext={startNextKnowledgeRound}
-          onOpenCertificate={() => setCertificateOpen(true)}
-        />
+        <div className="competency-longform">
+          <motion.section className="competency-section border-b border-[#D8E0E8] px-1 py-10 sm:px-3" initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .08 }}><SectionTitle icon={Network} imageSrc="/images/collaboration-network-icon-v1.png" flightAccent eyebrow="01 · 协作网络" title="从诊断到发布，一屏看清" description="诊断 → 生成 → 三重校验 → 发布" /><AgentCollaborationFlow workspace={workspace} /></motion.section>
+          <motion.div className="border-b border-[#D8E0E8] py-8" initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .08 }}><DebateQualityPanel workspace={workspace} /></motion.div>
+          <motion.section id="training-resources" className="competency-section scroll-mt-6 border-b border-[#D8E0E8] px-1 py-10 sm:px-3" initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .08 }}><div className="competency-resource-heading flex flex-wrap items-end justify-between gap-3"><SectionTitle icon={Layers3} imageSrc="/images/training-resource-capsule-v1.png" orbitAccent eyebrow="03 · 训练资源" title="本轮交付物" description={currentTopic} /><span className={cn("competency-resource-state rounded-full px-3 py-1.5 text-[12px] font-bold", released ? "is-released" : workspace.status === "running" ? "is-running" : "is-pending")}>{released ? `已发布 · ${workspace.decision?.quality_score ?? 0} 分` : workspace.status === "running" ? "生成中" : "待生成"}</span></div><div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{(Object.keys(RESOURCE_META) as ResourceId[]).map((id, index) => <ResourceCard key={id} id={id} index={index} plan={plan} ready={Boolean(workspace.outputs[id])} released={released} reviewScore={reviewScoreFor(workspace.reviews, id)} videoStatus={id === "video" ? workspace.outputs.video?.status : undefined} />)}</div></motion.section>
+          <motion.div className="py-8" initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .08 }}><AcceptancePanel workspace={workspace} feedbackBusy={feedbackBusy} feedbackError={feedbackError} completedRoundCount={completedRoundCount} requiredRoundCount={requiredRoundCount} certificateEligible={certificateEligible} onSimplify={startSimplifiedRound} onChallenge={startAdvancedChallenge} onNext={startNextKnowledgeRound} onOpenCertificate={() => setCertificateOpen(true)} /></motion.div>
+        </div>
       </div>
       {certificateOpen && user && (
         <RoleCertificateModal
@@ -256,8 +272,15 @@ function reviewScoreFor(reviews: WorkspaceState["reviews"], id: ResourceId) {
   return reviews.difficulty_review?.score
 }
 
-function SectionTitle({ icon: Icon, eyebrow, title, description }: { icon: typeof Target; eyebrow: string; title: string; description: string }) {
-  return <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#EDF2F6] text-[#456A8E]"><Icon className="size-4" /></span><div><span className="text-[9px] font-bold tracking-[.12em] text-[#8493A2]">{eyebrow}</span><h2 className="text-base font-bold text-[#293C51]">{title}</h2><p className="mt-1 text-[10px] leading-4 text-[#758392]">{description}</p></div></div>
+function splitRoleTitle(name: string) {
+  const latinPrefix = name.match(/^([A-Za-z]+(?:\s+[A-Za-z]+)*)\s*(.+)$/)
+  if (latinPrefix) return [latinPrefix[1], latinPrefix[2]]
+  if (name.length > 8 && name.endsWith("工程师")) return [name.slice(0, -3), "工程师"]
+  return [name]
+}
+
+function SectionTitle({ icon: Icon, imageSrc, flightAccent = false, orbitAccent = false, landingAccent = false, eyebrow, title, description }: { icon: typeof Target; imageSrc?: string; flightAccent?: boolean; orbitAccent?: boolean; landingAccent?: boolean; eyebrow: string; title: string; description: string }) {
+  return <div className={cn("competency-section-title flex items-start gap-4", flightAccent && "has-flight", orbitAccent && "has-orbit", landingAccent && "has-landing")}><span className={cn("grid size-11 shrink-0 place-items-center rounded-[14px]", imageSrc && "is-real-icon")}>{imageSrc ? <img src={imageSrc} alt="" aria-hidden="true" /> : <Icon className="size-5" />}</span><div><span className="text-[12px] font-extrabold tracking-[.14em]">{eyebrow}</span><h2 className="mt-1 text-[24px] font-black tracking-[-.035em] text-[#172E49]">{title}</h2><p className="mt-1 text-[14px] font-medium leading-6 text-[#62748A]">{description}</p></div>{flightAccent && <i className="competency-section-flight" aria-hidden="true"><img className="is-eastbound" src="/images/section-aircraft-v1.png" alt="" /><img className="is-westbound" src="/images/section-aircraft-v1.png" alt="" /></i>}{orbitAccent && <i className="competency-section-orbit" aria-hidden="true"><span className="is-orbit-upper"><img src="/images/section-satellite-v1.png" alt="" /></span><span className="is-orbit-lower"><img src="/images/section-satellite-v1.png" alt="" /></span><b className="is-data-one" /><b className="is-data-two" /><b className="is-data-three" /></i>}{landingAccent && <i className="competency-section-landing" aria-hidden="true"><span className="is-drop-one"><img src="/images/section-parachute-capsule-v1.png" alt="" /></span><span className="is-drop-two"><img src="/images/section-parachute-capsule-v1.png" alt="" /></span><span className="is-drop-three"><img src="/images/section-parachute-capsule-v1.png" alt="" /></span><b className="is-zone-one" /><b className="is-zone-two" /><b className="is-zone-three" /></i>}</div>
 }
 
 function ResourceCard({ id, index, plan, ready, released, reviewScore, videoStatus }: { id: ResourceId; index: number; plan?: PersonalizedTrainingPlan; ready: boolean; released: boolean; reviewScore?: number; videoStatus?: string }) {
@@ -265,7 +288,8 @@ function ResourceCard({ id, index, plan, ready, released, reviewScore, videoStat
   const Icon = meta.icon
   const stage = plan?.stages[index]
   const videoReady = videoStatus === "ready" || videoStatus === "completed" || videoStatus === "done"
-  return <article className={cn("rounded-[20px] border p-4", released && ready ? "border-[#BFDCCF] bg-[#F7FCFA]" : ready ? "border-[#C8D9ED] bg-[#F8FBFF]" : "border-[#E0E7F0] bg-[#FBFCFE]")}><div className="flex items-start justify-between gap-3"><span className="grid size-10 place-items-center rounded-xl bg-white text-[#3369B4] shadow-sm"><Icon className="size-4.5" /></span><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", released && ready ? "bg-[#DDF2E9] text-[#18745E]" : ready ? "bg-[#E6F0FD] text-[#3568A9]" : "bg-[#EDF1F6] text-[#7B899B]")}>{released && ready ? (id === "video" ? (videoReady ? "已发布" : "生成中") : `校验 ${reviewScore ?? "—"} 分`) : ready ? "等待发布门禁" : "等待生成"}</span></div><h3 className="mt-3 text-sm font-bold text-[#20344E]">{meta.title}</h3><p className="mt-1 text-[10px] leading-4 text-[#738298]">{stage?.goal || meta.detail}</p><div className="mt-3 rounded-xl bg-white/90 px-3 py-2 text-[9px] leading-4 text-[#63758D]">成果证据：{stage?.evidence || "由资源生成 Agent 确定"}</div>{released && ready ? <Link to={`/workspace/r/${id}`} className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#2864BA]">打开资源<ArrowRight className="size-3" /></Link> : <span className="mt-3 inline-flex h-8 items-center gap-1 text-[10px] font-bold text-[#8794A5]"><ShieldCheck className="size-3" />通过发布门禁后开放</span>}</article>
+  const badgeState = released && ready ? "is-published" : ready ? "is-ready" : "is-waiting"
+  return <motion.article className={cn("competency-resource-card rounded-[20px] border p-5", meta.tone, released && ready && "is-released", ready && "is-ready")} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .3 }} transition={{ duration: .5, delay: index * .05 }} whileHover={{ y: -4 }}><img className="competency-resource-art" src={meta.background} alt="" aria-hidden="true" loading="lazy" decoding="async" /><span className="competency-resource-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span><div className="flex items-start justify-between gap-3"><span className="competency-resource-icon grid size-12 place-items-center" aria-hidden="true"><Icon /></span><span className={cn("competency-resource-badge rounded-full px-3 py-1.5 text-[12px] font-bold", badgeState)}>{released && ready ? (id === "video" ? (videoReady ? "已发布" : "生成中") : `${reviewScore ?? "—"} 分`) : ready ? "待发布" : "待生成"}</span></div><h3 className="mt-5 text-[20px] font-black text-[#172E49]">{meta.title}</h3><p className="mt-2 line-clamp-2 text-[14px] leading-6 text-[#607287]">{stage?.goal || meta.detail}</p>{released && ready ? <Link to={`/workspace/r/${id}`} className="competency-resource-footer mt-4 inline-flex h-10 items-center gap-2 text-[13px] font-black">打开资源<ArrowRight className="size-4" /></Link> : <span className="competency-resource-footer mt-4 inline-flex h-10 items-center gap-2 text-[13px] font-bold"><ShieldCheck className="size-4" />等待发布</span>}</motion.article>
 }
 
 function AcceptancePanel({
@@ -303,35 +327,39 @@ function AcceptancePanel({
   const advancedChallengeAvailable = accuracyRate !== null && accuracyRate >= ADVANCED_CHALLENGE_THRESHOLD
 
   return (
-    <section className={cn("mt-4 rounded-[24px] border p-5 shadow-[0_12px_34px_rgba(41,67,112,.07)] sm:p-6", certificateEligible ? "border-[#DFC784] bg-[#FFFCF3]" : "border-[#DCE5F1] bg-white")}>
+    <section className={cn("competency-section competency-acceptance mt-4 p-5 sm:p-6", certificateEligible && "is-complete")}>
       <SectionTitle
         icon={certificateEligible ? Award : Flag}
+        imageSrc="/images/training-acceptance-beacon-v1.png"
+        landingAccent
         eyebrow={certificateEligible ? "05 · 全部训练完成" : "05 · 本轮验收"}
         title={certificateEligible ? "祝贺你完成岗位学习，专属电子奖状已收入荣誉墙" : "本轮验收"}
         description={certificateEligible ? "系统已核对全部学习轮次与最终验收结果，证书已自动发放，可随时查看和下载。" : "根据本轮已完成题目的正确率选择下一步。"}
       />
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <div className="flex min-h-32 flex-col justify-center rounded-2xl border border-[#DCE5F1] bg-[#F8FAFD] px-5 py-4">
-          <span className="text-[10px] font-bold text-[#75849A]">{certificateEligible ? "岗位训练进度" : "正确率"}</span>
-          {certificateEligible && <strong className="mt-2 text-3xl text-[#9B7228]">{requiredRoundCount} / {requiredRoundCount}</strong>}
-          {!certificateEligible && <strong className="mt-2 text-3xl text-[#294A73]">{accuracyLabel}</strong>}
+      <div className="competency-acceptance-console mt-5 grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="competency-acceptance-metric flex min-h-32 flex-col justify-center px-5 py-4">
+          <span className="text-xs font-black">{certificateEligible ? "岗位训练进度" : "正确率"}</span>
+          {certificateEligible && <strong className="mt-2 text-3xl">{requiredRoundCount} / {requiredRoundCount}</strong>}
+          {!certificateEligible && <strong className="mt-2 text-3xl">{accuracyLabel}</strong>}
+          <i className="competency-acceptance-gauge" aria-hidden="true" />
         </div>
-        <div className="flex min-h-32 flex-wrap items-center gap-3 rounded-2xl border border-[#DCE5F1] bg-white px-5 py-4">
+        <div className="competency-acceptance-actions flex min-h-32 flex-wrap items-center gap-3 px-5 py-4">
+          <i className="competency-acceptance-energy" aria-hidden="true"><b /><b /><b /></i>
           {certificateEligible ? (
             <>
-              <button type="button" onClick={onOpenCertificate} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[linear-gradient(135deg,#B7872D,#D0A64C)] px-4 text-xs font-bold text-white shadow-[0_8px_18px_rgba(183,135,45,.22)]"><Award className="size-4" />查看岗位奖状</button>
-              <span className="text-[10px] font-bold text-[#8A651F]">已完成 {completedRoundCount} 轮岗位学习</span>
+              <button type="button" onClick={onOpenCertificate} className="competency-acceptance-button is-gold inline-flex h-11 items-center gap-2 rounded-xl px-5 text-xs font-black text-white"><Award className="size-4" />查看岗位奖状</button>
+              <span className="competency-acceptance-note text-xs font-bold">已完成 {completedRoundCount} 轮岗位学习</span>
             </>
           ) : (
             <>
-              {!hasAttempts && <Link to="/workspace/r/quiz" className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#2468CE] px-4 text-xs font-bold text-white"><BookOpenCheck className="size-4" />开始分阶测试<ArrowRight className="size-4" /></Link>}
-              {hasAttempts && !advancedChallengeAvailable && <button type="button" onClick={() => void onSimplify()} disabled={feedbackBusy || workspace.status === "running"} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#A9583D] px-4 text-xs font-bold text-white disabled:opacity-50">{feedbackBusy ? <Loader2 className="size-4 animate-spin" /> : <BookOpenCheck className="size-4" />}降维解释</button>}
-              {hasAttempts && advancedChallengeAvailable && <button type="button" onClick={() => void onChallenge()} disabled={feedbackBusy} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#6D50C7] px-4 text-xs font-bold text-white disabled:opacity-50">{feedbackBusy ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}生成进阶挑战任务</button>}
-              {hasAttempts && advancedChallengeAvailable && <button type="button" onClick={() => void onNext()} disabled={feedbackBusy || workspace.status === "running"} className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#B9CBE4] bg-white px-4 text-xs font-bold text-[#315E83] disabled:opacity-50"><ArrowRight className="size-4" />继续生成新一轮知识</button>}
+              {!hasAttempts && <Link to="/workspace/r/quiz" className="competency-acceptance-button is-blue inline-flex h-11 items-center gap-2 rounded-xl px-5 text-xs font-black text-white"><BookOpenCheck className="size-4" />开始分阶测试<ArrowRight className="size-4" /></Link>}
+              {hasAttempts && !advancedChallengeAvailable && <button type="button" onClick={() => void onSimplify()} disabled={feedbackBusy || workspace.status === "running"} className="competency-acceptance-button is-coral inline-flex h-11 items-center gap-2 rounded-xl px-5 text-xs font-black text-white disabled:opacity-50">{feedbackBusy ? <Loader2 className="size-4 animate-spin" /> : <BookOpenCheck className="size-4" />}降维解释</button>}
+              {hasAttempts && advancedChallengeAvailable && <button type="button" onClick={() => void onChallenge()} disabled={feedbackBusy} className="competency-acceptance-button is-violet inline-flex h-11 items-center gap-2 rounded-xl px-5 text-xs font-black text-white disabled:opacity-50">{feedbackBusy ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}生成进阶挑战任务</button>}
+              {hasAttempts && advancedChallengeAvailable && <button type="button" onClick={() => void onNext()} disabled={feedbackBusy || workspace.status === "running"} className="competency-acceptance-button is-ghost inline-flex h-11 items-center gap-2 rounded-xl px-5 text-xs font-black disabled:opacity-50"><ArrowRight className="size-4" />继续生成新一轮知识</button>}
             </>
           )}
-          {feedbackError && <p role="alert" className="w-full text-[10px] text-[#A85138]">{feedbackError}</p>}
+          {feedbackError && <p role="alert" className="w-full text-xs text-[#A85138]">{feedbackError}</p>}
         </div>
       </div>
     </section>

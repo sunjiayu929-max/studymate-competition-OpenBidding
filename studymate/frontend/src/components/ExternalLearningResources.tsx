@@ -141,8 +141,8 @@ export function ExternalLearningResources({ keyword, conceptTitle }: { keyword: 
   const isFde = /\bFDE\b|前线部署|现场交付|部署验收/i.test(`${topic} ${roleContext || ""}`)
   const featuredVideos = isFde ? FDE_FEATURED_VIDEOS : []
   return (
-    <section className="mt-8 border-t border-[#E3DED3] pt-6" aria-label="学习资源">
-      <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.12em] text-[#6F8A69]"><Library className="size-3.5" />学习资源 · 书籍、论文、文档与视频</div>
+    <section className="lr-resource-suite mt-8 border-t border-[#E3DED3] pt-6" aria-label="学习资源">
+      <div className="lr-resource-heading flex items-center gap-3"><strong>01</strong><span><b>精选资源总览</b><small>书籍、论文、文档与视频</small></span><i aria-hidden="true"><em /><em /><em /></i></div>
       <VisualResourceCards biliVideo={biliVideo || featuredVideos[0] || null} />
       <BiliVideos keyword={keyword || topic} conceptTitle={conceptTitle} courseName={roleContext} onFirstVideo={onFirstVideo} featuredVideos={featuredVideos} />
       <ExtendedReading items={FDE_EXTENDED_READING} />
@@ -158,10 +158,10 @@ function VisualResourceCards({ biliVideo }: { biliVideo: BiliVideo | null }) {
     { kind: "video", title: biliVideo?.title || "FDE 现场交付复盘", source: biliVideo?.author ? `B站 · ${biliVideo.author}` : "B站 · 真实视频", href: biliVideo?.url || "https://www.bilibili.com/video/BV1AJMq6eEum", description: "从需求澄清到方案落地的真实驻场复盘。", cover: biliVideo?.cover || FDE_FEATURED_VIDEOS[0].cover },
   ]
   return (
-    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="lr-resource-overview mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {items.map((item) => {
         const style = RESOURCE_STYLE[item.kind]
-        return <a key={item.kind} href={item.href} target="_blank" rel="noreferrer noopener" onClick={() => track("external_resource_open", item.kind, item.title)} className="group overflow-hidden rounded-[20px] border border-[#D7D1C4] bg-[#FFFEFA] shadow-[0_8px_22px_rgba(24,35,45,.045)] transition hover:-translate-y-0.5 hover:border-[#9FB1BC]">
+        return <a key={item.kind} href={item.href} target="_blank" rel="noreferrer noopener" onClick={() => track("external_resource_open", item.kind, item.title)} className={`lr-resource-card lr-resource-${item.kind} group overflow-hidden rounded-[20px] border border-[#D7D1C4] bg-[#FFFEFA] shadow-[0_8px_22px_rgba(24,35,45,.045)] transition hover:-translate-y-0.5 hover:border-[#9FB1BC]`}>
           <ResourcePreview kind={item.kind} title={item.title} cover={item.cover} />
           <div className="p-3"><h3 className="line-clamp-2 text-sm font-bold text-[#18232D]">{item.title}</h3><p className="mt-1 text-[10px] font-semibold text-[#66717B]">{item.source}</p><p className="mt-2 text-[11px] leading-4 text-[#7A817F]">{item.description}</p><span className={`mt-3 inline-flex items-center gap-1 text-[10px] font-bold ${style.text}`}>{item.kind === "video" ? "打开视频" : "打开原文"}<ExternalLink className="size-3" /></span></div>
         </a>
@@ -186,7 +186,7 @@ function ResourcePreview({ kind, title, cover, compact = false }: { kind: Resour
 
 function ExtendedReading({ items }: { items: ExtendedReadingItem[] }) {
   return (
-    <section className="mt-8 border-t border-[#E3DED3] pt-6" aria-label="拓展阅读">
+    <section className="lr-resource-reading mt-10 border-t border-[#E3DED3] pt-8" aria-label="拓展阅读">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.12em] text-[#6F8A69]"><Library className="size-3.5" />拓展阅读</div>
@@ -199,7 +199,7 @@ function ExtendedReading({ items }: { items: ExtendedReadingItem[] }) {
           const style = RESOURCE_STYLE[item.kind]
           const Icon = style.icon
           return (
-            <a key={item.title} href={item.href} target="_blank" rel="noreferrer noopener" onClick={() => track("external_resource_open", `extended_${item.kind}`, item.title)} className="group flex min-h-40 flex-col rounded-[16px] border border-[#D7D1C4] bg-[#FFFEFA] p-4 transition hover:-translate-y-0.5 hover:border-[#9FB1BC]">
+            <a key={item.title} href={item.href} target="_blank" rel="noreferrer noopener" onClick={() => track("external_resource_open", `extended_${item.kind}`, item.title)} className={`lr-reading-card lr-resource-${item.kind} group flex min-h-40 flex-col rounded-[16px] border border-[#D7D1C4] bg-[#FFFEFA] p-4 transition hover:-translate-y-0.5 hover:border-[#9FB1BC]`}>
               <ResourcePreview kind={item.kind} title={item.title} compact />
               <div className="mt-3 flex items-start justify-between gap-3">
                 <span className={`grid size-8 place-items-center rounded-lg bg-[#F3F0E8] ${style.text}`}><Icon className="size-3.5" /></span>

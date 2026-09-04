@@ -122,50 +122,44 @@ export function evaluateRoleCertificateRounds(
 
 // 荣誉墙打开时补发：学完岗位全部训练且最近一轮达标，却从未手动领取过的证书在这里自动入账。
 export async function syncEarnedCertificates(userId: number, learnerName: string): Promise<RoleCertificateRecord[]> {
-  ensureDemoCertificates(userId, learnerName)
-  const profile = await apiGet<{ dims?: { training_rounds?: RoleTrainingRound[] } }>(`/profile/${userId}`)
-  const rounds = profile.dims?.training_rounds ?? []
-  const issued: RoleCertificateRecord[] = []
-  for (const domain of careerDomains) {
-    for (const role of domain.roles) {
-      const evaluation = evaluateRoleCertificateRounds(rounds, role)
-      if (!evaluation.eligible) continue
-      const alreadyStored = hasCertificateRecord(userId, role.id)
-      const record = getOrCreateCertificateRecord({
-        userId,
-        learnerName,
-        roleId: role.id,
-        roleName: role.name,
-        completedRounds: evaluation.completedRoundCount,
-      })
-      if (!alreadyStored) issued.push(record)
-    }
+  const persisted = await apiGet<{ items: RoleCertificateRecord[] }>("/certificates")
+  for (const item of persisted.items) {
+    getOrCreateCertificateRecord({
+      userId,
+      learnerName,
+      roleId: item.roleId,
+      roleName: item.roleName,
+      completedRounds: item.completedRounds,
+      issuedAt: item.issuedAt,
+    })
   }
-  return issued
+
+  // 画像接口仅用于补签新完成的训练；它失败时，数据库中已持久化的证书仍应正常展示。
+  try {
+    const profile = await apiGet<{ dims?: { training_rounds?: RoleTrainingRound[] } }>(`/profile/${userId}`)
+    const rounds = profile.dims?.training_rounds ?? []
+    for (const domain of careerDomains) {
+      for (const role of domain.roles) {
+        const evaluation = evaluateRoleCertificateRounds(rounds, role)
+        if (!evaluation.eligible) continue
+        getOrCreateCertificateRecord({
+          userId,
+          learnerName,
+          roleId: role.id,
+          roleName: role.name,
+          completedRounds: evaluation.completedRoundCount,
+        })
+      }
+    }
+  } catch {
+    // 数据库证书已同步完成，不因可选的训练补签检查阻断荣誉墙。
+  }
+  return listUserCertificates(userId, learnerName)
 }
 
-// 演示预置：前三个领域各预置一张证书（软件开发领域跳过 FDE），保证任意账号进入荣誉墙即有成果可看。
-const DEMO_PRESET_DOMAIN_IDS = ["ai", "software", "industrial"]
-const DEMO_PRESET_DAYS_AGO = [90, 60, 30]
-
 export function ensureDemoCertificates(userId: number, learnerName: string): void {
-  try {
-    DEMO_PRESET_DOMAIN_IDS.forEach((domainId, index) => {
-      const domain = careerDomains.find((item) => item.id === domainId)
-      const role = domain?.roles.find((item) => item.id !== "fde")
-      if (!role) return
-      getOrCreateCertificateRecord({
-        userId,
-        learnerName,
-        roleId: role.id,
-        roleName: role.name,
-        completedRounds: Math.max(1, role.sampleTasks.length),
-        issuedAt: new Date(Date.now() - DEMO_PRESET_DAYS_AGO[index] * 86400000).toISOString(),
-      })
-    })
-  } catch {
-    // 预置失败不阻塞荣誉墙展示。
-  }
+  void userId
+  void learnerName
 }
 
 export function listUserCertificates(userId: number, learnerName: string): RoleCertificateRecord[] {

@@ -18,6 +18,7 @@ import {
   BarChart3, Sparkles, Loader2, Download, CheckCircle2, AlertTriangle,
   Clock, Target, TrendingUp, RefreshCw, BookOpen, ArrowRight,
   LineChart as LineChartIcon, History, ArrowLeft, X, ShieldCheck, Layers3,
+  Radio, Activity, Gauge, Route,
 } from "lucide-react"
 import {
   ResponsiveContainer,
@@ -96,6 +97,11 @@ interface EvalHistoryItem {
   id: number
   scores: EvalScores
   suggestions: string[]
+  profile_delta?: ProfileDelta
+  evidence?: EvalEvidence
+  summary_markdown?: string
+  next_topics?: string[]
+  profile_version?: number
   created_at: string | null
 }
 
@@ -329,16 +335,16 @@ export function Report() {
       if (!latest) return null
       return {
         user_id: USER_ID,
-        profile_version: profileResult.value.version,
+        profile_version: latest.profile_version || profileResult.value.version,
         current_dims: profileResult.value.dims,
         projected_dims: profileResult.value.dims,
         scores: latest.scores,
-        profile_delta: {},
+        profile_delta: latest.profile_delta || {},
         suggestions: latest.suggestions || [],
-        next_topics: [],
-        summary_markdown: "这是最近一次阶段评估的实时数据快照。完成新的测验或一轮资源学习后，因材智训会在关键里程碑更新阶段总结。",
+        next_topics: latest.next_topics || [],
+        summary_markdown: latest.summary_markdown || "这是最近一次阶段评估的实时数据快照。完成新的测验或一轮资源学习后，因材智训会在关键里程碑更新阶段总结。",
         generated_at: latest.created_at || undefined,
-        evidence: {
+        evidence: latest.evidence && Object.keys(latest.evidence).length ? latest.evidence : {
           course_id: evidenceCourseId,
           course_name: evidenceCourseName,
           topic: ws.topic,
@@ -531,6 +537,11 @@ export function Report() {
   const reportStale = Boolean(report && profile && profile.version !== report.profile_version)
   const reportEvidence = report?.evidence
   const reportAttemptCount = report?.scores?.total_attempts ?? 0
+  const persistedSignalCount = reportEvidence
+    ? reportEvidence.quiz_count + reportEvidence.resources_consumed.length
+    : 0
+  const liveSignalCount = quizAttempts.length + resourcesConsumed.length
+  const displayedSignalCount = liveSignalCount || persistedSignalCount
 
   // 仅在“完成测验 / 完成一轮资源学习”这一关键里程碑自动评估一次。
   useEffect(() => {
@@ -550,17 +561,17 @@ export function Report() {
   }
 
   return (
-    <div className="app-page paper-theme">
+    <div className={`app-page paper-theme report-live-page ${loading || workspaceGenerating ? "is-streaming" : ""}`}>
       <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <AppTopbar current="report" appearance="paper" />
-        <section className="mt-4 min-h-[calc(100dvh-120px)] overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)]">
-          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D7D1C4] bg-[#F8F6F0] px-3 py-3.5 sm:px-5">
+        <AppTopbar current="report" appearance="paper" iconImage="/images/report-telemetry-terminal-v1.png" showRocketFormation rocketVariant="honor" />
+        <section className="report-live-shell mt-4 min-h-[calc(100dvh-120px)] overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)]">
+          <header className="report-live-titleband flex flex-wrap items-center justify-between gap-3 border-b border-[#D7D1C4] bg-[#F8F6F0] px-3 py-3.5 sm:px-5">
             <div className="flex min-w-0 items-center gap-3">
               <Link to="/" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]">
                 <ArrowLeft className="size-3.5" /><span className="hidden sm:inline">返回首页</span>
               </Link>
               <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
-              <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><BarChart3 className="size-4" /></span>
+              <span className="report-live-title-icon grid size-10 shrink-0 place-items-center" aria-hidden="true"><img src="/images/report-title-telemetry-badge-v1.png" alt="" /></span>
               <div className="min-w-0">
                 <h1 className="text-[15px] font-bold text-[#18232D]">因材智训学习报告</h1>
                 <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">{ws.topic ? `围绕《${ws.topic}》分析掌握程度、训练投入与下一轮路径` : "汇总答题、资源使用与岗位能力画像，形成可以行动的胜任力反馈"}</p>
@@ -576,6 +587,39 @@ export function Report() {
             </div>
           </header>
           <div className="p-4 sm:p-5">
+
+        <section className="report-live-hero" aria-label="实时学习遥测概览">
+          <div className="report-live-scan" aria-hidden="true" />
+          <div className="report-live-identity">
+            <span className="report-live-kicker"><Radio className="size-3.5" /> LIVE LEARNING TELEMETRY</span>
+            <div className="report-live-index"><strong>01</strong><span>实时学习报告</span><i>PROGRESS SIGNAL</i></div>
+            <h2>{ws.topic || evidenceCourseName || "等待学习主题接入"}</h2>
+            <p>持续汇聚答题、资源消费、学习时长与画像变化，形成可行动的阶段反馈。</p>
+          </div>
+          <div className="report-live-orbit" role="img" aria-label={`当前已接入 ${displayedSignalCount} 条有效学习信号`}>
+            <img src="/images/report-live-telemetry-instrument-v1.png" alt="" aria-hidden="true" />
+            <span className="report-live-instrument-scan" aria-hidden="true" />
+            <span className="report-live-instrument-glint" aria-hidden="true" />
+            <div className="report-live-orbit-core" aria-hidden="true">
+              <Activity className="size-4" />
+              <strong>{displayedSignalCount}</strong>
+              <small>VALID SIGNALS</small>
+            </div>
+          </div>
+          <div className="report-live-console">
+            <div><Activity className="size-4" /><span>信号状态</span><strong>{workspaceGenerating ? "采集中" : loading ? "分析中" : report ? "已同步" : "待接入"}</strong></div>
+            <div><Gauge className="size-4" /><span>遥测证据</span><strong>{displayedSignalCount}</strong></div>
+            <div><Route className="size-4" /><span>画像版本</span><strong>{report ? `v${report.profile_version}` : profile ? `v${profile.version}` : "—"}</strong></div>
+          </div>
+        </section>
+        <nav className="report-live-stage" aria-label="报告处理阶段">
+          <span className="report-live-stage-signal" aria-hidden="true" />
+          {["采集", "分析", "反馈", "行动"].map((label, index) => {
+            const activeStep = workspaceGenerating ? 0 : loading ? 1 : report ? 3 : hasEvalData ? 1 : 0
+            const stateClass = index < activeStep ? "is-done" : index === activeStep ? "is-current" : ""
+            return <span key={label} className={`report-live-stage-card is-stage-${index + 1} ${stateClass}`}><i>0{index + 1}</i><b>{label}</b></span>
+          })}
+        </nav>
 
         {error && (
           <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-[#DFC8BE] bg-[#F4E8E2] p-3 text-sm text-[#9A4E35]">
@@ -642,17 +686,9 @@ export function Report() {
         )}
 
         {report && (
-          <div ref={reportRef} className="space-y-4 bg-[#FFFEFA] pb-2">
-            <ReportEvidenceStrip
-              evidence={reportEvidence}
-              generatedAt={report.generated_at}
-              profileVersion={report.profile_version}
-              currentProfileVersion={profile?.version ?? null}
-            />
-            <LearningStatsCards stats={learningStats} />
-
-            {/* 顶部统计卡 */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div ref={reportRef} className="report-live-results space-y-4 bg-[#FFFEFA] pb-2">
+            {/* 首屏优先：核心指标与趋势。 */}
+            <div className="report-live-metrics grid grid-cols-2 md:grid-cols-4 gap-3">
               <StatCard
                 icon={<Target className="size-4" />}
                 color="emerald"
@@ -683,11 +719,24 @@ export function Report() {
               />
             </div>
 
+            {trendData.length >= 2 && <TrendLineCard data={trendData} />}
+
+            <div className="report-live-transition is-archive" aria-hidden="true"><span>实时信号</span><i /><b>证据归档</b></div>
+            <ReportEvidenceStrip
+              evidence={reportEvidence}
+              generatedAt={report.generated_at}
+              profileVersion={report.profile_version}
+              currentProfileVersion={profile?.version ?? null}
+            />
+            <LearningStatsCards stats={learningStats} />
+
+            <div className="report-live-transition is-mastery" aria-hidden="true"><span>活动采样</span><i /><b>掌握分析</b></div>
+
             {/* 新报告显示主题×难度热力图；旧报告继续使用原柱状图。 */}
             {hasTopicDifficultyData ? (
               <TopicDifficultyHeatmap data={topicDifficultyData} overall={report.scores.by_topic} />
             ) : topicBarData.length > 0 ? (
-              <div className="rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] p-5">
+              <div className="report-live-topic-chart rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] p-5">
                 <div className="text-sm font-semibold mb-3 flex items-center gap-1.5">
                   <BarChart3 className="size-4 text-[#B85C3E]" /> 按主题正确率
                 </div>
@@ -716,14 +765,13 @@ export function Report() {
               </div>
             ) : null}
 
-            {/* 评估趋势折线（≥2 次评估才显示） */}
-            {trendData.length >= 2 && (
-              <TrendLineCard data={trendData} />
-            )}
+            <CapabilitySignalCard delta={report.profile_delta} />
+
+            <div className="report-live-transition is-feedback" aria-hidden="true"><span>能力变化</span><i /><b>反馈行动</b></div>
 
             {/* 评估总结 markdown */}
             {report.summary_markdown && (
-              <div className="rounded-[22px] border border-[#D7D1C4] bg-[#F8F6F0] p-5">
+              <div className="report-live-summary rounded-[22px] border border-[#D7D1C4] bg-[#F8F6F0] p-5">
                 <div className="text-sm font-semibold mb-2 flex items-center gap-1.5">
                   <Sparkles className="size-4 text-[#315E83]" /> 评估总结
                 </div>
@@ -732,7 +780,7 @@ export function Report() {
             )}
 
             {/* 学习建议 + 下一步主题 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="report-live-feedback grid grid-cols-1 md:grid-cols-2 gap-4">
               {report.suggestions?.length > 0 && (
                 <div className="rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] p-5">
                   <div className="text-sm font-semibold mb-2 flex items-center gap-1.5">
@@ -801,7 +849,7 @@ function ReportEvidenceStrip({
     { label: "生成时间", value: formatReportTime(generatedAt), icon: Clock },
   ]
   return (
-    <section aria-label="报告生成依据" className="rounded-[22px] border border-[#C7D2D8] bg-[#F3F6F7] p-4">
+    <section aria-label="报告生成依据" className="report-live-evidence rounded-[22px] border border-[#C7D2D8] bg-[#F3F6F7] p-4">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-1.5 text-xs font-bold text-[#315E83]"><ShieldCheck className="size-3.5" />报告生成依据</div>
@@ -813,8 +861,8 @@ function ReportEvidenceStrip({
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {cells.map(({ label, value, icon: Icon }) => (
-          <div key={label} className="min-w-0 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-2.5">
+        {cells.map(({ label, value, icon: Icon }, index) => (
+          <div key={label} className={`report-live-evidence-cell is-tone-${index + 1} min-w-0 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-2.5`}>
             <span className="flex items-center gap-1 text-[9px] font-bold tracking-[0.08em] text-[#8A8172]"><Icon className="size-3" />{label}</span>
             <strong className="mt-1 block truncate text-[11px] text-[#27343D]" title={value}>{value}</strong>
           </div>
@@ -832,9 +880,9 @@ function LearningStatsCards({ stats }: { stats: LearningStats }) {
     { label: "今日学习时长", value: formatLearningMinutes(stats.today_minutes), icon: Clock, tone: "border-[#D7D1C4] bg-[#F8F6F0] text-[#66717B]" },
   ]
   return (
-    <section aria-label="账号学习统计" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-      {cards.map(({ label, value, icon: Icon, tone }) => (
-        <article key={label} className={`rounded-[18px] border px-3.5 py-3 ${tone}`}>
+    <section aria-label="账号学习统计" className="report-live-activity grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      {cards.map(({ label, value, icon: Icon, tone }, index) => (
+        <article key={label} className={`report-live-activity-card is-tone-${index + 1} rounded-[18px] border px-3.5 py-3 ${tone}`}>
           <div className="flex items-center gap-1.5 text-[10px] font-bold"><Icon className="size-3.5" />{label}</div>
           <strong className="mt-2 block truncate text-lg tracking-[-.02em] text-[#18232D]" title={value}>{value}</strong>
           {label === "学习天数" && <p className="mt-1 text-[9px] text-[#7A817F]">从账号注册日期起计算</p>}
@@ -867,7 +915,7 @@ function HeatmapCell({ bucket, label }: { bucket?: { correct: number; total: num
   return (
     <td className="p-1.5">
       <div
-        className={`min-w-[92px] rounded-xl border px-2 py-2 text-center ${heatmapTone(rate)}`}
+        className={`report-live-heat-cell ${rate != null ? "has-signal" : ""} min-w-[92px] rounded-xl border px-2 py-2 text-center ${heatmapTone(rate)}`}
         title={bucket ? `${label}：${bucket.correct}/${bucket.total}，正确率 ${percent}` : `${label}：暂无答题`}
       >
         <strong className="block text-xs">{percent}</strong>
@@ -887,7 +935,7 @@ function TopicDifficultyHeatmap({
   const difficulties = [1, 2, 3, 4]
   const topics = Object.keys(data)
   return (
-    <section className="rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] p-4 sm:p-5">
+    <section className="report-live-mastery-card rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-1.5 text-sm font-semibold text-[#18232D]"><BarChart3 className="size-4 text-[#B85C3E]" />主题 × 难度掌握热力图</div>
@@ -927,7 +975,7 @@ function ReportHistoryLanding({ items }: { items: EvalHistoryItem[] }) {
   const recent = items.slice(0, 3)
   const masteryCount = items.filter((item) => (item.scores?.total_attempts ?? 0) > 0).length
   return (
-    <div className="rounded-[24px] border border-[#D7D1C4] bg-[#F8F6F0] p-5 sm:p-7">
+    <div className="report-live-history rounded-[24px] border border-[#D7D1C4] bg-[#F8F6F0] p-5 sm:p-7">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <span className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.1em] text-[#8E6925]"><History className="size-3.5" />历史学习证据</span>
@@ -950,7 +998,7 @@ function ReportHistoryLanding({ items }: { items: EvalHistoryItem[] }) {
             ? createdAt.toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
             : "时间未记录"
           return (
-            <article key={item.id} className="paper-lift rounded-[20px] border border-[#D7D1C4] bg-[#FFFEFA] p-4 shadow-[0_8px_20px_rgba(24,35,45,.035)]">
+            <article key={item.id} className={`report-live-history-card ${index === 0 ? "is-latest" : ""} paper-lift rounded-[20px] border border-[#D7D1C4] bg-[#FFFEFA] p-4 shadow-[0_8px_20px_rgba(24,35,45,.035)]`}>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-[10px] font-bold tracking-[0.12em] text-[#B1842C]">报告 {String(items.length - index).padStart(2, "0")} · {attempts > 0 ? "掌握评估" : "行为评估"}</span>
                 <time className="text-[10px] font-medium text-[#8A8172]">{dateLabel}</time>
@@ -992,18 +1040,20 @@ function EmptyState({ courseName }: { courseName?: string }) {
     { step: "03", title: "生成报告", desc: "获得建议并更新岗位能力画像", icon: BarChart3, tone: "bg-[#F4ECD8] text-[#8E6925]" },
   ]
   return (
-    <div className="grid min-h-[520px] place-items-center rounded-[24px] border border-dashed border-[#CFC8B9] bg-[#F8F6F0] px-5 py-12">
+    <div className="report-live-empty grid min-h-[340px] place-items-center rounded-[24px] border border-dashed border-[#CFC8B9] bg-[#F8F6F0] px-5 py-7">
       <div className="max-w-2xl text-center">
         <div className="relative mx-auto grid size-20 place-items-center">
           <span className="absolute inset-0 rounded-full border border-dashed border-[#D9CFB7]" />
           <span className="absolute inset-2 rounded-full border border-[#E3DED3]" />
-          <span className="relative grid size-12 place-items-center rounded-2xl border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925] shadow-[0_10px_24px_rgba(142,105,37,.12)]"><BarChart3 className="size-5" /></span>
+          <span className="report-live-empty-emblem relative grid size-12 place-items-center">
+            <img src="/images/report-telemetry-terminal-v1.png" alt="" aria-hidden="true" />
+          </span>
         </div>
         <h2 className="mt-4 text-xl font-bold tracking-[-0.03em] text-[#18232D]">完成一次学习闭环，报告就会在这里生长</h2>
         <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[#66717B]">学习报告会结合资源训练、测验结果和画像变化，告诉你已经掌握哪些岗位能力、薄弱能力在哪里，以及下一步最值得训练什么。</p>
         <div className="mt-6 grid gap-2 text-left sm:grid-cols-3">
           {steps.map(({ step, title, desc, icon: Icon, tone }) => (
-            <div key={step} className="paper-lift rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] p-4">
+            <div key={step} className={`report-live-empty-step is-step-${step} paper-lift rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] p-4`}>
               <div className="flex items-center justify-between">
                 <span className={`grid size-8 place-items-center rounded-xl ${tone}`}><Icon className="size-4" /></span>
                 <span className="text-[10px] font-bold tracking-[0.14em] text-[#B1842C]">{step}</span>
@@ -1012,6 +1062,20 @@ function EmptyState({ courseName }: { courseName?: string }) {
               <div className="mt-1 text-[11px] leading-5 text-[#6F787A]">{desc}</div>
             </div>
           ))}
+        </div>
+        <div className="report-live-launch-deck">
+          <div className="report-live-launch-copy">
+            <span><Radio className="size-3.5" /> LEARNING SIGNAL LAUNCH</span>
+            <strong>第一条学习证据，就是报告的点火信号</strong>
+            <p>资源进入轨道后，测验负责校准，最终汇聚为可执行的能力反馈。</p>
+          </div>
+          <div className="report-live-launch-route" aria-label="学习报告启动路径">
+            <i aria-hidden="true" />
+            {["资源入轨", "测验校准", "报告点亮"].map((label, index) => (
+              <span key={label}><b>0{index + 1}</b><small>{label}</small></span>
+            ))}
+            <img src="/images/training-launch-rocket-cutout-v2.png" alt="" aria-hidden="true" />
+          </div>
         </div>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Link to={courseName ? "/workspace" : "/courses"} className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] transition-colors hover:bg-[#193B50]">
@@ -1030,7 +1094,7 @@ function EmptyState({ courseName }: { courseName?: string }) {
 
 function WorkspaceGenerationState({ resourceCount }: { resourceCount: number }) {
   return (
-    <div role="status" aria-live="polite" className="grid min-h-[400px] place-items-center rounded-[24px] border border-[#C7D2D8] bg-[#F3F6F7] px-5 py-10">
+    <div role="status" aria-live="polite" className="report-live-generation is-resource grid min-h-[320px] place-items-center rounded-[24px] border border-[#C7D2D8] bg-[#F3F6F7] px-5 py-8">
       <div className="w-full max-w-xl text-center">
         <span className="relative mx-auto grid size-14 place-items-center rounded-2xl border border-[#C7D2D8] bg-[#FFFEFA] text-[#315E83] shadow-[0_10px_24px_rgba(49,94,131,.1)]">
           <Layers3 className="size-5" />
@@ -1052,7 +1116,7 @@ function WorkspaceGenerationState({ resourceCount }: { resourceCount: number }) 
 
 function WorkspaceGenerationBanner({ resourceCount }: { resourceCount: number }) {
   return (
-    <div role="status" className="mb-4 flex flex-col gap-3 rounded-[20px] border border-[#D9CFB7] bg-[#F4ECD8] p-4 text-[#72551F] sm:flex-row sm:items-center sm:justify-between">
+    <div role="status" className="report-live-generation-banner mb-4 flex flex-col gap-3 rounded-[20px] border border-[#D9CFB7] bg-[#F4ECD8] p-4 text-[#72551F] sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-start gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[#D9CFB7] bg-[#FFFEFA]"><Layers3 className="size-4" /></span>
         <div><strong className="block text-sm">新资源仍在生成，暂不重新评估</strong><p className="mt-0.5 text-[11px] leading-5 text-[#816A3D]">已返回 {resourceCount} / 7 类资源；下方旧报告保持可读，完整后再生成新版。</p></div>
@@ -1070,7 +1134,7 @@ function ReportGeneratingState({
   resourceCount: number
 }) {
   return (
-    <div role="status" aria-live="polite" className="grid min-h-[420px] place-items-center rounded-[24px] border border-[#D7D1C4] bg-[#F8F6F0] px-5 py-12">
+    <div role="status" aria-live="polite" className="report-live-generation is-evaluating grid min-h-[330px] place-items-center rounded-[24px] border border-[#D7D1C4] bg-[#F8F6F0] px-5 py-8">
       <div className="w-full max-w-xl text-center">
         <div className="relative mx-auto grid size-16 place-items-center">
           <span className="absolute inset-0 animate-ping rounded-full bg-[#E7EDF3] opacity-65" />
@@ -1082,7 +1146,7 @@ function ReportGeneratingState({
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#66717B]">评估智能体正在核对 {quizCount} 道答题与 {resourceCount} 类资源。任务已交给全局队列，切换到其他页面也不会中断。</p>
         <div className="mx-auto mt-6 grid max-w-lg grid-cols-3 gap-2 text-[11px] font-medium text-[#66717B]">
           {["汇总学习证据", "分析掌握变化", "生成行动建议"].map((label, index) => (
-            <div key={label} className="rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-2 py-3">
+            <div key={label} className={`report-live-generation-step is-step-${index + 1} rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-2 py-3`}>
               <span className="mb-2 block text-[10px] font-bold tracking-[0.12em] text-[#B1842C]">0{index + 1}</span>{label}
             </div>
           ))}
@@ -1097,7 +1161,7 @@ function ReportGeneratingState({
 
 function ReportRefreshBanner({ startedAt }: { startedAt: number | null }) {
   return (
-    <div role="status" aria-live="polite" className="mb-4 flex flex-col gap-3 rounded-[20px] border border-[#C7D2D8] bg-[#E7EDF3] p-4 text-[#315E83] sm:flex-row sm:items-center sm:justify-between">
+    <div role="status" aria-live="polite" className="report-live-refresh mb-4 flex flex-col gap-3 rounded-[20px] border border-[#C7D2D8] bg-[#E7EDF3] p-4 text-[#315E83] sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-start gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[#B9C9D3] bg-[#FFFEFA]"><Loader2 className="size-4 animate-spin" /></span>
         <div>
@@ -1129,7 +1193,7 @@ function StatCard({
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`paper-lift rounded-[18px] border p-4 ${cmap}`}
+      className={`report-live-metric is-${color} paper-lift rounded-[18px] border p-4 ${cmap}`}
     >
       <div className="flex items-center gap-1.5 text-xs font-medium opacity-80">
         {icon} {label}
@@ -1371,13 +1435,49 @@ function DeltaBlock({
 
 */
 
+function CapabilitySignalCard({ delta }: { delta: ProfileDelta }) {
+  const groups = [
+    { label: "知识能力", values: delta.knowledge_base || {}, tone: "knowledge" },
+    { label: "资源偏好", values: delta.preference || {}, tone: "preference" },
+    { label: "就业技能", values: delta.employment_skills || {}, tone: "employment" },
+  ]
+  const weakPoints = [...(delta.weak_points?.topics || []), ...(delta.weak_points?.error_types || [])]
+  const signalCount = groups.reduce((total, group) => total + Object.keys(group.values).length, 0) + weakPoints.length
+
+  return (
+    <section className="report-live-capability" aria-label="能力变化信号">
+      <div className="report-live-capability-heading">
+        <span><Activity className="size-4" /> ABILITY DELTA</span>
+        <div><h3>能力变化信号</h3><p>将本次学习反馈拆分为知识、偏好、就业技能与待强化项。</p></div>
+        <strong>{String(signalCount).padStart(2, "0")}<small> 项变化</small></strong>
+      </div>
+      <div className="report-live-capability-grid">
+        {groups.map((group) => {
+          const entries = Object.entries(group.values).filter(([, value]) => Math.abs(value) > .001)
+          return (
+            <article key={group.label} className={`is-${group.tone} ${entries.length ? "has-change" : "is-steady"}`}>
+              <span>{group.label}</span>
+              <strong>{entries.length ? `${entries.length} 项` : "稳定"}</strong>
+              <div>{entries.slice(0, 3).map(([key, value]) => <i key={key}>{key}<b>{value > 0 ? "+" : ""}{value.toFixed(1)}</b></i>)}</div>
+            </article>
+          )
+        })}
+        <article className={`is-weakness ${weakPoints.length ? "has-change" : "is-steady"}`}>
+          <span>待强化项</span><strong>{weakPoints.length ? `${weakPoints.length} 项` : "未发现"}</strong>
+          <div>{weakPoints.slice(0, 3).map((item) => <i key={item}>{item}</i>)}</div>
+        </article>
+      </div>
+    </section>
+  )
+}
+
 function TrendLineCard({
   data,
 }: {
   data: Array<{ label: string; idx: number; correctRate: number | null; engagement: number; attempts: number }>
 }) {
   return (
-    <div className="rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] p-5">
+    <div className="report-live-trend rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] p-5">
       <div className="text-sm font-semibold mb-1 flex items-center gap-1.5">
         <LineChartIcon className="size-4 text-[#315E83]" /> 评估趋势（最近 {data.length} 次）
       </div>

@@ -260,7 +260,7 @@ async def _admin_enterprise(db: AsyncSession, user: User) -> Enterprise:
 async def _seed_demo_enterprise(db: AsyncSession) -> Enterprise:
     enterprise = await db.scalar(select(Enterprise).where(Enterprise.invite_code == "SM-DEMO"))
     if enterprise is None:
-        enterprise = Enterprise(name="河南本线商贸有限公司", invite_code="SM-DEMO", owner_id=1)
+        enterprise = Enterprise(name="河南掌门互动网络科技有限公司", invite_code="SM-DEMO", owner_id=1)
         db.add(enterprise)
         await db.flush()
         db.add(EnterpriseMembership(
@@ -311,8 +311,8 @@ async def _seed_demo_enterprise(db: AsyncSession) -> Enterprise:
             ),
         ])
         await db.commit()
-    elif enterprise.name != "河南本线商贸有限公司":
-        enterprise.name = "河南本线商贸有限公司"
+    elif enterprise.name != "河南掌门互动网络科技有限公司":
+        enterprise.name = "河南掌门互动网络科技有限公司"
         await db.commit()
     return enterprise
 
@@ -412,7 +412,6 @@ async def list_learner_tasks(user: User = Depends(require_user), db: AsyncSessio
     if not membership:
         return {"items": [], "enterprise": None}
     enterprise = await _enterprise(db, membership.enterprise_id)
-    await _ensure_demo_dashboard_data(db, enterprise)
     rows = (await db.execute(
         select(EnterpriseTask, EnterpriseTaskAssignment)
         .join(EnterpriseTaskAssignment, EnterpriseTaskAssignment.task_id == EnterpriseTask.id)
@@ -440,7 +439,6 @@ async def get_learner_task(task_id: int, user: User = Depends(require_user), db:
     if not membership or not task or task.enterprise_id != membership.enterprise_id:
         raise HTTPException(status_code=404, detail="任务不存在或未分配给当前学习者")
     enterprise = await _enterprise(db, membership.enterprise_id)
-    await _ensure_demo_dashboard_data(db, enterprise)
     assignment = await db.scalar(select(EnterpriseTaskAssignment).where(
         EnterpriseTaskAssignment.task_id == task_id,
         EnterpriseTaskAssignment.learner_id == user.id,
@@ -495,7 +493,6 @@ async def get_enterprise_context(user: User = Depends(require_user), db: AsyncSe
 @router.get("/enterprise/tasks")
 async def list_enterprise_tasks(user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
     enterprise = await _admin_enterprise(db, user)
-    await _ensure_demo_dashboard_data(db, enterprise)
     tasks = (await db.scalars(select(EnterpriseTask).where(EnterpriseTask.enterprise_id == enterprise.id).order_by(EnterpriseTask.created_at.desc()))).all()
     return {"enterprise": {"id": enterprise.id, "name": enterprise.name, "invite_code": enterprise.invite_code}, "items": [_task_payload(task) for task in tasks]}
 
@@ -538,7 +535,6 @@ async def create_enterprise_task(req: TaskCreateRequest, user: User = Depends(re
 @router.get("/enterprise/knowledge-bases")
 async def list_enterprise_knowledge_bases(user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
     enterprise = await _admin_enterprise(db, user)
-    await _ensure_demo_dashboard_data(db, enterprise)
     items = (await db.scalars(select(EnterpriseKnowledgeBase).where(EnterpriseKnowledgeBase.enterprise_id == enterprise.id).order_by(EnterpriseKnowledgeBase.created_at.desc()))).all()
     return {"items": [{
         "id": item.id,
@@ -715,7 +711,7 @@ async def _ensure_demo_tasks(db: AsyncSession, enterprise: Enterprise, knowledge
 
 async def _ensure_demo_dashboard_data(db: AsyncSession, enterprise: Enterprise) -> None:
     """补足演示规模，但所有任务、成员关系和事件仍写入真实业务表。"""
-    if enterprise.name != "河南本线商贸有限公司":
+    if enterprise.name != "河南掌门互动网络科技有限公司":
         return
 
     async with _DEMO_SEED_LOCK:
@@ -740,7 +736,7 @@ async def _seed_demo_dashboard_data(db: AsyncSession, enterprise: Enterprise) ->
                 email=email,
                 role="student",
                 learner_type="worker",
-                company="河南本线商贸有限公司",
+                company="河南掌门互动网络科技有限公司",
                 target_role=target_role,
                 is_active=True,
             )
@@ -791,7 +787,7 @@ async def _seed_demo_dashboard_data(db: AsyncSession, enterprise: Enterprise) ->
         if learner.email and learner.email.endswith("@pramate.com"):
             learner.name = FIXED_MEMBER_NAMES.get(email_name, learner.name)
             learner.learner_type = "worker"
-            learner.company = "河南本线商贸有限公司"
+            learner.company = "河南掌门互动网络科技有限公司"
             learner.target_role = FIXED_MEMBER_ROLES.get(email_name, "前线部署工程师（FDE）")
         membership.job_title = learner.target_role or membership.job_title or "前线部署工程师（FDE）"
 
@@ -844,7 +840,6 @@ async def _seed_demo_dashboard_data(db: AsyncSession, enterprise: Enterprise) ->
 
 
 async def _enterprise_dashboard_payload(db: AsyncSession, enterprise: Enterprise) -> dict:
-    await _ensure_demo_dashboard_data(db, enterprise)
     member_rows = (await db.execute(
         select(EnterpriseMembership, User)
         .join(User, User.id == EnterpriseMembership.user_id)

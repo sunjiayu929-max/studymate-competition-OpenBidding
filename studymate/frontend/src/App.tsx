@@ -5,6 +5,9 @@ import { JudgeTour } from "@/components/JudgeTour"
 import { JudgeDemoMode } from "@/components/JudgeDemoMode"
 import { SiteFiling } from "@/components/SiteFiling"
 import { AppShell } from "@/components/AppShell"
+import { apiGet } from "@/lib/api"
+import { setCurrentCourse, useCurrentCourse, type CourseInfo } from "@/store/course"
+import { useTargetRole } from "@/store/targetRole"
 import { useCurrentUser } from "@/store/user"
 
 // 页面按路由拆包：首屏只下载当前页面，图表、PDF、编辑器等重依赖不再一次性阻塞启动。
@@ -14,7 +17,6 @@ const RagDemo = lazy(() => import("@/pages/RagDemo").then((m) => ({ default: m.R
 const RagSource = lazy(() => import("@/pages/RagSource").then((m) => ({ default: m.RagSource })))
 const WorkspaceDetail = lazy(() => import("@/pages/WorkspaceDetail").then((m) => ({ default: m.WorkspaceDetail })))
 const TutorChat = lazy(() => import("@/pages/TutorChat").then((m) => ({ default: m.TutorChat })))
-const VoiceTutor = lazy(() => import("@/pages/VoiceTutor").then((m) => ({ default: m.VoiceTutor })))
 const Report = lazy(() => import("@/pages/Report").then((m) => ({ default: m.Report })))
 const LearnerMatchReportPage = lazy(() => import("@/pages/LearnerMatchReportPage").then((m) => ({ default: m.LearnerMatchReportPage })))
 const RoleCapabilityProfilePage = lazy(() => import("@/pages/RoleCapabilityProfilePage").then((m) => ({ default: m.RoleCapabilityProfilePage })))
@@ -44,7 +46,7 @@ const NotFound = lazy(() => import("@/pages/NotFound").then((m) => ({ default: m
 const TutorBubble = lazy(() => import("@/components/TutorBubble").then((m) => ({ default: m.TutorBubble })))
 
 // 登录、助教自身、沉浸工具与高密度数据页不叠加悬浮人物，避免遮挡关键控件和数据卡。
-const BUBBLE_HIDDEN_PATHS = ["/login", "/tutor", "/tutor/voice", "/concept", "/ppt", "/report", "/learner-report", "/capability-profile", "/tests"]
+const BUBBLE_HIDDEN_PATHS = ["/login", "/tutor", "/concept", "/ppt", "/report", "/learner-report", "/capability-profile", "/tests"]
 
 function ScrollToTop() {
   const { pathname, hash } = useLocation()
@@ -93,9 +95,30 @@ function GlobalTutorBubble() {
 }
 
 function GlobalSiteFiling() {
-  const { pathname } = useLocation()
-  if (pathname === "/tutor/voice") return null
   return <SiteFiling />
+}
+
+function RestoreRoleCourse() {
+  const user = useCurrentUser()
+  const targetRole = useTargetRole()
+  const currentCourse = useCurrentCourse()
+
+  useEffect(() => {
+    if (!user || !targetRole || currentCourse?.name === targetRole.courseName) return
+    let cancelled = false
+    apiGet<{ items: CourseInfo[] }>("/courses")
+      .then(({ items }) => {
+        if (cancelled) return
+        const matched = items.find((item) => item.name === targetRole.courseName && (item.chunk_count ?? 0) > 0)
+        if (matched) setCurrentCourse(matched)
+      })
+      .catch(() => {
+        // 岗位仍保留；知识库接口恢复后会在下一次登录或切换岗位时再次同步。
+      })
+    return () => { cancelled = true }
+  }, [currentCourse?.name, targetRole, user])
+
+  return null
 }
 
 function RootEntry() {
@@ -190,6 +213,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <RestoreRoleCourse />
       <RouteErrorBoundary>
       <Suspense fallback={<RouteFallback />}>
         <Routes>
@@ -218,7 +242,7 @@ export default function App() {
           <Route path="/workspace" element={<Navigate to="/competency" replace />} />
           <Route path="/workspace/r/:agentId" element={<ProtectedPage><WorkspaceDetail /></ProtectedPage>} />
           <Route path="/tutor" element={<ProtectedPage><TutorChat /></ProtectedPage>} />
-          <Route path="/tutor/voice" element={<ProtectedPage><VoiceTutor /></ProtectedPage>} />
+          <Route path="/tutor/voice" element={<Navigate to="/tutor" replace />} />
           <Route path="/report" element={<ProtectedPage><Report /></ProtectedPage>} />
           <Route path="/courses" element={<ProtectedPage><Courses /></ProtectedPage>} />
           <Route path="/notes" element={<ProtectedPage><Notes /></ProtectedPage>} />

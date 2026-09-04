@@ -1,7 +1,6 @@
 import {
   ArrowRight,
   CheckCircle2,
-  GitCompareArrows,
   MessageCircle,
   RotateCcw,
   Scale,
@@ -27,16 +26,20 @@ export function DebateQualityPanel({ workspace }: { workspace: WorkspaceState })
   const completed = Boolean(debate || workspace.decision || Object.keys(workspace.reviews).length)
 
   return (
-    <details open className="mt-4 overflow-hidden rounded-[22px] border border-[#BDD5EF] bg-[#F5FAFF]">
-      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 border-b border-[#D5E5F6] bg-[#EAF4FF] px-4 py-3 [&::-webkit-details-marker]:hidden">
-        <div><strong className="flex items-center gap-2 text-[12px] text-[#244F80]"><GitCompareArrows className="size-4 text-[#3378C3]" />辩论实录</strong><p className="mt-1 text-[9px] text-[#69829F]">六类资源已合并为一个资源生成 Agent，实时展示资源陈述、三项校验质询、回应与最终决策。</p></div>
-        <div className="flex flex-wrap items-center gap-2"><span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-black", active ? "bg-[#DCEEFF] text-[#2467AB]" : completed ? "bg-[#E1F2EB] text-[#20755F]" : "bg-white text-[#8291A4]")}>{active && <i className="size-1.5 animate-pulse rounded-full bg-[#2E72D2]" />}{active ? "实时同步中" : completed ? "已记录" : "等待辩论"}</span><span className="inline-flex items-center gap-1 text-[9px] font-bold text-[#507298]">展开查看 <ArrowRight className="size-3" /></span></div>
+    <details open className="competency-section debate-quality-panel mt-4">
+      <summary className="debate-quality-header cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+        <div className="debate-quality-heading">
+          <span className="debate-quality-emblem"><img src="/images/quality-inspection-instrument-v1.png" alt="" aria-hidden="true" /></span>
+          <div className="debate-quality-copy"><span>02 · 质量复核</span><h2>多重校验，一次看清</h2><p>资源陈述 → 三项校验 → 修改回应 → 最终决策</p></div>
+          <i className="debate-quality-flight" aria-hidden="true"><span className="is-upper"><img src="/images/section-helicopter-v1.png" alt="" /></span><span className="is-lower"><img src="/images/section-helicopter-v1.png" alt="" /></span></i>
+          <div className="debate-quality-status"><span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-black", active ? "bg-[#DCEEFF] text-[#2467AB]" : completed ? "bg-[#E1F2EB] text-[#20755F]" : "bg-white/75 text-[#315D7B]")}>{active && <i className="size-2 animate-pulse rounded-full bg-[#2E72D2]" />}{active ? "实时同步中" : completed ? "已记录" : "等待复核"}</span><span className="inline-flex items-center gap-1 text-[12px] font-bold text-[#285A7D]">展开查看 <ArrowRight className="size-4" /></span></div>
+        </div>
       </summary>
-      <div className="space-y-4 p-4">
+      <div className="debate-quality-content space-y-4">
         <DebateSequence activeStep={debateActiveStep(workspace.stage)} completed={completed} />
-        <article className="rounded-2xl border border-[#C9DCF1] bg-white p-4 shadow-[0_10px_28px_rgba(58,104,153,.07)]">
-          <div className="flex flex-wrap items-start justify-between gap-3"><strong className="block text-[11px] text-[#2D4F75]">资源生成 Agent × 三项校验 Agent</strong>{debate && <DecisionBadge decision={debate.decision} round={debate.round} />}</div>
-          <div className="mt-4 space-y-2.5"><SpeechBubble agent="资源生成 Agent" action="资源陈述" text={resourcePosition(workspace, exchanges)} side="left" active={workspace.stage === "generation"} muted={!exchanges.length && !workspace.outputs.doc} /><SpeechBubble agent="三项校验 Agent" action="发起校验质询" text={reviewChallenges(workspace, exchanges)} side="right" active={workspace.stage === "review"} muted={!Object.keys(workspace.reviews).length} /><SpeechBubble agent="资源生成 Agent" action="回应校验" text={resourceResponse(workspace, exchanges)} side="left" active={workspace.stage === "rework"} muted={!exchanges.some((item) => item.generator_response.length)} /><DecisionBox decision={debate?.decision ?? decisionFromReviews(workspace)} text={debate?.resolution || workspace.decision?.summary || "等待三项校验结果汇总后，由总决策 Agent 决定发布或自动返工。"} active={workspace.stage === "decision"} /></div>
+        <article className="debate-quality-board rounded-[18px] border p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3"><strong className="block text-[15px] text-[#243E5C]">资源生成 Agent × 三项校验 Agent</strong>{debate && <DecisionBadge decision={debate.decision} round={debate.round} />}</div>
+          <div className="debate-dialogue-flow mt-4"><SpeechBubble step="01" agent="资源生成 Agent" action="资源陈述" text={resourcePosition(workspace, exchanges)} active={workspace.stage === "generation"} muted={!exchanges.length && !workspace.outputs.doc} /><SpeechBubble step="02" agent="三项校验 Agent" action="校验质询" text={reviewChallenges(workspace, exchanges)} active={workspace.stage === "review"} muted={!Object.keys(workspace.reviews).length} /><SpeechBubble step="03" agent="资源生成 Agent" action="回应校验" text={resourceResponse(workspace, exchanges)} active={workspace.stage === "rework"} muted={!exchanges.some((item) => item.generator_response.length)} /><DecisionBox step="04" decision={debate?.decision ?? decisionFromReviews(workspace)} text={debate?.resolution || workspace.decision?.summary || "等待三项校验结果汇总后，由总决策 Agent 决定发布或自动返工。"} active={workspace.stage === "decision"} /></div>
         </article>
         <ReviewResultGrid workspace={workspace} />
       </div>
@@ -71,24 +74,24 @@ function ReviewResultGrid({ workspace }: { workspace: WorkspaceState }) {
   ] : []
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <section className="rounded-2xl border border-[#DFE6EF] bg-[#F8FAFD] p-4">
-        <strong className="text-[11px] text-[#334B68]">交叉验证结果</strong>
+    <div className="debate-result-grid grid gap-4 lg:grid-cols-2">
+      <section className="debate-review-panel rounded-2xl border border-[#DFE6EF] bg-[#F8FAFD] p-4">
+        <strong className="text-[15px] text-[#263E59]">交叉验证结果</strong>
         <div className="mt-3 space-y-2">
           {["evidence_review", "practice_review", "difficulty_review"].map((id) => {
             const review = workspace.reviews[id]
-            return <div key={id} className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-[10px]"><span className="text-[#62748B]">{REVIEWER_LABELS[id]}</span><span className={cn("shrink-0 font-black", review?.status === "pass" ? "text-[#1A8067]" : review?.status === "fail" ? "text-[#B4523B]" : review ? "text-[#A06C24]" : "text-[#8291A4]")}>{review ? `${review.score} 分 · ${reviewStatusLabel(review.status)}` : "等待校验"}</span></div>
+            return <div key={id} className={cn("debate-review-row flex items-center justify-between gap-3 rounded-xl px-3.5 py-3 text-[13px]", !review && "is-waiting", review?.status === "pass" && "is-passed", review?.status === "fail" && "is-failed")}><span className="font-medium text-[#52667E]">{REVIEWER_LABELS[id]}</span><span className={cn("debate-review-status shrink-0 font-black", review?.status === "pass" ? "text-[#1A8067]" : review?.status === "fail" ? "text-[#B4523B]" : review ? "text-[#A06C24]" : "text-[#315D7B]")}>{review ? `${review.score} 分 · ${reviewStatusLabel(review.status)}` : "等待校验"}</span></div>
           })}
         </div>
       </section>
-      <section className={cn("rounded-2xl border p-4", decision?.decision === "publish" ? "border-[#BFDCCF] bg-[#F3FAF7]" : decision?.decision === "rework" || decision?.decision === "failed" ? "border-[#E8CDBE] bg-[#FFF7F2]" : "border-[#DFE6EF] bg-[#F8FAFD]")}>
-        <strong className="flex items-center gap-2 text-[11px] text-[#334B68]"><ShieldCheck className="size-3.5" />审核结果</strong>
-        <p className="mt-2 text-[10px] leading-5 text-[#687991]">{decision?.summary || "完成全部校验后，资源将开放或返回修改。"}</p>
+      <section className={cn("debate-decision-panel rounded-2xl border p-4", decision?.decision === "publish" ? "is-published border-[#BFDCCF] bg-[#F3FAF7]" : decision?.decision === "rework" || decision?.decision === "failed" ? "is-rework border-[#E8CDBE] bg-[#FFF7F2]" : "is-waiting border-[#DFE6EF] bg-[#F8FAFD]")}>
+        <strong className="flex items-center gap-2 text-[15px] text-[#263E59]"><ShieldCheck className="size-4.5" />审核结果</strong>
+        <p className="mt-2 text-[13px] leading-6 text-[#596D85]">{decision?.summary || "完成全部校验后，资源将开放或返回修改。"}</p>
         {decision && <>
           <div className="mt-3 space-y-1.5">
-            {decisionMetrics.map((metric) => <div key={metric.key} className="flex items-center justify-between gap-3 rounded-xl border border-white/80 bg-white/90 px-3 py-2 text-[9px]"><span className="font-semibold text-[#5D7088]">{metric.label}</span><span className={cn("shrink-0 font-black", metric.passed === false ? "text-[#B4523B]" : "text-[#168069]")}>实际结果 {metric.value === undefined ? "--" : `${metric.value}%`} {metric.rule}</span></div>)}
+            {decisionMetrics.map((metric) => <div key={metric.key} className="flex items-center justify-between gap-3 rounded-xl border border-white/80 bg-white/90 px-3.5 py-3 text-[12px]"><span className="font-semibold text-[#52667E]">{metric.label}</span><span className={cn("shrink-0 font-black", metric.passed === false ? "text-[#B4523B]" : "text-[#168069]")}>实际结果 {metric.value === undefined ? "--" : `${metric.value}%`} {metric.rule}</span></div>)}
           </div>
-          <span className="mt-2 inline-flex rounded-full bg-white px-2 py-1 text-[9px] font-bold text-[#426384]">{decisionLabel(decision.decision)} · 质量分 {decision.quality_score}</span>
+          <span className="mt-3 inline-flex rounded-full bg-white px-3 py-1.5 text-[12px] font-bold text-[#426384]">{decisionLabel(decision.decision)} · 质量分 {decision.quality_score}</span>
         </>}
       </section>
     </div>
@@ -142,19 +145,19 @@ function debateActiveStep(stage: string) {
 }
 
 function DebateSequence({ activeStep, completed }: { activeStep: number; completed: boolean }) {
-  return <div className="grid grid-cols-4 overflow-hidden rounded-xl border border-[#D5E3F2] bg-[#F7FAFE]">{["资源陈述", "校验质询", "生成回应", "总决策"].map((label, index) => { const done = completed || (activeStep >= 0 && index < activeStep); const active = activeStep === index; return <div key={label} className={cn("relative flex items-center justify-center gap-1.5 border-r border-[#DCE7F3] px-2 py-2 text-center text-[9px] font-bold last:border-r-0", done && "bg-[#EDF7F3] text-[#27765F]", active && "bg-[#E4F1FF] text-[#236AB4]", !done && !active && "text-[#8291A4]")}><span className={cn("grid size-4 place-items-center rounded-full text-[8px]", done ? "bg-[#CFE9DF]" : active ? "bg-[#C8E1FB]" : "bg-[#E6ECF3]")}>{done ? "✓" : index + 1}</span>{label}</div> })}</div>
+  return <div className="debate-quality-sequence grid grid-cols-4 overflow-hidden rounded-[12px] border border-[#DDE2E8] bg-[#FAFAF8]">{["资源陈述", "校验质询", "生成回应", "总决策"].map((label, index) => { const done = completed || (activeStep >= 0 && index < activeStep); const active = activeStep === index; return <div key={label} className={cn("relative flex min-h-11 items-center justify-center gap-2 border-r border-[#E2E6EB] px-3 py-2.5 text-center text-[12px] font-bold last:border-r-0", done && "is-done bg-[#F0F6F3] text-[#27765F]", active && "is-active bg-[#EEF3F8] text-[#315F91]", !done && !active && "is-pending text-[#315D7B]")}><span className={cn("grid size-5 place-items-center rounded-full text-[10px]", done ? "bg-[#D9EAE2]" : active ? "bg-[#DCE7F1]" : "bg-[#E8EBEF]")}>{done ? "✓" : index + 1}</span>{label}</div> })}</div>
 }
 
-function SpeechBubble({ agent, action, text, side, active = false, muted = false }: { agent: string; action: string; text: string; side: "left" | "right"; active?: boolean; muted?: boolean }) {
-  return <div className={cn("flex", side === "right" ? "justify-end" : "justify-start")}><div className={cn("relative max-w-[92%] rounded-2xl border px-3 py-2.5", side === "left" ? "rounded-bl-md border-[#C8DDF2] bg-[#F1F7FE]" : "rounded-br-md border-[#D4D8F0] bg-[#F6F5FC]", muted && "border-dashed opacity-70", active && "debate-bubble--active")}><div className="flex items-center gap-1.5 text-[9px] font-extrabold text-[#315F91]"><MessageCircle className="size-3" />{agent}<span className="font-semibold text-[#7890AA]">· {action}</span></div><p className="mt-1 text-[10px] leading-5 text-[#526A84]">{text}</p></div></div>
+function SpeechBubble({ step, agent, action, text, active = false, muted = false }: { step: string; agent: string; action: string; text: string; active?: boolean; muted?: boolean }) {
+  return <div className={cn("debate-dialogue-node relative rounded-[16px] border px-4 py-4", muted && "is-muted", active && "debate-bubble--active is-active")}><div className="debate-dialogue-kicker"><span>{step}</span>{action}</div><div className="mt-3 flex items-center gap-2 text-[14px] font-black text-[#173C5B]"><MessageCircle className="size-4.5 text-[#2E70A5]" />{agent}</div><p className="mt-2 text-[13px] leading-6 text-[#315D7B]">{text}</p></div>
 }
 
-function DecisionBox({ decision, text, active }: { decision?: "accept" | "rework"; text: string; active: boolean }) {
-  return <div className={cn("rounded-xl border border-[#C6D9ED] bg-[#F7FAFE] px-3 py-2.5", active && "debate-bubble--active")}><div className="flex flex-wrap items-center justify-between gap-2"><strong className="flex items-center gap-1.5 text-[9px] text-[#365E8A]"><Scale className="size-3.5" />总决策 Agent · 做出决策</strong>{decision && <DecisionBadge decision={decision} />}</div><p className="mt-1 text-[10px] leading-5 text-[#526A84]">{text}</p></div>
+function DecisionBox({ step, decision, text, active }: { step: string; decision?: "accept" | "rework"; text: string; active: boolean }) {
+  return <div className={cn("debate-dialogue-node debate-decision-node relative rounded-[16px] border px-4 py-4", active && "debate-bubble--active is-active")}><div className="debate-dialogue-kicker"><span>{step}</span>最终决策</div><div className="mt-3 flex flex-wrap items-center justify-between gap-2"><strong className="flex items-center gap-2 text-[14px] text-[#173C5B]"><Scale className="size-4.5 text-[#2E70A5]" />总决策 Agent</strong>{decision && <DecisionBadge decision={decision} />}</div><p className="mt-2 text-[13px] leading-6 text-[#315D7B]">{text}</p></div>
 }
 
 function DecisionBadge({ decision, round }: { decision: "accept" | "rework"; round?: number }) {
-  return <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[8px] font-bold", decision === "accept" ? "bg-[#E1F2EB] text-[#20755F]" : "bg-[#FFEDE4] text-[#A9573D]")}>{decision === "accept" ? <CheckCircle2 className="size-3" /> : <RotateCcw className="size-3" />}{round ? `第 ${round} 轮 · ` : ""}{decision === "accept" ? "通过" : "返工"}</span>
+  return <span className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold", decision === "accept" ? "bg-[#E1F2EB] text-[#20755F]" : "bg-[#FFEDE4] text-[#A9573D]")}>{decision === "accept" ? <CheckCircle2 className="size-3.5" /> : <RotateCcw className="size-3.5" />}{round ? `第 ${round} 轮 · ` : ""}{decision === "accept" ? "通过" : "返工"}</span>
 }
 
 function reviewStatusLabel(status: string) {

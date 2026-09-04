@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { ExternalLink, FileCheck2, LoaderCircle, ShieldCheck, Target } from "lucide-react"
+import { AudioLines, ExternalLink, FileCheck2, Headphones, LoaderCircle, Radio, ShieldCheck, Target } from "lucide-react"
 
 import { AppTopbar } from "@/components/AppTopbar"
 import { apiGet, apiPost } from "@/lib/api"
 import { useCurrentCourse } from "@/store/course"
 import { useTargetRole } from "@/store/targetRole"
+
+import "./AIInterview.css"
 
 interface InterviewAttempt {
   id: string
@@ -48,6 +50,13 @@ const statusLabels: Record<string, string> = {
   abandoned: "已结束",
 }
 
+const interviewStages = [
+  { label: "岗位校准", image: "/images/interview-stage-calibration-v1.png", tone: "calibration" },
+  { label: "模拟问答", image: "/images/interview-stage-dialogue-v1.png", tone: "dialogue" },
+  { label: "能力评估", image: "/images/interview-stage-assessment-v1.png", tone: "assessment" },
+  { label: "反馈回流", image: "/images/interview-stage-feedback-v1.png", tone: "feedback" },
+] as const
+
 function scoreText(value?: number) {
   return typeof value === "number" && Number.isFinite(value) ? value.toFixed(1) : "-"
 }
@@ -60,19 +69,19 @@ function ReportPreview({ report }: { report?: InterviewReport }) {
   if (!hasDetails) return null
 
   return (
-    <details className="mt-3 border-t border-[#E0DACE] pt-2">
-      <summary className="cursor-pointer text-[10px] font-bold text-[#315E83]">查看评估报告</summary>
-      <div className="mt-3 space-y-3 text-[11px] leading-5 text-[#66717B]">
+    <details className="interview-prep-report mt-3 pt-2">
+      <summary className="cursor-pointer text-[11px] font-black">查看评估报告</summary>
+      <div className="mt-3 space-y-3 text-[11px] leading-5">
         {report.summary && <p>{report.summary}</p>}
         {report.competency_scores?.length ? <div className="grid gap-2 sm:grid-cols-2">
-          {report.competency_scores.map((item) => <article key={item.competency} className="rounded-lg border border-[#E0DACE] bg-[#FFFEFA] p-2.5">
-            <div className="flex items-center justify-between gap-2"><strong className="text-[#315E83]">{item.competency}</strong><span className="font-extrabold text-[#18232D]">{scoreText(item.score)}</span></div>
-            {item.evidence && <p className="mt-1.5"><span className="font-semibold text-[#59636B]">证据：</span>{item.evidence}</p>}
-            {item.improvement && <p className="mt-1"><span className="font-semibold text-[#59636B]">建议：</span>{item.improvement}</p>}
+          {report.competency_scores.map((item) => <article key={item.competency} className="interview-prep-report-card rounded-xl p-3">
+            <div className="flex items-center justify-between gap-2"><strong>{item.competency}</strong><span className="font-extrabold">{scoreText(item.score)}</span></div>
+            {item.evidence && <p className="mt-1.5"><span className="font-semibold">证据：</span>{item.evidence}</p>}
+            {item.improvement && <p className="mt-1"><span className="font-semibold">建议：</span>{item.improvement}</p>}
           </article>)}
         </div> : null}
-        {report.strengths?.length ? <div><p className="font-bold text-[#59636B]">优势</p><ul className="mt-1 list-disc space-y-0.5 pl-4">{report.strengths.map((item) => <li key={item}>{item}</li>)}</ul></div> : null}
-        {report.improvements?.length ? <div><p className="font-bold text-[#59636B]">改进建议</p><ul className="mt-1 list-disc space-y-0.5 pl-4">{report.improvements.map((item) => <li key={item}>{item}</li>)}</ul></div> : null}
+        {report.strengths?.length ? <div><p className="font-bold">优势</p><ul className="mt-1 list-disc space-y-0.5 pl-4">{report.strengths.map((item) => <li key={item}>{item}</li>)}</ul></div> : null}
+        {report.improvements?.length ? <div><p className="font-bold">改进建议</p><ul className="mt-1 list-disc space-y-0.5 pl-4">{report.improvements.map((item) => <li key={item}>{item}</li>)}</ul></div> : null}
       </div>
     </details>
   )
@@ -145,50 +154,74 @@ export function AIInterview() {
   }
 
   return (
-    <main className="app-page paper-theme min-h-dvh">
-      <div className="mx-auto max-w-[1240px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <AppTopbar current="interview" appearance="paper" labelOverride="AI 面试" groupOverride="求职准备" selectionLabel={role?.name || "选择目标岗位"} />
-        <section className="mt-4 overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)]">
-          <div className="border-b border-[#D7D1C4] bg-[#F8F6F0] px-5 py-6 sm:px-8">
-            <div className="flex max-w-3xl items-start gap-3">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#E7EDF3] text-[#315E83]"><Target className="size-5" /></span>
-              <div>
-                <p className="text-[10px] font-bold tracking-[.14em] text-[#8E6925]">岗位模拟面试</p>
-                <h1 className="mt-1 text-2xl font-bold tracking-[-.035em] text-[#18232D]">开始一场岗位模拟面试</h1>
-                <p className="mt-2 text-sm leading-6 text-[#66717B]">题目会结合当前岗位生成。完成后可查看成绩和改进建议。</p>
-              </div>
+    <main className="app-page paper-theme interview-prep-studio min-h-dvh">
+      <div className="w-full px-2 py-3 sm:px-4 sm:py-4 lg:px-5">
+        <AppTopbar className="rounded-none border-x-0 shadow-none" current="interview" appearance="paper" labelOverride="面试备战中心" groupOverride="岗位胜任力闭环" selectionLabel={role?.name || "选择目标岗位"} showRocketFormation rocketVariant="honor" />
+        <section className="interview-prep-shell mt-4 overflow-hidden">
+          <header className="interview-prep-hero relative overflow-hidden px-5 py-5 sm:px-7 sm:py-6">
+            <div className="interview-prep-signal" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /></div>
+            <div className="interview-prep-live-row relative flex items-center justify-between gap-3 pb-4">
+              <div className="flex items-center gap-3"><span className="interview-prep-live-dot size-2 rounded-full" /><span>LIVE INTERVIEW</span><b>CHANNEL 05</b></div>
+              <span className="hidden sm:block">准备配置 → 模拟对话 → 反馈复盘</span>
             </div>
-          </div>
-
-          <div className="grid gap-5 p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <section className="rounded-2xl border border-[#D7D1C4] bg-[#FBF9F4] p-5" aria-labelledby="interview-context">
-              <h2 id="interview-context" className="text-sm font-bold text-[#18232D]">本次面试上下文</h2>
-              <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-[#E0DACE] bg-[#FFFEFA] p-3"><dt className="text-[10px] font-bold text-[#8A8172]">目标岗位</dt><dd className="mt-1 text-sm font-bold text-[#315E83]">{role?.name || "尚未选择"}</dd></div>
-                <div className="rounded-xl border border-[#E0DACE] bg-[#FFFEFA] p-3"><dt className="text-[10px] font-bold text-[#8A8172]">岗位知识库</dt><dd className="mt-1 text-sm font-bold text-[#315E83]">{course?.name || "待绑定"}</dd></div>
-              </dl>
-              <div className="mt-4 rounded-xl border border-[#E0DACE] bg-[#FFFEFA] p-3">
-                <p className="text-[10px] font-bold text-[#8A8172]">岗位能力要求</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {(role?.skills || []).map((skill) => <span key={skill} className="rounded-full bg-[#E7EDF3] px-2.5 py-1 text-[10px] font-semibold text-[#315E83]">{skill}</span>)}
-                  {!role && <span className="text-xs text-[#7A817F]">请先选择目标岗位，面试题才能按岗位能力生成。</span>}
+            <div className="relative mt-5 grid gap-5 xl:grid-cols-[minmax(260px,.68fr)_minmax(560px,1.32fr)] xl:items-stretch">
+              <div className="interview-prep-intro flex min-w-0 flex-col justify-between py-1">
+                <div className="interview-prep-index"><strong>05</strong><span>面试备战中心</span><i>INTERVIEW STUDIO</i></div>
+                <h1 className="interview-prep-title mt-4">让表达<br /><span>带回反馈</span></h1>
+                <p className="interview-prep-lead mt-4 max-w-lg">按目标岗位生成真实问答，结束后把成绩与能力证据回流训练建议。</p>
+                <div className="interview-prep-status-grid mt-5" aria-label="面试准备状态">
+                  <span><small>目标岗位</small><strong>{role ? "READY" : "WAIT"}</strong></span>
+                  <span><small>能力标签</small><strong>{String(role?.skills?.length || 0).padStart(2, "0")}</strong></span>
+                  <span><small>历史反馈</small><strong>{String(attempts.filter((item) => item.status === "completed").length).padStart(2, "0")}</strong></span>
                 </div>
               </div>
-              <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
-                {role ? <button type="button" onClick={() => void startInterview()} disabled={launching} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white shadow-[0_8px_18px_rgba(36,76,102,.16)] hover:bg-[#1D4058] disabled:cursor-wait disabled:opacity-60">{launching ? <LoaderCircle className="size-4 animate-spin" /> : <ExternalLink className="size-4" />}{launching ? "正在建立安全会话" : "进入独立 AI 面试"}</button> : <Link to="/courses?returnTo=%2Fai-interview" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white shadow-[0_8px_18px_rgba(36,76,102,.16)] hover:bg-[#1D4058]"><Target className="size-4" />选择目标岗位</Link>}
-                <span className="text-[10px] leading-4 text-[#8A8172]">将带入当前因材智训账号打开独立面试页面，无需再次注册或登录。</span>
-              </div>
-              {error && <p className="mt-3 text-xs font-semibold text-[#9A4E35]" role="alert">{error}</p>}
-            </section>
+              <section className="interview-prep-cockpit relative overflow-hidden p-5 sm:p-6" aria-labelledby="interview-context">
+                <div className="interview-prep-mic-stage" aria-hidden="true">
+                  <span className="interview-prep-orbit is-one" /><span className="interview-prep-orbit is-two" />
+                  <div className="interview-prep-mic-product"><img src="/images/interview-studio-microphone-v1.png" alt="" /><i /></div>
+                  <span className="interview-prep-packet is-left"><AudioLines /></span><span className="interview-prep-packet is-right"><Radio /></span>
+                  <span className="interview-prep-level-meter"><i /><i /><i /><i /><i /><i /><i /></span>
+                </div>
+                <div className="interview-prep-cockpit-content relative z-10">
+                  <div className="interview-prep-section-title flex items-center gap-3"><span><Headphones /></span><div><p>01 · 会话配置</p><h2 id="interview-context">本次面试上下文</h2></div></div>
+                  <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="interview-prep-data-cell rounded-xl p-3"><dt>目标岗位</dt><dd>{role?.name || "尚未选择"}</dd></div>
+                    <div className="interview-prep-data-cell rounded-xl p-3"><dt>岗位知识库</dt><dd>{course?.name || role?.courseName || "待绑定"}</dd></div>
+                  </dl>
+                  <div className="interview-prep-skill-line mt-3 flex flex-wrap items-center gap-1.5">
+                    <p className="interview-prep-label mr-1">能力校准</p>
+                    {(role?.skills || []).map((skill) => <span key={skill} className="interview-prep-skill rounded-full px-2.5 py-1 text-[10px] font-bold">{skill}</span>)}
+                    {!role && <span className="text-xs font-semibold text-[#526D87]">选择岗位后生成能力题目</span>}
+                  </div>
+                  <div className="interview-prep-launch-row mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+                    {role ? <button type="button" onClick={() => void startInterview()} disabled={launching} className="interview-prep-primary inline-flex h-12 items-center justify-center gap-2 rounded-xl px-6 text-xs font-black text-white disabled:cursor-wait disabled:opacity-60">{launching ? <LoaderCircle className="size-4 animate-spin" /> : <ExternalLink className="size-4" />}{launching ? "正在建立安全会话" : "进入独立 AI 面试"}</button> : <Link to="/courses?returnTo=%2Fai-interview" className="interview-prep-primary inline-flex h-12 items-center justify-center gap-2 rounded-xl px-6 text-xs font-black text-white"><Target className="size-4" />选择目标岗位</Link>}
+                    <span className="interview-prep-note text-[10px] font-semibold leading-4">沿用当前账号进入独立面试，无需二次注册。</span>
+                  </div>
+                  {error && <p className="mt-3 text-xs font-semibold text-[#9A4E35]" role="alert">{error}</p>}
+                </div>
+              </section>
+            </div>
+          </header>
 
-            <aside className="space-y-3" aria-label="面试说明">
-              <div className="rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] p-4"><ShieldCheck className="size-5 text-[#6F8A69]" /><h2 className="mt-3 text-sm font-bold text-[#18232D]">账号说明</h2><p className="mt-1.5 text-xs leading-5 text-[#66717B]">使用当前因材智训账号进入 AI 面试，不需要创建第二套普通用户账号。</p></div>
-              <div className="rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] p-4"><FileCheck2 className="size-5 text-[#B1842C]" /><h2 className="mt-3 text-sm font-bold text-[#18232D]">成绩用途</h2><p className="mt-1.5 text-xs leading-5 text-[#66717B]">同步成绩后，训练建议会结合本次面试表现更新。</p></div>
-            </aside>
+          <div className="interview-prep-stage-rail relative grid grid-cols-4 overflow-hidden" aria-label="面试反馈流程">
+            <span className="interview-prep-route-signal" aria-hidden="true" />
+            {interviewStages.map((stage, index) => <div key={stage.label} className={`interview-prep-stage is-${stage.tone}`}>
+              <img src={stage.image} alt="" aria-hidden="true" decoding="async" />
+              <span className="interview-prep-stage-shade" aria-hidden="true" />
+              <span className="interview-prep-stage-copy"><i>{String(index + 1).padStart(2, "0")}</i><b>{stage.label}</b></span>
+            </div>)}
           </div>
-          <section className="border-t border-[#D7D1C4] bg-[#FFFEFA] px-5 py-5 sm:px-8" aria-labelledby="interview-history">
-            <div className="flex items-center justify-between gap-3"><h2 id="interview-history" className="text-sm font-bold text-[#18232D]">最近面试</h2><span className="text-[10px] text-[#8A8172]">仅显示当前账号记录</span></div>
-            {attempts.length ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{attempts.slice(0, 6).map((attempt) => <article key={attempt.id} className="rounded-xl border border-[#E0DACE] bg-[#FBF9F4] px-3 py-2.5"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-xs font-bold text-[#315E83]">{attempt.role_name}</p><p className="mt-1 text-[10px] text-[#8A8172]">{attempt.created_at ? new Date(attempt.created_at).toLocaleString() : ""}</p></div><div className="shrink-0 text-right"><span className="text-[10px] font-bold text-[#557052]">{statusLabels[attempt.status] || attempt.status}</span>{attempt.score_summary?.overall_score != null && <p className="mt-1 text-sm font-extrabold text-[#18232D]">{scoreText(attempt.score_summary.overall_score)}</p>}</div></div>{resumableStatuses.has(attempt.status) && <div className="mt-2 flex flex-wrap gap-2"><button type="button" onClick={() => void resumeInterview(attempt.id)} disabled={launching || Boolean(endingAttemptId)} className="inline-flex h-8 items-center rounded-lg border border-[#B8C7D4] px-3 text-[10px] font-bold text-[#315E83] hover:bg-[#E7EDF3] disabled:cursor-wait disabled:opacity-60">继续面试</button><button type="button" onClick={() => void abandonInterview(attempt.id)} disabled={launching || Boolean(endingAttemptId)} className="inline-flex h-8 items-center rounded-lg border border-[#D8B7A7] px-3 text-[10px] font-bold text-[#9A4E35] hover:bg-[#F8EDE7] disabled:cursor-wait disabled:opacity-60">{endingAttemptId === attempt.id ? "正在结束" : "结束记录"}</button></div>}<ReportPreview report={attempt.report} /></article>)}</div> : <p className="mt-3 text-xs text-[#7A817F]">完成第一次模拟面试后，报告会出现在这里。</p>}
+
+          <section className="interview-prep-support px-5 py-8 sm:px-8" aria-labelledby="interview-support">
+            <div className="interview-prep-support-heading flex flex-wrap items-end justify-between gap-3"><div><p>02 · 准备保障</p><h2 id="interview-support">进入对话前，链路已就绪</h2></div><span>账号承接与成绩回流同步工作</span></div>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <article className="interview-prep-info-card is-security rounded-[20px] p-5"><span><ShieldCheck /></span><p>安全链路 · ACCOUNT</p><h3>沿用当前账号</h3><div>直接进入 AI 面试，不需要创建第二套普通用户账号；岗位与课程上下文随会话带入。</div><i aria-hidden="true" /></article>
+              <article className="interview-prep-info-card is-feedback rounded-[20px] p-5"><span><FileCheck2 /></span><p>反馈闭环 · EVIDENCE</p><h3>成绩回流训练</h3><div>面试完成后同步成绩、回答证据与改进建议，用于刷新后续训练重点。</div><i aria-hidden="true" /></article>
+            </div>
+          </section>
+          <section className="interview-prep-history px-5 py-6 sm:px-8" aria-labelledby="interview-history">
+            <div className="flex items-center justify-between gap-3"><div className="interview-prep-section-title flex items-center gap-3"><span><Radio /></span><div><p>04 · 反馈记录</p><h2 id="interview-history">最近面试</h2></div></div><span className="interview-prep-note text-[10px] font-semibold">仅显示当前账号记录</span></div>
+            {attempts.length ? <div className="mt-4 grid gap-3 sm:grid-cols-2">{attempts.slice(0, 6).map((attempt) => <article key={attempt.id} className={`interview-prep-attempt ${resumableStatuses.has(attempt.status) ? "is-active" : attempt.status === "completed" ? "is-complete" : "is-idle"} rounded-[16px] px-4 py-3`}><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-xs font-black text-[#245D88]">{attempt.role_name}</p><p className="mt-1 text-[10px] font-semibold text-[#617990]">{attempt.created_at ? new Date(attempt.created_at).toLocaleString() : ""}</p></div><div className="shrink-0 text-right"><span className="interview-prep-status text-[10px] font-black">{statusLabels[attempt.status] || attempt.status}</span>{attempt.score_summary?.overall_score != null && <p className="mt-1 text-sm font-extrabold text-[#16324C]">{scoreText(attempt.score_summary.overall_score)}</p>}</div></div>{resumableStatuses.has(attempt.status) && <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => void resumeInterview(attempt.id)} disabled={launching || Boolean(endingAttemptId)} className="interview-prep-secondary inline-flex h-9 items-center rounded-lg px-3 text-[10px] font-black disabled:cursor-wait disabled:opacity-60">继续面试</button><button type="button" onClick={() => void abandonInterview(attempt.id)} disabled={launching || Boolean(endingAttemptId)} className="interview-prep-danger inline-flex h-9 items-center rounded-lg px-3 text-[10px] font-black disabled:cursor-wait disabled:opacity-60">{endingAttemptId === attempt.id ? "正在结束" : "结束记录"}</button></div>}<ReportPreview report={attempt.report} /></article>)}</div> : <p className="interview-prep-empty mt-4 text-xs font-semibold">完成第一次模拟面试后，报告会出现在这里。</p>}
           </section>
         </section>
       </div>
