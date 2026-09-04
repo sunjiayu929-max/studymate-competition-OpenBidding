@@ -427,7 +427,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <nav className="nav-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3" aria-label="主功能">
           {systemAdmin ? <>
-            <div className="mb-1 px-2.5 text-[9px] font-extrabold tracking-[.14em] text-[#9A4E35]">系统管理</div>
+            <div className="mb-1 px-2.5 text-[9px] font-extrabold tracking-[.14em] text-[#2F6F95]">系统管理</div>
             <ShellLink item={{ label: "平台总览", to: "/admin", icon: ShieldCheck, exact: true }} compact={effectiveCollapsed} pathname={pathname} search={search} />
             <ShellLink item={{ label: "企业管理", to: "/admin?view=enterprises", icon: BriefcaseBusiness }} compact={effectiveCollapsed} pathname={pathname} search={search} />
             <ShellLink item={{ label: "用户与成员", to: "/admin?view=users", icon: UsersRound }} compact={effectiveCollapsed} pathname={pathname} search={search} />

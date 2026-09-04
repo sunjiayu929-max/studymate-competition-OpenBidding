@@ -59,8 +59,8 @@
 }
 
 .app-shell-profile-mark.is-admin {
-  border-color: rgba(176, 111, 83, .34);
-  background: linear-gradient(145deg, #b36a4e, #814431);
+  border-color: rgba(63, 131, 166, .3);
+  background: linear-gradient(145deg, #2f7fa7, #225875);
 }
 
 .app-shell-profile-copy {

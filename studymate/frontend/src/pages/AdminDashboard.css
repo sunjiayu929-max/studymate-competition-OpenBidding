@@ -89,6 +89,11 @@
   transition-duration: 120ms !important;
 }
 
+.admin-dashboard-page .app-topbar-symbol-fallback::before,
+.admin-dashboard-page .app-topbar-symbol-fallback::after {
+  animation: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .admin-dashboard-page [class*="transition"],
   .admin-dashboard-page .animate-spin {
