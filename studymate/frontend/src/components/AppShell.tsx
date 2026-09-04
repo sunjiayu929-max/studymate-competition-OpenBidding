@@ -305,7 +305,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 const trainingStatus = item.to === "/competency" ? (
                   <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-[#C7DEEC] bg-[#EAF5FB] px-1.5 py-0.5 text-[9px] font-extrabold text-[#316785]">
                     {workspace.status === "running" && <span className="size-1.5 animate-pulse rounded-full bg-[#38A4D8]" />}
-                    {workspace.status === "running" ? `${readyResources}/6` : "14 Agents"}
+                    {workspace.status === "running" ? `${readyResources}/6` : "8 Agents"}
                   </span>
                 ) : undefined
                 return <ShellLink key={`${item.to}-${item.label}`} item={item} compact={false} pathname={pathname} search={search} trailing={trainingStatus} />
