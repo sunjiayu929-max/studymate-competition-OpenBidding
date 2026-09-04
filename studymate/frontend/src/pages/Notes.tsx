@@ -12,12 +12,12 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Link, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import {
   ArrowLeft, NotebookText, Loader2, Plus, Trash2, Save, Search, X, BookMarked,
   FileText, BookOpen, Bot, Pencil, FolderPlus, Folder, FolderOpen, Inbox, Check, Move,
   Eye, EyeOff, AlertTriangle, Download, FileDown, Sparkles, Wand2,
-  CheckSquare, Square, Camera, RotateCcw, Monitor, Satellite,
+  CheckSquare, Square, Camera, RotateCcw,
 } from "lucide-react"
 
 import { AppTopbar } from "@/components/AppTopbar"
@@ -32,6 +32,8 @@ import { useCurrentUser } from "@/store/user"
 import { useCurrentCourse } from "@/store/course"
 import { usePostSSE } from "@/hooks/usePostSSE"
 import { createQuizSession } from "@/lib/quizSession"
+
+import "./Notes.css"
 
 type Source = "manual" | "doc" | "quiz" | "tutor" | "mindmap"
 
@@ -569,63 +571,10 @@ export function Notes() {
 
   return (
     <div className="app-page paper-theme notes-studio">
-      <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
+      <div className="notes-studio-frame mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
         <AppTopbar current="notes" appearance="paper" labelOverride="智能笔记" groupOverride="知识记忆工作台" />
 
         <section className="notes-studio-shell mt-4 overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)]">
-          <header className="notes-studio-header relative flex flex-col items-stretch gap-2.5 overflow-hidden border-b border-[#D7D1C4] bg-[#F8F6F0] px-3 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
-            <span className="notes-studio-ink-trail" aria-hidden="true"><i /><i /><i /><i /><i /></span>
-            <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
-              <Link to="/" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]">
-                <ArrowLeft className="size-3.5" /><span className="hidden sm:inline">返回首页</span>
-              </Link>
-              <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
-              <span className="notes-studio-heading-index" aria-hidden="true">02</span>
-              <span className="notes-studio-heading-icon" aria-hidden="true"><NotebookText /></span>
-              <div className="min-w-0 flex-1">
-                <span className="notes-studio-eyebrow">02 · KNOWLEDGE MEMORY</span>
-                <h1 className="truncate text-[15px] font-bold text-[#18232D]">因材智训智能笔记</h1>
-                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">捕获知识墨迹，沉淀岗位训练笔记、错题与讲解摘录</p>
-              </div>
-            </div>
-            <div className="notes-studio-action-dock nav-scroll flex w-full items-center gap-1.5 overflow-x-auto sm:w-auto sm:shrink-0 sm:overflow-visible" aria-label="笔记快捷操作">
-              <span className="notes-studio-action-signal" aria-hidden="true"><i /><i /><i /></span>
-              <button type="button" aria-label={selectMode ? `已选择 ${selectedIds.size} 条笔记，退出批量管理` : "批量管理笔记"} onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))} className={`notes-studio-action-button is-batch ${selectMode ? "is-active" : ""}`}>
-                <span className="notes-studio-action-icon"><CheckSquare className="size-3.5" /></span><span className="hidden sm:inline">{selectMode ? `已选 ${selectedIds.size}` : "批量管理"}</span>
-              </button>
-              <button type="button" aria-label="新建文件夹" onClick={openCreateFolder} className="notes-studio-action-button is-folder">
-                <span className="notes-studio-action-icon"><FolderPlus className="size-3.5" /></span><span className="hidden sm:inline">新建文件夹</span>
-              </button>
-              <button type="button" onClick={createNew} className="notes-studio-action-button is-primary">
-                <span className="notes-studio-action-icon"><Plus className="size-3.5" /></span><span>新建笔记</span>
-              </button>
-            </div>
-          </header>
-
-          <div className="notes-studio-status-rail" aria-label="智能笔记状态">
-            <em className="notes-studio-route-signal" aria-hidden="true" />
-            <span className="notes-studio-status-scene is-input">
-              <span className="notes-studio-scene-object" aria-hidden="true"><Camera /></span>
-              <span className="notes-studio-status-copy"><i>01</i><b>内容输入</b><small>Markdown · 图像识别</small></span>
-              <span className="notes-studio-scene-flight" aria-hidden="true"><u /><u /><u /></span>
-            </span>
-            <span className="notes-studio-status-scene is-organize">
-              <span className="notes-studio-scene-object" aria-hidden="true"><Monitor /></span>
-              <span className="notes-studio-status-copy"><i>02</i><b>知识整理</b><small>AI 总结 · 标签归档</small></span>
-              <span className="notes-studio-scene-flight" aria-hidden="true"><u /><u /><u /></span>
-            </span>
-            <span className="notes-studio-status-scene is-deposit is-current">
-              <span className="notes-studio-scene-object" aria-hidden="true"><NotebookText /></span>
-              <span className="notes-studio-status-copy"><i>03</i><b>笔记沉淀</b><small>{editing ? (dirty ? "内容待保存" : "内容已同步") : `${total} 条知识记录`}</small></span>
-              <span className="notes-studio-scene-flight" aria-hidden="true"><u /><u /><u /></span>
-            </span>
-            <span className="notes-studio-status-scene is-index">
-              <span className="notes-studio-scene-object" aria-hidden="true"><Satellite /></span>
-              <span className="notes-studio-status-copy"><i>LIVE</i><b>记忆索引</b><small>{folders.length} 个文件夹 · {Object.values(bySrc).filter(Boolean).length} 类来源</small></span>
-              <span className="notes-studio-scene-flight" aria-hidden="true"><u /><u /><u /></span>
-            </span>
-          </div>
-
           {err && (
             <div role="alert" className="mx-3 mt-3 flex items-start gap-2 rounded-xl border border-[#DFC9BE] bg-[#F6ECE7] p-3 text-sm text-[#9A4E35]">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
@@ -650,8 +599,7 @@ export function Notes() {
             )}
           </AnimatePresence>
 
-          <div className="notes-studio-workspace grid min-h-[680px] grid-cols-1 gap-3 p-3 lg:h-[calc(100dvh-20px)] lg:min-h-[840px] lg:grid-cols-[205px_290px_minmax(0,1fr)]">
-            <span className="notes-studio-workspace-flow" aria-hidden="true"><i /><i /><i /></span>
+          <div className="notes-studio-workspace grid min-h-[680px] grid-cols-1 gap-3 p-3 lg:grid-cols-[205px_290px_minmax(0,1fr)]">
             <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] px-3 py-2 lg:hidden">
               {mobileEditorOpen && editing ? (
                 <button type="button" onClick={() => { void closeMobileEditor() }} className="inline-flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-bold text-[#315E83] transition-colors hover:bg-[#E7EDF3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#315E83]/35">
@@ -703,6 +651,8 @@ export function Notes() {
                 selectedIds={selectedIds}
                 onSelectAll={selectAllInView}
                 allSelected={list.length > 0 && list.every((n) => selectedIds.has(n.id))}
+                onToggleSelectMode={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+                onCreate={createNew}
                 bulkBar={
                   selectMode ? (
                     <BulkActionBar
@@ -912,7 +862,7 @@ function Sidebar({
   return (
     <div className="notes-studio-panel notes-studio-sidebar flex h-full flex-col overflow-hidden rounded-[22px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_9px_24px_rgba(24,35,45,.045)]">
       <div className="notes-studio-section-heading">
-        <strong>01</strong><span><b>分类导航</b><small>INDEX · FOLDER / SOURCE</small></span><i aria-hidden="true" />
+        <strong>01</strong><span><b>分类导航</b><small>{folders.length} 个文件夹</small></span><i aria-hidden="true" />
       </div>
       <div className="flex-1 overflow-y-auto px-1 py-1">
         <FolderItem
@@ -1079,7 +1029,7 @@ function SrcChip({ label, color, active, onClick }: { label: string; color?: str
 
 function NoteList({
   list, loading, selectedId, onSelect, q, onQ,
-  selectMode, selectedIds, onSelectAll, allSelected, bulkBar,
+  selectMode, selectedIds, onSelectAll, allSelected, onToggleSelectMode, onCreate, bulkBar,
 }: {
   list: Note[]
   loading: boolean
@@ -1091,22 +1041,34 @@ function NoteList({
   selectedIds?: Set<number>
   onSelectAll?: () => void
   allSelected?: boolean
+  onToggleSelectMode: () => void
+  onCreate: () => void
   bulkBar?: React.ReactNode
 }) {
   return (
     <div className={`notes-studio-panel notes-studio-list ${loading ? "is-running" : ""} flex h-full flex-col overflow-hidden rounded-[22px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_9px_24px_rgba(24,35,45,.045)]`}>
       <div className="space-y-2 border-b border-[#D7D1C4] bg-[#F8F6F0] p-3">
-        <div className="notes-studio-section-heading">
-          <strong>02</strong><span><b>笔记序列</b><small>{loading ? "SYNCING MEMORY" : `${list.length} NOTES ONLINE`}</small></span><i aria-hidden="true" />
+        <div className="flex items-center gap-2">
+          <div className="notes-studio-section-heading min-w-0 flex-1">
+            <strong>02</strong><span><b>笔记序列</b><small>{loading ? "正在同步" : `${list.length} 条笔记`}</small></span><i aria-hidden="true" />
+          </div>
+          <button type="button" aria-label={selectMode ? `已选择 ${selectedIds?.size ?? 0} 条笔记，退出批量管理` : "批量管理笔记"} onClick={onToggleSelectMode} className={`notes-studio-action-button is-batch ${selectMode ? "is-active" : ""}`}>
+            <span className="notes-studio-action-icon"><CheckSquare className="size-3.5" /></span><span className="hidden sm:inline">{selectMode ? `已选 ${selectedIds?.size ?? 0}` : "批量管理"}</span>
+          </button>
         </div>
-        <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-[var(--muted-foreground)]" />
-          <input
-            value={q}
-            onChange={(e) => onQ(e.target.value)}
-            placeholder="搜笔记标题 / 内容"
-            className="h-9 w-full rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] pl-8 pr-3 text-sm outline-none transition-shadow focus:border-[#9FB1BC] focus:ring-2 focus:ring-[#315E83]/10"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-[var(--muted-foreground)]" />
+            <input
+              value={q}
+              onChange={(e) => onQ(e.target.value)}
+              placeholder="搜笔记标题 / 内容"
+              className="h-9 w-full rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] pl-8 pr-3 text-sm outline-none transition-shadow focus:border-[#9FB1BC] focus:ring-2 focus:ring-[#315E83]/10"
+            />
+          </div>
+          <button type="button" aria-label="新建笔记" onClick={onCreate} className="notes-studio-action-button is-primary">
+            <span className="notes-studio-action-icon"><Plus className="size-3.5" /></span><span className="hidden sm:inline">新建笔记</span>
+          </button>
         </div>
         {selectMode && (
           <button
@@ -1406,7 +1368,7 @@ function Editor({
       {/* 顶部 toolbar */}
       <div className="space-y-2.5 border-b border-[#D7D1C4] bg-[#F8F6F0] p-3">
         <div className="notes-studio-section-heading">
-          <strong>03</strong><span><b>知识编辑</b><small>{saving ? "WRITING MEMORY" : dirty ? "LOCAL CHANGES PENDING" : "MEMORY SYNCHRONIZED"}</small></span><i aria-hidden="true" />
+          <strong>03</strong><span><b>知识编辑</b><small>{saving ? "保存中" : dirty ? "待保存" : "已自动保存"}</small></span><i aria-hidden="true" />
         </div>
         <div className="flex min-w-0 items-center gap-2">
           <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${m.color}`}>

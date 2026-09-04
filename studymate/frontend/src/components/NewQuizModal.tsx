@@ -171,7 +171,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
               disabled={submitting}
             />
             <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {sampleTopics.slice(0, 6).map((t) => (
+              {sampleTopics.slice(0, 2).map((t) => (
                 <button
                   key={t}
                   type="button"

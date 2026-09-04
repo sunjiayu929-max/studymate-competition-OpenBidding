@@ -25,55 +25,9 @@
   background: linear-gradient(90deg, rgba(44,115,157,.38), rgba(89,185,221,.18) 55%, transparent);
 }
 
-/* Third-batch pages reuse the original Competency launch, enlarged without redesigning it. */
-.app-topbar .app-topbar-rocket-formation.app-topbar-honor-rockets {
-  inset: 0 18rem 0 16rem !important;
-  opacity: .9;
-  transform: none;
-  animation: none !important;
-}
-
-.app-topbar .app-topbar-rocket-formation.app-topbar-honor-rockets > i {
-  overflow: hidden;
-  isolation: auto;
-}
-
-.app-topbar .app-topbar-rocket-formation.app-topbar-honor-rockets > i::before {
-  display: none !important;
-}
-
-.app-topbar .app-topbar-rocket-formation.app-topbar-honor-rockets > i::after {
-  z-index: 0;
-  top: auto !important;
-  bottom: 0 !important;
-  left: 50%;
-  display: block;
-  width: 1px !important;
-  height: 72% !important;
-  border: 0;
-  border-radius: 0;
-  opacity: 1 !important;
-  background: linear-gradient(180deg, transparent, rgba(91,183,226,.2), transparent) !important;
-  box-shadow: none;
-  filter: none !important;
-  clip-path: none;
-  transform: none;
-  animation: none !important;
-}
-
-.app-topbar .app-topbar-rocket-formation.app-topbar-honor-rockets > i img {
-  bottom: -5.2rem !important;
-  width: 5.3rem !important;
-  height: 12.35rem !important;
-  content: normal !important;
-  object-fit: contain;
-  filter: drop-shadow(0 0 5px rgba(37,103,151,.5)) drop-shadow(0 0 10px rgba(89,183,231,.46)) !important;
-  animation: app-topbar-rocket-ascent 2.5s linear infinite !important;
-  animation-delay: 0s !important;
-}
-
-@media (max-width: 1100px) {
-  .app-topbar .app-topbar-rocket-formation.app-topbar-honor-rockets { inset: 0 15rem 0 13rem !important; }
+.app-topbar-copy {
+  position: relative;
+  z-index: 1;
 }
 
 .app-topbar-symbol-fallback {
@@ -95,7 +49,6 @@
   border-radius: 9px 9px 9px 3px;
   content: "";
   transform: rotate(45deg) scale(.72);
-  animation: app-topbar-symbol-orbit 7s linear infinite;
 }
 
 .app-topbar-symbol-fallback::after {
@@ -109,7 +62,6 @@
   content: "";
   background: var(--app-topbar-icon-accent);
   box-shadow: 0 0 8px var(--app-topbar-icon-accent);
-  animation: app-topbar-symbol-signal 2.2s ease-in-out infinite;
 }
 
 .app-topbar-symbol-fallback > svg {
@@ -136,16 +88,52 @@
   box-shadow: none;
 }
 
-@keyframes app-topbar-symbol-orbit {
-  to { transform: rotate(405deg) scale(.72); }
+.app-topbar-role-context {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
 }
 
-@keyframes app-topbar-symbol-signal {
-  0%,100% { opacity: .52; transform: scale(.72); }
-  50% { opacity: 1; transform: scale(1.18); }
+.app-topbar-role-context:focus-visible {
+  outline: 2px solid #4e91ba;
+  outline-offset: 2px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .app-topbar-symbol-fallback::before,
-  .app-topbar-symbol-fallback::after { animation: none; }
+@media (max-width: 639px) {
+  .app-shell-content > .paper-theme.app-page .app-topbar {
+    min-height: 78px;
+    align-content: center;
+    flex-wrap: wrap;
+    padding-right: 4px !important;
+    padding-left: 48px !important;
+    column-gap: 10px;
+    row-gap: 3px;
+  }
+
+  .app-shell-content > .paper-theme.app-page .app-topbar > .app-topbar-symbol {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+  }
+
+  .app-shell-content > .paper-theme.app-page .app-topbar > .app-topbar-real-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .app-shell-content > .paper-theme.app-page .app-topbar > .app-topbar-copy {
+    flex-basis: calc(100% - 46px);
+  }
+
+  .app-shell-content > .paper-theme.app-page .app-topbar > .app-topbar-role-context {
+    width: auto;
+    max-width: calc(100% - 46px);
+    height: 26px;
+    margin-left: 46px;
+    padding-right: 9px;
+    padding-left: 9px;
+    border-radius: 9px;
+    font-size: 10px;
+  }
 }

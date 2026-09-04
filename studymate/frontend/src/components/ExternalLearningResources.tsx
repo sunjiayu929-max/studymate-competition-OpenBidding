@@ -7,6 +7,8 @@ import { useTargetRole } from "@/store/targetRole"
 import { track } from "@/lib/track"
 
 type ResourceKind = "book" | "paper" | "video" | "document"
+type CatalogKind = "all" | ResourceKind
+type CatalogSource = "all" | "verified" | "video"
 
 const RESOURCE_STYLE: Record<ResourceKind, { label: string; icon: typeof BookOpen; cover: string; text: string }> = {
   book: { label: "书籍", icon: BookOpen, cover: "from-[#A77A32] to-[#E9C77A]", text: "text-[#8E6925]" },
@@ -114,24 +116,35 @@ type ExtendedReadingItem = {
   source: string
   description: string
   href: string
+  cover?: string
 }
 
 const FDE_EXTENDED_READING: ExtendedReadingItem[] = [
-  { kind: "book", title: "The Mom Test", source: "Rob Fitzpatrick · 书籍官网", description: "把模糊需求访谈转成可验证事实，适合 FDE 做客户需求澄清。", href: "https://momtestbook.com/" },
+  { kind: "book", title: "The Mom Test", source: "Rob Fitzpatrick · 书籍官网", description: "把模糊需求访谈转成可验证事实，适合 FDE 做客户需求澄清。", href: "https://momtestbook.com/", cover: "/resource-covers/the-mom-test-real-v2.jpg" },
   { kind: "book", title: "Continuous Discovery Habits", source: "Teresa Torres · 产品页", description: "用持续访谈、机会树和小实验把客户问题转为可验证价值假设。", href: "https://www.producttalk.org/continuous-discovery-habits/" },
   { kind: "book", title: "Accelerate", source: "IT Revolution · 图书页", description: "以交付速度、稳定性与组织能力衡量工程实践，帮助设计上线与复盘指标。", href: "https://itrevolution.com/product/accelerate/" },
   { kind: "book", title: "Site Reliability Engineering", source: "Google SRE · 在线书", description: "从服务目标、错误预算到事故复盘，建立可运营的生产交付能力。", href: "https://sre.google/sre-book/table-of-contents/" },
-  { kind: "paper", title: "Hidden Technical Debt in Machine Learning Systems", source: "NeurIPS 2015 · 论文", description: "识别数据依赖、反馈环和配置膨胀等会阻碍规模化交付的隐性债务。", href: "https://papers.nips.cc/paper_files/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html" },
+  { kind: "paper", title: "Hidden Technical Debt in Machine Learning Systems", source: "NeurIPS 2015 · 论文", description: "识别数据依赖、反馈环和配置膨胀等会阻碍规模化交付的隐性债务。", href: "https://papers.nips.cc/paper_files/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html", cover: "/resource-covers/hidden-technical-debt-real-v2.jpg" },
   { kind: "paper", title: "The ML Test Score: A Rubric for ML Production Readiness", source: "Google Research · 论文", description: "用生产就绪度量表检查监控、数据、部署与工程质量。", href: "https://research.google/pubs/the-ml-test-score-a-rubric-for-ml-production-readiness-and-technical-debt-reduction/" },
   { kind: "paper", title: "Data Cascades in High-Stakes AI", source: "ACM FAccT · 论文", description: "理解需求、数据与组织决策如何层层放大风险，适合作为项目风险识别材料。", href: "https://dl.acm.org/doi/10.1145/3411764.3445512" },
-  { kind: "document", title: "Production Readiness Review", source: "Google SRE Workbook · 官方文档", description: "上线前逐项核对容量、监控、故障处置与责任边界。", href: "https://sre.google/workbook/production-readiness-review/" },
+  { kind: "document", title: "Production Readiness Review", source: "Google SRE Workbook · 官方文档", description: "上线前逐项核对容量、监控、故障处置与责任边界。", href: "https://sre.google/workbook/production-readiness-review/", cover: "/resource-covers/production-readiness-review-real-v2.jpg" },
   { kind: "document", title: "Rules of Machine Learning", source: "Google Developers · 官方指南", description: "从第一个模型到持续迭代，提供面向真实业务的机器学习工程规则。", href: "https://developers.google.com/machine-learning/guides/rules-of-ml" },
   { kind: "document", title: "The Twelve-Factor App", source: "12factor.net · 工程实践", description: "用配置、依赖、日志与环境一致性降低部署和运维的不确定性。", href: "https://12factor.net/" },
   { kind: "document", title: "NIST AI Risk Management Framework", source: "NIST · 官方框架", description: "将 AI 风险治理纳入方案设计、交付验收与持续监控。", href: "https://www.nist.gov/itl/ai-risk-management-framework" },
   { kind: "document", title: "OWASP Top 10 for LLM Applications", source: "OWASP · 安全指南", description: "在客户交付中检查提示注入、数据泄露和过度权限等常见风险。", href: "https://genai.owasp.org/llmrisk/llm01-prompt-injection/" },
 ]
 
-export function ExternalLearningResources({ keyword, conceptTitle }: { keyword: string; conceptTitle?: string | null }) {
+export function ExternalLearningResources({
+  keyword,
+  conceptTitle,
+  variant = "default",
+  catalogQuery = "",
+}: {
+  keyword: string
+  conceptTitle?: string | null
+  variant?: "default" | "catalog"
+  catalogQuery?: string
+}) {
   const course = useCurrentCourse()
   const targetRole = useTargetRole()
   const [biliVideo, setBiliVideo] = useState<BiliVideo | null>(null)
@@ -140,6 +153,18 @@ export function ExternalLearningResources({ keyword, conceptTitle }: { keyword: 
   const roleContext = course?.name || targetRole?.name
   const isFde = /\bFDE\b|前线部署|现场交付|部署验收/i.test(`${topic} ${roleContext || ""}`)
   const featuredVideos = isFde ? FDE_FEATURED_VIDEOS : []
+  if (variant === "catalog") {
+    return (
+      <CatalogResources
+        keyword={keyword || topic}
+        conceptTitle={conceptTitle}
+        roleContext={roleContext}
+        isFde={isFde}
+        featuredVideos={featuredVideos}
+        catalogQuery={catalogQuery}
+      />
+    )
+  }
   return (
     <section className="lr-resource-suite mt-8 border-t border-[#E3DED3] pt-6" aria-label="学习资源">
       <div className="lr-resource-heading flex items-center gap-3"><strong>01</strong><span><b>精选资源总览</b><small>书籍、论文、文档与视频</small></span><i aria-hidden="true"><em /><em /><em /></i></div>
@@ -150,11 +175,200 @@ export function ExternalLearningResources({ keyword, conceptTitle }: { keyword: 
   )
 }
 
+const CATALOG_KIND_OPTIONS: Array<{ value: CatalogKind; label: string }> = [
+  { value: "all", label: "全部" },
+  { value: "book", label: "书籍" },
+  { value: "paper", label: "论文" },
+  { value: "document", label: "文档" },
+  { value: "video", label: "视频" },
+]
+
+type CatalogCardItem = {
+  kind: ResourceKind
+  title: string
+  source: string
+  description: string
+  href: string
+  cover?: string
+  trackId: string
+}
+
+function matchesCatalogQuery(query: string, values: Array<string | undefined>): boolean {
+  const normalizedQuery = query.normalize("NFKC").toLocaleLowerCase().trim()
+  if (!normalizedQuery) return true
+  const tokens = normalizedQuery.split(/[\s,，。;；、/|]+/).filter(Boolean)
+  const searchableText = values.filter(Boolean).join(" ").normalize("NFKC").toLocaleLowerCase()
+  return tokens.some((token) => searchableText.includes(token))
+}
+
+function CatalogResources({
+  keyword,
+  conceptTitle,
+  roleContext,
+  isFde,
+  featuredVideos,
+  catalogQuery,
+}: {
+  keyword: string
+  conceptTitle?: string | null
+  roleContext?: string | null
+  isFde: boolean
+  featuredVideos: BiliVideo[]
+  catalogQuery: string
+}) {
+  const [kindFilter, setKindFilter] = useState<CatalogKind>("all")
+  const [sourceFilter, setSourceFilter] = useState<CatalogSource>("all")
+  const readings = isFde
+    ? FDE_EXTENDED_READING.filter((item) => matchesCatalogQuery(catalogQuery, [item.title, item.source, item.description]))
+    : []
+  const videos = isFde
+    ? featuredVideos.filter((video) => matchesCatalogQuery(catalogQuery, [
+        video.title,
+        video.author,
+        "B站 视频",
+        video.match_level === "related" ? "岗位相关补充 拓展交付视角" : "直接匹配当前岗位 真实交付任务",
+      ]))
+    : featuredVideos
+  const showVideos = sourceFilter !== "verified" && (kindFilter === "all" || kindFilter === "video")
+  const showReadings = sourceFilter !== "video" && kindFilter !== "video"
+  const filteredReadings = showReadings
+    ? readings.filter((item) => kindFilter === "all" || item.kind === kindFilter)
+    : []
+  const showMixedLead = isFde && kindFilter === "all" && sourceFilter === "all"
+  const leadReadings = showMixedLead
+    ? (["book", "paper", "document"] as const)
+        .map((kind) => filteredReadings.find((item) => item.kind === kind))
+        .filter((item): item is ExtendedReadingItem => Boolean(item))
+    : []
+  const leadReadingTitles = new Set(leadReadings.map((item) => item.title))
+  const remainingReadings = filteredReadings.filter((item) => !leadReadingTitles.has(item.title))
+  const leadVideo = showMixedLead ? videos[0] : null
+  const listedVideos = leadVideo ? videos.slice(1) : videos
+  const hasVideoDirectory = showVideos && (!isFde || listedVideos.length > 0)
+  const knownCount = filteredReadings.length + (showVideos && isFde ? videos.length : 0)
+  const countText = isFde || !showVideos ? `${knownCount} 项结果` : "视频结果实时更新"
+  const resultLabel = catalogQuery ? `“${catalogQuery}” · ${countText}` : countText
+  const leadItems: CatalogCardItem[] = [
+    ...leadReadings.map((item) => ({
+      ...item,
+      trackId: `catalog_${item.kind}`,
+    })),
+    ...(leadVideo
+      ? [{
+          kind: "video" as const,
+          title: leadVideo.title,
+          source: `B站 · ${leadVideo.author}`,
+          description: leadVideo.match_level === "related" ? "岗位相关补充，适合拓展交付视角。" : "直接匹配当前岗位的真实交付任务。",
+          href: leadVideo.url,
+          cover: leadVideo.cover,
+          trackId: "catalog_video",
+        }]
+      : []),
+  ]
+  const hasVisibleDirectory = leadItems.length > 0 || remainingReadings.length > 0 || hasVideoDirectory
+
+  return (
+    <section className="lr-catalog-directory" aria-label="学习资源筛选结果">
+      <div className="lr-catalog-toolbar">
+        <div className="lr-catalog-kind-filter" role="group" aria-label="资源类型筛选">
+          {CATALOG_KIND_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={kindFilter === option.value ? "is-active" : ""}
+              aria-pressed={kindFilter === option.value}
+              onClick={() => setKindFilter(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <label className="lr-catalog-source-filter">
+          <span>来源</span>
+          <select
+            value={sourceFilter}
+            onChange={(event) => setSourceFilter(event.target.value as CatalogSource)}
+            aria-label="资源来源筛选"
+          >
+            <option value="all">全部来源</option>
+            <option value="verified">出版 / 研究 / 官方</option>
+            <option value="video">B站讲解</option>
+          </select>
+        </label>
+        <output className="lr-catalog-count" aria-live="polite">{resultLabel}</output>
+      </div>
+
+      {leadItems.length > 0 && (
+        <div className="lr-catalog-grid lr-catalog-lead-grid">
+          {leadItems.map((item) => <CatalogResourceCard key={item.href} item={item} />)}
+        </div>
+      )}
+
+      {hasVideoDirectory && (
+        <div className="lr-catalog-videos">
+          <BiliVideos
+            keyword={keyword}
+            conceptTitle={conceptTitle}
+            courseName={roleContext}
+            featuredVideos={listedVideos}
+          />
+        </div>
+      )}
+
+      {remainingReadings.length > 0 && (
+        <div className="lr-catalog-reading">
+          <div className="lr-catalog-section-heading">
+            <div><Library /><span><strong>书籍、论文与公开文档</strong><small>来源与推荐理由均可核验</small></span></div>
+            <span>{remainingReadings.length} 项</span>
+          </div>
+          <div className="lr-catalog-grid">
+            {remainingReadings.map((item) => (
+              <CatalogResourceCard
+                key={item.href}
+                item={{ ...item, trackId: `catalog_${item.kind}` }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!hasVisibleDirectory && (
+        <div className="lr-catalog-empty" role="status">
+          {catalogQuery
+            ? `没有找到与“${catalogQuery}”匹配的资源，请尝试更短的关键词或调整筛选。`
+            : "当前类型与来源组合暂无结果，请切换筛选条件。"}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function CatalogResourceCard({ item }: { item: CatalogCardItem }) {
+  const style = RESOURCE_STYLE[item.kind]
+  return (
+    <a
+      href={item.href}
+      target="_blank"
+      rel="noreferrer noopener"
+      onClick={() => track("external_resource_open", item.trackId, item.title)}
+      className={`lr-catalog-card lr-resource-${item.kind}`}
+    >
+      <ResourcePreview kind={item.kind} title={item.title} cover={item.cover} compact />
+      <div className="lr-catalog-card-copy">
+        <div className="lr-catalog-card-meta"><span className={style.text}>{style.label}</span><small>{item.source}</small></div>
+        <h3>{item.title}</h3>
+        <p>{item.description}</p>
+        <span className={style.text}>{item.kind === "video" ? "打开视频" : "打开原文"} <ExternalLink /></span>
+      </div>
+    </a>
+  )
+}
+
 function VisualResourceCards({ biliVideo }: { biliVideo: BiliVideo | null }) {
   const items: Array<{ kind: ResourceKind; title: string; source: string; href: string; description: string; cover?: string }> = [
-    { kind: "book", title: "The Mom Test", source: "Rob Fitzpatrick · 书籍官网", href: "https://momtestbook.com/", description: "客户访谈与需求澄清的实战书籍。" },
-    { kind: "paper", title: "Hidden Technical Debt in Machine Learning Systems", source: "NeurIPS 2015 · 公开论文 PDF", href: "https://papers.nips.cc/paper_files/paper/2015/file/86df7dcfd896fcaf2674f757a2463eba-Paper.pdf", description: "理解机器学习系统交付中的隐性技术债务。" },
-    { kind: "document", title: "Production Readiness Review", source: "Google SRE Workbook · 官方文档", href: "https://sre.google/workbook/production-readiness-review/", description: "面向部署验收、监控与故障处置的检查清单。", cover: "/resource-covers/fde-industry-report.jpg" },
+    { kind: "book", title: "The Mom Test", source: "Rob Fitzpatrick · 书籍官网", href: "https://momtestbook.com/", description: "客户访谈与需求澄清的实战书籍。", cover: "/resource-covers/the-mom-test-real-v2.jpg" },
+    { kind: "paper", title: "Hidden Technical Debt in Machine Learning Systems", source: "NeurIPS 2015 · 公开论文 PDF", href: "https://papers.nips.cc/paper_files/paper/2015/file/86df7dcfd896fcaf2674f757a2463eba-Paper.pdf", description: "理解机器学习系统交付中的隐性技术债务。", cover: "/resource-covers/hidden-technical-debt-real-v2.jpg" },
+    { kind: "document", title: "Production Readiness Review", source: "Google SRE Workbook · 官方文档", href: "https://sre.google/workbook/production-readiness-review/", description: "面向部署验收、监控与故障处置的检查清单。", cover: "/resource-covers/production-readiness-review-real-v2.jpg" },
     { kind: "video", title: biliVideo?.title || "FDE 现场交付复盘", source: biliVideo?.author ? `B站 · ${biliVideo.author}` : "B站 · 真实视频", href: biliVideo?.url || "https://www.bilibili.com/video/BV1AJMq6eEum", description: "从需求澄清到方案落地的真实驻场复盘。", cover: biliVideo?.cover || FDE_FEATURED_VIDEOS[0].cover },
   ]
   return (
@@ -174,6 +388,9 @@ function ResourcePreview({ kind, title, cover, compact = false }: { kind: Resour
   const frame = compact ? "h-28" : "aspect-[16/8]"
   if (kind === "video") {
     return <div className={`relative overflow-hidden bg-[#18232D] ${frame}`}><img src={cover} alt={`${title} 视频封面`} loading="lazy" className="size-full object-cover" /><span className="absolute inset-0 grid place-items-center bg-[#18232D]/10"><span className="grid size-12 place-items-center rounded-full bg-white/90 text-[#A44F3A] shadow-lg"><Play className="ml-0.5 size-5" fill="currentColor" /></span></span><span className="absolute left-3 top-3 rounded-full bg-[#A44F3A] px-2 py-1 text-[9px] font-bold text-white">视频</span></div>
+  }
+  if (cover) {
+    return <div className={`relative overflow-hidden bg-[#DCE7ED] ${frame}`}><img src={cover} alt={`${title} 真实封面`} loading="lazy" className="size-full object-cover" /><span className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[#102D3D]/45 to-transparent" /><span className="absolute left-3 top-3 rounded-full bg-[#173D5B]/90 px-2 py-1 text-[9px] font-bold text-white shadow-sm">{RESOURCE_STYLE[kind].label}</span></div>
   }
   if (kind === "book") {
     return <div className={`relative overflow-hidden bg-[#D3AA58] ${frame}`}><div className="absolute -right-8 -top-8 size-32 rounded-full border-[18px] border-[#EFD590]/65" /><div className="absolute bottom-0 left-1/2 h-[78%] w-[44%] -translate-x-1/2 rounded-sm border-l-[7px] border-[#5C3B1A] bg-[#F8E6B8] px-3 py-3 shadow-[8px_8px_0_rgba(91,59,26,.22)]"><span className="block text-[8px] font-bold tracking-[.14em] text-[#845E24]">FIELD NOTES</span><strong className="mt-3 block text-xs leading-4 text-[#392611]">{title}</strong><span className="absolute bottom-3 block text-[8px] font-bold text-[#845E24]">书籍</span></div><span className="absolute left-3 top-3 rounded-full bg-[#5C3B1A] px-2 py-1 text-[9px] font-bold text-white">书籍</span></div>
@@ -200,7 +417,7 @@ function ExtendedReading({ items }: { items: ExtendedReadingItem[] }) {
           const Icon = style.icon
           return (
             <a key={item.title} href={item.href} target="_blank" rel="noreferrer noopener" onClick={() => track("external_resource_open", `extended_${item.kind}`, item.title)} className={`lr-reading-card lr-resource-${item.kind} group flex min-h-40 flex-col rounded-[16px] border border-[#D7D1C4] bg-[#FFFEFA] p-4 transition hover:-translate-y-0.5 hover:border-[#9FB1BC]`}>
-              <ResourcePreview kind={item.kind} title={item.title} compact />
+              <ResourcePreview kind={item.kind} title={item.title} cover={item.cover} compact />
               <div className="mt-3 flex items-start justify-between gap-3">
                 <span className={`grid size-8 place-items-center rounded-lg bg-[#F3F0E8] ${style.text}`}><Icon className="size-3.5" /></span>
                 <span className={`rounded-full bg-[#F3F0E8] px-2 py-1 text-[9px] font-bold ${style.text}`}>{style.label}</span>

@@ -61,6 +61,7 @@ export function ConceptPlayer({
 }) {
   const [lecture, setLecture] = useState(false)
   const [theater, setTheater] = useState(false)
+  const [viewerMode, setViewerMode] = useState<"lecture" | "explore">("lecture")
   const [subtitle, setSubtitle] = useState("")
   const [preparing, setPreparing] = useState(false)
   const [lectureDone, setLectureDone] = useState(false)
@@ -84,6 +85,24 @@ export function ConceptPlayer({
   const clipsRef = useRef<Map<string, Blob>>(new Map())
   const pendingClipsRef = useRef<Map<string, Promise<Blob | undefined>>>(new Map())
   const rootRef = useRef<HTMLDivElement>(null)
+
+  const changeViewerMode = useCallback((mode: "lecture" | "explore") => {
+    if (mode === viewerMode) return
+    if (mode === "explore" && lectureRef.current) {
+      handleRef.current?.stop()
+      lectureRef.current = false
+      pausedRef.current = false
+      setLecture(false)
+      setPaused(false)
+      setPreparing(false)
+      setSubtitle("")
+      setLectureDone(false)
+      seekMsRef.current = 0
+      setCurrentMs(0)
+      setActiveBeat(0)
+    }
+    setViewerMode(mode)
+  }, [viewerMode])
 
   const updateBeatDuration = useCallback((text: string, durationMs: number) => {
     if (!Number.isFinite(durationMs) || durationMs <= 0) return
@@ -370,7 +389,7 @@ export function ConceptPlayer({
   )
 
   return (
-    <div className={theater ? "" : "space-y-5"}>
+    <div>
     <motion.div
       ref={rootRef}
       initial={{ opacity: 0, y: 10 }}
@@ -386,8 +405,8 @@ export function ConceptPlayer({
       <div
         className={
           theater
-            ? "flex shrink-0 items-center gap-2 border-b border-white/10 bg-[#16212A] px-4 py-3"
-            : "flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border-b border-[var(--border)]"
+            ? "flex shrink-0 flex-wrap items-center gap-2 border-b border-white/10 bg-[#16212A] px-3 py-2.5 sm:px-4 sm:py-3"
+            : "flex flex-wrap items-center gap-2 border-b border-[var(--border)] bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent px-3 py-2.5 sm:px-4"
         }
       >
         <Film className="size-4 text-amber-500 shrink-0" />
@@ -397,7 +416,8 @@ export function ConceptPlayer({
         <div className="ml-auto flex items-center gap-2 shrink-0">
           {lectureReady && (
             <span className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold sm:inline-flex ${theater ? "border-white/15 bg-white/5 text-white/70" : "border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"}`}>
-              <GraduationCap className="size-3.5" />AI 视频讲解
+              {viewerMode === "lecture" ? <GraduationCap className="size-3.5" /> : <Film className="size-3.5" />}
+              {viewerMode === "lecture" ? "AI 视频讲解" : "交互画板"}
             </span>
           )}
           {/* 影院模式开关 */}
@@ -408,7 +428,7 @@ export function ConceptPlayer({
               title="退出全屏 (Esc)"
               className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-white/20 px-3 text-xs font-semibold text-white/80 transition-colors hover:border-white/50 hover:text-white"
             >
-              <X className="size-3.5" /> 退出全屏
+              <X className="size-3.5" /> <span className="hidden sm:inline">退出全屏</span>
             </button>
           ) : (
             <button
@@ -417,7 +437,7 @@ export function ConceptPlayer({
               title="全屏模式（沉浸放大）"
               className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-[var(--border)] px-3 text-xs font-semibold text-[var(--muted-foreground)] transition-colors hover:border-[#C49A45] hover:bg-[#F7F2E7] hover:text-[#7E5E22]"
             >
-              <Maximize2 className="size-3.5" /> 全屏
+              <Maximize2 className="size-3.5" /> <span className="hidden sm:inline">全屏</span>
             </button>
           )}
         </div>
@@ -431,8 +451,46 @@ export function ConceptPlayer({
         </div>
       )}
 
+      {lectureReady && !theater && (
+        <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[#F8F6F0] px-3 py-2 sm:px-4">
+          <div className="inline-flex rounded-xl border border-[#D7D1C4] bg-white p-1" role="tablist" aria-label="讲解查看模式">
+            <button
+              id="concept-player-lecture-tab"
+              type="button"
+              role="tab"
+              aria-selected={viewerMode === "lecture"}
+              aria-controls="concept-player-lecture-panel"
+              onClick={() => changeViewerMode("lecture")}
+              className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${viewerMode === "lecture" ? "bg-[#244C66] text-white shadow-sm" : "text-[#66717B] hover:bg-[#EEF3F5] hover:text-[#244C66]"}`}
+            >
+              <GraduationCap className="size-3.5" />AI 讲解
+            </button>
+            <button
+              id="concept-player-explore-tab"
+              type="button"
+              role="tab"
+              aria-selected={viewerMode === "explore"}
+              aria-controls="concept-player-explore-panel"
+              onClick={() => changeViewerMode("explore")}
+              className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${viewerMode === "explore" ? "bg-[#244C66] text-white shadow-sm" : "text-[#66717B] hover:bg-[#EEF3F5] hover:text-[#244C66]"}`}
+            >
+              <Film className="size-3.5" />自由探索
+            </button>
+          </div>
+          <span className="hidden text-[10px] font-medium text-[#71818A] sm:block">
+            {viewerMode === "lecture" ? "旁白、字幕与动画同步" : "播放、单步与参数控制"}
+          </span>
+        </div>
+      )}
+
       {/* 动画本体（{injected} 始终在同一层级，仅外层 className 随 theater 变 → 不重挂载、状态保留） */}
-      <div className={theater ? "relative flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain sm:overflow-hidden" : `relative ${lectureReady ? "concept-player-inline overflow-hidden bg-[#101820] p-3" : "p-3"}`}>
+      <div
+        id="concept-player-lecture-panel"
+        role={lectureReady ? "tabpanel" : undefined}
+        aria-labelledby={lectureReady ? "concept-player-lecture-tab" : undefined}
+        hidden={lectureReady && viewerMode !== "lecture"}
+        className={theater ? "relative flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain sm:overflow-hidden" : `relative ${lectureReady ? "concept-player-inline overflow-hidden bg-[#101820] p-3" : "p-3"}`}
+      >
         <div
           className={
             theater
@@ -493,7 +551,7 @@ export function ConceptPlayer({
                   </div>
                 ) : subtitle}
               </div>
-              <div className="flex items-center gap-3 px-5 py-3 bg-[#0a0b0e] border-t border-white/5 text-white">
+              <div className="flex flex-wrap items-center gap-2.5 border-t border-white/5 bg-[#0a0b0e] px-3 py-3 text-white sm:flex-nowrap sm:gap-3 sm:px-5">
                 <button
                   type="button"
                   onClick={togglePause}
@@ -510,7 +568,7 @@ export function ConceptPlayer({
                 >
                   <RotateCcw className="size-4" />
                 </button>
-                <div className="min-w-28 flex-1">
+                <div className="order-first min-w-28 basis-full sm:order-none sm:basis-auto sm:flex-1">
                   <input
                     type="range"
                     min={0}
@@ -537,7 +595,7 @@ export function ConceptPlayer({
                 >
                   {PLAYBACK_RATES.map((rate) => <option key={rate} value={rate} className="text-black">{rate}×</option>)}
                 </select>
-                <div className="ml-auto flex items-center gap-2">
+                <div className="ml-auto flex items-center gap-1 sm:gap-2">
                   <button type="button" onClick={() => changeVolume(volume > 0 ? 0 : 1)} title={volume > 0 ? "静音" : "取消静音"} aria-label={volume > 0 ? "静音" : "取消静音"} className="inline-flex size-10 items-center justify-center rounded-xl text-white/80 transition-colors hover:bg-white/10 hover:text-white">
                     {volume > 0 ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
                   </button>
@@ -548,7 +606,7 @@ export function ConceptPlayer({
                     step={0.05}
                     value={volume}
                     onChange={(e) => changeVolume(parseFloat(e.target.value))}
-                    className="w-28 accent-amber-500"
+                    className="w-20 accent-amber-500 sm:w-28"
                     title="音量"
                     aria-label="讲解音量"
                   />
@@ -588,7 +646,7 @@ export function ConceptPlayer({
             )}
             {/* 行内控制条：播放中可暂停/继续，讲完出再讲一遍，右侧音量（与影院模式一致） */}
             {!preparing && (
-              <div className="mt-3 flex items-center gap-2.5">
+              <div className="mt-3 flex flex-wrap items-center gap-2.5">
                 {!lectureDone && (
                   <>
                     <button
@@ -618,7 +676,7 @@ export function ConceptPlayer({
                     <RotateCcw className="size-4" /> 再讲一遍
                   </button>
                 )}
-                <div className="mx-2 min-w-28 flex-1">
+                <div className="order-first min-w-28 basis-full sm:order-none sm:mx-2 sm:basis-auto sm:flex-1">
                   <input
                     type="range"
                     min={0}
@@ -662,7 +720,7 @@ export function ConceptPlayer({
                     step={0.05}
                     value={volume}
                     onChange={(e) => changeVolume(parseFloat(e.target.value))}
-                    className="w-24 accent-amber-500"
+                    className="w-20 accent-amber-500 sm:w-24"
                     title="音量"
                     aria-label="讲解音量"
                   />
@@ -672,21 +730,21 @@ export function ConceptPlayer({
           </>
         )}
       </div>
-    </motion.div>
-    {lectureReady && !theater && (
-      <section className="overflow-hidden rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] shadow-sm">
-        <header className="flex items-center justify-between gap-3 border-b border-[#D7D1C4] bg-[#F8F6F0] px-4 py-3">
-          <div>
-            <span className="text-[10px] font-bold tracking-[0.12em] text-[#6F8A69]">INTERACTIVE CANVAS</span>
-            <h4 className="mt-0.5 text-sm font-bold text-[#18232D]">交互画板 · 自己动手探索</h4>
+
+      {lectureReady && (
+        <div
+          id="concept-player-explore-panel"
+          role="tabpanel"
+          aria-labelledby="concept-player-explore-tab"
+          hidden={viewerMode !== "explore"}
+          className={theater ? "relative flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain bg-[#101820] p-3 sm:overflow-hidden" : "relative bg-[#FFFEFA] p-3"}
+        >
+          <div className={theater ? "concept-theater flex min-h-full w-full min-w-0 flex-none flex-col sm:min-h-0 sm:flex-1" : ""}>
+            {disablePanZoom ? interactive : <PanZoom className={theater ? "min-h-full flex-none sm:min-h-0 sm:flex-1" : ""}>{interactive}</PanZoom>}
           </div>
-          <span className="hidden text-[10px] text-[#7A817F] sm:inline">播放、单步与重置均保留在画板中</span>
-        </header>
-        <div className="p-3">
-          {disablePanZoom ? interactive : <PanZoom>{interactive}</PanZoom>}
         </div>
-      </section>
-    )}
+      )}
+    </motion.div>
     </div>
   )
 }

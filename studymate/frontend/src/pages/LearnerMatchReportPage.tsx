@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ArrowLeft, BarChart3, Loader2 } from "lucide-react"
+import { BarChart3, Loader2 } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { AppTopbar } from "@/components/AppTopbar"
@@ -53,20 +53,7 @@ export function LearnerMatchReportPage() {
       <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
         <AppTopbar current="learnerReport" appearance="paper" iconImage="/images/learner-resource-matching-coupler-v1.png" showRocketFormation rocketVariant="honor" />
         <section className="learner-signal-shell mt-5 overflow-hidden rounded-[30px] border border-[#9DB9CB]/70">
-          <header className="learner-signal-titleband flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-7">
-            <div className="flex min-w-0 items-center gap-3">
-              <Link to="/" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]">
-                <ArrowLeft className="size-3.5" /><span className="hidden sm:inline">返回个人中心</span>
-              </Link>
-              <span className="h-6 w-px shrink-0 bg-[#D7E0E8]" />
-              <span className="learner-signal-title-icon grid size-9 shrink-0 place-items-center rounded-full text-[#315E83]"><BarChart3 className="size-4" /></span>
-              <div className="min-w-0">
-                <h1 className="truncate text-[15px] font-bold text-[#18232D]">个人学情与资源匹配度报告</h1>
-                <p className="mt-0.5 truncate text-[11px] font-semibold leading-4 text-[#496B7D]">双轨信号匹配 · 围绕{targetRoleName || "目标岗位"}对齐能力证据与训练资源</p>
-              </div>
-            </div>
-            {loading && <span className="inline-flex items-center gap-1.5 rounded-full border border-[#D7E0E8] bg-[#F8FBFF] px-3 py-1.5 text-[10px] font-bold text-[#6F7E8F]"><Loader2 className="size-3 animate-spin" />正在同步画像</span>}
-          </header>
+          {loading && <div className="learner-signal-loading" role="status"><Loader2 className="size-3.5 animate-spin" />正在同步画像与训练记录</div>}
 
           {role ? (
             <LearnerMatchReport

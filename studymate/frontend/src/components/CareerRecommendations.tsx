@@ -5,7 +5,7 @@ import { ArrowRight, CheckCircle2, ExternalLink, Loader2, Route, ShieldCheck, Sp
 import { ApiError, apiGet } from "@/lib/api"
 import { careerDomains, type CareerRole, type DomainId } from "@/lib/domainCareerCatalog"
 import { track } from "@/lib/track"
-import { setCurrentCourse, type CourseInfo, useCurrentCourse } from "@/store/course"
+import { setCurrentCourse, type CourseInfo } from "@/store/course"
 import { setTargetRole, useTargetRole } from "@/store/targetRole"
 import { clearWorkspaceState } from "@/store/workspace"
 
@@ -89,7 +89,6 @@ function recruitmentLinks(role: CareerRole) {
 export function CareerRecommendations({ compact = false }: { profileVersion?: number; compact?: boolean }) {
   const navigate = useNavigate()
   const currentRole = useTargetRole()
-  const course = useCurrentCourse()
   const [activatingRoleId, setActivatingRoleId] = useState("")
   const [error, setError] = useState("")
 
@@ -127,67 +126,164 @@ export function CareerRecommendations({ compact = false }: { profileVersion?: nu
 
   if (!currentRole) {
     return (
-      <section className="career-transfer-empty rounded-[22px] border border-dashed p-6 text-center">
-        <Target className="mx-auto size-6 text-[#315E83]" />
-        <h2 className="mt-3 text-base font-bold text-[#18232D]">先选择当前训练岗位</h2>
-        <p className="mt-1 text-xs leading-5 text-[#66717B]">转岗匹配会以当前岗位知识库中的能力项为基准计算。</p>
-        <Link to="/courses?returnTo=%2Fcareer" className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-xs font-bold text-white hover:bg-[#193B50]">选择当前岗位<ArrowRight className="size-3.5" /></Link>
+      <section className="career-match-empty" aria-label="尚未选择当前岗位">
+        <Target aria-hidden="true" />
+        <div>
+          <h2>先选择当前训练岗位</h2>
+          <p>转岗匹配需要以当前岗位知识库中的能力项为计算基准。</p>
+        </div>
+        <Link to="/courses?returnTo=%2Fcareer" className="career-match-select-role">选择当前岗位<ArrowRight aria-hidden="true" /></Link>
       </section>
     )
   }
 
-  return (
-    <section className="career-transfer-panel rounded-[24px] border p-4 sm:p-5" aria-label="转岗岗位推荐">
-      <div className="career-transfer-panel-heading flex flex-wrap items-start justify-between gap-3">
+  if (!recommendations.length) {
+    return (
+      <section className="career-match-empty" aria-label="暂无可训练的转岗推荐">
+        <Target aria-hidden="true" />
         <div>
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.12em] text-[#315E83]"><Sparkles className="size-3.5" />知识库岗位匹配</span>
-          <h2 className="mt-1 text-base font-bold text-[#18232D]">从「{currentRole.name}」可平移的岗位方向</h2>
-          <p className="mt-1 max-w-2xl text-[11px] leading-5 text-[#66717B]">匹配度依据两类岗位知识库的共通能力与基础课程计算；开始训练前会再次校验目标岗位知识库。</p>
+          <h2>暂无可立即训练的匹配岗位</h2>
+          <p>当前岗位画像已读取，但暂未找到知识库就绪的其他方向。</p>
         </div>
-        <span className="inline-flex items-center gap-1 rounded-xl border border-[#C9D1CB] bg-[#FFFEFA] px-3 py-1.5 text-[10px] font-bold text-[#557052]"><CheckCircle2 className="size-3" />当前训练 · {currentRole.name || course?.name}</span>
-      </div>
+        <Link to="/courses" className="career-match-select-role">查看当前岗位<ArrowRight aria-hidden="true" /></Link>
+      </section>
+    )
+  }
 
-      <div className="career-transfer-status-rail mt-4 grid grid-cols-3 overflow-hidden rounded-[14px] border" aria-label="转岗匹配状态">
-        <span><i>01</i><small>候选航线</small><strong>{recommendations.length} 条</strong></span>
-        <span><i>02</i><small>最高匹配</small><strong>{recommendations[0]?.score ?? 0}%</strong></span>
-        <span className="is-ready"><i>03</i><small>知识库状态</small><strong>READY</strong></span>
-      </div>
+  const [featured, ...secondary] = recommendations
+  const isBusy = Boolean(activatingRoleId)
 
-      <div className={`career-transfer-results mt-6 grid gap-3 ${compact ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"}`}>
-        {recommendations.map((item, index) => (
-          <article key={item.role.id} className={`career-transfer-card rounded-[20px] border ${activatingRoleId === item.role.id ? "is-activating" : ""}`}>
-            <div className="career-transfer-card-cover">
-              <img src={roleCoverImages[item.role.id]} alt={`${item.role.name}职业场景`} loading="lazy" />
-              <span className="career-transfer-card-cover-shade" />
-              <span className="career-transfer-card-index">{String(index + 1).padStart(2, "0")}</span>
-              <span className="career-transfer-card-match">匹配 {item.score}%</span>
+  return (
+    <section className="career-match-panel" aria-label="画像驱动的转岗岗位推荐">
+      <header className="career-match-context">
+        <div>
+          <span className="career-match-eyebrow"><Sparkles aria-hidden="true" />画像匹配结果</span>
+          <h2>从「{currentRole.name}」出发的更短转岗路径</h2>
+          <p>已比较 {currentRole.skills.length} 项岗位能力，找到 {recommendations.length} 个知识库就绪的训练方向。</p>
+        </div>
+        <span className="career-match-current"><CheckCircle2 aria-hidden="true" />当前岗位 · {currentRole.name}</span>
+      </header>
+
+      <article className="career-match-featured" aria-label={`最佳匹配岗位：${featured.role.name}`}>
+        <div className="career-match-featured-cover">
+          <img src={roleCoverImages[featured.role.id]} alt={`${featured.role.name}职业场景`} />
+          <span className="career-match-cover-shade" aria-hidden="true" />
+          <span className="career-match-best-label">最佳匹配</span>
+          <strong>{featured.score}%</strong>
+        </div>
+
+        <div className="career-match-featured-body">
+          <div className="career-match-role-heading">
+            <div>
+              <span>推荐转岗方向</span>
+              <h3>{featured.role.name}</h3>
             </div>
-            <div className="career-transfer-card-result p-3.5">
-              <h3 className="text-sm font-bold text-[#18232D]">{item.role.name}</h3>
-              <p className="mt-1 min-h-8 text-[10px] leading-4 text-[#4E687C]">{item.role.summary}</p>
-              <div className="career-transfer-score mt-3"><span><b>{item.score}%</b><small>能力航线匹配</small></span><i><b style={{ width: `${item.score}%` }} /></i></div>
-              <div className="mt-3 space-y-1.5 border-t border-[#D8E2E9] pt-2.5">
-                <CareerLine icon={ShieldCheck} label="可复用能力" values={item.sharedSkills} empty="基础课程可衔接" tone="green" />
-                <CareerLine icon={Route} label="转岗重点" values={item.gaps.slice(0, 2)} empty="继续积累岗位项目" tone="gold" />
-              </div>
+            <strong>{featured.score}%<small>能力匹配</small></strong>
+          </div>
+          <p className="career-match-summary">{featured.role.summary}</p>
+          <MatchBar score={featured.score} roleName={featured.role.name} />
+
+          <div className="career-match-evidence-grid">
+            <CareerLine icon={ShieldCheck} label="可复用能力" values={featured.sharedSkills} empty="基础课程可直接衔接" tone="green" limit={4} />
+            <CareerLine icon={Route} label="关键差距" values={featured.gaps} empty="继续积累目标岗位项目" tone="gold" limit={4} />
+          </div>
+
+          <div className="career-match-featured-actions">
+            <button type="button" disabled={isBusy} onClick={() => void enterTraining(featured)} className="career-match-primary">
+              {activatingRoleId === featured.role.id ? <Loader2 className="career-match-spinner" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
+              {activatingRoleId === featured.role.id ? "正在进入训练" : "进入该岗位训练"}
+            </button>
+            <RecruitmentLinks role={featured.role} />
+          </div>
+        </div>
+      </article>
+
+      {secondary.length > 0 && (
+        <section className="career-match-secondary" aria-labelledby="career-match-secondary-title">
+          <div className="career-match-secondary-heading">
+            <div>
+              <span>继续比较</span>
+              <h3 id="career-match-secondary-title">其他匹配岗位</h3>
             </div>
-            <div className="career-transfer-card-actions flex flex-wrap items-center justify-between gap-2 border-t px-3.5 py-2.5">
-              <button type="button" disabled={Boolean(activatingRoleId)} onClick={() => void enterTraining(item)} className="career-transfer-primary inline-flex h-8 items-center gap-1.5 rounded-xl px-3 text-[10px] font-bold disabled:opacity-50">{activatingRoleId === item.role.id ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}{activatingRoleId === item.role.id ? "正在进入" : "开始转岗训练"}</button>
-              <span className="text-[9px] font-semibold text-[#557052]">知识库已导入</span>
-            </div>
-            <div className="career-transfer-card-links flex flex-wrap gap-1.5 border-t px-3.5 py-2.5">
-              {recruitmentLinks(item.role).map((link) => <a key={link.label} href={link.url} target="_blank" rel="noreferrer noopener" aria-label={`在${link.label}搜索${link.query}职位`} title={`搜索：${link.query}`} onClick={() => track("external_resource_open", link.event, link.query)} className="career-transfer-external inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[9px] font-bold">在{link.label}查看需求<ExternalLink className="size-2.5" /></a>)}
-            </div>
-          </article>
-        ))}
-      </div>
-      {error && <p role="alert" className="mt-3 rounded-xl border border-[#DFC9BE] bg-[#F6ECE7] px-3 py-2 text-[11px] text-[#9A4E35]">{error}</p>}
-      <p className="mt-3 text-[10px] leading-4 text-[#8A8172]">招聘链接会在新标签页打开；职位数量、城市、薪资与任职要求以公开招聘平台实时页面为准。</p>
+            <small>{secondary.length} 个方向</small>
+          </div>
+
+          <div className={`career-match-secondary-grid ${compact ? "is-compact" : ""}`}>
+            {secondary.map((item) => (
+              <article key={item.role.id} className={`career-match-card ${activatingRoleId === item.role.id ? "is-activating" : ""}`}>
+                <div className="career-match-card-cover">
+                  <img src={roleCoverImages[item.role.id]} alt={`${item.role.name}职业场景`} loading="lazy" />
+                  <span className="career-match-cover-shade" aria-hidden="true" />
+                  <strong>{item.score}%</strong>
+                </div>
+                <div className="career-match-card-body">
+                  <div className="career-match-card-title">
+                    <h4>{item.role.name}</h4>
+                    <span>{item.score}% 匹配</span>
+                  </div>
+                  <p>{item.role.summary}</p>
+                  <MatchBar score={item.score} roleName={item.role.name} compact />
+                  <div className="career-match-card-evidence">
+                    <CareerLine icon={ShieldCheck} label="可复用" values={item.sharedSkills} empty="基础课程可衔接" tone="green" limit={3} />
+                    <CareerLine icon={Route} label="需补齐" values={item.gaps} empty="继续积累岗位项目" tone="gold" limit={2} />
+                  </div>
+                </div>
+                <div className="career-match-card-footer">
+                  <button type="button" disabled={isBusy} onClick={() => void enterTraining(item)} className="career-match-secondary-action">
+                    {activatingRoleId === item.role.id && <Loader2 className="career-match-spinner" aria-hidden="true" />}
+                    {activatingRoleId === item.role.id ? "正在进入" : "进入训练"}
+                  </button>
+                  <RecruitmentLinks role={item.role} compact />
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {error && <p role="alert" className="career-match-error">{error}</p>}
+      <p className="career-match-disclaimer">招聘信息在新标签页打开，职位与任职要求以公开招聘平台实时页面为准。</p>
     </section>
   )
 }
 
-function CareerLine({ icon: Icon, label, values, empty, tone }: { icon: typeof Target; label: string; values: string[]; empty: string; tone: "green" | "gold" }) {
-  const colors = tone === "green" ? "bg-[#E9EEE6] text-[#557052]" : "bg-[#F4ECD8] text-[#8E6925]"
-  return <div className="flex items-start gap-2 text-[10px] leading-4"><span className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded-md ${colors}`}><Icon className="size-3" /></span><span><strong className="mr-1 text-[#59636B]">{label}</strong><span className="text-[#7A817F]">{values.length ? values.join("、") : empty}</span></span></div>
+function MatchBar({ score, roleName, compact = false }: { score: number; roleName: string; compact?: boolean }) {
+  return (
+    <div className={`career-match-scorebar ${compact ? "is-compact" : ""}`} role="img" aria-label={`${roleName}能力匹配度 ${score}%`}>
+      <i><b style={{ width: `${score}%` }} /></i>
+    </div>
+  )
+}
+
+function RecruitmentLinks({ role, compact = false }: { role: CareerRole; compact?: boolean }) {
+  return (
+    <div className={`career-match-links ${compact ? "is-compact" : ""}`} aria-label={`${role.name}招聘需求`}>
+      {recruitmentLinks(role).map((link) => (
+        <a
+          key={link.label}
+          href={link.url}
+          target="_blank"
+          rel="noreferrer noopener"
+          aria-label={`在${link.label}搜索${link.query}职位`}
+          title={`搜索：${link.query}`}
+          onClick={() => track("external_resource_open", link.event, link.query)}
+        >
+          {compact ? link.label : `在${link.label}查看需求`}<ExternalLink aria-hidden="true" />
+        </a>
+      ))}
+    </div>
+  )
+}
+
+function CareerLine({ icon: Icon, label, values, empty, tone, limit }: { icon: typeof Target; label: string; values: string[]; empty: string; tone: "green" | "gold"; limit: number }) {
+  const visibleValues = values.slice(0, limit)
+  const remaining = values.length - visibleValues.length
+  const valueText = values.length ? `${visibleValues.join("、")}${remaining > 0 ? ` 等 ${values.length} 项` : ""}` : empty
+
+  return (
+    <div className={`career-match-line is-${tone}`}>
+      <span><Icon aria-hidden="true" /></span>
+      <div><strong>{label}</strong><p>{valueText}</p></div>
+    </div>
+  )
 }

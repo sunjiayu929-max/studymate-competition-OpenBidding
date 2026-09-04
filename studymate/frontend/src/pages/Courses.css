@@ -30,3 +30,93 @@
 @media(max-width:1100px){.career-route-domain-grid{grid-template-columns:repeat(2,1fr)}.career-route-role-grid{grid-template-columns:repeat(2,1fr)}.career-route-hero-grid{gap:35px}.career-route-summary .career-route-hero-grid{grid-template-columns:minmax(0,1fr) minmax(300px,.68fr) 80px;gap:22px}}
 @media(max-width:760px){.career-route-page{padding:8px 8px 40px;background-position:62% top}.career-route-hero-grid{grid-template-columns:1fr}.career-route-track{margin:0 -20px;overflow-x:auto}.career-route-track span{min-width:130px}.career-route-domain-grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 0 5px}.career-route-domain-grid button{min-width:210px;scroll-snap-align:start}.career-route-role-grid{grid-template-columns:1fr}.career-route-section-heading aside{display:none}.career-route-transfer{min-height:94px;margin-top:3px;padding:0}.career-route-flight-lane{height:88px;mask-image:linear-gradient(90deg,transparent,#000 1%,#000 99%,transparent)}.career-route-flight-lane>b{font-size:7px}.career-route-flight-lane>img{width:108px;height:48px}.career-route-flight-lane>img.is-eastbound{top:0}.career-route-flight-lane>img.is-westbound{top:33px}.career-route-transfer.is-satellite .career-route-flight-lane>img{width:98px;height:46px}.career-route-role-card button{grid-template-columns:105px 1fr}.career-route-role-image{min-height:220px}.career-route-live i{display:none}.career-route-summary{padding-top:14px;background-image:linear-gradient(180deg,rgba(249,253,255,.97),rgba(235,248,252,.86)),linear-gradient(0deg,rgba(19,64,91,.08),transparent 45%),url("/images/career-route-status-control-room-v1.png");background-position:center,center,74% center}.career-route-summary .career-route-hero-grid{grid-template-columns:1fr;gap:18px;min-height:0;padding:19px 0}.career-route-summary .career-route-status{grid-column:1}.career-route-summary .career-route-identity h2{font-size:clamp(2.2rem,14vw,3.35rem)}.career-route-summary-metrics{flex-wrap:wrap;row-gap:12px}.career-route-summary-radar{display:none}}
 @media(prefers-reduced-motion:reduce){.career-route-page *,.career-route-page *:before,.career-route-page *:after{animation:none!important;scroll-behavior:auto!important}.career-route-domain-grid button:hover,.career-route-role-card:hover{transform:none}.career-route-flight-lane>img{opacity:.92}.career-route-flight-lane>img.is-eastbound{left:22%;transform:translateX(-50%)!important}.career-route-flight-lane>img.is-westbound{left:66%;transform:translateX(-50%) scaleX(-1)!important}}
+
+/* Keep route status legible without continuous ambient motion. */
+.career-route-live-dot,
+.career-route-status:after,
+.career-route-track>i,
+.career-route-summary:before,
+.career-route-status-signal i,
+.career-route-summary-radar,
+.career-route-summary-radar i:nth-child(3),
+.career-route-role-card:before,
+.career-route-heading-symbol:after,
+.career-route-selector .career-route-domain-grid button:before,
+.career-route-selector .career-route-domain-grid button:after,
+.career-route-role-card.is-selected .career-route-state-beacon{animation:none}
+.career-route-status:after{background-position:center}
+.career-route-summary:before{transform:none;opacity:.34}
+.career-route-role-card:before{background-position:center}
+.career-route-selector .career-route-domain-grid button:before{transform:none;opacity:.32}
+.career-route-selector .career-route-domain-grid button:after{left:0;width:100%;filter:none}
+
+/* Use the available space for a more comfortable reading scale. */
+.career-route-page .app-topbar h1{font-size:16px}
+.career-route-page .app-topbar .app-topbar-copy>div{font-size:11px}
+.career-route-page .app-topbar-role-context{font-size:12px}
+.career-route-selector .career-route-section-heading small,
+.career-route-role-section .career-route-section-heading small{font-size:12px}
+.career-route-selector .career-route-section-heading p,
+.career-route-role-section .career-route-section-heading p{font-size:14px;line-height:1.55}
+.career-route-section-heading aside{font-size:12px}
+.career-route-domain-grid button>b{font-size:11px}
+.career-route-domain-grid button>div strong{font-size:16px}
+.career-route-domain-grid button>div small{font-size:13px}
+.career-route-flight-lane>b{font-size:10px}
+.career-route-role-meta i{font-size:11px}
+.career-route-role-copy>strong{font-size:21px}
+.career-route-role-copy>p{font-size:14px;line-height:1.6}
+.career-route-skill-row small{font-size:11px}
+.career-route-role-action{font-size:13px}
+.career-route-alert{font-size:14px}
+.career-route-live{font-size:12px}
+.career-route-index span{font-size:13px}
+.career-route-index i{font-size:11px}
+.career-route-identity>p{font-size:15px}
+.career-route-summary-metrics small{font-size:11px}
+.career-route-summary-metrics strong{font-size:13px}
+.career-route-summary .career-route-status small{font-size:12px}
+.career-route-summary .career-route-status strong{font-size:20px}
+.career-route-summary .career-route-status p{font-size:14px;line-height:1.55}
+.career-route-summary .career-route-status a{font-size:13px}
+.career-route-summary .career-route-status-signal{font-size:10px}
+.career-route-track span{font-size:13px}
+
+@media(max-width:760px){
+  .career-route-selector .career-route-section-heading small,
+  .career-route-role-section .career-route-section-heading small{font-size:11px}
+  .career-route-domain-grid button>div strong{font-size:15px}
+  .career-route-domain-grid button>div small{font-size:12px}
+  .career-route-flight-lane>b{font-size:9px}
+  .career-route-role-meta i{font-size:10px}
+  .career-route-role-copy>strong{font-size:20px}
+  .career-route-role-copy>p{font-size:13px}
+  .career-route-skill-row small{font-size:10px}
+  .career-route-role-action{font-size:12px}
+}
+
+/* Present role skills as distinct, bright mini cards. */
+.career-route-skill-row{gap:7px}
+.career-route-skill-row small{
+  --skill-chip-rgb:43,137,190;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 9px;
+  border-color:rgba(var(--skill-chip-rgb),.42);
+  border-radius:8px;
+  color:#245a78;
+  background:linear-gradient(135deg,rgba(255,255,255,.98),rgba(var(--skill-chip-rgb),.18));
+  box-shadow:inset 0 1px rgba(255,255,255,.95),0 4px 10px rgba(var(--skill-chip-rgb),.14);
+}
+.career-route-skill-row small:before{
+  width:5px;
+  height:5px;
+  flex:none;
+  border-radius:2px;
+  background:rgb(var(--skill-chip-rgb));
+  box-shadow:0 0 0 3px rgba(var(--skill-chip-rgb),.12);
+  content:"";
+}
+.career-route-skill-row small:nth-child(2){--skill-chip-rgb:31,164,139}
+.career-route-skill-row small:nth-child(3){--skill-chip-rgb:112,91,198}
