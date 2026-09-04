@@ -122,11 +122,7 @@ export function AppTopbar({
   labelOverride,
   groupOverride,
   selectionLabel,
-  statusLabel,
   iconImage,
-  showRocketFormation = false,
-  rocketCount,
-  rocketVariant = "default",
 }: AppTopbarProps) {
   const course = useCurrentCourse()
   const targetRole = useTargetRole()
@@ -137,8 +133,8 @@ export function AppTopbar({
   const label = labelOverride ?? meta.label
   const group = groupOverride ?? meta.group
   const iconTone = PAGE_ICON_TONES[current]
-  const resolvedRocketCount = rocketCount ?? (rocketVariant === "honor" ? 5 : 3)
   const roleSelectionPath = user?.role === "admin" ? "/admin" : current === "workspace" ? "/courses?returnTo=%2Fworkspace" : "/courses"
+  const selectedRoleLabel = selectionLabel ?? ((user?.learner_type === "worker" && user.target_role) || targetRole?.name || course?.name || "选择当前岗位")
   return (
     <header
       className={cn(
@@ -149,7 +145,6 @@ export function AppTopbar({
         className,
       )}
     >
-      {showRocketFormation && <span className={cn("app-topbar-rocket-formation", rocketVariant === "honor" && "app-topbar-honor-rockets")} aria-hidden="true" style={{ gridTemplateColumns: `repeat(${resolvedRocketCount}, minmax(0, 1fr))` }}>{Array.from({ length: resolvedRocketCount }, (_, index) => <i key={index}><img src="/images/training-launch-rocket-cutout-v2.png" alt="" /></i>)}</span>}
       <span
         className={cn("app-topbar-symbol grid size-10 shrink-0 place-items-center", iconImage ? "app-topbar-real-icon size-12" : "app-topbar-symbol-fallback")}
         data-page-icon={current}
@@ -157,24 +152,24 @@ export function AppTopbar({
       >
         {iconImage ? <img src={iconImage} alt="" aria-hidden="true" /> : <Icon className="size-[17px]" />}
       </span>
-      <div className="min-w-0 flex-1">
+      <div className="app-topbar-copy min-w-0 flex-1">
         <div className="flex items-center gap-1.5 text-[9px] font-bold tracking-[.1em] text-[#8A8172]">
           <Sparkles className="size-3 text-[#B1842C]" />
           {group}
         </div>
         <h1 className="truncate text-[14px] font-bold tracking-[-.02em] text-[#18232D]">{label}</h1>
-        {statusLabel && <p className="app-topbar-status mt-0.5 truncate text-[10px] font-semibold text-[#315E83]">{statusLabel}</p>}
       </div>
       <Link
         to={roleSelectionPath}
         className={cn(
-          "hidden h-9 max-w-[240px] items-center gap-2 rounded-xl border px-3 text-[11px] font-semibold text-[#59636B] transition-colors hover:bg-[#F7F2E7] sm:flex",
+          "app-topbar-role-context flex h-9 max-w-[240px] items-center gap-2 rounded-xl border px-3 text-[11px] font-semibold text-[#59636B] transition-colors hover:bg-[#F7F2E7]",
           current === "courses" ? "border-[#9FB1BC] bg-[#E7EDF3] text-[#244C66]" : "border-[#D7D1C4] bg-[#FAF8F2]",
         )}
+        aria-label={`当前目标岗位：${selectedRoleLabel}。查看或切换当前目标岗位`}
         title="查看或切换当前目标岗位"
       >
-        <Library className="size-3.5 shrink-0 text-[#315E83]" />
-        <span className="truncate">{selectionLabel ?? ((user?.learner_type === "worker" && user.target_role) || targetRole?.name || course?.name || "选择当前岗位")}</span>
+        <Library className="size-3.5 shrink-0 text-[#315E83]" aria-hidden="true" />
+        <span className="truncate">{selectedRoleLabel}</span>
       </Link>
     </header>
   )

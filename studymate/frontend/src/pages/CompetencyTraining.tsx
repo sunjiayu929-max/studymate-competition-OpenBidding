@@ -223,10 +223,10 @@ export function CompetencyTraining() {
             <div className="flex items-center gap-3"><span className="competency-live-dot size-2 rounded-full" /><span className="text-[13px] font-black tracking-[.16em] text-[#294E73]">LIVE TRAINING</span><span className="text-[13px] font-bold text-[#778596]">ROUND {String(cycle).padStart(2, "0")}</span></div>
             <span className="hidden text-[12px] font-bold text-[#64758A] sm:block">{workspace.status === "running" ? "协作运行中" : released ? "已通过发布门禁" : "等待启动"}</span>
           </div>
-          <div className="relative grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)_198px] xl:items-center">
+          <div className="relative grid gap-5 xl:grid-cols-[minmax(248px,288px)_minmax(0,1fr)_224px] xl:items-center">
             <motion.div className="competency-role-summary min-w-0" initial={{ opacity: 0, x: -14 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: .12, duration: .58 }}>
               <div className="competency-role-index"><strong>01</strong><span>岗位训练中心</span><i>ROLE TRAINING</i></div>
-              <h1 className="competency-role-title mt-5">{roleTitleLines.map((line, index) => <span className={index === roleTitleLines.length - 1 ? "is-accent" : undefined} key={line}>{line}</span>)}</h1>
+              <h1 className="competency-role-title mt-5">{roleTitleLines.map((line, index) => <span className={index === roleTitleLines.length - 1 ? "is-accent" : undefined} key={`${line}-${index}`}>{line}</span>)}</h1>
               <div className="competency-role-accent mt-5" aria-hidden="true" />
               <div className="competency-topic mt-5"><span className="block text-[11px] font-black tracking-[.14em] text-[#708297]">本轮任务 / MISSION</span><p className="mt-2 line-clamp-2 text-[15px] font-semibold leading-6 text-[#3E566D]">{requestedTopic || currentTopic}</p></div>
               {requestedTopic && <div className="mt-3 inline-flex items-center gap-2 text-[13px] font-bold text-[#A04D38]" aria-live="polite"><CircleAlert className="size-4 shrink-0" />知识盲区已加入本轮</div>}
@@ -236,7 +236,7 @@ export function CompetencyTraining() {
               </div>
             </motion.div>
             <motion.div className="competency-map w-full min-w-0" initial={{ opacity: 0, scale: .985 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: .18, duration: .62 }}><ReportPathMap capabilities={pathCapabilities} targetRoleName={role.name} selectedId={selectedPathId || pathCapabilities[0]?.id} onSelect={setSelectedPathId} /><ReportPathProgress capabilities={pathCapabilities} targetRoleName={role.name} /></motion.div>
-            <motion.button type="button" onClick={startRound} disabled={!course || workspace.status === "running"} className="competency-primary-cta group inline-flex min-h-24 w-full shrink-0 items-end justify-between gap-3 rounded-[26px] border px-5 py-4 text-left text-[14px] font-black disabled:cursor-not-allowed disabled:opacity-55 xl:min-h-28" whileHover={{ y: -4 }} whileTap={{ scale: .98 }}><span className="relative z-10 flex min-w-0 items-center gap-3"><span className="competency-cta-icon grid size-10 shrink-0 place-items-center rounded-full"><Rocket className="size-5 transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1" /></span><span><span className="block text-[15px]">{workspace.status === "running" ? "训练进行中" : workspace.feedback ? `进入第 ${cycle + 1} 轮` : "启动本轮"}</span><span className="mt-1 block text-[12px] font-semibold text-white/75">{theoryCompleted ? "协作生成" : "先完成测评"}</span></span></span><span className="competency-cta-arrow relative z-10 grid size-9 shrink-0 place-items-center rounded-full"><ArrowRight className="size-4" /></span></motion.button>
+            <motion.button type="button" onClick={startRound} disabled={!course || workspace.status === "running"} className="competency-primary-cta group inline-flex min-h-24 w-full shrink-0 items-end justify-between gap-2 rounded-[26px] border px-4 py-4 text-left text-[14px] font-black disabled:cursor-not-allowed disabled:opacity-55 xl:min-h-28" whileHover={{ y: -4 }} whileTap={{ scale: .98 }}><span className="relative z-10 flex min-w-0 flex-1 items-center gap-2"><span className="competency-cta-icon grid size-10 shrink-0 place-items-center rounded-full"><Rocket className="size-5 transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1" /></span><span className="competency-cta-copy min-w-0"><span className="block text-[15px]">{workspace.status === "running" ? "训练进行中" : workspace.feedback ? `进入第 ${cycle + 1} 轮` : "启动本轮"}</span><span className="mt-1 block text-[12px] font-semibold text-white/75">{theoryCompleted ? "协作生成" : "先完成测评"}</span></span></span><span className="competency-cta-arrow relative z-10 grid size-9 shrink-0 place-items-center rounded-full"><ArrowRight className="size-4" /></span></motion.button>
           </div>
           <div className="competency-stage-rail relative mt-5 grid grid-cols-4 overflow-hidden rounded-[14px] border border-[#D7DEE7] bg-[#F7F8FA]">
             <span className="competency-route-signal" aria-hidden="true" />
@@ -273,10 +273,22 @@ function reviewScoreFor(reviews: WorkspaceState["reviews"], id: ResourceId) {
 }
 
 function splitRoleTitle(name: string) {
-  const latinPrefix = name.match(/^([A-Za-z]+(?:\s+[A-Za-z]+)*)\s*(.+)$/)
-  if (latinPrefix) return [latinPrefix[1], latinPrefix[2]]
-  if (name.length > 8 && name.endsWith("工程师")) return [name.slice(0, -3), "工程师"]
-  return [name]
+  const normalized = name.trim()
+  if (!normalized) return ["岗位训练"]
+  const qualification = normalized.match(/^(.*?)([（(][^）)]*[）)])$/u)
+  if (qualification?.[1] && qualification[2]) {
+    const roleBase = qualification[1].trim()
+    if (roleBase) return [roleBase, qualification[2]]
+  }
+  const latinPrefix = normalized.match(/^([A-Za-z]+(?:\s+[A-Za-z]+)*)\s*(.+)$/u)
+  if (latinPrefix?.[1] && latinPrefix[2]) return [latinPrefix[1], latinPrefix[2]]
+  const suffixBreak = normalized.match(/^(.*?)(工程师|经理|主管|总监|总经理|主任|专家|讲师|科学家)$/u)
+  if (suffixBreak?.[1] && suffixBreak[2]) return [suffixBreak[1], suffixBreak[2]]
+  if (normalized.length > 11) {
+    const half = Math.ceil(normalized.length / 2)
+    return [normalized.slice(0, half), normalized.slice(half)]
+  }
+  return [normalized]
 }
 
 function SectionTitle({ icon: Icon, imageSrc, flightAccent = false, orbitAccent = false, landingAccent = false, eyebrow, title, description }: { icon: typeof Target; imageSrc?: string; flightAccent?: boolean; orbitAccent?: boolean; landingAccent?: boolean; eyebrow: string; title: string; description: string }) {

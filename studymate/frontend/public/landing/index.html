@@ -3,690 +3,92 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#062b4b" />
-  <meta name="description" content="因材智训——面向垂直岗位的多智能体个性化训练与质量决策系统。" />
-  <title>因材智训｜多智能体个性化训练与质量决策系统</title>
+  <meta name="theme-color" content="#082d48" />
+  <meta name="description" content="因材智训——以岗位为目标，由 14 个智能体协同完成诊断、规划、生成、校验与成长回写的个性化训练系统。" />
+  <title>因材智训｜让每一次训练，都朝真实岗位起飞</title>
   <link rel="preload" as="image" href="./assets/skillops-glider-hero-desktop-v1.webp" type="image/webp" media="(min-width: 701px)" fetchpriority="high" />
   <link rel="preload" as="image" href="./assets/skillops-glider-hero-mobile-v1.webp" type="image/webp" media="(max-width: 700px)" fetchpriority="high" />
-  <script>document.documentElement.classList.replace('no-js', 'js');</script>
+  <script>document.documentElement.classList.replace('no-js', 'js')</script>
   <style>
-    :root {
-      --ink: #062b4b;
-      --ink-2: #0a3b62;
-      --blue: #126fa8;
-      --blue-bright: #48b8e8;
-      --sky: #dff3fc;
-      --sky-2: #eef9fd;
-      --paper: #f7fbfd;
-      --white: #ffffff;
-      --line: rgba(6, 43, 75, .16);
-      --line-light: rgba(255, 255, 255, .24);
-      --gold: #ffd36b;
-      --max: 1500px;
-      --ease: cubic-bezier(.2, .75, .2, 1);
-    }
-
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; background: var(--ink); }
-    body {
-      margin: 0;
-      color: var(--ink);
-      background: var(--paper);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: clip;
-    }
-    button, a { font: inherit; }
-    a { color: inherit; text-decoration: none; }
-    button { color: inherit; }
-    a:focus-visible, button:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }
-    [id] { scroll-margin-top: 86px; }
-    svg { display: block; }
-    ::selection { color: var(--white); background: var(--blue); }
-
-    .skip-link {
-      position: fixed; left: 16px; top: -60px; z-index: 1000;
-      padding: 12px 16px; color: var(--white); background: var(--ink);
-      transition: top .2s ease;
-    }
-    .skip-link:focus { top: 16px; }
-
-    .site-header {
-      position: fixed; inset: 0 0 auto; z-index: 100;
-      height: 86px; color: var(--white);
-      transition: background .35s ease, border-color .35s ease, color .35s ease;
-    }
-    .site-header::after {
-      content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
-      background: rgba(255,255,255,.22);
-    }
-    .site-header.is-scrolled { background: rgba(247,251,253,.94); color: var(--ink); backdrop-filter: blur(18px); }
-    .site-header.is-scrolled::after { background: var(--line); }
-    .nav-shell {
-      width: min(calc(100% - 64px), var(--max)); height: 100%; margin: auto;
-      display: flex; align-items: center; justify-content: space-between; gap: 36px;
-    }
-    .brand { display: inline-flex; align-items: center; gap: 13px; min-width: max-content; }
-    .brand-symbol {
-      width: 38px; height: 38px; display: grid; place-items: center;
-      border: 1px solid currentColor; border-radius: 50%;
-    }
-    .brand-symbol svg { width: 20px; height: 20px; }
-    .brand-name { font-size: 17px; font-weight: 800; letter-spacing: .04em; line-height: 1; }
-    .brand-name small { display: block; margin-top: 6px; font-size: 8px; letter-spacing: .28em; font-weight: 700; opacity: .72; }
-    .nav-right { display: flex; align-items: center; gap: 36px; }
-    .nav-links { display: flex; align-items: center; gap: 32px; font-size: 13px; }
-    .nav-links a { position: relative; padding: 12px 0; opacity: .76; }
-    .nav-links a::after { content: ""; position: absolute; left: 0; right: 100%; bottom: 5px; height: 1px; background: currentColor; transition: right .25s ease; }
-    .nav-links a:hover::after, .nav-links a:focus-visible::after { right: 0; }
-    .nav-links a:hover, .nav-links a:focus-visible { opacity: 1; }
-    .header-actions { display: flex; align-items: center; gap: 10px; }
-    .motion-toggle {
-      width: 42px; height: 42px; display: grid; place-items: center;
-      padding: 0; border: 1px solid currentColor; background: transparent; cursor: pointer;
-      opacity: .72;
-    }
-    .motion-toggle:hover, .motion-toggle:focus-visible { opacity: 1; }
-    .motion-toggle svg { width: 15px; height: 15px; }
-    .motion-toggle .play { display: none; }
-    .motion-paused .motion-toggle .pause { display: none; }
-    .motion-paused .motion-toggle .play { display: block; }
-    .nav-cta {
-      min-height: 44px; display: inline-flex; align-items: center; gap: 14px;
-      padding: 0 22px; color: var(--ink); background: var(--white); font-size: 13px; font-weight: 800;
-      border: 1px solid var(--white);
-    }
-    .site-header.is-scrolled .nav-cta { color: var(--white); background: var(--ink); border-color: var(--ink); }
-    .nav-cta svg, .button svg, .final-cta svg { width: 18px; height: 18px; transition: transform .25s ease; }
-    .nav-cta:hover svg, .button:hover svg, .final-cta:hover svg { transform: translateX(4px); }
-
-    .hero {
-      position: relative; min-height: 100svh; color: var(--white); background: var(--ink); overflow: hidden;
-      isolation: isolate;
-    }
-    .hero-media, .hero-media picture, .hero-media img { position: absolute; inset: 0; width: 100%; height: 100%; }
-    .hero-media { z-index: -3; }
-    .hero-media img { object-fit: cover; object-position: center; transform: scale(1.035); animation: hero-breathe 18s var(--ease) infinite alternate; }
-    .hero::before {
-      content: ""; position: absolute; inset: 0; z-index: -2;
-      background:
-        linear-gradient(90deg, rgba(2,25,45,.9) 0%, rgba(2,34,60,.63) 36%, rgba(2,34,60,.06) 66%, rgba(2,26,47,.18) 100%),
-        linear-gradient(0deg, rgba(2,23,42,.76) 0%, transparent 38%);
-    }
-    .hero::after {
-      content: ""; position: absolute; inset: 0; z-index: -1;
-      background-image: linear-gradient(rgba(255,255,255,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.055) 1px, transparent 1px);
-      background-size: 100% 25%, 25% 100%; mask-image: linear-gradient(to right, black, transparent 70%); pointer-events: none;
-    }
-    .hero-route {
-      position: absolute; left: 38%; top: 28%; width: 60%; height: 42%; z-index: -1; opacity: .72; pointer-events: none;
-    }
-    .hero-route .route-path { fill: none; stroke: rgba(255,255,255,.82); stroke-width: 1.2; stroke-dasharray: 4 12; animation: route-dash 18s linear infinite; }
-    .hero-route .route-dot { fill: var(--gold); filter: drop-shadow(0 0 8px rgba(255,211,107,.7)); }
-    .hero-inner {
-      width: min(calc(100% - 64px), var(--max)); min-height: 100svh; margin: auto;
-      padding: 160px 0 150px; display: flex; align-items: center; position: relative;
-    }
-    .hero-copy { width: min(720px, 54vw); }
-    .eyebrow {
-      display: flex; align-items: center; gap: 14px; margin: 0 0 30px;
-      font-size: 11px; font-weight: 800; letter-spacing: .24em; text-transform: uppercase;
-    }
-    .eyebrow::before { content: ""; width: 44px; height: 1px; background: currentColor; }
-    .hero h1 {
-      margin: 0; font-size: clamp(58px, 6.15vw, 112px); line-height: .98; letter-spacing: -.065em; font-weight: 800;
-      text-wrap: balance;
-    }
-    .hero h1 em { display: inline-block; color: #bfeeff; font-style: normal; }
-    .hero-lead { max-width: 640px; margin: 34px 0 0; font-size: clamp(16px, 1.25vw, 20px); line-height: 1.9; color: rgba(255,255,255,.8); }
-    .hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 38px; }
-    .button {
-      min-height: 54px; display: inline-flex; align-items: center; justify-content: center; gap: 18px;
-      padding: 0 26px; border: 1px solid rgba(255,255,255,.58); font-size: 14px; font-weight: 800;
-      transition: color .25s ease, background .25s ease, border-color .25s ease;
-    }
-    .button-primary { color: var(--ink); background: var(--white); border-color: var(--white); }
-    .button-primary:hover { background: #c9f0ff; border-color: #c9f0ff; }
-    .button-secondary:hover { color: var(--ink); background: var(--white); border-color: var(--white); }
-    .hero-index {
-      position: absolute; right: 0; top: 157px; padding-left: 22px; border-left: 1px solid rgba(255,255,255,.42);
-      font-size: 10px; line-height: 1.85; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.62);
-    }
-    .hero-index strong { display: block; color: var(--white); font-size: 12px; letter-spacing: .15em; }
-    .hero-stats {
-      position: absolute; left: 0; right: 0; bottom: 34px; display: grid; grid-template-columns: repeat(3, minmax(150px, 220px));
-    }
-    .hero-stat { padding: 6px 28px 6px 0; margin-right: 28px; border-right: 1px solid rgba(255,255,255,.28); }
-    .hero-stat:last-child { border: 0; }
-    .hero-stat strong { display: block; font-size: 24px; letter-spacing: -.03em; }
-    .hero-stat span { display: block; margin-top: 6px; font-size: 10px; letter-spacing: .15em; color: rgba(255,255,255,.62); }
-    .scroll-cue {
-      position: absolute; right: 0; bottom: 39px; display: inline-flex; align-items: center; gap: 14px;
-      font-size: 10px; letter-spacing: .16em; color: rgba(255,255,255,.7);
-    }
-    .scroll-cue::before { content: ""; width: 50px; height: 1px; background: currentColor; }
-
-    .section { position: relative; padding: 150px 0; }
-    .shell { width: min(calc(100% - 64px), var(--max)); margin: auto; }
-    .section-kicker { margin: 0 0 22px; color: var(--blue); font-size: 11px; font-weight: 850; letter-spacing: .22em; text-transform: uppercase; }
-    .section-title { margin: 0; max-width: 1050px; font-size: clamp(44px, 5.1vw, 86px); line-height: 1.05; letter-spacing: -.055em; font-weight: 800; text-wrap: balance; }
-    .section-title span { color: var(--blue); }
-    .section-copy { max-width: 660px; margin: 28px 0 0; color: rgba(6,43,75,.68); font-size: 17px; line-height: 1.9; }
-
-    .manifesto { background: var(--paper); overflow: hidden; }
-    .manifesto::before {
-      content: "11"; position: absolute; right: -2vw; top: 65px; color: rgba(18,111,168,.05);
-      font-size: min(44vw, 660px); font-weight: 900; letter-spacing: -.12em; line-height: .75; pointer-events: none;
-    }
-    .manifesto-heading { position: relative; z-index: 1; max-width: 1120px; }
-    .manifesto-contrast { display: block; margin-top: 12px; color: var(--blue); }
-    .mission-line {
-      position: relative; z-index: 1; margin-top: 100px; padding-top: 30px; border-top: 1px solid var(--line);
-      display: grid; grid-template-columns: 1.05fr 1.95fr; gap: 8vw;
-    }
-    .mission-line h3 { margin: 0; font-size: 14px; letter-spacing: .12em; text-transform: uppercase; }
-    .mission-line p { margin: 0; max-width: 760px; font-size: clamp(22px, 2.2vw, 35px); line-height: 1.55; letter-spacing: -.025em; }
-
-    .route-section { background: #e7f5fb; }
-    .route-intro { display: grid; grid-template-columns: 1.1fr .9fr; gap: 8vw; align-items: end; }
-    .route-intro .section-copy { margin: 0; }
-    .flight-plan {
-      position: relative; margin-top: 90px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 0;
-      counter-reset: stage;
-    }
-    .flight-plan::before { content: ""; position: absolute; top: 36px; left: 5%; right: 5%; height: 1px; background: rgba(6,43,75,.25); }
-    .stage { counter-increment: stage; position: relative; min-height: 245px; padding: 0 22px 24px; border-left: 1px solid var(--line); }
-    .stage:last-child { border-right: 1px solid var(--line); }
-    .stage::before {
-      content: counter(stage, decimal-leading-zero); position: relative; z-index: 2; width: 72px; height: 72px; display: grid; place-items: center;
-      margin: 0 0 30px -23px; border: 1px solid rgba(6,43,75,.28); border-radius: 50%; background: #e7f5fb;
-      color: var(--blue); font-size: 12px; font-weight: 850; letter-spacing: .12em;
-    }
-    .stage h3 { margin: 0; font-size: 18px; line-height: 1.35; }
-    .stage p { margin: 13px 0 0; color: rgba(6,43,75,.62); font-size: 13px; line-height: 1.75; }
-    .stage code { display: block; margin-top: 24px; color: var(--blue); background: transparent; font: 700 9px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; }
-
-    .formation { color: var(--white); background: var(--ink); overflow: hidden; }
-    .formation::before {
-      content: ""; position: absolute; inset: 0;
-      background: radial-gradient(circle at 74% 38%, rgba(55,161,211,.2), transparent 30%), linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
-      background-size: auto, 100% 120px, 120px 100%;
-    }
-    .formation .shell { position: relative; }
-    .formation .section-kicker { color: #86d8f4; }
-    .formation-head { display: grid; grid-template-columns: .65fr 1.35fr; gap: 8vw; align-items: start; }
-    .big-eleven { font-size: clamp(180px, 23vw, 360px); line-height: .68; font-weight: 900; letter-spacing: -.12em; color: #a9e6fa; }
-    .formation-copy { padding-top: 18px; }
-    .formation-copy .section-title { max-width: 760px; }
-    .formation-copy .section-copy { color: rgba(255,255,255,.66); }
-    .squad-list { margin-top: 100px; border-top: 1px solid var(--line-light); }
-    .squad-row {
-      display: grid; grid-template-columns: 120px minmax(180px, .7fr) minmax(240px, 1.3fr) 120px;
-      align-items: center; gap: 30px; min-height: 102px; border-bottom: 1px solid var(--line-light);
-    }
-    .squad-index { color: #87d9f5; font: 700 12px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .14em; }
-    .squad-name { font-size: clamp(19px, 1.5vw, 24px); font-weight: 750; }
-    .squad-agents { color: rgba(255,255,255,.58); font-size: 14px; line-height: 1.6; }
-    .squad-output { text-align: right; color: #bfeeff; font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
-
-    .gate { background: var(--paper); overflow: hidden; }
-    .gate-head { display: grid; grid-template-columns: 1.2fr .8fr; gap: 8vw; align-items: end; }
-    .gate-head .section-copy { margin: 0; }
-    .clearance-board { margin-top: 94px; border-top: 4px solid var(--ink); }
-    .clearance-labels, .clearance-row {
-      display: grid; grid-template-columns: 160px 1fr 170px; align-items: center; gap: 30px;
-    }
-    .clearance-labels { min-height: 52px; border-bottom: 1px solid var(--line); color: rgba(6,43,75,.54); font-size: 9px; font-weight: 850; letter-spacing: .2em; text-transform: uppercase; }
-    .clearance-row { min-height: 150px; border-bottom: 1px solid var(--line); }
-    .clearance-num { color: rgba(6,43,75,.16); font-size: clamp(60px, 6vw, 96px); font-weight: 900; letter-spacing: -.08em; }
-    .clearance-main h3 { margin: 0; font-size: clamp(25px, 2.5vw, 39px); letter-spacing: -.03em; }
-    .clearance-main p { margin: 12px 0 0; color: rgba(6,43,75,.62); font-size: 14px; line-height: 1.7; }
-    .clearance-status { justify-self: end; display: inline-flex; align-items: center; gap: 10px; color: #087457; font-size: 11px; font-weight: 900; letter-spacing: .15em; }
-    .clearance-status::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #21b88a; box-shadow: 0 0 0 7px rgba(33,184,138,.12); }
-    .gate-verdict {
-      margin-top: 70px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 8vw; align-items: start;
-      padding: 42px 0 0; border-top: 1px solid var(--line);
-    }
-    .gate-verdict strong { font-size: clamp(32px, 4vw, 66px); line-height: 1.12; letter-spacing: -.045em; }
-    .verdict-path { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); }
-    .verdict-path div { min-height: 130px; padding: 24px; background: var(--paper); }
-    .verdict-path small { display: block; color: var(--blue); font-size: 9px; font-weight: 900; letter-spacing: .16em; }
-    .verdict-path span { display: block; margin-top: 22px; font-size: 18px; font-weight: 800; }
-
-    .routes { background: #d8eef8; overflow: hidden; }
-    .routes-grid { display: grid; grid-template-columns: .75fr 1.25fr; gap: 8vw; align-items: start; }
-    .routes .section-title { max-width: 650px; }
-    .learner-map { position: relative; min-height: 570px; padding-top: 24px; }
-    .learner-map::before { content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(6,43,75,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(6,43,75,.07) 1px, transparent 1px); background-size: 72px 72px; }
-    .map-axis { position: absolute; left: 0; right: 0; bottom: 60px; height: 1px; background: rgba(6,43,75,.3); }
-    .map-axis::after { content: "TRAINING ALTITUDE"; position: absolute; right: 0; bottom: 12px; color: rgba(6,43,75,.52); font: 700 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .18em; }
-    .learner-route { position: relative; z-index: 2; height: 146px; margin-bottom: 18px; }
-    .learner-route svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-    .learner-route path { fill: none; stroke-width: 2.2; stroke-linecap: round; }
-    .learner-route .dash { stroke-dasharray: 5 9; }
-    .learner-route header { position: absolute; left: 0; top: 7px; }
-    .learner-route header strong { display: block; font-size: 15px; }
-    .learner-route header span { display: block; margin-top: 5px; color: rgba(6,43,75,.58); font-size: 11px; }
-    .route-a path { stroke: #0f74ac; }
-    .route-b path { stroke: #388ba9; }
-    .route-c path { stroke: #5b6fae; }
-    .route-end { position: absolute; right: 0; top: 4px; text-align: right; font-size: 10px; font-weight: 850; letter-spacing: .12em; }
-    .map-note { position: absolute; left: 0; bottom: 0; color: rgba(6,43,75,.57); font-size: 12px; }
-
-    .orbit { min-height: 100svh; color: var(--white); background: #031f36; overflow: hidden; display: flex; align-items: center; }
-    .orbit::before {
-      content: ""; position: absolute; inset: 0;
-      background: radial-gradient(circle at 72% 55%, rgba(44,137,184,.24), transparent 33%), linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
-      background-size: auto, 120px 120px, 120px 120px;
-    }
-    .orbit-shell { position: relative; min-height: 820px; display: grid; grid-template-columns: .8fr 1.2fr; align-items: center; }
-    .orbit-copy { position: relative; z-index: 6; max-width: 650px; }
-    .orbit .section-kicker { color: #8cdef8; }
-    .orbit .section-copy { color: rgba(255,255,255,.64); }
-    .orbit-copy blockquote { margin: 42px 0 0; padding-left: 22px; border-left: 1px solid #7ed8f7; color: rgba(255,255,255,.86); font-size: 15px; line-height: 1.8; }
-    .final-cta {
-      width: fit-content; min-height: 58px; margin-top: 40px; padding: 0 28px;
-      display: inline-flex; align-items: center; gap: 20px; color: var(--ink); background: var(--white); font-size: 14px; font-weight: 850;
-    }
-    .orbit-stage { position: relative; min-height: 700px; }
-    .earth { position: absolute; z-index: 3; width: min(45vw, 650px); height: auto; left: 51%; top: 50%; transform: translate(-50%, -50%); filter: drop-shadow(0 35px 65px rgba(0,0,0,.35)); }
-    .orbit-ring { position: absolute; z-index: 4; left: 50%; top: 50%; border: 1px solid rgba(166,226,247,.44); border-radius: 50%; transform-style: preserve-3d; }
-    .ring-a { width: 690px; height: 250px; margin: -125px 0 0 -345px; transform: rotate(-13deg); animation: ring-rock 14s ease-in-out infinite alternate; }
-    .ring-b { width: 570px; height: 680px; margin: -340px 0 0 -285px; transform: rotate(58deg) scaleY(.34); border-style: dashed; animation: route-dash 22s linear infinite; }
-    .ring-c { width: 820px; height: 370px; margin: -185px 0 0 -410px; transform: rotate(14deg); opacity: .42; }
-    .satellite-dot { position: absolute; z-index: 5; width: 9px; height: 9px; border-radius: 50%; background: #d2f5ff; box-shadow: 0 0 0 7px rgba(137,222,250,.1), 0 0 24px rgba(137,222,250,.75); }
-    .dot-1 { left: 12%; top: 36%; }
-    .dot-2 { right: 7%; top: 47%; background: var(--gold); }
-    .dot-3 { left: 38%; bottom: 9%; }
-    .dot-4 { left: 46%; top: 3%; }
-    .orbit-label { position: absolute; z-index: 6; color: rgba(255,255,255,.62); font: 700 9px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .14em; }
-    .label-a { left: 6%; top: 31%; }
-    .label-b { right: 1%; top: 41%; text-align: right; }
-    .label-c { left: 26%; bottom: 2%; }
-    .loop-badge { position: absolute; right: 0; bottom: 50px; z-index: 6; padding: 16px 18px; border-left: 2px solid #79d5f5; background: rgba(3,31,54,.76); backdrop-filter: blur(12px); }
-    .loop-badge small { display: block; color: #7ed8f7; font-size: 8px; font-weight: 850; letter-spacing: .2em; }
-    .loop-badge strong { display: block; margin-top: 8px; font-size: 15px; }
-
-    .site-footer { color: rgba(255,255,255,.62); background: #021725; border-top: 1px solid rgba(255,255,255,.12); }
-    .footer-shell { min-height: 92px; display: flex; align-items: center; justify-content: space-between; gap: 30px; font-size: 11px; letter-spacing: .08em; }
-    .footer-shell a { color: var(--white); }
-
-    .js [data-reveal] { opacity: 0; transform: translateY(30px); transition: opacity .85s var(--ease), transform .85s var(--ease); }
-    .js [data-reveal].is-visible { opacity: 1; transform: none; }
-    .js [data-reveal-delay="1"] { transition-delay: .12s; }
-    .js [data-reveal-delay="2"] { transition-delay: .24s; }
-    .js [data-reveal-delay="3"] { transition-delay: .36s; }
-    .motion-paused *, .motion-paused *::before, .motion-paused *::after,
-    .tab-hidden *, .tab-hidden *::before, .tab-hidden *::after { animation-play-state: paused !important; }
-
-    @keyframes hero-breathe { from { transform: scale(1.035); } to { transform: scale(1.085); } }
-    @keyframes route-dash { to { stroke-dashoffset: -320; } }
-    @keyframes ring-rock { from { transform: rotate(-13deg); } to { transform: rotate(-8deg); } }
-
-    @media (max-width: 1100px) {
-      .nav-links { display: none; }
-      .route-intro, .gate-head, .routes-grid { grid-template-columns: 1fr; }
-      .route-intro .section-copy, .gate-head .section-copy { margin-top: 0; }
-      .flight-plan { grid-template-columns: repeat(3, 1fr); }
-      .flight-plan::before { display: none; }
-      .stage { border-top: 1px solid var(--line); }
-      .formation-head { grid-template-columns: 1fr; }
-      .big-eleven { font-size: 220px; }
-      .orbit-shell { grid-template-columns: .9fr 1.1fr; }
-      .ring-c { width: 670px; margin-left: -335px; }
-      .squad-row { grid-template-columns: 90px minmax(170px, .7fr) minmax(220px, 1.3fr) 100px; }
-    }
-
-    @media (max-width: 700px) {
-      .site-header { height: 70px; }
-      .nav-shell, .shell, .hero-inner { width: min(calc(100% - 36px), var(--max)); }
-      .brand-symbol { width: 34px; height: 34px; }
-      .brand-name { font-size: 15px; }
-      .brand-name small { font-size: 7px; }
-      .motion-toggle { display: none; }
-      .nav-cta { min-height: 44px; min-width: 48px; padding: 0 14px; }
-      .nav-cta span { display: none; }
-      .hero { min-height: 880px; }
-      .hero-media img { object-position: center top; }
-      .hero::before { background: linear-gradient(180deg, rgba(2,25,45,.86) 0%, rgba(2,27,49,.3) 47%, rgba(2,23,42,.83) 100%); }
-      .hero::after { background-size: 100% 20%, 25% 100%; mask-image: linear-gradient(to bottom, black, transparent 68%); }
-      .hero-route { left: 4%; top: 37%; width: 91%; height: 25%; opacity: .55; }
-      .hero-inner { min-height: 880px; padding: 118px 0 180px; align-items: flex-start; }
-      .hero-copy { width: 100%; }
-      .eyebrow { margin-bottom: 22px; font-size: 9px; line-height: 1.5; }
-      .eyebrow::before { width: 28px; }
-      .hero h1 { max-width: 470px; font-size: clamp(44px, 13.2vw, 66px); line-height: 1.03; letter-spacing: -.06em; }
-      .hero-lead { margin-top: 24px; max-width: 520px; font-size: 14px; line-height: 1.75; }
-      .hero-actions { margin-top: 26px; }
-      .button { min-height: 50px; padding: 0 20px; }
-      .hero-index { display: none; }
-      .hero-stats { bottom: 38px; grid-template-columns: repeat(3, 1fr); }
-      .hero-stat { min-width: 0; margin-right: 10px; padding: 4px 10px 4px 0; }
-      .hero-stat strong { font-size: 20px; }
-      .hero-stat span { font-size: 8px; line-height: 1.5; }
-      .scroll-cue { display: none; }
-
-      .section { padding: 100px 0; }
-      .section-kicker { font-size: 9px; }
-      .section-title { font-size: clamp(39px, 11vw, 58px); }
-      .section-copy { font-size: 15px; }
-      .manifesto::before { top: 120px; font-size: 75vw; }
-      .mission-line { margin-top: 76px; grid-template-columns: 1fr; gap: 24px; }
-      .mission-line p { font-size: 22px; }
-      .flight-plan { grid-template-columns: 1fr; margin-top: 60px; }
-      .stage { min-height: auto; padding: 22px 10px 34px 70px; border-left: 1px solid var(--line); border-right: 0 !important; border-top: 0; border-bottom: 1px solid var(--line); }
-      .stage::before { position: absolute; left: 0; top: 20px; width: 48px; height: 48px; margin: 0; }
-      .stage h3 { font-size: 17px; }
-      .stage code { margin-top: 14px; }
-      .big-eleven { font-size: 46vw; }
-      .formation-copy { padding: 0; }
-      .squad-list { margin-top: 66px; }
-      .squad-row { grid-template-columns: 50px 1fr; gap: 10px 14px; min-height: 126px; padding: 18px 0; }
-      .squad-agents { grid-column: 2; }
-      .squad-output { grid-column: 2; text-align: left; }
-      .clearance-board { margin-top: 60px; }
-      .clearance-labels { display: none; }
-      .clearance-row { grid-template-columns: 60px 1fr; gap: 18px; min-height: 164px; padding: 22px 0; }
-      .clearance-num { font-size: 54px; }
-      .clearance-main h3 { font-size: 25px; }
-      .clearance-status { grid-column: 2; justify-self: start; }
-      .gate-verdict { grid-template-columns: 1fr; gap: 40px; }
-      .gate-verdict strong { font-size: 38px; }
-      .verdict-path div { min-height: 112px; padding: 20px; }
-      .routes-grid { gap: 60px; }
-      .learner-map { min-height: 500px; }
-      .learner-route { height: 125px; }
-      .route-end { font-size: 8px; }
-      .orbit { min-height: auto; }
-      .orbit-shell { min-height: 1020px; grid-template-columns: 1fr; align-content: start; padding-top: 105px; }
-      .orbit-copy { max-width: 100%; }
-      .orbit-stage { min-height: 570px; margin-top: 30px; }
-      .earth { width: min(102vw, 520px); }
-      .ring-a { width: 520px; height: 180px; margin: -90px 0 0 -260px; }
-      .ring-b { width: 420px; height: 540px; margin: -270px 0 0 -210px; }
-      .ring-c { width: 620px; height: 250px; margin: -125px 0 0 -310px; }
-      .loop-badge { right: 0; bottom: 20px; }
-      .footer-shell { min-height: 120px; flex-direction: column; justify-content: center; align-items: flex-start; gap: 12px; }
-    }
-
-    @media (max-width: 390px) {
-      .nav-shell, .shell, .hero-inner { width: min(calc(100% - 28px), var(--max)); }
-      .hero h1 { font-size: 43px; }
-      .hero-lead { font-size: 13px; }
-      .button { width: 100%; }
-      .hero-stats { grid-template-columns: repeat(3, 1fr); }
-      .hero-stat span { letter-spacing: .06em; }
-      .section-title { font-size: 38px; }
-    }
-
-    @media (max-height: 500px) and (orientation: landscape) {
-      .site-header { height: 60px; }
-      .hero { min-height: 590px; }
-      .hero-inner { min-height: 590px; padding-top: 88px; align-items: flex-start; }
-      .eyebrow { margin-bottom: 14px; }
-      .hero h1 { font-size: 48px; }
-      .hero-lead { max-width: 620px; margin-top: 12px; font-size: 13px; line-height: 1.5; }
-      .hero-actions { margin-top: 14px; }
-      .button { min-height: 46px; }
-      .hero-stats { bottom: 22px; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      html { scroll-behavior: auto; }
-      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-    }
+    :root{--ink:#082d48;--deep:#041d30;--soft:#557181;--paper:#f5f8f7;--white:#fff;--cyan:#50c1e8;--cyan2:#137ca8;--gold:#ffd36b;--mint:#7cdbbd;--line:rgba(8,45,72,.15);--line2:rgba(255,255,255,.18);--shadow:0 28px 80px rgba(9,53,80,.16);--max:1480px;--ease:cubic-bezier(.2,.75,.2,1)}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;background:var(--deep)}body{margin:0;color:var(--ink);background:var(--paper);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip}a{color:inherit;text-decoration:none}button,a{font:inherit}button{color:inherit}img,svg{display:block;max-width:100%}[id]{scroll-margin-top:84px}::selection{color:var(--deep);background:var(--gold)}a:focus-visible,button:focus-visible{outline:3px solid var(--gold);outline-offset:4px}
+    .skip{position:fixed;top:-70px;left:16px;z-index:1000;padding:12px 16px;color:#fff;background:var(--deep);transition:top .2s}.skip:focus{top:16px}.wrap{width:min(calc(100% - 48px),var(--max));margin-inline:auto}.eyebrow{display:inline-flex;align-items:center;gap:10px;margin:0 0 18px;color:var(--cyan2);font-size:12px;font-weight:850;letter-spacing:.16em}.eyebrow:before{content:"";width:28px;height:1px;background:currentColor}.title{max-width:900px;margin:0;font-size:clamp(38px,5.4vw,78px);line-height:.99;letter-spacing:-.065em;font-weight:900}.copy{max-width:650px;margin:24px 0 0;color:var(--soft);font-size:17px;line-height:1.8}.heading{display:flex;align-items:end;justify-content:space-between;gap:28px;margin-bottom:56px}.heading .copy{margin-bottom:3px}.index{color:rgba(8,45,72,.24);font-size:14px;font-weight:800;letter-spacing:.14em}
+    .header{position:fixed;inset:0 0 auto;z-index:100;height:78px;color:#fff;border-bottom:1px solid transparent;transition:.35s}.header.scrolled{color:var(--ink);background:rgba(247,251,252,.86);border-color:rgba(8,45,72,.11);backdrop-filter:blur(18px) saturate(1.35)}.header-in{height:100%;display:flex;align-items:center;gap:38px}.brand{display:inline-flex;align-items:center;gap:12px;min-width:max-content}.mark{position:relative;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:currentColor;color:var(--ink);overflow:hidden}.header.scrolled .mark{background:var(--ink);color:#fff}.mark:before,.mark:after{content:"";position:absolute;border:1px solid currentColor;border-radius:50%;transform:rotate(28deg)}.mark:before{width:23px;height:9px}.mark:after{width:9px;height:23px}.mark i{width:5px;height:5px;border-radius:50%;background:var(--gold)}.brand strong{display:block;font-size:18px;letter-spacing:-.02em}.brand small{display:block;margin-top:2px;opacity:.68;font-size:8px;font-weight:800;letter-spacing:.22em}.nav{display:flex;align-items:center;gap:28px;margin-left:auto;font-size:13px;font-weight:700}.nav a{opacity:.76}.nav a:hover{opacity:1}.header-cta{display:inline-flex;min-height:44px;align-items:center;gap:10px;padding:0 20px;border:1px solid rgba(255,255,255,.5);border-radius:999px;background:rgba(255,255,255,.08);font-size:13px;font-weight:850;transition:.25s var(--ease)}.header.scrolled .header-cta{color:#fff;background:var(--ink);border-color:var(--ink)}.header-cta:hover{transform:translateY(-2px)}.arrow{width:18px;height:18px}
+    .hero{position:relative;min-height:max(760px,100svh);color:#fff;overflow:hidden;background:#0e678e}.hero-media,.hero-media picture,.hero-media img{position:absolute;inset:0;width:100%;height:100%}.hero-media img{object-fit:cover;object-position:center 48%;animation:breathe 26s ease-in-out infinite alternate}.hero:before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(3,30,50,.86),rgba(4,40,64,.62) 30%,rgba(6,50,77,.11) 63%,rgba(3,28,44,.22)),linear-gradient(0deg,rgba(2,24,39,.68),transparent 34%)}.hero:after{content:"";position:absolute;z-index:2;inset:auto 0 0;height:180px;background:linear-gradient(transparent,rgba(3,26,43,.74))}@keyframes breathe{from{transform:scale(1.015)}to{transform:scale(1.055)}}.hero-in{position:relative;z-index:3;min-height:max(760px,100svh);display:flex;flex-direction:column;justify-content:center;padding:132px 0 150px}.hero-kicker{display:flex;align-items:center;gap:12px;margin-bottom:26px;font-size:12px;font-weight:850;letter-spacing:.18em}.hero-kicker i{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 7px rgba(124,219,189,.16)}.hero h1{max-width:780px;margin:0;font-size:clamp(52px,6.5vw,104px);line-height:.92;letter-spacing:-.075em;font-weight:900;text-wrap:balance}.hero-lede{max-width:610px;margin:30px 0 0;color:rgba(255,255,255,.84);font-size:clamp(16px,1.4vw,20px);line-height:1.75}.actions{display:flex;flex-wrap:wrap;gap:14px;margin-top:38px}.button{min-height:54px;display:inline-flex;align-items:center;justify-content:center;gap:12px;padding:0 24px;border-radius:999px;font-size:14px;font-weight:850;transition:.25s var(--ease)}.button:hover{transform:translateY(-3px)}.primary{color:var(--ink);background:var(--gold);box-shadow:0 16px 36px rgba(255,211,107,.22)}.secondary{color:#fff;border:1px solid rgba(255,255,255,.42);background:rgba(255,255,255,.09);backdrop-filter:blur(8px)}.hero-bottom{position:absolute;z-index:4;inset:auto 0 28px}.hero-bottom-in{display:flex;align-items:end;justify-content:space-between;gap:24px}.hero-route{display:flex;align-items:center;gap:16px;color:rgba(255,255,255,.78);font-size:11px;font-weight:800;letter-spacing:.12em}.route-line{position:relative;width:min(24vw,320px);height:1px;background:rgba(255,255,255,.42);overflow:hidden}.route-line:after{content:"";position:absolute;top:-1px;left:-25%;width:25%;height:3px;background:var(--gold);animation:scan 5s ease-in-out infinite}@keyframes scan{0%,10%{left:-25%}70%,100%{left:105%}}.motion{min-width:86px;min-height:40px;border:1px solid rgba(255,255,255,.28);border-radius:999px;color:#fff;background:rgba(3,27,44,.28);cursor:pointer;font-size:11px;font-weight:800}
+    .signals{color:#fff;background:var(--deep)}.signal-grid{display:grid;grid-template-columns:1.2fr repeat(4,1fr)}.signal-intro,.signal{min-height:142px;padding:28px 30px;border-right:1px solid var(--line2);display:flex;flex-direction:column;justify-content:center}.signal:last-child{border:0}.signal-intro{color:rgba(255,255,255,.62);font-size:12px;font-weight:700;line-height:1.7;letter-spacing:.05em}.signal b{display:block;font-size:clamp(30px,3vw,46px);letter-spacing:-.06em}.signal span{margin-top:5px;color:rgba(255,255,255,.58);font-size:11px;font-weight:750;letter-spacing:.1em}
+    .roles{padding:150px 0 170px}.product-stage{position:relative}.frame{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:32px;background:#daeaf0;box-shadow:var(--shadow)}.frame img{width:100%;aspect-ratio:1.56;object-fit:cover;object-position:top center}.frame:after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55);border-radius:inherit}.caption{display:flex;justify-content:space-between;gap:24px;margin:18px 8px 0;color:#607682;font-size:12px;font-weight:700}.role-note{position:absolute;right:-16px;bottom:-74px;z-index:3;width:min(450px,38%);padding:30px;color:#fff;border-radius:28px;background:var(--ink);box-shadow:0 26px 70px rgba(4,29,48,.27)}.role-note h3{margin:0;font-size:25px;letter-spacing:-.04em}.role-note p{margin:12px 0 0;color:rgba(255,255,255,.69);line-height:1.7;font-size:14px}.note-list{display:grid;gap:12px;margin-top:24px}.note-list span{display:flex;align-items:center;gap:12px;font-size:13px;font-weight:750}.note-list i{width:8px;height:8px;border-radius:50%;background:var(--mint)}
+    .loop{position:relative;padding:160px 0;color:#fff;background:var(--ink);overflow:hidden}.loop:before{content:"";position:absolute;width:620px;height:620px;right:-160px;top:-220px;border:1px solid rgba(84,196,231,.22);border-radius:50%;box-shadow:0 0 0 90px rgba(84,196,231,.035),0 0 0 180px rgba(84,196,231,.025)}.loop .eyebrow{color:var(--mint)}.loop .copy{color:rgba(255,255,255,.66)}.loop .index{color:rgba(255,255,255,.25)}.loop-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(420px,.95fr);gap:76px;align-items:start}.flight-plan{position:relative;padding-left:32px}.flight-plan:before{content:"";position:absolute;top:18px;bottom:18px;left:7px;width:1px;background:linear-gradient(var(--cyan),rgba(80,193,232,.15))}.step{position:relative;padding:0 0 42px 28px}.step:last-child{padding-bottom:0}.step:before{content:"";position:absolute;left:-31px;top:9px;width:13px;height:13px;border:3px solid var(--ink);border-radius:50%;background:var(--cyan);box-shadow:0 0 0 1px rgba(80,193,232,.55)}.step small{color:var(--mint);font-size:10px;font-weight:850;letter-spacing:.16em}.step h3{margin:8px 0 0;font-size:24px;letter-spacing:-.035em}.step p{max-width:560px;margin:9px 0 0;color:rgba(255,255,255,.6);font-size:14px;line-height:1.72}.step b{display:inline-flex;margin-top:12px;color:rgba(255,255,255,.87);font-size:11px}.loop-visual{position:sticky;top:110px}.loop-visual .frame{border-color:rgba(255,255,255,.18);box-shadow:0 34px 100px rgba(0,0,0,.35)}.loop-visual .frame img{aspect-ratio:1.27}.loop-visual .caption{color:rgba(255,255,255,.48)}.agents{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px}.agents span{min-height:34px;display:inline-flex;align-items:center;padding:0 13px;border:1px solid rgba(255,255,255,.16);border-radius:999px;color:rgba(255,255,255,.72);font-size:11px;font-weight:720}.agents span:nth-child(3n+1){border-color:rgba(124,219,189,.42);color:#bcebdc}
+    .outputs{padding:150px 0;background:#edf5f4}.output-grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-left:1px solid var(--line)}.output{position:relative;min-height:290px;padding:34px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;background:rgba(255,255,255,.42)}.output:after{content:attr(data-n);position:absolute;right:22px;bottom:-27px;color:rgba(8,45,72,.045);font-size:142px;font-weight:900;letter-spacing:-.1em}.o-icon{width:52px;height:52px;display:grid;place-items:center;border-radius:17px;color:var(--cyan2);background:#dff2f7}.o-icon svg{width:24px;height:24px}.output h3{position:relative;z-index:2;margin:58px 0 0;font-size:24px;letter-spacing:-.035em}.output p{position:relative;z-index:2;max-width:310px;margin:10px 0 0;color:#637984;font-size:14px;line-height:1.65}
+    .proof{padding:160px 0 180px;background:#fafbf9}.proof-grid{display:grid;grid-template-columns:.78fr 1.22fr;gap:78px;align-items:center}.proof-copy{position:sticky;top:120px;align-self:start}.proof-copy .title{font-size:clamp(42px,5vw,70px)}.proof-points{display:grid;gap:22px;margin-top:38px}.proof-point{display:grid;grid-template-columns:48px 1fr;gap:16px;padding-top:20px;border-top:1px solid var(--line)}.proof-point b{color:var(--cyan2);font-size:12px;letter-spacing:.12em}.proof-point strong{display:block;font-size:18px}.proof-point p{margin:7px 0 0;color:#657a85;font-size:13px;line-height:1.7}.proof-stack{display:grid;gap:32px}.proof-stack .frame:nth-child(2){margin-left:9%}.proof-stack .frame img{aspect-ratio:1.52}.frame-label{position:absolute;z-index:2;top:18px;left:18px;min-height:36px;display:inline-flex;align-items:center;padding:0 14px;border-radius:999px;color:#fff;background:rgba(4,29,48,.78);backdrop-filter:blur(8px);font-size:11px;font-weight:800}
+    .readiness{padding:160px 0;color:#fff;background:#071f33}.readiness .eyebrow{color:var(--gold)}.readiness .copy{color:rgba(255,255,255,.64)}.readiness .index{color:rgba(255,255,255,.26)}.preview-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px}.preview{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.16);border-radius:30px;background:#0b3049}.preview img{width:100%;aspect-ratio:1.62;object-fit:cover;transition:transform .8s var(--ease)}.preview:hover img{transform:scale(1.018)}.preview-meta{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:end;padding:28px 30px 32px}.preview-meta small{color:var(--gold);font-size:10px;font-weight:850;letter-spacing:.15em}.preview-meta h3{margin:8px 0 0;font-size:28px;letter-spacing:-.04em}.preview-meta p{margin:9px 0 0;color:rgba(255,255,255,.58);font-size:13px;line-height:1.65}.tag{align-self:start;min-height:34px;display:inline-flex;align-items:center;padding:0 12px;border:1px solid rgba(255,211,107,.4);border-radius:999px;color:#ffe6a9;font-size:10px;font-weight:800;white-space:nowrap}.preview-note{display:flex;gap:12px;align-items:center;margin-top:20px;color:rgba(255,255,255,.46);font-size:11px}.preview-note:before{content:"i";width:20px;height:20px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.24);border-radius:50%;font-weight:800}
+    .enterprise{padding:140px 0;background:var(--gold)}.enterprise-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:100px;align-items:center}.enterprise .eyebrow{color:var(--ink)}.enterprise .title{font-size:clamp(44px,5vw,74px)}.enterprise-copy{font-size:18px;line-height:1.8}.enterprise-flow{display:grid;grid-template-columns:repeat(3,1fr);background:rgba(255,255,255,.36);border:1px solid rgba(8,45,72,.18);border-radius:30px;overflow:hidden}.enterprise-step{min-height:260px;padding:30px 24px;border-right:1px solid rgba(8,45,72,.15);display:flex;flex-direction:column;justify-content:space-between}.enterprise-step:last-child{border:0}.enterprise-step b{font-size:13px;letter-spacing:.1em}.enterprise-step svg{width:42px;height:42px}.enterprise-step h3{margin:0;font-size:20px}.enterprise-step p{margin:8px 0 0;color:rgba(8,45,72,.67);font-size:12px;line-height:1.65}
+    .final{position:relative;min-height:760px;display:grid;align-items:center;color:#fff;background:#031725;overflow:hidden}.earth{position:absolute;right:-5vw;top:50%;width:min(58vw,900px);transform:translateY(-50%);opacity:.92}.earth img{width:100%;animation:float 12s ease-in-out infinite alternate}@keyframes float{from{transform:translate3d(0,-8px,0) rotate(-1deg)}to{transform:translate3d(-10px,12px,0) rotate(1deg)}}.final:before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,#031725,rgba(3,23,37,.92) 38%,rgba(3,23,37,.15) 76%)}.final-in{position:relative;z-index:2;padding:120px 0}.final h2{max-width:800px;margin:0;font-size:clamp(52px,7vw,104px);line-height:.93;letter-spacing:-.075em}.final p{max-width:540px;margin:26px 0 0;color:rgba(255,255,255,.66);font-size:17px;line-height:1.75}.footer{position:absolute;z-index:3;inset:auto 0 0;border-top:1px solid rgba(255,255,255,.12)}.footer-in{min-height:82px;display:flex;align-items:center;justify-content:space-between;gap:24px;color:rgba(255,255,255,.45);font-size:11px}.footer-links{display:flex;gap:20px}
+    .reveal{opacity:1;transform:none}.js .reveal{opacity:0;transform:translateY(24px);transition:opacity .8s var(--ease),transform .8s var(--ease)}.js .reveal.show{opacity:1;transform:none}.js .d1{transition-delay:.09s}.js .d2{transition-delay:.18s}
+    @media(max-width:1100px){.nav{display:none}.header-cta{margin-left:auto}.signal-grid{grid-template-columns:repeat(4,1fr)}.signal-intro{display:none}.loop-grid{grid-template-columns:1fr}.loop-visual{position:static}.output-grid{grid-template-columns:repeat(2,1fr)}.proof-grid{grid-template-columns:1fr}.proof-copy{position:static}.enterprise-grid{grid-template-columns:1fr;gap:54px}}
+    @media(max-width:760px){.wrap{width:min(calc(100% - 32px),var(--max))}.header{height:68px}.mark{width:38px;height:38px;border-radius:12px}.brand strong{font-size:16px}.header-cta{min-height:42px;padding:0 16px}.hero{min-height:860px}.hero-media img{object-position:56% 50%}.hero:before{background:linear-gradient(180deg,rgba(3,29,47,.84),rgba(4,39,62,.52) 38%,rgba(4,32,51,.03) 64%,rgba(2,23,37,.72))}.hero-in{min-height:860px;justify-content:flex-start;padding:134px 0 170px}.hero-kicker{font-size:10px;margin-bottom:20px}.hero h1{font-size:clamp(48px,14.5vw,68px);line-height:.94}.hero-lede{max-width:94%;margin-top:22px;font-size:15px;line-height:1.65}.actions{margin-top:28px}.button{width:100%;min-height:52px}.hero-bottom{bottom:22px}.hero-route{font-size:9px;gap:10px}.route-line{width:88px}.motion{min-width:74px}.signal-grid{grid-template-columns:repeat(2,1fr)}.signal{min-height:108px;padding:22px 18px}.signal:nth-child(3){border-right:0}.signal:nth-child(-n+3){border-bottom:1px solid var(--line2)}.signal b{font-size:34px}.signal span{font-size:9px}.roles,.outputs,.proof,.readiness,.enterprise{padding:96px 0}.loop{padding:104px 0}.heading{align-items:start;flex-direction:column;margin-bottom:38px}.title{font-size:clamp(38px,12vw,54px)}.copy{margin-top:18px;font-size:15px;line-height:1.7}.frame{border-radius:20px}.frame img{aspect-ratio:.95;object-position:25% top}.caption{font-size:10px}.role-note{position:relative;right:auto;bottom:auto;width:calc(100% - 24px);margin:-28px auto 0;border-radius:22px}.loop-grid{gap:48px}.loop-visual .frame img{aspect-ratio:1;object-position:24% top}.step h3{font-size:21px}.output-grid{grid-template-columns:1fr}.output{min-height:235px}.output h3{margin-top:38px}.proof-grid{gap:54px}.proof-stack .frame:nth-child(2){margin-left:0}.proof-stack .frame img{aspect-ratio:1;object-position:27% top}.preview-grid{grid-template-columns:1fr}.preview{border-radius:22px}.preview img{aspect-ratio:1.25}.preview-meta{grid-template-columns:1fr;padding:24px}.tag{grid-row:1;justify-self:start}.enterprise-flow{grid-template-columns:1fr}.enterprise-step{min-height:190px;border-right:0;border-bottom:1px solid rgba(8,45,72,.15)}.final{min-height:820px;align-items:start}.earth{width:118vw;right:-36vw;top:66%;opacity:.72}.final:before{background:linear-gradient(180deg,#031725,rgba(3,23,37,.94) 43%,rgba(3,23,37,.14) 80%,#031725)}.final-in{padding-top:112px}.final h2{font-size:clamp(50px,15vw,70px)}.footer-in{min-height:100px;align-items:flex-start;flex-direction:column;justify-content:center;gap:8px}}
+    @media(max-height:720px) and (min-width:761px){.hero-in{padding-top:110px;padding-bottom:118px}.hero h1{font-size:clamp(54px,6vw,82px)}.hero-lede{margin-top:22px}.actions{margin-top:26px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}html.paused *,html.paused *:before,html.paused *:after{animation-play-state:paused!important}
   </style>
 </head>
 <body>
-  <a class="skip-link" href="#main">跳到主要内容</a>
-  <header class="site-header" aria-label="主导航">
-    <div class="nav-shell">
-      <a class="brand" href="#top" aria-label="返回欢迎页顶部">
-        <span class="brand-symbol" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13.2 21 4l-7.6 16-2.2-6.3L3 13.2Z"/><path d="m11.2 13.7 5.1-5.2"/></svg>
-        </span>
-        <span class="brand-name">因材智训<small>STUDYMATE · SKILLOPS</small></span>
-      </a>
-      <div class="nav-right">
-        <nav class="nav-links" aria-label="页面章节">
-          <a href="#system">系统逻辑</a>
-          <a href="#formation">智能体编队</a>
-          <a href="#gate">质量放行</a>
-          <a href="#loop">成长闭环</a>
-        </nav>
-        <div class="header-actions">
-          <button class="motion-toggle" type="button" aria-label="暂停页面动效" aria-pressed="false">
-            <svg class="pause" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3.5 2h3v12h-3zM9.5 2h3v12h-3z"/></svg>
-            <svg class="play" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="m4 2 9 6-9 6z"/></svg>
-          </button>
-          <a class="nav-cta" href="/login"><span>进入系统</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M14 7l5 5-5 5"/></svg></a>
-        </div>
-      </div>
-    </div>
-  </header>
-
+  <a class="skip" href="#main">跳到主要内容</a>
+  <header class="header" id="header"><div class="wrap header-in">
+    <a class="brand" href="#top" aria-label="因材智训欢迎页"><span class="mark" aria-hidden="true"><i></i></span><span><strong>因材智训</strong><small>LEARNING OS</small></span></a>
+    <nav class="nav" aria-label="页面导航"><a href="#roles">岗位路径</a><a href="#loop">协同闭环</a><a href="#proof">成长证据</a><a href="#readiness">求职验证</a></nav>
+    <a class="header-cta" href="/login">进入系统<svg class="arrow" viewBox="0 0 24 24" fill="none"><path d="M5 12h13m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+  </div></header>
   <main id="main">
     <section class="hero" id="top" aria-labelledby="hero-title">
-      <div class="hero-media" aria-hidden="true">
-        <picture>
-          <source media="(max-width: 700px)" srcset="./assets/skillops-glider-hero-mobile-v1.webp" />
-          <img src="./assets/skillops-glider-hero-desktop-v1.webp" width="1672" height="939" alt="" fetchpriority="high" />
-        </picture>
-      </div>
-      <svg class="hero-route" viewBox="0 0 900 380" aria-hidden="true">
-        <path class="route-path" d="M4 330C162 360 238 241 366 246c154 7 164-146 330-128 89 9 141-48 200-106"/>
-        <circle class="route-dot" cx="366" cy="246" r="3.5"/>
-        <circle class="route-dot" cx="696" cy="118" r="3.5"/>
-      </svg>
-      <div class="hero-inner">
-        <div class="hero-copy">
-          <p class="eyebrow">Competition System 2026 · Vertical Skill Training</p>
-          <h1 id="hero-title">让知识生成，<br><em>经过飞行许可。</em></h1>
-          <p class="hero-lead">因材智训把一次学习任务拆成 11 个智能体的协同航线：从证据型诊断，到三重审核与总裁决。未通过的内容，定向返工。</p>
-          <div class="hero-actions">
-            <a class="button button-primary" href="/login">进入评委演示<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M14 7l5 5-5 5"/></svg></a>
-            <a class="button button-secondary" href="#system">查看决策航线<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></a>
-          </div>
-        </div>
-        <aside class="hero-index" aria-label="项目编号">
-          Project<br><strong>XH-202630</strong>Track<br><strong>Challenge B</strong>
-        </aside>
-        <div class="hero-stats" aria-label="系统核心指标">
-          <div class="hero-stat"><strong>11</strong><span>核心智能体协同</span></div>
-          <div class="hero-stat"><strong>3</strong><span>独立质量审核</span></div>
-          <div class="hero-stat"><strong>1</strong><span>统一发布门禁</span></div>
-        </div>
-        <a class="scroll-cue" href="#system">沿航线向下</a>
-      </div>
+      <div class="hero-media" aria-hidden="true"><picture><source media="(max-width:700px)" srcset="./assets/skillops-glider-hero-mobile-v1.webp"/><img src="./assets/skillops-glider-hero-desktop-v1.webp" alt="" width="1672" height="941" fetchpriority="high" decoding="async"/></picture></div>
+      <div class="wrap hero-in"><div class="hero-kicker"><i></i>岗位胜任力 · 多智能体训练系统</div><h1 id="hero-title">让每一次训练，<br/>都朝真实岗位起飞。</h1><p class="hero-lede">不再把所有人送进同一套课程。因材智训先读懂你的起点，再让 14 个智能体协同规划、生成、校验，把每一次学习变成可验证的岗位能力。</p><div class="actions"><a class="button primary" href="/login">开始岗位训练<svg class="arrow" viewBox="0 0 24 24" fill="none"><path d="M5 12h13m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a><a class="button secondary" href="#loop">查看训练如何发生</a></div></div>
+      <div class="hero-bottom"><div class="wrap hero-bottom-in"><div class="hero-route"><span>起点画像</span><i class="route-line"></i><span>岗位胜任</span></div><button class="motion" id="motion" type="button" aria-pressed="false">暂停动态</button></div></div>
     </section>
-
-    <section class="section manifesto" id="system" aria-labelledby="manifesto-title">
-      <div class="shell">
-        <div class="manifesto-heading" data-reveal>
-          <p class="section-kicker">01 · What the system actually does</p>
-          <h2 class="section-title" id="manifesto-title">它不是一个 AI，<br>回答一个问题。<span class="manifesto-contrast">它是一套有审核权的训练系统。</span></h2>
-        </div>
-        <div class="mission-line" data-reveal data-reveal-delay="1">
-          <h3>系统任务 / Mission</h3>
-          <p>依据学习者证据，生成适合其岗位目标的课程、实操指南与分层测评；再经过独立审核、总裁决与反馈回写，形成可追溯的质量闭环。</p>
-        </div>
+    <section class="signals" aria-label="系统核心规模"><div class="wrap signal-grid"><div class="signal-intro">不是功能数量的堆叠，<br/>而是一条持续更新的训练航线。</div><div class="signal"><b>4</b><span>重点产业领域</span></div><div class="signal"><b>20</b><span>岗位训练方向</span></div><div class="signal"><b>14</b><span>协作智能体</span></div><div class="signal"><b>6</b><span>类训练交付物</span></div></div></section>
+    <section class="roles" id="roles"><div class="wrap">
+      <div class="heading reveal"><div><p class="eyebrow">01 · 先确定目的地</p><h2 class="title">同一个岗位，<br/>也有不同的起飞点。</h2></div><div><span class="index">ROLE ROUTING / 01</span><p class="copy">从人工智能、特定软件开发、工业互联网到智能制造，先选择目标岗位，再把个人经历、学习习惯与能力差距写进训练上下文。</p></div></div>
+      <div class="product-stage reveal d1"><figure class="frame"><img src="./assets/product-role-space-v1.jpg" alt="因材智训岗位空间真实界面，展示领域与岗位选择" width="1440" height="940" loading="lazy" decoding="async"/></figure><div class="caption"><span>真实系统界面 · 岗位空间</span><span>目标岗位决定范围，个人画像决定起点</span></div><aside class="role-note"><h3>先知道你要去哪，<br/>再决定今天学什么。</h3><p>训练上下文不只是一份问卷，它会在完成测验、任务和学习资源后持续变化。</p><div class="note-list"><span><i></i>岗位知识与能力要求</span><span><i></i>七维学习者画像</span><span><i></i>当前证据与能力差距</span></div></aside></div>
+    </div></section>
+    <section class="loop" id="loop"><div class="wrap">
+      <div class="heading reveal"><div><p class="eyebrow">02 · 一轮完整协作</p><h2 class="title">不是一个 AI 回答，<br/>是一个训练团队交付。</h2></div><div><span class="index">AGENT LOOP / 02</span><p class="copy">每轮训练都经过诊断、规划、生成、校验与发布。角色分工清楚，过程可以追踪，失败内容会回到上一步重做。</p></div></div>
+      <div class="loop-grid"><div class="flight-plan reveal">
+        <article class="step"><small>01 · DIAGNOSE</small><h3>诊断起点</h3><p>结合目标岗位与已有画像，判断本轮最值得补齐的能力节点。</p><b>1 个诊断智能体</b></article>
+        <article class="step"><small>02 · PLAN</small><h3>规划最短训练路径</h3><p>领域专家与学习策略智能体分别提出方案，再由规划仲裁确定本轮任务。</p><b>3 个规划智能体</b></article>
+        <article class="step"><small>03 · GENERATE</small><h3>并行生成六类资源</h3><p>讲义、实操、测试、导图、代码与可视讲解各自生成，并共享同一份岗位上下文。</p><b>6 个生成智能体</b></article>
+        <article class="step"><small>04 · REVIEW</small><h3>三重校验，不合格就返工</h3><p>证据、实操与难度三个维度交叉复核，最终仲裁决定是否发布。</p><b>3 个评审 + 1 个仲裁智能体</b></article>
+        <article class="step"><small>05 · UPDATE</small><h3>把结果写回下一轮</h3><p>测验、操作与学习行为沉淀为能力证据，画像变化后重新规划航线。</p><b>完成闭环，再次起飞</b></article>
+      </div><div class="loop-visual reveal d1"><figure class="frame"><img src="./assets/product-training-studio-v1.jpg" alt="因材智训岗位训练中心真实界面，展示能力路径与协作进度" width="1440" height="940" loading="lazy" decoding="async"/></figure><div class="caption"><span>真实系统界面 · 岗位训练中心</span><span>一屏追踪当前任务与协作阶段</span></div><div class="agents"><span>诊断</span><span>领域专家</span><span>学习策略</span><span>规划仲裁</span><span>讲义</span><span>实操</span><span>测试</span><span>导图</span><span>代码</span><span>可视讲解</span><span>证据评审</span><span>实操评审</span><span>难度评审</span><span>发布仲裁</span></div></div></div>
+    </div></section>
+    <section class="outputs" id="outputs"><div class="wrap">
+      <div class="heading reveal"><div><p class="eyebrow">03 · 本轮交付物</p><h2 class="title">不是推荐一堆内容，<br/>而是交付一组训练。</h2></div><div><span class="index">TRAINING KIT / 03</span><p class="copy">六类资源围绕同一能力节点协同生成。从理解概念到动手验证，再到测评反馈，形成一次可执行的学习任务。</p></div></div>
+      <div class="output-grid reveal d1">
+        <article class="output" data-n="01"><span class="o-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M5 3h10l4 4v14H5zM15 3v5h5M8 12h8M8 16h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h3>定制讲义</h3><p>围绕能力差距组织知识结构，并保留可追溯的岗位依据。</p></article>
+        <article class="output" data-n="02"><span class="o-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19h16M6 16l3-3 3 2 6-7M16 8h2v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h3>实操指南</h3><p>把岗位任务拆成操作步骤、验证方式与异常处理路径。</p></article>
+        <article class="output" data-n="03"><span class="o-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M7 4h10v16H7zM9 8h6M9 12h2M9 16h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><h3>分阶测试</h3><p>以不同难度验证理解与迁移，决定下一轮提升或降维解释。</p></article>
+        <article class="output" data-n="04"><span class="o-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="2" stroke="currentColor" stroke-width="1.7"/><circle cx="6" cy="18" r="2" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="18" r="2" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v4m0 0-6 5m6-5 6 5" stroke="currentColor" stroke-width="1.7"/></svg></span><h3>思维导图</h3><p>把概念、前置能力与岗位任务连接成可浏览的知识关系。</p></article>
+        <article class="output" data-n="05"><span class="o-icon"><svg viewBox="0 0 24 24" fill="none"><path d="m9 8-4 4 4 4m6-8 4 4-4 4m-2-11-2 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h3>代码案例</h3><p>用岗位场景中的输入、输出与边界条件解释工程实现。</p></article>
+        <article class="output" data-n="06"><span class="o-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="m10 9 5 3-5 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></span><h3>可视讲解</h3><p>将复杂过程转化为可播放、可停留、可重复观看的解释。</p></article>
       </div>
-    </section>
-
-    <section class="section route-section" aria-labelledby="route-title">
-      <div class="shell">
-        <div class="route-intro">
-          <div data-reveal>
-            <p class="section-kicker">02 · One controlled route</p>
-            <h2 class="section-title" id="route-title">一次训练任务，<br><span>六段受控航程。</span></h2>
-          </div>
-          <p class="section-copy" data-reveal data-reveal-delay="1">每一个阶段都有明确输入、输出与责任角色。系统不是把提示词串在一起，而是让规划、生产、审核和裁决相互制约。</p>
-        </div>
-        <ol class="flight-plan" aria-label="训练任务的六个阶段">
-          <li class="stage" data-reveal><h3>证据型诊断</h3><p>从测评、履历与行为中识别能力差距，形成学习者画像。</p><code>Diagnosis Agent</code></li>
-          <li class="stage" data-reveal data-reveal-delay="1"><h3>训练规划协商</h3><p>领域专家、学习策略与规划仲裁共同定义训练合同。</p><code>3 Planning Agents</code></li>
-          <li class="stage" data-reveal data-reveal-delay="2"><h3>三类资源并发生成</h3><p>课程、实操指南与分层测评针对同一目标同步生产。</p><code>3 Production Agents</code></li>
-          <li class="stage" data-reveal><h3>三重独立审核</h3><p>分别核验事实证据、实操规范、难度与覆盖范围。</p><code>3 Review Agents</code></li>
-          <li class="stage" data-reveal data-reveal-delay="1"><h3>总裁决与返工</h3><p>通过则发布；未通过则携带具体意见返回对应环节。</p><code>Arbiter Agent</code></li>
-          <li class="stage" data-reveal data-reveal-delay="2"><h3>反馈写回画像</h3><p>学习结果成为下一轮诊断证据，让训练持续收敛。</p><code>Closed Feedback Loop</code></li>
-        </ol>
-      </div>
-    </section>
-
-    <section class="section formation" id="formation" aria-labelledby="formation-title">
-      <div class="shell">
-        <div class="formation-head">
-          <div class="big-eleven" data-reveal aria-hidden="true">11</div>
-          <div class="formation-copy" data-reveal data-reveal-delay="1">
-            <p class="section-kicker">03 · Multi-agent formation</p>
-            <h2 class="section-title" id="formation-title">不是轮流发言。<br>是<span>分权协同。</span></h2>
-            <p class="section-copy">生成者不能给自己放行，审核者不能修改原始结论，最终发布权由总裁决统一收口。角色边界让系统可解释、可复核。</p>
-          </div>
-        </div>
-        <div class="squad-list" aria-label="十一智能体的五组职责">
-          <div class="squad-row" data-reveal><span class="squad-index">01</span><strong class="squad-name">诊断</strong><span class="squad-agents">Diagnosis Agent</span><span class="squad-output">Learner Evidence</span></div>
-          <div class="squad-row" data-reveal><span class="squad-index">02—04</span><strong class="squad-name">规划编队</strong><span class="squad-agents">Domain Expert · Learning Strategy · Plan Arbiter</span><span class="squad-output">Training Contract</span></div>
-          <div class="squad-row" data-reveal><span class="squad-index">05—07</span><strong class="squad-name">资源生产</strong><span class="squad-agents">Document · Practice Guide · Quiz</span><span class="squad-output">Learning Assets</span></div>
-          <div class="squad-row" data-reveal><span class="squad-index">08—10</span><strong class="squad-name">独立审核</strong><span class="squad-agents">Evidence · Practice · Difficulty Review</span><span class="squad-output">Review Reports</span></div>
-          <div class="squad-row" data-reveal><span class="squad-index">11</span><strong class="squad-name">总裁决</strong><span class="squad-agents">Arbiter Agent</span><span class="squad-output">Release / Rework</span></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="section gate" id="gate" aria-labelledby="gate-title">
-      <div class="shell">
-        <div class="gate-head">
-          <div data-reveal>
-            <p class="section-kicker">04 · Release clearance</p>
-            <h2 class="section-title" id="gate-title">未经审核，<br><span>不准抵达学习者。</span></h2>
-          </div>
-          <p class="section-copy" data-reveal data-reveal-delay="1">三位审核智能体各自签署质量报告。总裁决读取全部证据，决定发布或定向返工——失败内容不会伪装成正式资源。</p>
-        </div>
-        <div class="clearance-board" aria-label="三重质量审核">
-          <div class="clearance-labels" aria-hidden="true"><span>Check</span><span>Independent reviewer</span><span>Clearance</span></div>
-          <div class="clearance-row" data-reveal>
-            <span class="clearance-num">01</span>
-            <div class="clearance-main"><h3>事实与来源</h3><p>关键知识是否有证据支撑，结论能否回溯到可信来源。</p></div>
-            <span class="clearance-status">EVIDENCE READY</span>
-          </div>
-          <div class="clearance-row" data-reveal data-reveal-delay="1">
-            <span class="clearance-num">02</span>
-            <div class="clearance-main"><h3>实操与规范</h3><p>步骤是否可执行，安全边界、行业规范与结果验证是否完整。</p></div>
-            <span class="clearance-status">PRACTICE READY</span>
-          </div>
-          <div class="clearance-row" data-reveal data-reveal-delay="2">
-            <span class="clearance-num">03</span>
-            <div class="clearance-main"><h3>难度与覆盖</h3><p>内容是否匹配当前能力层级，训练目标与测评覆盖是否一致。</p></div>
-            <span class="clearance-status">LEVEL READY</span>
-          </div>
-        </div>
-        <div class="gate-verdict" data-reveal>
-          <strong>放行不是结束。<br>没通过，就精准复飞。</strong>
-          <div class="verdict-path" aria-label="裁决结果">
-            <div><small>ROUTE A / PASS</small><span>批准发布</span></div>
-            <div><small>ROUTE B / REWORK</small><span>携意见定向返工</span></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="section routes" aria-labelledby="routes-title">
-      <div class="shell routes-grid">
-        <div data-reveal>
-          <p class="section-kicker">05 · Evidence-based personalization</p>
-          <h2 class="section-title" id="routes-title">同一岗位，<br><span>不是同一条航线。</span></h2>
-          <p class="section-copy">系统不只改写措辞。它根据能力证据改变前置补齐、内容深度、练习密度与测评层级，让每份训练方案真正发生结构变化。</p>
-        </div>
-        <div class="learner-map" data-reveal data-reveal-delay="1" aria-label="三种不同能力证据对应的训练航线示意">
-          <div class="learner-route route-a">
-            <header><strong>学习者 A</strong><span>前置知识存在缺口</span></header>
-            <svg viewBox="0 0 720 146" preserveAspectRatio="none" aria-hidden="true"><path class="dash" d="M2 112 C122 112 110 75 215 75 S340 106 430 63 S570 32 718 30"/></svg>
-            <span class="route-end">补前置 → 进阶</span>
-          </div>
-          <div class="learner-route route-b">
-            <header><strong>学习者 B</strong><span>理论扎实，实操薄弱</span></header>
-            <svg viewBox="0 0 720 146" preserveAspectRatio="none" aria-hidden="true"><path d="M2 112 C152 112 166 86 275 86 S425 48 526 48 S630 55 718 24"/></svg>
-            <span class="route-end">强化实操 → 验证</span>
-          </div>
-          <div class="learner-route route-c">
-            <header><strong>学习者 C</strong><span>已有岗位经验</span></header>
-            <svg viewBox="0 0 720 146" preserveAspectRatio="none" aria-hidden="true"><path d="M2 112 C125 112 182 96 285 69 S445 28 535 31 S642 20 718 12"/></svg>
-            <span class="route-end">跳过基础 → 挑战任务</span>
-          </div>
-          <div class="map-axis" aria-hidden="true"></div>
-          <p class="map-note">示意：画像证据决定训练结构，而非只改变内容表述。</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section orbit" id="loop" aria-labelledby="loop-title">
-      <div class="shell orbit-shell">
-        <div class="orbit-copy" data-reveal>
-          <p class="section-kicker">06 · The loop stays in motion</p>
-          <h2 class="section-title" id="loop-title">一次训练结束，<br><span>下一轮画像已经更新。</span></h2>
-          <p class="section-copy">完成度、测评结果与实操反馈被写回学习者画像，成为下一次诊断的新证据。个性化不再是一次推荐，而是持续校准的成长轨道。</p>
-          <blockquote>从“生成内容”走向“管理内容质量”，再走向“用反馈修正下一次决策”。</blockquote>
-          <a class="final-cta" href="/login">开始第一轮训练<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M14 7l5 5-5 5"/></svg></a>
-        </div>
-        <div class="orbit-stage" aria-hidden="true">
-          <img class="earth" src="./assets/skillops-earth-orbit-v1.webp" width="1000" height="976" loading="lazy" alt="" />
-          <span class="orbit-ring ring-a"></span>
-          <span class="orbit-ring ring-b"></span>
-          <span class="orbit-ring ring-c"></span>
-          <i class="satellite-dot dot-1"></i><i class="satellite-dot dot-2"></i><i class="satellite-dot dot-3"></i><i class="satellite-dot dot-4"></i>
-          <span class="orbit-label label-a">EVIDENCE IN</span>
-          <span class="orbit-label label-b">FEEDBACK RETURN</span>
-          <span class="orbit-label label-c">PROFILE UPDATE</span>
-          <div class="loop-badge"><small>CLOSED LOOP STATUS</small><strong>持续校准 / ACTIVE</strong></div>
-        </div>
-      </div>
-    </section>
+    </div></section>
+    <section class="proof" id="proof"><div class="wrap proof-grid">
+      <div class="proof-copy reveal"><p class="eyebrow">04 · 证据持续回写</p><h2 class="title">学完不是终点，<br/>画像会继续长大。</h2><p class="copy">系统把测评结果、训练表现与资源使用情况转成能力证据，定位已经点亮的节点和下一步差距。</p><div class="proof-points"><div class="proof-point"><b>01</b><div><strong>能力节点可追踪</strong><p>从基础底座、核心开发到工程实践与岗位胜任，路径关系一屏可见。</p></div></div><div class="proof-point"><b>02</b><div><strong>资源匹配有依据</strong><p>学习者信号与岗位资源信号双轨对齐，解释为什么推荐这组训练。</p></div></div><div class="proof-point"><b>03</b><div><strong>下一轮会改变</strong><p>已掌握的内容不再重复，薄弱项进入新的规划与生成任务。</p></div></div></div></div>
+      <div class="proof-stack"><figure class="frame reveal d1"><span class="frame-label">岗位能力画像</span><img src="./assets/product-capability-profile-v1.jpg" alt="因材智训岗位能力画像真实界面，展示能力节点与达成进度" width="1440" height="940" loading="lazy" decoding="async"/></figure><figure class="frame reveal d2"><span class="frame-label">个人学情与资源匹配度报告</span><img src="./assets/product-learner-report-v1.jpg" alt="因材智训个人学情与资源匹配度报告真实界面" width="1440" height="940" loading="lazy" decoding="async"/></figure></div>
+    </div></section>
+    <section class="readiness" id="readiness"><div class="wrap">
+      <div class="heading reveal"><div><p class="eyebrow">05 · 求职前的最后验证</p><h2 class="title">把学会，推进到<br/>做得出、说得清。</h2></div><div><span class="index">JOB READINESS / 05</span><p class="copy">训练结果最终要经得起真实任务与岗位表达。机考和面试模块将承接能力路径，形成求职前的验证环节。</p></div></div>
+      <div class="preview-grid"><article class="preview reveal"><img src="./assets/preview-oj-placeholder-v1.svg" alt="机考备战中心演示界面，当前待接入" width="1400" height="860" loading="lazy"/><div class="preview-meta"><div><small>CODE READINESS</small><h3>机考备战中心</h3><p>岗位题目、在线编码、测试信号与能力证据回写。</p></div><span class="tag">演示界面 · 待接入</span></div></article><article class="preview reveal d1"><img src="./assets/preview-interview-placeholder-v1.svg" alt="AI 面试备战中心演示界面，当前待接入" width="1400" height="860" loading="lazy"/><div class="preview-meta"><div><small>INTERVIEW READINESS</small><h3>AI 面试备战中心</h3><p>岗位模拟问答、维度反馈与表达能力复盘。</p></div><span class="tag">演示界面 · 待接入</span></div></article></div>
+      <p class="preview-note">以上两张为预留模块的概念界面，不作为当前已接入功能展示。</p>
+    </div></section>
+    <section class="enterprise"><div class="wrap enterprise-grid">
+      <div class="reveal"><p class="eyebrow">06 · 企业真实任务</p><h2 class="title">课堂之外，<br/>还有真实工作现场。</h2><p class="enterprise-copy">企业在 Web 端配置岗位知识、成员与训练任务，从业者也可以在小程序接收今日任务，让岗位训练从“为求职准备”延伸到“在工作中成长”。</p></div>
+      <div class="enterprise-flow reveal d1"><article class="enterprise-step"><b>01 / ENTERPRISE</b><svg viewBox="0 0 48 48" fill="none"><path d="M8 40V12h20v28M28 21h12v19M14 19h8M14 26h8M14 33h8M34 28h2M34 34h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><div><h3>企业配置任务</h3><p>岗位知识库、成员与训练任务集中管理。</p></div></article><article class="enterprise-step"><b>02 / MOBILE</b><svg viewBox="0 0 48 48" fill="none"><rect x="14" y="5" width="20" height="38" rx="5" stroke="currentColor" stroke-width="2"/><path d="M20 11h8M21 36h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><div><h3>小程序触达</h3><p>从业者查看今日任务、详情与完成状态。</p></div></article><article class="enterprise-step"><b>03 / EVIDENCE</b><svg viewBox="0 0 48 48" fill="none"><path d="M8 38h32M12 34l8-10 7 5 9-15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="24" r="3" fill="currentColor"/></svg><div><h3>沉淀能力证据</h3><p>学习过程继续更新岗位能力与成长记录。</p></div></article></div>
+    </div></section>
+    <section class="final" aria-labelledby="final-title"><div class="earth" aria-hidden="true"><img src="./assets/skillops-earth-orbit-v1.webp" alt="" width="1000" height="976" loading="lazy"/></div><div class="wrap final-in"><h2 id="final-title">下一条成长航线，<br/>从你的岗位开始。</h2><p>选择目标岗位，建立能力画像，让第一轮智能体协作训练成为新的能力证据。</p><div class="actions"><a class="button primary" href="/login">进入因材智训<svg class="arrow" viewBox="0 0 24 24" fill="none"><path d="M5 12h13m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a><a class="button secondary" href="#top">返回顶部</a></div></div><footer class="footer"><div class="wrap footer-in"><span>因材智训 · 多智能体个性化岗位训练系统</span><div class="footer-links"><a href="#roles">岗位路径</a><a href="#loop">训练闭环</a><a href="#proof">成长证据</a></div></div></footer></section>
   </main>
-
-  <footer class="site-footer">
-    <div class="shell footer-shell">
-      <span>因材智训 · 多智能体个性化训练与质量决策系统</span>
-      <a href="#top">返回起点 ↑</a>
-    </div>
-  </footer>
-
   <script>
-    (() => {
-      const header = document.querySelector('.site-header');
-      const motionToggle = document.querySelector('.motion-toggle');
-      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-      const syncHeader = () => header.classList.toggle('is-scrolled', window.scrollY > 36);
-      syncHeader();
-      window.addEventListener('scroll', syncHeader, { passive: true });
-
-      if (motionToggle) {
-        motionToggle.addEventListener('click', () => {
-          const paused = document.body.classList.toggle('motion-paused');
-          motionToggle.setAttribute('aria-pressed', String(paused));
-          motionToggle.setAttribute('aria-label', paused ? '播放页面动效' : '暂停页面动效');
-        });
-      }
-
-      const reveals = [...document.querySelectorAll('[data-reveal]')];
-      if (!('IntersectionObserver' in window) || reduceMotion) {
-        reveals.forEach((element) => element.classList.add('is-visible'));
-      } else {
-        const observer = new IntersectionObserver((entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              entry.target.classList.add('is-visible');
-              observer.unobserve(entry.target);
-            }
-          });
-        }, { threshold: .12, rootMargin: '0px 0px -6% 0px' });
-        reveals.forEach((element) => observer.observe(element));
-      }
-
-      document.addEventListener('visibilitychange', () => {
-        document.body.classList.toggle('tab-hidden', document.hidden);
-      });
-    })();
+    const root=document.documentElement,header=document.getElementById('header'),toggle=document.getElementById('motion'),reduce=matchMedia('(prefers-reduced-motion: reduce)');
+    const sync=()=>header.classList.toggle('scrolled',scrollY>48);sync();addEventListener('scroll',sync,{passive:true});
+    const items=document.querySelectorAll('.reveal');if('IntersectionObserver'in window&&!reduce.matches){const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('show');observer.unobserve(e.target)}}),{threshold:.12,rootMargin:'0px 0px -6% 0px'});items.forEach(i=>observer.observe(i))}else items.forEach(i=>i.classList.add('show'));
+    let paused=false;const setMotion=p=>{paused=p;root.classList.toggle('paused',p);toggle.setAttribute('aria-pressed',String(p));toggle.textContent=p?'播放动态':'暂停动态'};toggle.addEventListener('click',()=>setMotion(!paused));document.addEventListener('visibilitychange',()=>{if(document.hidden)root.classList.add('paused');else if(!paused)root.classList.remove('paused')});
   </script>
 </body>
 </html>

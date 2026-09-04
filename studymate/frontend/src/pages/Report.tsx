@@ -17,8 +17,8 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   BarChart3, Sparkles, Loader2, Download, CheckCircle2, AlertTriangle,
   Clock, Target, TrendingUp, RefreshCw, BookOpen, ArrowRight,
-  LineChart as LineChartIcon, History, ArrowLeft, X, ShieldCheck, Layers3,
-  Radio, Activity, Gauge, Route,
+  LineChart as LineChartIcon, History, X, ShieldCheck, Layers3,
+  Activity, Gauge, Route,
 } from "lucide-react"
 import {
   ResponsiveContainer,
@@ -36,6 +36,7 @@ import { useWorkspaceStore } from "@/store/workspace"
 import { useCurrentUser } from "@/store/user"
 import { useCurrentCourse } from "@/store/course"
 import { useTargetRole } from "@/store/targetRole"
+import "./Report.css"
 
 interface EvalScores {
   overall_correct_rate: number
@@ -562,58 +563,31 @@ export function Report() {
 
   return (
     <div className={`app-page paper-theme report-live-page ${loading || workspaceGenerating ? "is-streaming" : ""}`}>
-      <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
+      <div className="report-live-frame mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
         <AppTopbar current="report" appearance="paper" iconImage="/images/report-telemetry-terminal-v1.png" showRocketFormation rocketVariant="honor" />
         <section className="report-live-shell mt-4 min-h-[calc(100dvh-120px)] overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)]">
-          <header className="report-live-titleband flex flex-wrap items-center justify-between gap-3 border-b border-[#D7D1C4] bg-[#F8F6F0] px-3 py-3.5 sm:px-5">
-            <div className="flex min-w-0 items-center gap-3">
-              <Link to="/" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]">
-                <ArrowLeft className="size-3.5" /><span className="hidden sm:inline">返回首页</span>
-              </Link>
-              <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
-              <span className="report-live-title-icon grid size-10 shrink-0 place-items-center" aria-hidden="true"><img src="/images/report-title-telemetry-badge-v1.png" alt="" /></span>
-              <div className="min-w-0">
-                <h1 className="text-[15px] font-bold text-[#18232D]">因材智训学习报告</h1>
-                <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">{ws.topic ? `围绕《${ws.topic}》分析掌握程度、训练投入与下一轮路径` : "汇总答题、资源使用与岗位能力画像，形成可以行动的胜任力反馈"}</p>
-              </div>
-            </div>
-            <div className="nav-scroll flex w-full items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto sm:overflow-visible sm:pb-0">
-              <button type="button" aria-label="重新生成阶段总结" title={workspaceGenerating ? "资源包仍在生成，完成后将自动开放评估" : !hasEvalData ? "完成资源学习或测验后即可评估" : undefined} onClick={runEval} disabled={loading || !canRunEval} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 text-[11px] font-bold text-[#59636B] transition-colors hover:bg-[#E9EEE6] hover:text-[#315E83] disabled:cursor-not-allowed disabled:opacity-45">
-                {loading ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}{loading ? "阶段总结更新中" : "重新生成阶段总结"}
-              </button>
-              <button type="button" aria-label="导出学习报告 PDF" onClick={exportPDF} disabled={!report || exporting} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-[#244C66] px-3.5 text-[11px] font-bold text-[#FFFEFA] transition-colors hover:bg-[#193B50] disabled:cursor-not-allowed disabled:opacity-40">
-                {exporting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}导出 PDF
-              </button>
-            </div>
-          </header>
           <div className="p-4 sm:p-5">
-
-        <section className="report-live-hero" aria-label="实时学习遥测概览">
-          <div className="report-live-scan" aria-hidden="true" />
-          <div className="report-live-identity">
-            <span className="report-live-kicker"><Radio className="size-3.5" /> LIVE LEARNING TELEMETRY</span>
-            <div className="report-live-index"><strong>01</strong><span>实时学习报告</span><i>PROGRESS SIGNAL</i></div>
+        <section className="report-live-brief" aria-label="当前报告状态">
+          <div className="report-live-brief-copy">
+            <span>当前学习主题</span>
             <h2>{ws.topic || evidenceCourseName || "等待学习主题接入"}</h2>
-            <p>持续汇聚答题、资源消费、学习时长与画像变化，形成可行动的阶段反馈。</p>
-          </div>
-          <div className="report-live-orbit" role="img" aria-label={`当前已接入 ${displayedSignalCount} 条有效学习信号`}>
-            <img src="/images/report-live-telemetry-instrument-v1.png" alt="" aria-hidden="true" />
-            <span className="report-live-instrument-scan" aria-hidden="true" />
-            <span className="report-live-instrument-glint" aria-hidden="true" />
-            <div className="report-live-orbit-core" aria-hidden="true">
-              <Activity className="size-4" />
-              <strong>{displayedSignalCount}</strong>
-              <small>VALID SIGNALS</small>
-            </div>
+            {report && <p>报告已根据 {displayedSignalCount} 条真实学习证据更新。</p>}
           </div>
           <div className="report-live-console">
             <div><Activity className="size-4" /><span>信号状态</span><strong>{workspaceGenerating ? "采集中" : loading ? "分析中" : report ? "已同步" : "待接入"}</strong></div>
-            <div><Gauge className="size-4" /><span>遥测证据</span><strong>{displayedSignalCount}</strong></div>
+            <div><Gauge className="size-4" /><span>学习证据</span><strong>{displayedSignalCount}</strong></div>
             <div><Route className="size-4" /><span>画像版本</span><strong>{report ? `v${report.profile_version}` : profile ? `v${profile.version}` : "—"}</strong></div>
           </div>
+          {(report || canRunEval || loading) && <div className="report-live-actions nav-scroll flex items-center gap-2 overflow-x-auto pb-0.5 sm:overflow-visible sm:pb-0">
+              <button type="button" aria-label="重新生成阶段总结" title={workspaceGenerating ? "资源包仍在生成，完成后将自动开放评估" : !hasEvalData ? "完成资源学习或测验后即可评估" : undefined} onClick={runEval} disabled={loading || !canRunEval} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 text-[11px] font-bold text-[#59636B] transition-colors hover:bg-[#E9EEE6] hover:text-[#315E83] disabled:cursor-not-allowed disabled:opacity-45">
+                {loading ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}{loading ? "阶段总结更新中" : "重新生成阶段总结"}
+              </button>
+              {report && <button type="button" aria-label="导出学习报告 PDF" onClick={exportPDF} disabled={exporting} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-[#244C66] px-3.5 text-[11px] font-bold text-[#FFFEFA] transition-colors hover:bg-[#193B50] disabled:cursor-not-allowed disabled:opacity-40">
+                {exporting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}导出 PDF
+              </button>}
+          </div>}
         </section>
         <nav className="report-live-stage" aria-label="报告处理阶段">
-          <span className="report-live-stage-signal" aria-hidden="true" />
           {["采集", "分析", "反馈", "行动"].map((label, index) => {
             const activeStep = workspaceGenerating ? 0 : loading ? 1 : report ? 3 : hasEvalData ? 1 : 0
             const stateClass = index < activeStep ? "is-done" : index === activeStep ? "is-current" : ""
@@ -719,56 +693,6 @@ export function Report() {
               />
             </div>
 
-            {trendData.length >= 2 && <TrendLineCard data={trendData} />}
-
-            <div className="report-live-transition is-archive" aria-hidden="true"><span>实时信号</span><i /><b>证据归档</b></div>
-            <ReportEvidenceStrip
-              evidence={reportEvidence}
-              generatedAt={report.generated_at}
-              profileVersion={report.profile_version}
-              currentProfileVersion={profile?.version ?? null}
-            />
-            <LearningStatsCards stats={learningStats} />
-
-            <div className="report-live-transition is-mastery" aria-hidden="true"><span>活动采样</span><i /><b>掌握分析</b></div>
-
-            {/* 新报告显示主题×难度热力图；旧报告继续使用原柱状图。 */}
-            {hasTopicDifficultyData ? (
-              <TopicDifficultyHeatmap data={topicDifficultyData} overall={report.scores.by_topic} />
-            ) : topicBarData.length > 0 ? (
-              <div className="report-live-topic-chart rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] p-5">
-                <div className="text-sm font-semibold mb-3 flex items-center gap-1.5">
-                  <BarChart3 className="size-4 text-[#B85C3E]" /> 按主题正确率
-                </div>
-                <ResponsiveContainer width="100%" height={200} minWidth={0}>
-                  <BarChart data={topicBarData} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="topic" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
-                    <Tooltip
-                      contentStyle={{
-                        background: "var(--card)",
-                        border: "1px solid var(--border)",
-                        borderRadius: 8,
-                        fontSize: 12,
-                      }}
-                      formatter={((v: unknown, _n: unknown, p: unknown) => {
-                        const payload = (p as { payload?: { correct: number; total: number } })?.payload
-                        const c = payload?.correct ?? 0
-                        const t = payload?.total ?? 0
-                        return [`${v}% (${c}/${t})`, "正确率"]
-                      }) as never}
-                    />
-                    <Bar dataKey="rate" fill="#B85C3E" radius={[6, 6, 0, 0]} minPointSize={8} maxBarSize={72} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : null}
-
-            <CapabilitySignalCard delta={report.profile_delta} />
-
-            <div className="report-live-transition is-feedback" aria-hidden="true"><span>能力变化</span><i /><b>反馈行动</b></div>
-
             {/* 评估总结 markdown */}
             {report.summary_markdown && (
               <div className="report-live-summary rounded-[22px] border border-[#D7D1C4] bg-[#F8F6F0] p-5">
@@ -817,6 +741,53 @@ export function Report() {
                 </div>
               )}
             </div>
+
+            <div className="report-live-analysis-grid">
+              {trendData.length >= 2 && <TrendLineCard data={trendData} />}
+
+              {/* 新报告显示主题×难度热力图；旧报告继续使用原柱状图。 */}
+              {hasTopicDifficultyData ? (
+                <TopicDifficultyHeatmap data={topicDifficultyData} overall={report.scores.by_topic} />
+              ) : topicBarData.length > 0 ? (
+                <div className="report-live-topic-chart rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] p-5">
+                  <div className="text-sm font-semibold mb-3 flex items-center gap-1.5">
+                    <BarChart3 className="size-4 text-[#B85C3E]" /> 按主题正确率
+                  </div>
+                  <ResponsiveContainer width="100%" height={200} minWidth={0}>
+                    <BarChart data={topicBarData} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                      <XAxis dataKey="topic" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
+                      <Tooltip
+                        contentStyle={{
+                          background: "var(--card)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 8,
+                          fontSize: 12,
+                        }}
+                        formatter={((v: unknown, _n: unknown, p: unknown) => {
+                          const payload = (p as { payload?: { correct: number; total: number } })?.payload
+                          const c = payload?.correct ?? 0
+                          const t = payload?.total ?? 0
+                          return [`${v}% (${c}/${t})`, "正确率"]
+                        }) as never}
+                      />
+                      <Bar dataKey="rate" fill="#B85C3E" radius={[6, 6, 0, 0]} minPointSize={8} maxBarSize={72} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : null}
+            </div>
+
+            <CapabilitySignalCard delta={report.profile_delta} />
+
+            <ReportEvidenceStrip
+              evidence={reportEvidence}
+              generatedAt={report.generated_at}
+              profileVersion={report.profile_version}
+              currentProfileVersion={profile?.version ?? null}
+            />
+            <LearningStatsCards stats={learningStats} />
 
             <div className="text-center text-[10px] text-[var(--muted-foreground)] pt-2">
               本报告由因材智训评估智能体根据答题数据与学习行为生成 · {formatReportTime(report.generated_at)}
@@ -1034,56 +1005,40 @@ function HistoryMetric({ label, value, tone }: { label: string; value: string; t
 }
 
 function EmptyState({ courseName }: { courseName?: string }) {
-  const steps = [
-    { step: "01", title: "学习资源", desc: "阅读讲解、笔记或可视动画", icon: BookOpen, tone: "bg-[#E7EDF3] text-[#315E83]" },
-    { step: "02", title: "完成测验", desc: "留下真实的掌握度证据", icon: CheckCircle2, tone: "bg-[#E9EEE6] text-[#557052]" },
-    { step: "03", title: "生成报告", desc: "获得建议并更新岗位能力画像", icon: BarChart3, tone: "bg-[#F4ECD8] text-[#8E6925]" },
-  ]
   return (
-    <div className="report-live-empty grid min-h-[340px] place-items-center rounded-[24px] border border-dashed border-[#CFC8B9] bg-[#F8F6F0] px-5 py-7">
-      <div className="max-w-2xl text-center">
-        <div className="relative mx-auto grid size-20 place-items-center">
-          <span className="absolute inset-0 rounded-full border border-dashed border-[#D9CFB7]" />
-          <span className="absolute inset-2 rounded-full border border-[#E3DED3]" />
-          <span className="report-live-empty-emblem relative grid size-12 place-items-center">
-            <img src="/images/report-telemetry-terminal-v1.png" alt="" aria-hidden="true" />
-          </span>
-        </div>
-        <h2 className="mt-4 text-xl font-bold tracking-[-0.03em] text-[#18232D]">完成一次学习闭环，报告就会在这里生长</h2>
-        <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[#66717B]">学习报告会结合资源训练、测验结果和画像变化，告诉你已经掌握哪些岗位能力、薄弱能力在哪里，以及下一步最值得训练什么。</p>
-        <div className="mt-6 grid gap-2 text-left sm:grid-cols-3">
-          {steps.map(({ step, title, desc, icon: Icon, tone }) => (
-            <div key={step} className={`report-live-empty-step is-step-${step} paper-lift rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] p-4`}>
-              <div className="flex items-center justify-between">
-                <span className={`grid size-8 place-items-center rounded-xl ${tone}`}><Icon className="size-4" /></span>
-                <span className="text-[10px] font-bold tracking-[0.14em] text-[#B1842C]">{step}</span>
-              </div>
-              <div className="mt-3 text-sm font-bold text-[#18232D]">{title}</div>
-              <div className="mt-1 text-[11px] leading-5 text-[#6F787A]">{desc}</div>
-            </div>
-          ))}
-        </div>
-        <div className="report-live-launch-deck">
-          <div className="report-live-launch-copy">
-            <span><Radio className="size-3.5" /> LEARNING SIGNAL LAUNCH</span>
-            <strong>第一条学习证据，就是报告的点火信号</strong>
-            <p>资源进入轨道后，测验负责校准，最终汇聚为可执行的能力反馈。</p>
-          </div>
-          <div className="report-live-launch-route" aria-label="学习报告启动路径">
-            <i aria-hidden="true" />
-            {["资源入轨", "测验校准", "报告点亮"].map((label, index) => (
-              <span key={label}><b>0{index + 1}</b><small>{label}</small></span>
-            ))}
-            <img src="/images/training-launch-rocket-cutout-v2.png" alt="" aria-hidden="true" />
-          </div>
-        </div>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <Link to={courseName ? "/workspace" : "/courses"} className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] transition-colors hover:bg-[#193B50]">
-            <Sparkles className="size-4" /> {courseName ? "生成第一套岗位训练资源" : "先选择目标岗位"}
+    <div className="report-live-empty rounded-[24px] border border-dashed border-[#CFC8B9] bg-[#F8F6F0] px-5 py-7">
+      <div>
+        <span className="report-live-empty-emblem grid size-12 place-items-center" aria-hidden="true">
+          <img src="/images/report-telemetry-terminal-v1.png" alt="" />
+        </span>
+        <h2 className="mt-3 text-xl font-bold tracking-[-0.03em] text-[#18232D]">还没有可评估的学习证据</h2>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-[#66717B]">先完成一次岗位训练或测验；报告会据此给出掌握情况、薄弱能力和下一步建议。</p>
+        <p className="report-live-empty-action-hint">选择一个入口开始，完成后报告会自动更新</p>
+        <div className="report-live-empty-actions">
+          <Link
+            to={courseName ? "/workspace" : "/courses"}
+            className="report-live-empty-action is-primary"
+            title={courseName ? "进入训练工作台，生成与目标岗位匹配的学习资源" : "先选择目标岗位，再生成对应的学习资源"}
+          >
+            <span className="report-live-empty-action-icon"><Sparkles aria-hidden="true" /></span>
+            <span className="report-live-empty-action-copy">
+              <strong>{courseName ? "生成第一套岗位训练资源" : "先选择目标岗位"}</strong>
+              <small>{courseName ? "推荐 · 从岗位任务开始" : "确定报告的能力对标方向"}</small>
+            </span>
+            <ArrowRight className="report-live-empty-action-arrow" aria-hidden="true" />
           </Link>
           {courseName && (
-            <Link to="/quiz" className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[#C9C2B4] bg-[#FFFEFA] px-5 text-xs font-bold text-[#315E83] transition-colors hover:bg-[#EEE9DF]">
-              <CheckCircle2 className="size-4" /> 直接完成一次测验
+            <Link
+              to="/quiz"
+              className="report-live-empty-action is-secondary"
+              title="进入快速测验，用约 5 分钟生成第一份掌握度证据"
+            >
+              <span className="report-live-empty-action-icon"><CheckCircle2 aria-hidden="true" /></span>
+              <span className="report-live-empty-action-copy">
+                <strong>直接完成一次测验</strong>
+                <small>约 5 分钟 · 快速生成学习证据</small>
+              </span>
+              <ArrowRight className="report-live-empty-action-arrow" aria-hidden="true" />
             </Link>
           )}
         </div>

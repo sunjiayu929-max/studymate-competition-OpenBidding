@@ -2,12 +2,20 @@ import { useCallback, useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
 import { Award, BadgeCheck, CalendarDays, Download, Eye, Loader2, ShieldCheck, Sparkles } from "lucide-react"
+
 import certificateBackground from "@/assets/certificate/studymate-certificate-bg.png"
 import { AppTopbar } from "@/components/AppTopbar"
 import { RoleCertificateModal } from "@/components/RoleCertificateModal"
-import { formatCertificateDate, ensureDemoCertificates, listUserCertificates, syncEarnedCertificates, type RoleCertificateRecord } from "@/lib/certificates"
+import {
+  ensureDemoCertificates,
+  formatCertificateDate,
+  listUserCertificates,
+  syncEarnedCertificates,
+  type RoleCertificateRecord,
+} from "@/lib/certificates"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useCurrentUser } from "@/store/user"
+
 import "./HonorWall.css"
 
 export function HonorWall() {
@@ -22,43 +30,183 @@ export function HonorWall() {
   })
   const userId = user?.user_id
   const learnerName = user?.name ?? ""
+
   const refreshCertificates = useCallback(() => {
     if (userId) ensureDemoCertificates(userId, learnerName)
     setCertificates(userId ? listUserCertificates(userId, learnerName) : [])
   }, [userId, learnerName])
+
   useEffect(() => {
     refreshCertificates()
-    if (!userId) { setSyncing(false); return }
+    if (!userId) {
+      setSyncing(false)
+      return
+    }
+
     let active = true
     setSyncing(true)
-    syncEarnedCertificates(userId, learnerName).then((records) => { if (active) setCertificates(records) }).catch(() => undefined).finally(() => { if (active) setSyncing(false) })
-    return () => { active = false }
+    syncEarnedCertificates(userId, learnerName)
+      .then((records) => {
+        if (active) setCertificates(records)
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setSyncing(false)
+      })
+    return () => {
+      active = false
+    }
   }, [refreshCertificates, userId, learnerName])
+
   const roleCount = new Set(certificates.map((record) => record.roleId)).size
   const latestIssuedAt = certificates[0]?.issuedAt
   const unlocked = certificates.length > 0
 
-  return <main className="honors-v2 app-page paper-theme min-h-dvh pb-16"><div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 lg:px-7">
-    <AppTopbar current="honor" appearance="paper" labelOverride="我的荣誉墙" groupOverride="成果认证中心" statusLabel={syncing ? "正在核验新成果" : unlocked ? `${certificates.length} 项荣誉已点亮` : "等待首项荣誉"} iconImage="/images/honors-certification-vault-v1.png" showRocketFormation rocketVariant="honor" />
-    <motion.section className={`honors-v2-hero honors-v2-hero-compact ${syncing ? "is-running" : ""}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .55 }}>
-      <div className="honors-v2-live"><span /><b>MY HONOR WALL</b><small>学习成果与岗位认证档案</small><em>{syncing ? "正在核验新成果" : unlocked ? "认证库已同步" : "等待成果解锁"}</em></div>
-      <div className="honors-v2-overview">
-        <div className="honors-v2-overview-title"><span><img src="/images/honors-reward-medal-web-v1.png" alt="" aria-hidden="true" /></span><div><small>荣誉认证中心</small><h1>我的荣誉墙</h1><p>所有已解锁证书都在下方，点击即可查看或下载。</p></div></div>
-        <div className="honors-v2-overview-stats"><HeroStat label="已获证书" value={`${certificates.length}`} suffix="张" /><HeroStat label="完成岗位" value={`${roleCount}`} suffix="个" /><HeroStat label="最近认证" value={latestIssuedAt ? formatCertificateDate(latestIssuedAt).replace(/年|月/g, ".").replace("日", "") : "WAIT"} compact /></div>
-        <div className="honors-v2-overview-actions">{certificates[0] ? <button type="button" onClick={() => setSelected(certificates[0])} aria-label={`查看最近证书：${certificates[0].roleName}`}><img className="honors-v2-action-object" src="/images/training-acceptance-beacon-v1.png" alt="" aria-hidden="true" /><span><small>最近获得</small><strong>{certificates[0].roleName}</strong></span></button> : <Link to="/competency"><img className="honors-v2-action-object" src="/images/training-acceptance-beacon-v1.png" alt="" aria-hidden="true" /><span><small>暂无证书</small><strong>完成训练解锁荣誉</strong></span></Link>}<Link to="/competency" className="is-primary"><img className="honors-v2-action-object is-route" src="/images/courses-career-route-compass-v1.png" alt="" aria-hidden="true" /><span>继续岗位训练</span></Link></div>
+  return (
+    <main className="honors-v2 app-page paper-theme min-h-dvh pb-16">
+      <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 lg:px-7">
+        <AppTopbar
+          current="honor"
+          appearance="paper"
+          labelOverride="我的荣誉墙"
+          groupOverride="成果认证中心"
+          iconImage="/images/honors-certification-vault-v1.png"
+        />
+
+        <section className="honors-v2-summary" aria-label="荣誉成果概览">
+          <div className="honors-v2-summary-copy">
+            <span className="honors-v2-summary-icon" aria-hidden="true"><Award /></span>
+            <div>
+              <small>个人学习成果</small>
+              <strong>{unlocked ? `已获得 ${certificates.length} 张岗位证书` : "第一张证书等待点亮"}</strong>
+              <p>{unlocked ? "点击任一证书即可查看完整奖状并下载。" : "完成岗位训练和综合验收后，证书会自动归档到这里。"}</p>
+            </div>
+          </div>
+
+          <div className="honors-v2-summary-stats" aria-label="荣誉统计">
+            <SummaryStat label="证书" value={`${certificates.length}`} suffix="张" />
+            <SummaryStat label="完成岗位" value={`${roleCount}`} suffix="个" />
+            <SummaryStat label="最近认证" value={latestIssuedAt ? formatCertificateDate(latestIssuedAt) : "暂无"} compact />
+          </div>
+
+          <div className={`honors-v2-sync ${syncing ? "is-syncing" : unlocked ? "is-ready" : ""}`} role="status" aria-live="polite">
+            {syncing ? <Loader2 aria-hidden="true" /> : unlocked ? <BadgeCheck aria-hidden="true" /> : <Award aria-hidden="true" />}
+            <span>{syncing ? "正在核验新成果" : unlocked ? "成果已同步" : "等待成果解锁"}</span>
+          </div>
+        </section>
+
+        <section className="honors-v2-wall" aria-labelledby="honors-wall-title">
+          <div className="honors-v2-wall-heading">
+            <div>
+              <small>HONOR COLLECTION</small>
+              <h2 id="honors-wall-title">证书墙</h2>
+            </div>
+            {unlocked && <span>{certificates.length} 项成果</span>}
+          </div>
+
+          {unlocked ? (
+            <div className="honors-v2-cards">
+              {certificates.map((record, index) => (
+                <CertificateCard
+                  key={`${record.roleId}:${record.serial}`}
+                  record={record}
+                  index={index}
+                  onOpen={() => setSelected(record)}
+                />
+              ))}
+            </div>
+          ) : syncing ? (
+            <div className="honors-v2-loading" role="status">
+              <Loader2 aria-hidden="true" />
+              <strong>正在核验你的学习成果</strong>
+              <span>已获得的证书将在同步完成后显示。</span>
+            </div>
+          ) : (
+            <div className="honors-v2-empty">
+              <span aria-hidden="true"><Award /></span>
+              <h3>完成第一次岗位训练，点亮你的荣誉墙</h3>
+              <p>通过全部训练轮次和综合验收后，系统会自动签发可下载的岗位学习证书。</p>
+              <Link to="/competency">开始岗位训练<Sparkles aria-hidden="true" /></Link>
+            </div>
+          )}
+        </section>
       </div>
-      <div className="honors-v2-stage"><span />{["完成训练", "通过验收", "签发证书", "收入荣誉墙"].map((label, index) => <div className={index < (unlocked ? 4 : syncing ? 3 : 1) ? "is-done" : ""} key={label}><i>{String(index + 1).padStart(2, "0")}</i><b>{label}</b></div>)}</div>
-    </motion.section>
-    <HonorTransit compact label="VERIFIED INTAKE · 签发成果进入荣誉墙" />
-    <section className="honors-v2-longform"><Header syncing={syncing} count={certificates.length} />
-      {unlocked ? <div className="honors-v2-cards">{certificates.map((record, index) => <CertificateCard key={`${record.roleId}:${record.serial}`} record={record} index={index} onOpen={() => setSelected(record)} />)}</div> : <div className="honors-v2-empty"><span><Award /></span><p>FIRST HONOR · WAITING</p><h3>第一张荣誉等待点亮</h3><small>完成所有训练轮次并通过最终验收后，岗位证书会自动归档在这里。</small><Link to="/competency">开始岗位训练<Sparkles /></Link></div>}
-      <HonorTransit reverse label="SEALED RECORD · 荣誉凭据写入认证档案" />
-      <motion.section className={`honors-v2-console ${unlocked ? "is-complete" : ""}`} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}><div className="honors-v2-console-title"><span><img src="/images/quality-inspection-instrument-v1.png" alt="" aria-hidden="true" /></span><div><small>03 · 认证控制台</small><h2>{unlocked ? "成果已通过签发门禁" : "等待首项成果进入验收"}</h2><p>{unlocked ? "证书已写入个人荣誉档案，可随时查看并下载高清图片。" : "完成岗位训练和综合验收后，系统将自动签发证书。"}</p></div></div><div className="honors-v2-console-grid"><div className="honors-v2-metric"><span>认证成果总数</span><strong>{String(certificates.length).padStart(2, "0")}</strong><i /></div><div className="honors-v2-console-action"><i><b /><b /><b /></i>{certificates[0] ? <button onClick={() => setSelected(certificates[0])}><Award />查看最近证书</button> : <Link to="/competency"><Sparkles />进入岗位训练</Link>}<p>{unlocked ? `${roleCount} 个岗位已完成成果认证` : "当前状态：等待训练成果"}</p></div></div></motion.section>
-    </section>
-  </div>{selected && <RoleCertificateModal open learnerName={selected.learnerName} roleName={selected.roleName} roleId={selected.roleId} userId={selected.userId} completedRounds={selected.completedRounds} onClose={() => setSelected(null)} />}</main>
+
+      {selected && (
+        <RoleCertificateModal
+          open
+          learnerName={selected.learnerName}
+          roleName={selected.roleName}
+          roleId={selected.roleId}
+          userId={selected.userId}
+          completedRounds={selected.completedRounds}
+          onClose={() => setSelected(null)}
+        />
+      )}
+    </main>
+  )
 }
 
-function Header({ syncing, count }: { syncing: boolean; count: number }) { return <motion.div className="honors-v2-heading" initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}><span><img src="/images/honors-certification-vault-v1.png" alt="" aria-hidden="true" /></span><div><small>02 · 荣誉陈列</small><h2>已获得的岗位证书</h2><p>认证信息、完成进度与查看下载入口各自分层，点击证书进入完整奖状。</p></div><i className="honors-v2-flight" /><em className={syncing ? "is-running" : count ? "is-released" : ""}>{syncing ? <><Loader2 />核验中</> : count ? <><BadgeCheck />已发布 {count} 项</> : "待发布"}</em></motion.div> }
-function HonorTransit({ label, compact = false, reverse = false }: { label: string; compact?: boolean; reverse?: boolean }) { return <div className={`honors-v2-air-transit ${compact ? "is-compact" : ""} ${reverse ? "is-reverse" : ""}`} aria-hidden="true"><span className="honors-v2-air-route" /><i className="honors-v2-air-beacon is-one" /><i className="honors-v2-air-beacon is-two" /><i className="honors-v2-air-beacon is-three" /><b>{label}</b><img src="/images/honors-courier-aircraft-v1.png" alt="" /></div> }
-function CertificateCard({ record, index, onOpen }: { record: RoleCertificateRecord; index: number; onOpen: () => void }) { const tones = ["is-gold", "is-blue", "is-cyan"]; return <motion.article className={`honors-v2-card ${tones[index % tones.length]}`} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .2 }} transition={{ duration: .5, delay: index * .06 }} whileHover={{ y: -4 }}><span className="honors-v2-card-no">{String(index + 1).padStart(2, "0")}</span><button onClick={onOpen} aria-label={`查看${record.roleName}岗位证书`}><div className="honors-v2-certificate"><img src={certificateBackground} alt="" /><div><small>因材智训 · VERIFIED</small><h3>岗位学习荣誉证书</h3><i /><strong>{record.learnerName}</strong><p>完成「{record.roleName}」岗位全部学习内容与综合验收</p></div><span>✓</span></div><div className="honors-v2-card-meta"><div><span><ShieldCheck />已认证</span><strong>{record.roleName}</strong><small><CalendarDays />{formatCertificateDate(record.issuedAt)} · {record.completedRounds} 轮训练</small></div><span className="honors-v2-view"><Eye />查看 / 下载<Download /></span></div></button></motion.article> }
-function HeroStat({ label, value, suffix, compact = false }: { label: string; value: string; suffix?: string; compact?: boolean }) { return <div><span>{label}</span><strong className={compact ? "compact" : ""}>{value}{suffix && <small>{suffix}</small>}</strong></div> }
+function CertificateCard({
+  record,
+  index,
+  onOpen,
+}: {
+  record: RoleCertificateRecord
+  index: number
+  onOpen: () => void
+}) {
+  const tones = ["is-gold", "is-blue", "is-cyan"]
+  return (
+    <motion.article
+      className={`honors-v2-card ${tones[index % tones.length]}`}
+      initial={{ opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: 0.5, delay: index * 0.06 }}
+      whileHover={{ y: -4 }}
+    >
+      <span className="honors-v2-card-no">{String(index + 1).padStart(2, "0")}</span>
+      <button type="button" onClick={onOpen} aria-label={`查看${record.roleName}岗位证书`}>
+        <div className="honors-v2-certificate">
+          <img src={certificateBackground} alt="" aria-hidden="true" />
+          <div>
+            <small>因材智训 · VERIFIED</small>
+            <h3>岗位学习荣誉证书</h3>
+            <i />
+            <strong>{record.learnerName}</strong>
+            <p>完成「{record.roleName}」岗位全部学习内容与综合验收</p>
+          </div>
+          <span aria-hidden="true">✓</span>
+        </div>
+        <div className="honors-v2-card-meta">
+          <div>
+            <span><ShieldCheck aria-hidden="true" />已认证</span>
+            <strong>{record.roleName}</strong>
+            <small><CalendarDays aria-hidden="true" />{formatCertificateDate(record.issuedAt)} · {record.completedRounds} 轮训练</small>
+          </div>
+          <span className="honors-v2-view"><Eye aria-hidden="true" />查看 / 下载<Download aria-hidden="true" /></span>
+        </div>
+      </button>
+    </motion.article>
+  )
+}
+
+function SummaryStat({
+  label,
+  value,
+  suffix,
+  compact = false,
+}: {
+  label: string
+  value: string
+  suffix?: string
+  compact?: boolean
+}) {
+  return (
+    <div>
+      <span>{label}</span>
+      <strong className={compact ? "compact" : ""}>{value}{suffix && <small>{suffix}</small>}</strong>
+    </div>
+  )
+}

@@ -4,9 +4,8 @@ import {
   ArrowRight,
   Flag,
   Lock,
+  MousePointerClick,
   Network,
-  Radar,
-  Route,
   Sparkles,
   Zap,
 } from "lucide-react"
@@ -97,94 +96,105 @@ export function LearnerMatchReport(props: LearnerMatchReportProps) {
   const report = buildReport(props)
   const [selectedNodeId, setSelectedNodeId] = useState("")
   const [selectedPathId, setSelectedPathId] = useState("")
+  const [activeDetail, setActiveDetail] = useState<"evidence" | "resources" | "path">("evidence")
   const selectedNode = report.knowledgeNodes.find((node) => node.id === selectedNodeId) ?? report.knowledgeNodes[0]
+  const primaryGap = report.knowledgeNodes.find((node) => node.status === "gap") ?? report.knowledgeNodes[0]
+  const gapCount = report.knowledgeNodes.filter((node) => node.status === "gap").length
+  const readyResources = props.resources.filter((item) => item.ready)
+  const recommendedResource = readyResources[0] ?? props.resources[0]
   const pathCapabilities = props.capabilities.length ? props.capabilities : [{ id: "report-start", name: "建立目标岗位路径", level: 0, state: "ready" as const, task: "选择目标岗位后，系统会生成对应的能力节点与训练路线。", prerequisites: [] }]
   const selectedPath = pathCapabilities.find((node) => node.id === selectedPathId) ?? pathCapabilities.find((node) => node.state === "current") ?? pathCapabilities[0]
+  const primaryActionHref = primaryGap.status === "gap"
+    ? `/competency?topic=${encodeURIComponent(primaryGap.name)}&source=knowledge-gap#training-focus`
+    : "/competency"
+  const completionCriterion = props.plan?.acceptance_criteria?.[0]
+    ?? `完成「${primaryGap.name}」主题训练，并通过对应实操与分阶测试验证。`
   return (
     <section id="learner-match-report" className="learner-signal-report mb-4 scroll-mt-24">
-      <header className="learner-signal-identity flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-8">
-        <div>
-          <span className="learner-signal-kicker"><Radar className="size-3.5" /> LEARNER SIGNAL / RESOURCE SIGNAL</span>
-          <h2 className="mt-1 text-lg font-black tracking-[-.025em] text-[#17354A] sm:text-xl">双轨信号匹配台 <small className="ml-2 text-[10px] font-bold tracking-normal text-[#517488]">画像、测评与训练记录联合对齐</small></h2>
-        </div>
-        <div className="learner-signal-live"><span /><div><b>画像信号在线</b><small>证据与资源持续同步</small></div></div>
-      </header>
-
-      <div className="learner-signal-stagebar" aria-label="报告生成流程"><span className="is-done">01 <b>画像采样</b></span><i /><span className="is-live">02 <b>双轨匹配</b></span><i /><span>03 <b>路径输出</b></span><i /><span>04 <b>训练验收</b></span></div>
-
       <div className="learner-signal-content">
-        <section className="learner-signal-summary" aria-label="核心匹配结论">
-          <div className="learner-signal-metrics" aria-label="报告关键指标">
-            <SignalMetric label="理论证据" value={`${Math.round(props.theoryScore ?? props.diagnosis?.knowledge_score ?? 0)}%`} detail="测评与诊断加权" tone="blue" />
-            <SignalMetric label="已确认差距" value={String(report.knowledgeNodes.filter((node) => node.status === "gap").length)} detail="优先进入训练路径" tone="amber" />
-            <SignalMetric label="资源已就绪" value={`${props.resources.filter((item) => item.ready).length}/${props.resources.length}`} detail="讲义 / 实操 / 测试" tone="green" />
-            <SignalMetric label="路径节点" value={String(pathCapabilities.length)} detail="按前置关系编排" tone="violet" />
+        <section className="learner-signal-hero" aria-labelledby="learner-signal-primary-result">
+          <div className="learner-signal-primary-result">
+            <span className="learner-signal-eyebrow">目标岗位 · {props.targetRoleName || "目标岗位"}</span>
+            <h2 id="learner-signal-primary-result">优先补齐：{primaryGap.name}</h2>
+            <div className="learner-signal-primary-evidence"><span>关键依据</span><p>{primaryGap.evidence}</p></div>
+            <div className="learner-signal-primary-action"><span>推荐动作</span><p>{primaryGap.nextStep}{recommendedResource ? ` 优先使用「${recommendedResource.title}」。` : ""}</p></div>
+            <div className="learner-signal-primary-criterion"><span><Flag className="size-4" />本轮完成标准</span><p>{completionCriterion}</p></div>
+            <Link to={primaryActionHref} className="learner-signal-primary-button">{primaryGap.status === "gap" ? `开始补齐「${primaryGap.name}」` : "开始下一轮训练"}<ArrowRight className="size-4" /></Link>
           </div>
-          <aside className="learner-signal-conclusion learner-signal-conclusion--compact">
-            <span><Sparkles className="size-4" /> 即时匹配结论</span>
-            <h3>先补齐首要差距，再沿能力前置关系逐级验收。</h3>
-            <p>{report.knowledgeNodes.filter((node) => node.status === "gap").length ? `已定位 ${report.knowledgeNodes.filter((node) => node.status === "gap").length} 个明确差距，推荐资源已重排。` : "暂无已确认盲区，继续通过实操采集证据。"}</p>
-            <Link to="/competency">开始训练 <ArrowRight className="size-4" /></Link>
+          <aside className="learner-signal-summary" aria-label="匹配摘要">
+            <div className="learner-signal-summary-title"><Sparkles className="size-4" /><span>本次匹配摘要</span></div>
+            <div className="learner-signal-metrics">
+              <SignalMetric label="理论证据" value={`${Math.round(props.theoryScore ?? props.diagnosis?.knowledge_score ?? 0)}%`} detail="测评与诊断" tone="blue" />
+              <SignalMetric label="明确差距" value={String(gapCount)} detail="按优先级排序" tone="amber" />
+              <SignalMetric label="资源就绪" value={`${readyResources.length}/${props.resources.length}`} detail="讲义 / 实操 / 测试" tone="green" />
+            </div>
           </aside>
         </section>
 
-        <article className="learner-signal-module learner-signal-scan">
-          <ReportHeading image="/images/learner-resource-matching-coupler-v1.png" index="01" title="画像 × 资源双轨映射" description="左侧学习者证据与右侧训练资源经由中央信号核完成匹配；点击节点查看依据与处理动作。" />
+        <div className="learner-signal-detail-switcher">
+          <div className="learner-signal-detail-hint"><MousePointerClick className="size-3.5" /><span>点击下方按钮切换查看</span></div>
+          <div className="learner-signal-detail-tabs" role="tablist" aria-label="报告详情">
+            <button id="learner-detail-tab-evidence" type="button" role="tab" aria-selected={activeDetail === "evidence"} aria-controls="learner-detail-panel-evidence" onClick={() => setActiveDetail("evidence")}><span>判断依据</span><small>{activeDetail === "evidence" ? "正在查看" : "点击查看"}</small></button>
+            <button id="learner-detail-tab-resources" type="button" role="tab" aria-selected={activeDetail === "resources"} aria-controls="learner-detail-panel-resources" onClick={() => setActiveDetail("resources")}><span>匹配资源</span><small>{activeDetail === "resources" ? "正在查看" : "点击查看"}</small></button>
+            <button id="learner-detail-tab-path" type="button" role="tab" aria-selected={activeDetail === "path"} aria-controls="learner-detail-panel-path" onClick={() => setActiveDetail("path")}><span>学习路径</span><small>{activeDetail === "path" ? "正在查看" : "点击查看"}</small></button>
+          </div>
+        </div>
+
+        {activeDetail === "evidence" && <article id="learner-detail-panel-evidence" className="learner-signal-module" role="tabpanel" aria-labelledby="learner-detail-tab-evidence">
+          <ReportHeading index="01" title="为什么这样判断" description="点击差距项，查看系统采用的关键证据和建议动作。" />
           <div className="learner-signal-map-layout mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <div onWheelCapture={passLockedCanvasWheelToPage}><InteractiveCanvas canvasWidth={820} canvasHeight={450} viewportHeight={410} label="画像与资源双轨映射" className="learner-signal-canvas">
-              <svg viewBox="0 0 820 450" role="img" aria-label="个人知识盲区关联图" className="min-w-[760px]">
-                <defs>
-                  <pattern id="knowledge-report-grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#D8E0E8" /></pattern>
-                </defs>
-                <rect width="820" height="450" fill="url(#knowledge-report-grid)" />
-                {report.knowledgeNodes.map((node, index) => {
-                  const point = NODE_POSITIONS[index]
-                  if (!point) return null
-                  const startX = point.x < 328 ? point.x + 164 : point.x
-                  const startY = point.y + 43
-                  return <path className="learner-signal-edge" key={`edge-${node.id}`} d={`M 410 225 C ${(410 + startX) / 2} 225, ${(410 + startX) / 2} ${startY}, ${startX} ${startY}`} fill="none" stroke="#7D9FB5" strokeWidth="2.5" strokeDasharray="7 7" />
-                })}
-                <foreignObject x="326" y="176" width="168" height="98"><div className="grid h-full place-items-center rounded-[20px] border-2 border-[#6E8CAB] bg-white px-4 text-center shadow-[0_8px_18px_rgba(48,72,98,.11)]"><div><Network className="mx-auto size-5 text-[#456A90]" /><strong className="mt-2 block text-[12px] text-[#2D435A]">当前知识结构</strong></div></div></foreignObject>
-                {report.knowledgeNodes.map((node, index) => {
-                  const point = NODE_POSITIONS[index]
-                  if (!point) return null
-                  const meta = STATUS_META[node.status]
-                  const nodeClass = cn("block h-full w-full rounded-[16px] border px-3 text-left shadow-[0_5px_14px_rgba(48,72,98,.07)] transition hover:-translate-y-0.5", meta.card, selectedNode?.id === node.id && "ring-2 ring-[#577FA7]/25")
-                  const nodeContent = <><span className="flex items-center gap-1.5 text-xs font-bold"><span className={cn("size-1.5 rounded-full", meta.dot)} />{meta.label}{node.status === "gap" && <ArrowRight className="ml-auto size-3" />}</span><strong className="mt-2 block line-clamp-2 text-sm leading-5">{node.name}</strong></>
-                  return <foreignObject key={node.id} x={point.x} y={point.y} width="164" height="86">{node.status === "gap" ? <Link to={`/competency?topic=${encodeURIComponent(node.name)}&source=knowledge-gap#training-focus`} onClick={() => setSelectedNodeId(node.id)} aria-label={`学习知识盲区：${node.name}`} className={nodeClass}>{nodeContent}</Link> : <button type="button" onClick={() => setSelectedNodeId(node.id)} className={nodeClass}>{nodeContent}</button>}</foreignObject>
-                })}
-              </svg>
-            </InteractiveCanvas></div>
+            <div>
+              <div className="learner-signal-map-canvas" onWheelCapture={passLockedCanvasWheelToPage}><InteractiveCanvas canvasWidth={820} canvasHeight={450} viewportHeight={410} label="画像与证据关联图" className="learner-signal-canvas">
+                <svg viewBox="0 0 820 450" role="img" aria-label="个人知识盲区关联图" className="min-w-[760px]">
+                  <defs><pattern id="knowledge-report-grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#D8E0E8" /></pattern></defs>
+                  <rect width="820" height="450" fill="url(#knowledge-report-grid)" />
+                  {report.knowledgeNodes.map((node, index) => {
+                    const point = NODE_POSITIONS[index]
+                    if (!point) return null
+                    const startX = point.x < 328 ? point.x + 164 : point.x
+                    const startY = point.y + 43
+                    return <path className="learner-signal-edge" key={`edge-${node.id}`} d={`M 410 225 C ${(410 + startX) / 2} 225, ${(410 + startX) / 2} ${startY}, ${startX} ${startY}`} fill="none" stroke="#7D9FB5" strokeWidth="2.5" strokeDasharray="7 7" />
+                  })}
+                  <foreignObject x="326" y="176" width="168" height="98"><div className="grid h-full place-items-center rounded-[20px] border-2 border-[#6E8CAB] bg-white px-4 text-center shadow-[0_8px_18px_rgba(48,72,98,.11)]"><div><Network className="mx-auto size-5 text-[#456A90]" /><strong className="mt-2 block text-[12px] text-[#2D435A]">多源学习证据</strong></div></div></foreignObject>
+                  {report.knowledgeNodes.map((node, index) => {
+                    const point = NODE_POSITIONS[index]
+                    if (!point) return null
+                    const meta = STATUS_META[node.status]
+                    const nodeClass = cn("block h-full w-full rounded-[16px] border px-3 text-left shadow-[0_5px_14px_rgba(48,72,98,.07)] transition hover:-translate-y-0.5", meta.card, selectedNode?.id === node.id && "ring-2 ring-[#577FA7]/25")
+                    return <foreignObject key={node.id} x={point.x} y={point.y} width="164" height="86"><button type="button" onClick={() => setSelectedNodeId(node.id)} aria-pressed={selectedNode?.id === node.id} className={nodeClass}><span className="flex items-center gap-1.5 text-xs font-bold"><span className={cn("size-1.5 rounded-full", meta.dot)} />{meta.label}</span><strong className="mt-2 block line-clamp-2 text-sm leading-5">{node.name}</strong></button></foreignObject>
+                  })}
+                </svg>
+              </InteractiveCanvas></div>
+              <div className="learner-signal-node-list" aria-label="差距与证据项">{report.knowledgeNodes.map((node) => <button key={node.id} type="button" onClick={() => setSelectedNodeId(node.id)} aria-pressed={selectedNode?.id === node.id} className={cn(`is-${node.status}`, selectedNode?.id === node.id && "is-selected")}><span className={cn("size-2 rounded-full", STATUS_META[node.status].dot)} /><strong>{node.name}</strong><small>{STATUS_META[node.status].label}</small></button>)}</div>
+            </div>
 
-            {selectedNode && <aside className={cn("learner-signal-gap-card", `is-${selectedNode.status}`)}><div className="learner-signal-gap-status"><span className={cn("size-2 rounded-full", STATUS_META[selectedNode.status].dot)} /><span>{STATUS_META[selectedNode.status].label}</span></div><h3 className="learner-signal-gap-title">{selectedNode.name}</h3><div className="learner-signal-evidence"><span>定位依据</span><p>{selectedNode.evidence}</p></div><div className="learner-signal-advice"><span>建议动作</span><p>{selectedNode.nextStep}</p></div>{selectedNode.status === "gap" && <Link to={`/competency?topic=${encodeURIComponent(selectedNode.name)}&source=knowledge-gap#training-focus`} className="learner-signal-gap-action">学习此主题<ArrowRight className="size-3.5" /></Link>}</aside>}
+            {selectedNode && <aside className={cn("learner-signal-gap-card", `is-${selectedNode.status}`)}><div className="learner-signal-gap-status"><span className={cn("size-2 rounded-full", STATUS_META[selectedNode.status].dot)} /><span>{STATUS_META[selectedNode.status].label}</span></div><h3 className="learner-signal-gap-title">{selectedNode.name}</h3><div className="learner-signal-evidence"><span>关键依据</span><p>{selectedNode.evidence}</p></div><div className="learner-signal-advice"><span>建议动作</span><p>{selectedNode.nextStep}</p></div></aside>}
           </div>
-          <div className="mt-3 flex flex-wrap gap-4 text-[9px] text-[#718090]">{(["gap", "verify", "supported"] as KnowledgeNodeStatus[]).map((status) => <span key={status} className="inline-flex items-center gap-1.5"><span className={cn("size-2 rounded-full", STATUS_META[status].dot)} />{STATUS_META[status].label}</span>)}</div>
-        </article>
+        </article>}
 
-        <SignalTransition from="画像证据" to="难度校准" variant="converge" />
-
-        <article className="learner-signal-module learner-signal-module--curve">
-          <ReportHeading image="/images/learner-module-difficulty-calibrator-v1.png" index="02" title="资源难度匹配曲线" description="蓝色区域表示适宜难度范围，资源曲线随学习阶段逐步提升，并保持在合理训练负荷内。" />
-          <div className="mt-5 h-[310px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={report.curve} margin={{ top: 16, right: 20, left: -8, bottom: 4 }}>
-                <CartesianGrid stroke="#E2E7EC" strokeDasharray="4 5" vertical={false} />
-                <XAxis dataKey="name" tick={{ fill: "#68798A", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} tickFormatter={difficultyLabel} tick={{ fill: "#68798A", fontSize: 10 }} axisLine={false} tickLine={false} width={48} />
-                <Tooltip formatter={(value, name) => name === "适宜难度范围" ? [difficultyRangeLabel(value), name] : [difficultyLabel(Number(value)), name]} contentStyle={{ borderRadius: 12, borderColor: "#D6DEE7", fontSize: 11 }} />
-                <Legend wrapperStyle={{ fontSize: 10 }} />
-                <Area type="monotone" dataKey="range" name="适宜难度范围" stroke="#7FA5CA" fill="#DCEAF6" fillOpacity={.8} />
-                <Line type="monotone" dataKey="difficulty" name="资源难度" stroke="#C77B32" strokeWidth={3} dot={{ r: 5, fill: "#C77B32", stroke: "#FFF", strokeWidth: 2 }} />
-              </ComposedChart>
-            </ResponsiveContainer>
+        {activeDetail === "resources" && <article id="learner-detail-panel-resources" className="learner-signal-module learner-signal-module--resources" role="tabpanel" aria-labelledby="learner-detail-tab-resources">
+          <ReportHeading index="02" title="最适合我的资源" description="资源难度按当前证据校准，并保留生成与审核状态。" />
+          <div className="learner-signal-match-grid">
+            <div className="learner-signal-chart" aria-label="资源难度匹配曲线">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={report.curve} margin={{ top: 16, right: 20, left: -8, bottom: 4 }}>
+                  <CartesianGrid stroke="#E2E7EC" strokeDasharray="4 5" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fill: "#68798A", fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} tickFormatter={difficultyLabel} tick={{ fill: "#68798A", fontSize: 10 }} axisLine={false} tickLine={false} width={48} />
+                  <Tooltip formatter={(value, name) => name === "适宜难度范围" ? [difficultyRangeLabel(value), name] : [difficultyLabel(Number(value)), name]} contentStyle={{ borderRadius: 12, borderColor: "#D6DEE7", fontSize: 11 }} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                  <Area type="monotone" dataKey="range" name="适宜难度范围" stroke="#7FA5CA" fill="#DCEAF6" fillOpacity={.8} />
+                  <Line type="monotone" dataKey="difficulty" name="资源难度" stroke="#C77B32" strokeWidth={3} dot={{ r: 5, fill: "#C77B32", stroke: "#FFF", strokeWidth: 2 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="learner-signal-resource-grid">{props.resources.map((resource) => <div key={resource.id} className={cn("learner-signal-resource", resource.ready ? "is-ready-card" : "is-waiting-card")}><span className="learner-signal-resource-icon"><img src={`/images/resource-icon-${resource.id}-v1.png`} alt="" /></span><div><strong>{resource.title}</strong><small>{resource.id === "doc" ? "建立概念与岗位语境" : resource.id === "guide" ? "完成场景化实操迁移" : "验证掌握与迁移效果"}</small></div><span className={resource.ready ? "is-ready" : "is-waiting"}>{resource.ready ? "已就绪" : "生成中"}</span><b>{resource.reviewScore ? `${Math.round(resource.reviewScore)} 分` : "待审核"}</b></div>)}</div>
           </div>
-        </article>
+        </article>}
 
-        <SignalTransition from="匹配曲线" to="路径编排" variant="relay" />
-
-        <article className="learner-signal-module learner-signal-module--route learner-signal-scan">
-          <ReportHeading image="/images/learner-module-route-navigator-v1.png" index="03" title="学习路径规划图" description="路径根据当前知识盲区、能力前置关系和已有训练计划动态生成。" />
-          <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_188px] xl:items-center">
+        {activeDetail === "path" && <article id="learner-detail-panel-path" className="learner-signal-module learner-signal-module--route" role="tabpanel" aria-labelledby="learner-detail-tab-path">
+          <ReportHeading index="03" title="接下来怎么学" description="按能力前置关系查看本轮节点和整体进度。" />
+          <div className="learner-signal-path-shell">
             <div className="min-w-0">
               <ReportPathMap
                 capabilities={pathCapabilities}
@@ -194,20 +204,9 @@ export function LearnerMatchReport(props: LearnerMatchReportProps) {
               />
               <ReportPathProgress capabilities={pathCapabilities} targetRoleName={props.targetRoleName} />
             </div>
-            <Link to="/competency" className="learner-signal-route-cta group inline-flex min-h-24 items-center justify-center gap-2 rounded-[18px] border border-[#B9CBE4] bg-[linear-gradient(145deg,#244C80,#315E9C)] px-4 text-center text-xs font-bold text-white shadow-[0_12px_24px_rgba(36,76,128,.2)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(36,76,128,.28)]"><span><span className="grid mx-auto mb-2 size-9 place-items-center rounded-xl bg-white/15"><Route className="size-4" /></span><span className="block">开始今日学习</span><span className="mt-1 block text-[9px] font-medium text-[#CFE2FF]">进入岗位训练中心</span></span><ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></Link>
           </div>
           {selectedPath && <div className="learner-signal-selected-path"><div className="flex flex-wrap items-center justify-between gap-2"><span>当前路径节点 · {selectedPath.level >= 3 ? "已验收" : selectedPath.state === "current" ? "本轮训练" : "待完成"}</span><strong>{selectedPath.name}</strong></div><p>{selectedPath.task}</p></div>}
-        </article>
-
-        <SignalTransition from="能力路径" to="资源投送" variant="dispatch" />
-
-        <div>
-          <article className="learner-signal-module learner-signal-module--resources">
-            <ReportHeading image="/images/learner-module-resource-pod-v1.png" index="04" title="资源推荐清单" description="资源状态、质量分和处理动作分离展示，避免推荐依据被操作按钮淹没。" />
-            <div className="learner-signal-resource-grid">{props.resources.map((resource) => <div key={resource.id} className={cn("learner-signal-resource", resource.ready ? "is-ready-card" : "is-waiting-card")}><span className="learner-signal-resource-icon"><img src={`/images/resource-icon-${resource.id}-v1.png`} alt="" /></span><div><strong>{resource.title}</strong><small>{resource.id === "doc" ? "建立概念与岗位语境" : resource.id === "guide" ? "完成场景化实操迁移" : "验证掌握与迁移效果"}</small></div><span className={resource.ready ? "is-ready" : "is-waiting"}>{resource.ready ? "已就绪" : "生成中"}</span><b>{resource.reviewScore ? `${Math.round(resource.reviewScore)} 分` : "待审核"}</b></div>)}</div>
-          </article>
-        </div>
-
+        </article>}
       </div>
     </section>
   )
@@ -292,24 +291,7 @@ function buildReportRouteLayout(capabilities: ReportCapability[]) {
 }
 
 function SignalMetric({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: string }) {
-  return <div className={`learner-signal-metric learner-signal-metric--${tone}`}><span>{label}</span><strong>{value}</strong><small>{detail}</small><i /></div>
-}
-
-function SignalTransition({ from, to, variant }: { from: string; to: string; variant: "converge" | "relay" | "dispatch" }) {
-  const meta = {
-    converge: { asset: "/images/learner-transition-survey-aircraft-v1.png", label: "SURVEY CALIBRATION · 01" },
-    relay: { asset: "/images/learner-transition-route-jet-v1.png", label: "ROUTE ALIGNMENT · 02" },
-    dispatch: { asset: "/images/learner-transition-cargo-evtol-v1.png", label: "RESOURCE DELIVERY · 03" },
-  }[variant]
-  return <div className={`learner-signal-transition learner-signal-transition--${variant}`} aria-label={`${from}到${to}`}>
-    <span className="learner-signal-transition-end is-origin"><small>DEPARTURE</small><strong>{from}</strong></span>
-    <div className="learner-signal-flight-lane" aria-hidden="true">
-      <i className="is-outbound" /><i className="is-return" /><b>{meta.label}</b>
-      <img className="is-outbound" src={meta.asset} alt="" decoding="async" />
-      <img className="is-return" src={meta.asset} alt="" decoding="async" />
-    </div>
-    <span className="learner-signal-transition-end is-destination"><small>ARRIVAL</small><strong>{to}</strong></span>
-  </div>
+  return <div className={`learner-signal-metric learner-signal-metric--${tone}`}><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>
 }
 
 export function ReportPathMap({ capabilities, targetRoleName, selectedId, onSelect }: { capabilities: ReportCapability[]; targetRoleName: string; selectedId?: string; onSelect: (id: string) => void }) {
@@ -453,6 +435,6 @@ function difficultyRangeLabel(value: unknown) {
   return `${difficultyLabel(Number(value[0]))}—${difficultyLabel(Number(value[1]))}`
 }
 
-function ReportHeading({ image, index, title, description }: { image: string; index: string; title: string; description: string }) {
-  return <div className="learner-signal-report-heading"><span className={`learner-signal-heading-icon is-${index}`}><img src={image} alt="" aria-hidden="true" /></span><div><span className="text-[9px] font-bold tracking-[.12em] text-[#8493A2]">{index}</span><h3 className="text-sm font-bold text-[#293C51]">{title}</h3><p className="mt-1 text-[10px] leading-4 text-[#758392]">{description}</p></div></div>
+function ReportHeading({ index, title, description }: { index: string; title: string; description: string }) {
+  return <div className="learner-signal-report-heading"><span>{index}</span><div><h3>{title}</h3><p>{description}</p></div></div>
 }

@@ -401,32 +401,33 @@ try {
 
   for (const viewport of [{ width: 1366, height: 768 }, { width: 1440, height: 900 }, { width: 1920, height: 1080 }]) {
     await page.setViewportSize(viewport)
-    await page.goto(`${baseUrl}/?legacy-home=1`)
-    await page.getByRole("heading", { name: "学习宇宙 · 实时指挥舱" }).waitFor()
+    await page.goto(`${baseUrl}/`)
+    await page.getByTestId("today-learning-home").waitFor()
+    await page.getByTestId("recommendation-reason").waitFor()
     const layout = await page.evaluate(() => {
-      const universe = document.querySelector(".learning-universe")
-      const topbar = document.querySelector(".universe-command-topbar")
-      const primary = document.querySelector('[data-testid="universe-primary-cta"]')
+      const focus = document.querySelector(".home-focus-card")
+      const primary = document.querySelector('[data-testid="home-primary-cta"]')
+      const summaries = document.querySelector(".home-summary-grid")
       const rect = (element) => {
         const box = element?.getBoundingClientRect()
         return box ? { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height } : null
       }
       return {
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-        universe: rect(universe),
-        topbar: rect(topbar),
+        focus: rect(focus),
         primary: rect(primary),
-        agentCount: document.querySelectorAll(".universe-agent-row").length,
-        planetCount: document.querySelectorAll(".universe-planet").length,
+        summaries: rect(summaries),
+        removedUniverseCount: document.querySelectorAll(".learning-universe,.flight-home-shell").length,
+        embeddedFullReportCount: document.querySelectorAll("#learner-match-report,[data-testid='role-capability-profile']").length,
       }
     })
     const overflow = layout.overflow
     assert.ok(overflow <= 1, `horizontal overflow at ${viewport.width}x${viewport.height}: ${overflow}px`)
-    assert.ok(layout.universe && layout.universe.height <= viewport.height + 1, `universe exceeded first viewport at ${viewport.width}x${viewport.height}`)
-    assert.ok(layout.topbar && layout.topbar.height <= 54, `top status bar exceeded 54px at ${viewport.width}x${viewport.height}`)
+    assert.ok(layout.focus && layout.focus.top >= 0, `today's core task was not rendered at ${viewport.width}x${viewport.height}`)
     assert.ok(layout.primary && layout.primary.top >= 0 && layout.primary.bottom <= viewport.height, `primary CTA was clipped at ${viewport.width}x${viewport.height}`)
-    assert.equal(layout.agentCount, 7, `7 Agents were not all rendered at ${viewport.width}x${viewport.height}`)
-    assert.equal(layout.planetCount, 7, `7 capability planets were not all rendered at ${viewport.width}x${viewport.height}`)
+    assert.ok(layout.summaries && layout.summaries.top > layout.focus.top, `compact summaries did not follow the core task at ${viewport.width}x${viewport.height}`)
+    assert.equal(layout.removedUniverseCount, 0, `removed learning-universe content still rendered at ${viewport.width}x${viewport.height}`)
+    assert.equal(layout.embeddedFullReportCount, 0, `home still embeds a full report at ${viewport.width}x${viewport.height}`)
   }
 
   const perf = await page.evaluate(() => ({

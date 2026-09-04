@@ -117,7 +117,7 @@ export function Courses() {
   return (
     <main className="app-page paper-theme career-route-page min-h-dvh">
       <div className="career-route-shell">
-        <AppTopbar current="courses" appearance="paper" labelOverride="岗位空间" groupOverride="职业航线导航" selectionLabel={storedRole?.name ?? "等待选择目标岗位"} iconImage="/images/courses-career-route-compass-v1.png" showRocketFormation rocketVariant="honor" />
+        <AppTopbar current="courses" appearance="paper" labelOverride="岗位空间" groupOverride="职业航线导航" selectionLabel={storedRole?.name ?? "等待选择目标岗位"} iconImage="/images/courses-career-route-compass-v1.png" />
         <section className="career-route-section career-route-selector" aria-labelledby="domain-heading">
           <div className="career-route-section-heading"><span className="career-route-heading-symbol is-compass"><Compass /></span><div><small>01 · 立即选择 / SELECT ROLE</small><h1 id="domain-heading">选择目标岗位</h1><p>先切换职业领域，再直接点击下方岗位卡片确认。</p></div><aside><Target />当前：{storedRole?.name ?? "尚未选择"}</aside></div>
           <div className="career-route-domain-grid">
@@ -133,7 +133,6 @@ export function Courses() {
         </section>
 
         <CareerRouteTransfer
-          asset="/images/capability-transition-aircraft-v1.png"
           from={`职业领域 · ${domain.name}`}
           to="可选岗位航线"
           label="ROUTE TRANSFER · 01"
@@ -149,7 +148,6 @@ export function Courses() {
         </section>
 
         <CareerRouteTransfer
-          asset="/images/capability-transition-satellite-v1.png"
           from={`岗位目录 · ${domain.roles.length} 条航线`}
           to="航向状态同步"
           label="ORBIT TELEMETRY · 02"
@@ -183,9 +181,9 @@ export function Courses() {
   )
 }
 
-function CareerRouteTransfer({ asset, from, to, label, variant }: { asset: string; from: string; to: string; label: string; variant: "aircraft" | "satellite" }) {
+function CareerRouteTransfer({ from, to, label, variant }: { from: string; to: string; label: string; variant: "aircraft" | "satellite" }) {
   return <div className={`career-route-transfer is-${variant}`} aria-label={`${from}与${to}之间的双向航线`}>
-    <div className="career-route-flight-lane" aria-hidden="true"><i className="is-eastbound" /><i className="is-westbound" /><b>{label} · BIDIRECTIONAL</b><img className="is-eastbound" src={asset} alt="" /><img className="is-westbound" src={asset} alt="" /></div>
+    <div className="career-route-flight-lane" aria-hidden="true"><i className="is-eastbound" /><i className="is-westbound" /><b>{label} · BIDIRECTIONAL</b></div>
   </div>
 }
 

@@ -19,12 +19,15 @@ export function ConceptResultView({
   result,
   loading,
   lastQuery,
+  showResources = true,
 }: {
   result: ExplainResult | null
   /** 正在请求讲解 */
   loading: boolean
   /** 已提交的问题，用于 B 站视频检索 */
   lastQuery: string
+  /** 是否在结果内部渲染外部学习资源；默认开启，保持现有调用方兼容。 */
+  showResources?: boolean
 }) {
   const matched = result?.matched && result.key ? CONCEPT_ANIMS.find((c) => c.key === result.key) : null
   const MatchedAnim = matched?.component
@@ -95,7 +98,7 @@ export function ConceptResultView({
       )}
 
       {/* B 站与公开学习资源 —— 自产讲解之外的外部资源补充 */}
-      {!loading && result && lastQuery && (
+      {showResources && !loading && result && lastQuery && (
         <ExternalLearningResources
           keyword={lastQuery}
           conceptTitle={result.title || result.script?.concept || matched?.title}

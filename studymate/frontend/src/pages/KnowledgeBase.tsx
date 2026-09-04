@@ -6,6 +6,7 @@ import {
   FileSearch,
   FileText,
   Loader2,
+  MousePointerClick,
   Pencil,
   Plus,
   RefreshCw,
@@ -19,6 +20,8 @@ import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useCurrentCourse } from "@/store/course"
 import { getSelectedKnowledgeBaseId, setSelectedKnowledgeBaseId } from "@/store/knowledgeBase"
+
+import "./KnowledgeBase.css"
 
 interface KnowledgeDocument {
   id: number
@@ -68,6 +71,14 @@ export function KnowledgeBase() {
   const [message, setMessage] = useState("")
 
   const selected = useMemo(() => items.find((item) => item.id === selectedId) || items[0] || null, [items, selectedId])
+  const selectedReadyCount = useMemo(
+    () => selected?.documents.filter((document) => ["ready", "ready_keyword"].includes(document.status)).length ?? 0,
+    [selected],
+  )
+  const selectedActiveCount = useMemo(
+    () => selected?.documents.filter((document) => ["queued", "parsing", "vectorizing"].includes(document.status)).length ?? 0,
+    [selected],
+  )
 
   const refresh = useCallback(async () => {
     const response = await apiGet<{ items: KnowledgeLibrary[] }>("/knowledge-bases")
@@ -248,138 +259,166 @@ export function KnowledgeBase() {
 
   return (
     <div className="app-page paper-theme knowledge-forge-page min-h-dvh pb-14">
-      <div className="w-full px-2 py-3 sm:px-4 sm:py-4 lg:px-5">
-        <AppTopbar className="rounded-none border-x-0 shadow-none" current="knowledge" appearance="paper" labelOverride="自建知识库" groupOverride="个人知识工程" selectionLabel={selected?.name} showRocketFormation />
+      <div className="w-full px-2 py-3 sm:px-4 sm:py-4 lg:px-3">
+        <AppTopbar className="rounded-none border-x-0 shadow-none" current="knowledge" appearance="paper" labelOverride="自建知识库" groupOverride="个人知识工程" selectionLabel={selected?.name} />
 
-        <main className="knowledge-forge-main">
-          <section className="knowledge-forge-command">
-            <div className="knowledge-forge-hero-copy">
-              <span className="knowledge-forge-eyebrow">PRIVATE KNOWLEDGE FORGE · 私有知识工程</span>
-              <h1>文件入库，<em>即刻可检索</em></h1>
-              <p>选择知识仓，上传资料；解析、向量化与检索证据在同一工作台持续更新。</p>
-              <div className="knowledge-forge-metrics">
-                <span><b>{items.length}</b><small>知识仓</small></span>
-                <span><b>{items.reduce((sum, item) => sum + item.document_count, 0)}</b><small>已入库文件</small></span>
-                <span><b>{hasActiveTask ? "运行中" : "待命"}</b><small>解析管线</small></span>
-              </div>
+        <main className="knowledge-base-main">
+          <header className="knowledge-base-intro">
+            <div>
+              <span>私有知识工程</span>
+              <h1>让自己的资料，成为助教可引用的证据</h1>
+              <p>选择知识库，查看文档处理状态，并用带来源与页码的结果验证检索质量。</p>
             </div>
-            <div className="knowledge-forge-quick-select">
-              <div className="knowledge-forge-subhead"><span>当前知识仓</span><b>{selected ? "助教已选用" : "等待创建"}</b></div>
-              <div className="knowledge-forge-quick-libraries">
-                {loading && <div className="knowledge-forge-loading" />}
-                {items.map((item) => <button key={item.id} type="button" onClick={() => chooseLibrary(item.id)} className={selected?.id === item.id ? "is-selected" : ""}><Database /><span><strong>{item.name}</strong><small>{item.document_count} 份资料</small></span>{selected?.id === item.id && <CheckCircle2 />}</button>)}
+            <dl aria-label="知识库概况">
+              <div><dt>知识库</dt><dd>{items.length}</dd></div>
+              <div><dt>已入库文件</dt><dd>{items.reduce((sum, item) => sum + item.document_count, 0)}</dd></div>
+              <div><dt>处理管线</dt><dd>{hasActiveTask ? "运行中" : "待命"}</dd></div>
+            </dl>
+          </header>
+
+          <section className="knowledge-base-workspace" aria-label="私有知识库工作台">
+            <aside className="knowledge-base-rail" aria-label="知识库列表">
+              <div className="knowledge-base-rail-heading">
+                <div><Database /><span><strong>我的知识库</strong><small>选择助教引用源</small></span></div>
+                <b>{items.length}</b>
               </div>
-              <form onSubmit={(event) => { event.preventDefault(); void createLibrary() }}>
-                <label htmlFor="knowledge-forge-name">新建私有知识仓</label>
-                <div><input id="knowledge-forge-name" ref={nameInputRef} value={name} onChange={(event) => setName(event.target.value)} placeholder="输入知识库名称" maxLength={128} /><button type="submit" disabled={busy || !name.trim()}><Plus />创建</button></div>
-              </form>
-            </div>
-          </section>
 
-          <section className="knowledge-forge-section knowledge-forge-workbench knowledge-forge-workbench-primary">
-            <SectionHeading number="01" eyebrow="INGESTION & RETRIEVAL" title="文件入库与索引工作台" description="上传、等待、解析、向量化、成功与失败状态分层呈现；操作区与运行状态互不干扰。" />
-            <div className="knowledge-forge-tabs">
-              <button type="button" onClick={() => setTab("library")} className={tab === "library" ? "is-active" : ""}><span>01</span>资料与进度</button>
-              <button type="button" onClick={() => setTab("search")} className={tab === "search" ? "is-active" : ""}><span>02</span>RAG 检索测试</button>
-            </div>
-            {message && <div role="status" className="knowledge-forge-message"><i />{message}</div>}
-
-            {tab === "library" ? (
-              <div className="knowledge-forge-documents">
-                {!selected && (
-                  <div className="knowledge-forge-empty">
-                    <img src="/images/knowledge-ingestion-engine-v1.png" alt="" /><span>WAREHOUSE OFFLINE</span><h2>先建立一座私有知识仓</h2>
-                    <p>创建后即可上传 PDF、PPTX、DOCX、Markdown 或 TXT；解析进度、来源页码和失败重试都会真实展示。</p>
-                    <button type="button" onClick={() => nameInputRef.current?.focus()}><Plus />立即命名创建</button>
-                  </div>
-                )}
-                {selected && (
-                  <div className="knowledge-forge-upload-row">
-                    <input ref={fileRef} type="file" className="hidden" accept=".pdf,.pptx,.docx,.md,.markdown,.txt" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadFile(file) }} />
-                    <div><img src="/images/knowledge-ingestion-engine-v1.png" alt="" /><span><b>INGESTION ENGINE</b><strong>投递文件进入解析管线</strong><small>PDF、PPTX、DOCX、Markdown、TXT · 单文件 20MB</small></span></div>
-                    <button type="button" disabled={busy} onClick={() => fileRef.current?.click()}>
-                      {busy ? <Loader2 className="animate-spin" /> : <Upload />}选择并上传
-                    </button>
-                  </div>
-                )}
-
-                <div className="knowledge-forge-document-list">
-                  {selected?.documents.map((document) => (
-                    <article key={document.id} className={`knowledge-forge-document is-${document.status}`}>
-                      <div className="knowledge-forge-file-icon"><FileText /></div>
-                      <div className="knowledge-forge-document-body">
-                        <div className="knowledge-forge-document-title"><strong>{document.filename}</strong><span>{document.status === "ready" ? "向量检索就绪" : document.status === "ready_keyword" ? "关键词检索就绪" : document.status === "error" ? "处理失败" : document.status === "queued" ? "等待后台处理" : document.status === "vectorizing" ? "正在向量化" : "正在解析"}</span></div>
-                        {["queued", "parsing", "vectorizing"].includes(document.status) && (
-                          <div className="knowledge-forge-progress-grid">
-                            <Progress label="解析" value={document.parse_progress} />
-                            <Progress label="向量化" value={document.vector_progress} />
-                          </div>
-                        )}
-                        <p>{document.page_count ? `${document.page_count} 页 · ` : ""}{document.error_detail || `${Math.ceil(document.size / 1024)} KB`}</p>
-                        {document.ocr_status === "required_unconfigured" && <p className="knowledge-forge-ocr">OCR 状态：扫描 PDF 路径可插拔但当前未配置；不会伪装解析成功。</p>}
-                      </div>
-                      <div className="knowledge-forge-document-actions">
-                        {document.retry_available && <button type="button" disabled={busy} onClick={() => void retryDocument(document.id)}><RefreshCw />重试 {document.retry_count}/3</button>}
-                        <button type="button" onClick={() => deleteDocument(document.id)} className="is-danger" aria-label={`删除 ${document.filename}`}><Trash2 /></button>
-                      </div>
-                    </article>
-                  ))}
-                  {selected && selected.documents.length === 0 && <div className="knowledge-forge-document-empty">管线当前待命。上传资料后，解析、索引和来源页码会在这里展示。</div>}
-                </div>
-              </div>
-            ) : (
-              <div className="knowledge-forge-search-panel">
-                <form onSubmit={(event) => { event.preventDefault(); void runSearch() }}>
-                  <div><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="输入岗位能力点或任务问题，验证当前私有库的检索结果" /></div>
-                  <button type="submit" disabled={busy || !selected || !query.trim()}>{busy ? <Loader2 className="animate-spin" /> : <FileSearch />}启动检索</button>
-                </form>
-                <div className="knowledge-forge-results">
-                  {results.map((result) => (
-                    <article key={result.chunk_id}>
-                      <div><strong>{result.source}{result.page ? ` · 第 ${result.page} 页` : ""}</strong><span>相对匹配 {result.relevance_percent}%</span></div>
-                      <p>{result.content}</p>
-                    </article>
-                  ))}
-                  {!results.length && <div className="knowledge-forge-result-empty"><FileSearch /><span>检索结果将在这里形成带来源与页码的证据列表</span></div>}
-                </div>
-              </div>
-            )}
-          </section>
-
-          <section className={`knowledge-forge-transfer ${hasActiveTask ? "is-running" : ""}`} aria-label="文件从上传到可检索的处理管线">
-            <div className="knowledge-forge-transfer-copy"><span>PIPELINE TRANSFER</span><strong>从原始文件到检索证据</strong><p>数据包沿专属处理轨道依次通过解析、切片、向量化与索引校验。</p></div>
-            <div className="knowledge-forge-transfer-visual"><img src="/images/knowledge-transfer-rail-v1.png" alt="文件上传、解析、向量化和知识归档处理管线" /><i /><i /><i /></div>
-            <div className="knowledge-forge-transfer-steps"><span><b>01</b>上传</span><span><b>02</b>解析</span><span><b>03</b>向量化</span><span><b>04</b>可检索</span></div>
-          </section>
-
-          <section className="knowledge-forge-section knowledge-forge-library-section">
-            <SectionHeading number="02" eyebrow="WAREHOUSE GOVERNANCE" title="知识仓编排与权限边界" description="选择助教引用源，维护岗位绑定和知识仓生命周期；高风险删除操作保持独立。" />
-            <div className="knowledge-forge-library-layout">
-              <aside className="knowledge-forge-library-list">
-                <div className="knowledge-forge-subhead"><span>全部知识仓</span><b>{items.length} 个</b></div>
+              <div className="knowledge-base-library-list">
+                {loading && <div className="knowledge-base-loading" aria-label="正在加载知识库"><Loader2 className="animate-spin" /></div>}
                 {items.map((item) => (
-                  <button key={item.id} type="button" onClick={() => chooseLibrary(item.id)} className={selected?.id === item.id ? "is-selected" : ""}>
-                    <span><Database /></span><span><strong>{item.name}</strong><small>{item.document_count} 份资料</small></span>
-                    {selectedId === item.id && <CheckCircle2 />}
+                  <button key={item.id} type="button" disabled={busy} onClick={() => chooseLibrary(item.id)} className={selected?.id === item.id ? "is-selected" : ""}>
+                    <span className="knowledge-base-library-icon"><Database /></span>
+                    <span><strong>{item.name}</strong><small>{item.document_count} 份资料 · 点击切换</small></span>
+                    {selected?.id === item.id && <CheckCircle2 className="knowledge-base-library-check" />}
                   </button>
                 ))}
-              </aside>
-              <div className="knowledge-forge-library-console">
-                <div className="knowledge-forge-console-info">
-                  <span>ACTIVE WAREHOUSE</span>
-                  <h2>{selected?.name || "尚未创建知识库"}</h2>
-                  <p>{selected?.bound_course_id ? `已绑定岗位 ID ${selected.bound_course_id}` : "可绑定当前岗位，也可在任意助教会话中使用。"}</p>
-                  {selected && <div className="knowledge-forge-selected-state"><i />助教已选用 · 私有边界生效</div>}
-                </div>
-                {selected && <div className="knowledge-forge-console-actions">
-                  <span>WAREHOUSE ACTIONS</span>
-                  <div className="knowledge-forge-management">
-                    <button type="button" onClick={renameLibrary}><Pencil />重命名</button>
-                    <button type="button" onClick={bindCourse}><BookOpen />绑定当前岗位</button>
-                    <button type="button" onClick={deleteLibrary} className="is-danger"><Trash2 />删除知识库</button>
-                  </div>
-                </div>}
               </div>
+
+              <form className={`knowledge-base-create ${selected ? "is-secondary" : "is-primary"}`} onSubmit={(event) => { event.preventDefault(); void createLibrary() }}>
+                <label htmlFor="knowledge-base-name">{selected ? "新建其他知识库" : "创建第一个知识库"}</label>
+                <div>
+                  <input id="knowledge-base-name" ref={nameInputRef} value={name} onChange={(event) => setName(event.target.value)} placeholder="输入知识库名称" maxLength={128} />
+                  <button type="submit" disabled={busy || !name.trim()}>{busy ? <Loader2 className="animate-spin" /> : <Plus />}{selected ? "新建" : "创建知识库"}</button>
+                </div>
+                <small>{selected ? "输入名称后，“新建”按钮会亮起。" : "知识库仅对当前账号可见；输入名称后即可创建。"}</small>
+              </form>
+            </aside>
+
+            <div className="knowledge-base-stage">
+              <header className="knowledge-base-current">
+                <div className="knowledge-base-current-copy">
+                  <span className="knowledge-base-kicker">当前助教引用库</span>
+                  <div className="knowledge-base-current-title">
+                    <h2>{selected?.name || "建立首个私有知识库"}</h2>
+                    {selected && <span><i />已选用</span>}
+                  </div>
+                  <p>{selected
+                    ? selected.bound_course_id
+                      ? selected.bound_course_id === course?.id
+                        ? `已绑定当前岗位《${course.name}》，助教会在相关学习场景中使用该库。`
+                        : "已绑定岗位，助教会在相关学习场景中使用该库。"
+                      : "当前为账号私有引用源，可绑定目标岗位并在助教会话中使用。"
+                    : "创建后可上传 PDF、PPTX、DOCX、Markdown 或 TXT。"}</p>
+                </div>
+
+                {selected && (
+                  <div className="knowledge-base-management" aria-label="知识库管理操作">
+                    <span className="knowledge-base-action-hint"><MousePointerClick />点击这里管理当前知识库</span>
+                    <div className="knowledge-base-management-buttons">
+                      <button type="button" disabled={busy} onClick={renameLibrary} className="is-rename"><Pencil />重命名</button>
+                      <button type="button" disabled={busy} onClick={bindCourse} className="is-bind"><BookOpen />{course ? "绑定当前岗位" : "解除岗位绑定"}</button>
+                      <button type="button" disabled={busy} onClick={deleteLibrary} className="is-danger"><Trash2 />删除知识库</button>
+                    </div>
+                  </div>
+                )}
+
+                {selected && (
+                  <dl className="knowledge-base-current-stats" aria-label="当前知识库状态">
+                    <div><dt>资料</dt><dd>{selected.document_count}</dd></div>
+                    <div><dt>可检索</dt><dd>{selectedReadyCount}</dd></div>
+                    <div><dt>处理中</dt><dd>{selectedActiveCount}</dd></div>
+                  </dl>
+                )}
+              </header>
+
+              {message && <div role="status" className="knowledge-base-message"><i />{message}</div>}
+
+              {!selected ? (
+                <div className="knowledge-base-empty-stage">
+                  <img src="/images/knowledge-ingestion-engine-v1.png" alt="" />
+                  <p>解析进度、失败原因与可引用证据会在这里集中展示并持续更新。</p>
+                </div>
+              ) : (
+                <>
+                  <section className="knowledge-base-upload" aria-label="上传资料">
+                    <input ref={fileRef} type="file" className="hidden" accept=".pdf,.pptx,.docx,.md,.markdown,.txt" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadFile(file) }} />
+                    <div className="knowledge-base-upload-copy">
+                      <span className="knowledge-base-upload-icon"><Upload /></span>
+                      <div><strong>添加资料到当前知识库</strong><small>PDF、PPTX、DOCX、Markdown、TXT · 单文件 20MB</small></div>
+                    </div>
+                    <ol className="knowledge-base-pipeline" aria-label="资料处理流程">
+                      <li><b>1</b>上传</li><li><b>2</b>解析</li><li><b>3</b>向量化</li><li><b>4</b>可检索</li>
+                    </ol>
+                    <div className="knowledge-base-upload-action">
+                      <span><MousePointerClick />建议从这里开始</span>
+                      <button type="button" disabled={busy} onClick={() => fileRef.current?.click()}>
+                        {busy ? <Loader2 className="animate-spin" /> : <Upload />}上传资料
+                      </button>
+                    </div>
+                  </section>
+
+                  <div className="knowledge-base-tabs" role="tablist" aria-label="知识库工作区">
+                    <button type="button" role="tab" aria-selected={tab === "library"} onClick={() => setTab("library")} className={tab === "library" ? "is-active" : ""}><FileText />资料与进度</button>
+                    <button type="button" role="tab" aria-selected={tab === "search"} onClick={() => setTab("search")} className={tab === "search" ? "is-active" : ""}><FileSearch />RAG 检索测试</button>
+                  </div>
+
+                  {tab === "library" ? (
+                    <section className="knowledge-base-documents" role="tabpanel" aria-label="资料与进度">
+                      <div className="knowledge-base-panel-heading"><div><strong>库内资料</strong><small>后台处理进度会自动更新</small></div><span>{selected.documents.length} 份</span></div>
+                      <div className="knowledge-base-document-list">
+                        {selected.documents.map((document) => (
+                          <article key={document.id} className={`knowledge-base-document is-${document.status}`}>
+                            <div className="knowledge-base-file-icon"><FileText /></div>
+                            <div className="knowledge-base-document-body">
+                              <div className="knowledge-base-document-title"><strong>{document.filename}</strong><span>{document.status === "ready" ? "向量检索就绪" : document.status === "ready_keyword" ? "关键词检索就绪" : document.status === "error" ? "处理失败" : document.status === "queued" ? "等待后台处理" : document.status === "vectorizing" ? "正在向量化" : "正在解析"}</span></div>
+                              {["queued", "parsing", "vectorizing"].includes(document.status) && (
+                                <div className="knowledge-base-progress-grid">
+                                  <Progress label="解析" value={document.parse_progress} />
+                                  <Progress label="向量化" value={document.vector_progress} />
+                                </div>
+                              )}
+                              <p>{document.page_count ? `${document.page_count} 页 · ` : ""}{document.error_detail || `${Math.ceil(document.size / 1024)} KB`}</p>
+                              {document.ocr_status === "required_unconfigured" && <p className="knowledge-base-ocr">OCR 状态：扫描 PDF 路径可插拔但当前未配置；不会伪装解析成功。</p>}
+                            </div>
+                            <div className="knowledge-base-document-actions">
+                              {document.retry_available && <button type="button" disabled={busy} onClick={() => void retryDocument(document.id)}><RefreshCw />重试 {document.retry_count}/3</button>}
+                              <button type="button" disabled={busy} onClick={() => deleteDocument(document.id)} className="is-danger" aria-label={`删除 ${document.filename}`}><Trash2 /></button>
+                            </div>
+                          </article>
+                        ))}
+                        {selected.documents.length === 0 && <div className="knowledge-base-document-empty"><FileText /><strong>还没有资料</strong><span>使用上方“上传资料”，处理进度和来源页码会在这里持续更新。</span></div>}
+                      </div>
+                    </section>
+                  ) : (
+                    <section className="knowledge-base-search" role="tabpanel" aria-label="RAG 检索测试">
+                      <div className="knowledge-base-panel-heading"><div><strong>验证引用证据</strong><small>只检索当前选中的私有知识库</small></div><span>最多返回 6 条</span></div>
+                      <form onSubmit={(event) => { event.preventDefault(); void runSearch() }}>
+                        <div><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="输入岗位能力点或任务问题" /></div>
+                        <button type="submit" disabled={busy || !query.trim()}>{busy ? <Loader2 className="animate-spin" /> : <FileSearch />}启动检索</button>
+                      </form>
+                      <div className="knowledge-base-results">
+                        {results.map((result) => (
+                          <article key={result.chunk_id}>
+                            <div><strong>{result.source}{result.page ? ` · 第 ${result.page} 页` : ""}</strong><span>相对匹配 {result.relevance_percent}%</span></div>
+                            <p>{result.content}</p>
+                          </article>
+                        ))}
+                        {!results.length && <div className="knowledge-base-result-empty"><FileSearch /><span>检索结果会在这里形成带来源与页码的证据列表。</span></div>}
+                      </div>
+                    </section>
+                  )}
+                </>
+              )}
             </div>
           </section>
         </main>
@@ -390,17 +429,9 @@ export function KnowledgeBase() {
 
 function Progress({ label, value }: { label: string; value: number }) {
   return (
-    <div className="knowledge-forge-progress">
+    <div className="knowledge-base-progress">
       <div><span>{label}</span><span>{value}%</span></div>
       <div><span style={{ width: `${value}%` }} /></div>
     </div>
   )
-}
-
-function SectionHeading({ number, eyebrow, title, description }: { number: string; eyebrow: string; title: string; description: string }) {
-  return <header className="knowledge-forge-section-heading">
-    <span className="knowledge-forge-section-number">{number}</span>
-    <div><span>{eyebrow}</span><h2>{title}</h2><p>{description}</p></div>
-    <i aria-hidden="true"><b /><b /><b /></i>
-  </header>
 }

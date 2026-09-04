@@ -1,5 +1,7 @@
 import { chromium } from "playwright"
 
+const baseUrl = process.env.STUDYMATE_BASE_URL || "http://localhost:5173"
+
 let browser
 try {
   browser = await chromium.launch({ channel: "chrome" })
@@ -61,7 +63,7 @@ await page.addInitScript(() => {
   sessionStorage.setItem("sm:learning-universe-entered", "1")
 })
 
-await page.goto("http://localhost:5173/login", { waitUntil: "networkidle" })
+await page.goto(`${baseUrl}/login`, { waitUntil: "networkidle" })
 await page.evaluate(async () => {
   document.body.innerHTML = '<div id="report-test-root"></div>'
   const harness = await import("/scripts/learner-report-harness.tsx")
@@ -89,6 +91,17 @@ if (await page.locator("#learner-match-report").count()) {
 await page.evaluate(() => {
   window.__reportTest.mountHome()
 })
+await page.getByTestId("today-learning-home").waitFor()
+if (await page.locator("#learner-match-report").count()) {
+  throw new Error("首页不应纵向嵌入完整个人匹配报告")
+}
+const reportEntry = page.getByRole("link", { name: /查看完整报告/ })
+if (await reportEntry.count() !== 1 || await reportEntry.getAttribute("href") !== "/learner-report") {
+  throw new Error("首页缺少通往独立个人匹配报告页的紧凑入口")
+}
+await page.evaluate(() => {
+  window.__reportTest.mountLearnerReport()
+})
 await page.locator("#learner-match-report").waitFor()
 if (!(await page.locator("#learner-match-report").innerText()).includes("前线部署工程师（FDE）")) {
   throw new Error("路径地图终点未显示当前选择的目标岗位")
@@ -97,16 +110,6 @@ await page.addStyleTag({ content: ".app-topbar { position: static !important; }"
 await page.locator("#learner-match-report").scrollIntoViewIfNeeded()
 await page.waitForTimeout(800)
 await page.locator("#learner-match-report").screenshot({ path: "test-results/screenshots/learner-match-report.png" })
-const layout = await page.evaluate(() => {
-  const report = document.querySelector("#learner-match-report")
-  const route = [...document.querySelectorAll("span")].find((node) => node.textContent?.includes("今日学习航线"))
-  const capabilities = [...document.querySelectorAll("span")].find((node) => node.textContent?.includes("常用学习能力"))
-  const top = (node) => node ? node.getBoundingClientRect().top + window.scrollY : Number.POSITIVE_INFINITY
-  return { report: top(report), route: top(route), capabilities: top(capabilities) }
-})
-if (!(layout.report < layout.route && layout.report < layout.capabilities)) {
-  throw new Error(`报告位置不正确: ${JSON.stringify(layout)}`)
-}
 await page.setViewportSize({ width: 390, height: 844 })
 await page.locator("#learner-match-report").scrollIntoViewIfNeeded()
 const mobileBounds = await page.locator("#learner-match-report").evaluate((node) => {
