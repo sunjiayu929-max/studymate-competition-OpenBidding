@@ -307,6 +307,48 @@
     animation: route-fallback-progress-sheen 2.2s ease-in-out infinite;
   }
 
+  .route-error-panel {
+    border-color: rgba(112, 169, 201, .46);
+    background: rgba(248, 253, 255, .88);
+  }
+
+  .route-error-mark {
+    border: 1px solid rgba(89, 185, 221, .52);
+    color: #eaf9ff;
+    background: linear-gradient(145deg, #2d83ad, #153f5d);
+    box-shadow: 0 10px 22px rgba(28, 100, 141, .2);
+  }
+
+  .route-error-kicker { color: #2b789d; }
+
+  .route-error-primary,
+  .route-error-secondary {
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
+  }
+
+  .route-error-primary {
+    color: #f3fbff;
+    background: linear-gradient(125deg, #153f5d, #1b739f 58%, #34afd1);
+    box-shadow: 0 8px 18px rgba(20, 89, 129, .2);
+  }
+
+  .route-error-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(20, 102, 145, .26);
+  }
+
+  .route-error-secondary {
+    border: 1px solid rgba(112, 177, 205, .5);
+    color: #286589;
+    background: rgba(236, 248, 253, .86);
+  }
+
+  .route-error-secondary:hover {
+    transform: translateY(-1px);
+    border-color: #5eafd0;
+    background: #e0f2f8;
+  }
+
   @keyframes route-fallback-scan {
     0% { transform: translateX(-120%); opacity: 0; }
     18%, 82% { opacity: 1; }
@@ -323,7 +365,9 @@
     .route-fallback-panel::after,
     .route-fallback-progress-value::after,
     .route-fallback-mark,
-    .route-fallback-progress-value { animation: none !important; }
+    .route-fallback-progress-value,
+    .route-error-primary,
+    .route-error-secondary { animation: none !important; transition: none; }
   }
 
   /* 纸上星系：先以页面作用域落地，避免未改造页面出现半套主题。 */
