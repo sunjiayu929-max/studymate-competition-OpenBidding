@@ -226,6 +226,106 @@
     text-wrap: balance;
   }
 
+  /* Lazy-route loading state. Keep the hand-off between pages in the same
+     blue signal-studio language as the current interview and quiz workspaces. */
+  .route-fallback-studio {
+    position: relative;
+    overflow: hidden;
+    color: #172e49;
+    background-color: #edf7fc;
+    background-image:
+      linear-gradient(rgba(43, 103, 143, .055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(43, 103, 143, .055) 1px, transparent 1px),
+      radial-gradient(circle at 82% 10%, rgba(89, 185, 221, .2), transparent 24rem),
+      linear-gradient(155deg, #f8fcff 0%, #eaf5fb 52%, #f4fbfd 100%);
+    background-size: 34px 34px, 34px 34px, auto, auto;
+  }
+
+  .route-fallback-studio::before {
+    position: absolute;
+    top: 0;
+    left: -28%;
+    width: 24%;
+    height: 2px;
+    content: "";
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, #55c5e5, #fff, transparent);
+    box-shadow: 0 0 12px rgba(81, 184, 216, .55);
+    animation: route-fallback-scan 5.8s linear infinite;
+  }
+
+  .route-fallback-panel {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-color: rgba(112, 169, 201, .46);
+    background: rgba(248, 253, 255, .82);
+    box-shadow: 0 18px 46px rgba(25, 73, 107, .12), inset 0 1px rgba(255, 255, 255, .92);
+    backdrop-filter: blur(16px) saturate(110%);
+  }
+
+  .route-fallback-panel::after {
+    position: absolute;
+    z-index: -1;
+    top: 0;
+    bottom: 0;
+    left: -32%;
+    width: 25%;
+    content: "";
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgba(91, 198, 226, .18), transparent);
+    transform: skewX(-10deg);
+    animation: route-fallback-scan 4.8s ease-in-out infinite;
+  }
+
+  .route-fallback-mark {
+    border: 1px solid rgba(115, 207, 233, .52);
+    background: linear-gradient(145deg, #2d83ad, #153f5d);
+    box-shadow: 0 10px 22px rgba(28, 100, 141, .22), inset 0 1px rgba(255, 255, 255, .24);
+  }
+
+  .route-fallback-progress {
+    position: relative;
+    background: #d6ebf4;
+    box-shadow: inset 0 1px 2px rgba(36, 103, 144, .1);
+  }
+
+  .route-fallback-progress-value {
+    position: relative;
+    background: linear-gradient(90deg, #24658f, #43afd0, #59d0df);
+    box-shadow: 0 0 12px rgba(63, 181, 218, .38);
+  }
+
+  .route-fallback-progress-value::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 35%;
+    content: "";
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .8), transparent);
+    animation: route-fallback-progress-sheen 2.2s ease-in-out infinite;
+  }
+
+  @keyframes route-fallback-scan {
+    0% { transform: translateX(-120%); opacity: 0; }
+    18%, 82% { opacity: 1; }
+    100% { transform: translateX(560%); opacity: 0; }
+  }
+
+  @keyframes route-fallback-progress-sheen {
+    0%, 25% { transform: translateX(-150%); opacity: 0; }
+    55%, 100% { transform: translateX(260%); opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .route-fallback-studio::before,
+    .route-fallback-panel::after,
+    .route-fallback-progress-value::after,
+    .route-fallback-mark,
+    .route-fallback-progress-value { animation: none !important; }
+  }
+
   /* 纸上星系：先以页面作用域落地，避免未改造页面出现半套主题。 */
   .paper-theme {
     --background: #f3f0e7;

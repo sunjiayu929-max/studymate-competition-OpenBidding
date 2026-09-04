@@ -162,22 +162,22 @@ function LearnerTaskReadEntry() {
 
 function RouteFallback() {
   return (
-    <div className="app-page paper-theme grid min-h-dvh place-items-center px-5">
-      <div className="w-full max-w-sm rounded-[24px] border border-[#D7D1C4] bg-[#FFFEFA] p-6 shadow-[0_18px_45px_rgba(24,35,45,.08)]">
+    <div className="app-page route-fallback-studio grid min-h-dvh place-items-center px-5">
+      <div className="route-fallback-panel w-full max-w-sm rounded-[24px] border p-6">
         <div className="flex items-center gap-3">
-          <span className="relative grid size-11 place-items-center rounded-2xl bg-[#244C66] text-[#F0D6A4]">
-            <span className="absolute inset-0 animate-ping rounded-2xl bg-[#244C66] opacity-15" />
+          <span className="route-fallback-mark relative grid size-11 place-items-center rounded-2xl text-[#EAF9FF]">
+            <span className="absolute inset-0 animate-ping rounded-2xl bg-[#2B86AE] opacity-20" />
             <span className="relative text-lg">✦</span>
           </span>
           <div className="flex-1">
-            <div className="h-3 w-28 animate-pulse rounded-full bg-[#D7D1C4]" />
-            <div className="mt-2 h-2 w-44 max-w-full animate-pulse rounded-full bg-[#ECE8DE]" />
+            <div className="h-3 w-28 animate-pulse rounded-full bg-[#9FC8DC]" />
+            <div className="mt-2 h-2 w-44 max-w-full animate-pulse rounded-full bg-[#D4EAF3]" />
           </div>
         </div>
-        <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[#ECE8DE]">
-          <div className="h-full w-2/3 animate-pulse rounded-full bg-[#6F8A69]" />
+        <div className="route-fallback-progress mt-5 h-1.5 overflow-hidden rounded-full">
+          <div className="route-fallback-progress-value h-full w-2/3 animate-pulse rounded-full" />
         </div>
-        <p className="mt-3 text-center text-[11px] font-medium text-[#66717B]">正在打开你的学习空间…</p>
+        <p className="mt-3 text-center text-[11px] font-medium text-[#52758B]">正在打开你的学习空间…</p>
       </div>
     </div>
   )
