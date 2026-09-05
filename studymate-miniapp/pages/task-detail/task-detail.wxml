@@ -29,7 +29,10 @@
 
       <view class="content-section material-section">
         <text class="section-title">{{task.material_title || "任务资料"}}</text>
-        <text class="body-copy">{{task.material_content || task.description || "暂无资料内容"}}</text>
+        <view wx:for="{{task.materialSections}}" wx:key="index" class="material-block">
+          <text wx:if="{{item.title}}" class="material-subtitle">{{item.title}}</text>
+          <text wx:if="{{item.body}}" class="body-copy material-copy">{{item.body}}</text>
+        </view>
       </view>
 
       <view wx:if="{{task.knowledge_base && task.knowledge_base.materials.length}}" class="content-section material-section">

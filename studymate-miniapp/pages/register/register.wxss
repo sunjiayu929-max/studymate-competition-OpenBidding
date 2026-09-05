@@ -7,9 +7,9 @@
 .identity-box {
   margin-top: 24rpx;
   padding: 22rpx;
-  border: 1rpx solid #ded8cc;
-  border-radius: 16rpx;
-  background: #f7f3ea;
+  border: 1rpx solid #c6dfeb;
+  border-radius: 14rpx;
+  background: #f2f9fc;
 }
 
 .choice-grid {
@@ -28,39 +28,42 @@
   align-items: center;
   justify-content: center;
   min-height: 76rpx;
-  border-radius: 14rpx;
+  border: 1rpx solid #d4e7f0;
+  border-radius: 12rpx;
   background: #fff;
-  color: #69736f;
+  color: #65808f;
   font-size: 23rpx;
   font-weight: 800;
 }
 
 .choice-button.selected.learner {
-  background: #244c66;
+  border-color: #2f7196;
+  background: #2f7196;
   color: #fff;
-  box-shadow: 0 4rpx 12rpx rgba(36, 76, 102, .16);
+  box-shadow: none;
 }
 
 .choice-button.selected.admin {
-  background: #b85c3e;
+  border-color: #397fa3;
+  background: #397fa3;
   color: #fff;
-  box-shadow: 0 4rpx 12rpx rgba(184, 92, 62, .16);
+  box-shadow: none;
 }
 
 .choice-button.secondary {
-  border: 1rpx solid #ded8cc;
+  border-color: #c6dfeb;
 }
 
 .choice-button.selected.student {
-  border-color: #9fb1bc;
-  background: #e7edf3;
-  color: #244c66;
+  border-color: #9bc7dc;
+  background: #e0f0f7;
+  color: #286486;
 }
 
 .choice-button.selected.worker {
-  border-color: #a8c8b0;
-  background: #e7f0e8;
-  color: #356a46;
+  border-color: #9bc7dc;
+  background: #e0f0f7;
+  color: #286486;
 }
 
 .select-value {
@@ -71,12 +74,12 @@
 }
 
 .selected-value {
-  color: #24323a;
+  color: #18384d;
 }
 
 .select-arrow {
   margin-right: 22rpx;
-  color: #8a918f;
+  color: #7893a1;
   font-size: 32rpx;
 }
 
@@ -99,10 +102,10 @@
   min-height: 100rpx;
   margin: 0;
   padding: 0 12rpx;
-  border: 1rpx solid #d7d1c4;
-  border-radius: 16rpx;
-  background: #fffefa;
-  color: #415966;
+  border: 1rpx solid #c5deea;
+  border-radius: 14rpx;
+  background: #f7fbfd;
+  color: #356d8b;
   font-size: 24rpx;
   font-weight: 800;
   line-height: 1.35;
@@ -110,13 +113,13 @@
 }
 
 .code-button[disabled] {
-  color: #9a9f9c;
+  color: #93a7b1;
   opacity: .65;
 }
 
 .helper-text {
   margin-top: 16rpx;
-  color: #8a918f;
+  color: #7893a1;
   font-size: 20rpx;
   line-height: 1.6;
 }

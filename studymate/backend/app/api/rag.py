@@ -113,7 +113,11 @@ async def get_source_chunk(chunk_id: str, db: AsyncSession = Depends(get_db)):
         context_scope.append(KnowledgeChunk.chroma_id.like("fde-v1:%"))
         context_limit = 6
     else:
-        context_scope.append(KnowledgeChunk.source == row.source)
+        material_path = str((row.meta or {}).get("material_path") or "").strip()
+        if material_path:
+            context_scope.append(KnowledgeChunk.meta["material_path"].as_string() == material_path)
+        else:
+            context_scope.append(KnowledgeChunk.source == row.source)
         context_limit = 4
 
     before = (

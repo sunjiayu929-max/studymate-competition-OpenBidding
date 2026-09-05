@@ -12,6 +12,13 @@
 		redir /interview /interview/ 308
 		redir /oj /oj/ 308
 
+		# Hydro is an SSO-only projection. Keep all public account-management
+		# paths on the StudyMate identity flow, including legacy page links.
+		@oj_auth path /oj/login /oj/register /oj/register/* /oj/lostpass /oj/lostpass/* /oj/oauth/*
+		redir @oj_auth /api/oj/entry 303
+		@oj_logout path /oj/logout /oj/logout/*
+		redir @oj_logout /oj/integrations/studymate/logout 303
+
 		# Hydro is an independent OJ project. The public path is stripped before
 		# proxying; Hydro itself is configured with https://matropic.cn/oj/ as its
 		# canonical URL so generated links and WebSocket URLs retain the prefix.
@@ -25,9 +32,19 @@
 		# Only the StudyMate learner flow is published here. The retained legacy
 		# recruitment UI still owns root-level /api and page routes, which would
 		# collide with StudyMate if it were exposed through this same host.
+		# Reject encoded dot/slash segments before Caddy's path normalization can
+		# make them escape the /interview namespace.
+		@encoded_interview_escape path_regexp interview_encoded_escape (?i)(%2e|%2f|%5c)
+		handle @encoded_interview_escape {
+			respond "Not found" 404
+		}
 		@unpublished_interview {
 			path /interview/*
-			not path /interview/health /interview/integrations/studymate/launch /interview/practice/* /interview/api/practice/* /interview/api/speech/asr-url /interview/static/*
+			not path /interview/health /interview/integrations/studymate/launch /interview/practice/* /interview/api/practice/* /interview/api/speech/asr-url
+			not path /interview/static/css/practice.css /interview/static/css/practice-modern.css /interview/static/js/practice-avatar.js /interview/static/js/practice-prepare.js /interview/static/js/practice-interview.js /interview/static/js/practice-reports.js
+			not path /interview/static/media/digital-human/studymate-lecturer-idle.mp4 /interview/static/media/digital-human/studymate-lecturer-idle-poster.jpg /interview/static/media/digital-human/lecturer-talk.mp4 /interview/static/media/digital-human/lecturer-talk-poster.jpg
+			not path /interview/static/media/interview/*
+			not path /interview/static/js/role_*.glb /interview/static/dist/* /interview/static/vendor/three/*
 		}
 		handle @unpublished_interview {
 			respond "Not found" 404

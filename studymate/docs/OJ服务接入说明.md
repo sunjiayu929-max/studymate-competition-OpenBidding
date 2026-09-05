@@ -1,6 +1,6 @@
 # Hydro OJ 服务接入说明
 
-StudyMate 的在线判题是独立 Hydro 服务，不复用 StudyMate SQLite，也不替换现有 Piston。Piston 继续处理 StudyMate 的 `/api/run` 代码示例；HydroJudge 负责 OJ 的题目测试点、提交队列和沙箱执行。
+因材智训的在线判题是独立 Hydro 服务，不复用因材智训 SQLite，也不替换现有 Piston。Piston 继续处理因材智训的 `/api/run` 代码示例；HydroJudge 负责 OJ 的题目测试点、提交队列和沙箱执行。
 
 ## 代码边界
 
@@ -14,9 +14,15 @@ git submodule update --init --recursive
 
 ## 访问与单点登录
 
-浏览器从 StudyMate 侧栏请求 `/api/oj/launch`。StudyMate 后端为当前用户创建短时一次性 ticket，并重定向到 `https://matropic.cn/oj/integrations/studymate/launch?ticket=...`。Hydro 插件通过 `studymate_edge` 调用 StudyMate `/api/internal/oj/tickets/redeem`，使用时间戳和 HMAC 签名兑换用户身份，然后创建或绑定 Hydro 用户会话。
+浏览器从因材智训侧栏请求 `/api/oj/entry`。未登录用户会先回到因材智训 `/login`，登录成功后携带安全校验过的 `return_to` 回到 OJ 入口。因材智训后端为当前用户创建短时一次性 ticket，并重定向到 `https://matropic.cn/oj/integrations/studymate/launch?ticket=...`。Hydro 插件通过 `studymate_edge` 调用因材智训 `/api/internal/oj/tickets/redeem`，使用时间戳和 HMAC 签名兑换用户身份，然后创建或复用同一 Hydro 技术用户会话。
 
-ticket 只保存哈希，兑换成功后原子消费；过期、重复兑换、签名错误和停用用户都会被拒绝。StudyMate 和 Hydro 不共享密码、Cookie、数据库或认证密钥。
+ticket 只保存哈希和受限的 `/oj/...` 回跳路径，兑换成功后原子消费；过期、重复兑换、签名错误和停用用户都会被拒绝。Hydro 生产环境关闭内置登录、注册、找回密码和公开 OAuth，用户只能使用因材智训身份。因材智训 `subject` 是唯一稳定映射键，不能用邮箱变更 Hydro UID，因此提交、练习、竞赛和历史记录会在重新登录后继续保留。因材智训和 Hydro 不共享密码、Cookie、数据库或认证密钥。
+
+### SSO-only 边界
+
+`STUDYMATE_SSO_ONLY=1` 时，Hydro 只保留一个不可见的技术投影用户，用于关联提交、训练、比赛和历史记录；它不是用户可以注册、登录、改密码或管理资料的第二套账号。Hydro 普通页面在未识别到有效会话时，会将当前 `/oj/...` 路径和查询参数回跳到 StudyMate 登录；非页面 API 返回 `401` 并给出同一个入口地址。
+
+Hydro 的登录、注册、找回密码、OAuth、个人设置、安全、域管理和旧登出路径均不可用于管理账号。页面导航只显示因材智训身份和统一退出入口；默认的 Hydro 注册引导和欢迎公告会替换为因材智训 OJ 说明，但管理员已经自定义的公告不会被覆盖。HydroJudge 使用独立的技术账号，不参与因材智训用户映射。
 
 ## Docker 网络
 
@@ -24,7 +30,7 @@ ticket 只保存哈希，兑换成功后原子消费；过期、重复兑换、�
 
 ## 服务器配置
 
-服务器只维护 `/home/deploy/oj/.env`，内容参考 `oj/.env.example`。StudyMate 的 `backend/.env` 只保存 `OJ_PUBLIC_URL` 和 `OJ_SERVICE_SECRET`；`OJ_SERVICE_SECRET` 必须与 OJ 的 `STUDYMATE_SERVICE_SECRET` 相同。真实值不得提交到任意仓库。
+服务器只维护 `/home/deploy/oj/.env`，内容参考 `oj/.env.example`。因材智训的 `backend/.env` 只保存 `OJ_PUBLIC_URL` 和 `OJ_SERVICE_SECRET`；`OJ_SERVICE_SECRET` 必须与 OJ 的 `STUDYMATE_SERVICE_SECRET` 相同。`STUDYMATE_OJ_NAME` 可选，默认是 `因材智训 OJ`。真实值不得提交到任意仓库。
 
 ## 发布与回滚
 
@@ -35,6 +41,21 @@ bash scripts/deploy.sh up
 bash scripts/deploy.sh status
 ```
 
-发布前备份 StudyMate SQLite、AI 面试 MySQL、OJ MongoDB 和 OJ 文件卷。普通升级不得执行 `docker compose down -v`。回滚使用上一组主仓库提交、Submodule revision 和已有命名卷。
+发布前使用 `scripts/backup-db.sh` 备份因材智训 SQLite，并使用 `scripts/backup-oj.sh` 备份 OJ MongoDB 与文件卷。备份即使发现外键异常也会保留快照并输出审计报告；普通升级不得执行 `docker compose down -v`。回滚使用上一组主仓库提交、Submodule revision 和已有命名卷。
 
-验收至少包括：`/oj/` 页面、StudyMate 入口自动登录、ticket 一次性消费、Hydro Web 健康、HydroJudge 注册、Python/C++ 示例题提交，以及 `/api/run` 和 `/interview/health` 无回归。
+验收至少包括：未登录访问 `/oj/`、题目、训练和比赛页面均回到因材智训登录并在登录后回到原路径；同一 `subject` 重复进入得到同一 Hydro UID；提交后退出再登录历史仍存在；线上 HTML 不出现 Hydro 注册、找回密码和默认欢迎公告；ticket 一次性消费、Hydro Web 健康、HydroJudge 注册、Python/C++ 示例题提交，以及 `/api/run` 和 `/interview/health` 无回归。
+
+## 因材智训面试题集目录
+
+OJ 插件 `@studymate/oj-catalog` 使用 `oj/packages/studymate-oj/catalog.yaml` 维护学习者入口。目录包含力扣官方「面试经典 150 题」和「LeetCode 75」外链、两个本站可提交题集（「面试经典题变式」75 题、「秋招冲刺百题计划」100 题）、国内求职与训练平台索引、远程判题占位入口和 Hydro 原生题库总览。本站题集均来自已导入的官方通用题包，题目允许在多个入口复用并共享 Hydro 提交进度；力扣和国内平台只保存官方链接，不复制题面或测试数据。
+
+插件只改造入口和学习路径页面，不删除 Hydro 比赛、作业、讨论、排名等后端模型。题集页面支持按岗位、难度和完成状态筛选；普通学习者访问这些旧路径时会收到功能替代提示，系统管理员仍可访问原生管理页面。题目详情、提交编辑器和判题链路继续使用 Hydro 原生实现与 HydroJudge；JavaScript 使用 Judge 镜像内 Node 的 PATH，Go 使用镜像内 Go 工具链。
+
+发布或更新题包后，在 OJ Compose 项目目录执行：
+
+```bash
+./scripts/validate-official-problemsets.sh
+./scripts/validate-interview-catalog.sh
+```
+
+第二个命令通过 Hydro CLI 只读检查目录中的精选题号是否已存在于 `system` 域，不会写入题目或提交数据。

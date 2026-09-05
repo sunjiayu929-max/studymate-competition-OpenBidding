@@ -1,15 +1,17 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { Link } from "react-router-dom"
-import { AlertCircle, BookOpen, CircleHelp, Database, ExternalLink, FileSearch, FileText, Hash, Loader2, Search, ShieldCheck, Sparkles } from "lucide-react"
+import { AlertCircle, CircleHelp, ExternalLink, FileSearch, FileText, Hash, Loader2, Search, ShieldCheck } from "lucide-react"
 
-import { PageHeader } from "@/components/PageHeader"
+import { AppTopbar } from "@/components/AppTopbar"
 import { Markdown } from "@/components/Markdown"
 import { apiGet } from "@/lib/api"
 import { formatSourceLabel, sourceLink, visibleMetadata } from "@/lib/ragSource"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { DEFAULT_SAMPLE_TOPICS, fallbackSamplesFor, useCourseConfig, useCurrentCourse } from "@/store/course"
 import { useTargetRole } from "@/store/targetRole"
+
+import "./RagDemo.css"
 
 interface SearchResult {
   chunk_id: string
@@ -57,11 +59,12 @@ export function RagDemo() {
     ? targetRole.sampleTasks
     : courseCfg?.sample_topics?.length
       ? courseCfg.sample_topics
-    : course
-      ? fallbackSamplesFor(course.name).topics
-      : DEFAULT_SAMPLE_TOPICS
+      : course
+        ? fallbackSamplesFor(course.name).topics
+        : DEFAULT_SAMPLE_TOPICS
+  const defaultQuery = sampleQueries[0] || "如何拆解岗位任务与验收标准"
   const resultLimit = targetRole?.id === "fde" ? FDE_RESULT_LIMIT : DEFAULT_RESULT_LIMIT
-  const [q, setQ] = useState(sampleQueries[0] || "如何拆解岗位任务与验收标准")
+  const [q, setQ] = useState(defaultQuery)
   const [stats, setStats] = useState<Stats | null>(null)
   const [resp, setResp] = useState<SearchResp | null>(null)
   const [loading, setLoading] = useState(false)
@@ -72,7 +75,7 @@ export function RagDemo() {
     apiGet<Stats>(url).then(setStats).catch(() => {})
   }, [course])
 
-  const doSearch = async (query: string) => {
+  const doSearch = useCallback(async (query: string) => {
     if (!query.trim()) return
     setLoading(true)
     setError("")
@@ -85,21 +88,27 @@ export function RagDemo() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [course, resultLimit])
+
+  useEffect(() => {
+    if (!course) return
+    setQ(defaultQuery)
+    void doSearch(defaultQuery)
+  }, [course, defaultQuery, doSearch])
 
   if (!course) {
     return (
-      <div className="app-page paper-theme">
+      <div className="app-page paper-theme rag-evidence">
         <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-          <PageHeader current="rag" title="岗位知识库检索" subtitle="岗位知识只在已接入的目标岗位范围内检索，不跨岗位借用无关资料。" icon={Database} iconColor="text-[#315E83]" appearance="paper" />
-          <section className="mt-4 grid min-h-[420px] place-items-center rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] p-7 text-center shadow-[0_16px_42px_rgba(24,35,45,.065)]" role="status">
+          <AppTopbar current="rag" appearance="paper" labelOverride="岗位知识库" groupOverride="知识检索与引用" selectionLabel={targetRole?.name} />
+          <section className="rag-evidence-empty-state" role="status">
             <div className="max-w-md">
-              <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#D8C9A8] bg-[#F4ECD8] text-[#8E6925]"><AlertCircle className="size-5" /></span>
-              <h2 className="mt-4 text-lg font-bold text-[#18232D]">{targetRole ? `${targetRole.name} 的岗位知识库正在建设` : "请先选择目标岗位"}</h2>
-              <p className="mt-2 text-sm leading-6 text-[#66717B]">{targetRole ? "岗位选择已保存。为确保检索结果与岗位内容呼应，专属资料接入前不会回退到其他知识库。" : "目标岗位决定检索边界、引用来源和后续测验归档。"}</p>
-              <div className="mt-5 flex flex-wrap justify-center gap-2">
-                <Link to="/courses?returnTo=%2Frag" className="inline-flex h-10 items-center rounded-xl bg-[#244C66] px-4 text-xs font-bold text-white hover:bg-[#193B50]">{targetRole ? "更换已开放岗位" : "选择目标岗位"}</Link>
-                {targetRole && <Link to="/competency" className="inline-flex h-10 items-center rounded-xl border border-[#D7D1C4] bg-[#F8F6F0] px-4 text-xs font-bold text-[#59636B] hover:bg-[#EFEAE0]">查看岗位训练状态</Link>}
+              <span className="rag-evidence-empty-icon"><AlertCircle /></span>
+              <h2>{targetRole ? `${targetRole.name} 的岗位知识库正在建设` : "请先选择目标岗位"}</h2>
+              <p>{targetRole ? "岗位选择已保存。专属资料接入后即可按岗位检索原文依据。" : "目标岗位决定检索边界、引用来源和后续测验归档。"}</p>
+              <div className="rag-evidence-empty-actions">
+                <Link to="/courses?returnTo=%2Frag" className="is-primary">{targetRole ? "更换已开放岗位" : "选择目标岗位"}</Link>
+                {targetRole && <Link to="/competency">查看岗位训练状态</Link>}
               </div>
             </div>
           </section>
@@ -108,136 +117,125 @@ export function RagDemo() {
     )
   }
 
+  const roleLabel = targetRole?.name || course.name
+
   return (
-    <div className="app-page paper-theme">
+    <div className="app-page paper-theme rag-evidence">
       <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <PageHeader
-          current="rag"
-          title="岗位知识库检索"
-          subtitle={`在《${targetRole?.name || course?.name || "当前岗位"}》知识库中定位岗位能力与任务依据，查看来源和相关片段。`}
-          icon={Database}
-          iconColor="text-[#315E83]"
-          appearance="paper"
-        />
+        <AppTopbar current="rag" appearance="paper" labelOverride="岗位知识库" groupOverride="知识检索与引用" selectionLabel={roleLabel} />
 
-        <section className="relative overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#F8F6F0] p-5 shadow-[0_16px_42px_rgba(24,35,45,.065)] sm:p-7">
-          <div className="pointer-events-none absolute -right-24 -top-32 size-72 rounded-full border border-[#D8D1C3] opacity-60" />
-          <div className="pointer-events-none absolute -right-10 -top-20 size-48 rounded-full border border-[#D8D1C3] opacity-60" />
-          <div className="relative grid items-stretch gap-5 lg:grid-cols-[minmax(0,1fr)_390px] lg:gap-8">
+        <section className="rag-evidence-search-card" aria-labelledby="rag-evidence-title">
+          <header className="rag-evidence-search-heading">
             <div className="min-w-0">
-              <span className="inline-flex items-center gap-2 text-[10px] font-bold tracking-[0.14em] text-[#6F8A69]"><Sparkles className="size-3.5 text-[#B1842C]" />有依据的学习检索</span>
-              <h2 className="mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D] sm:text-2xl">从岗位资料里，找到可以引用的答案</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#66717B]">输入岗位任务、能力点或现场问题。系统会返回最相关的原文片段，而不是只给出无法核实的结论。</p>
-
-              <form onSubmit={(event) => { event.preventDefault(); doSearch(q) }} className="mt-6 flex items-center gap-2 rounded-[20px] border border-[#CFC8B9] bg-[#FFFEFA] p-2 shadow-[0_10px_28px_rgba(24,35,45,.07)] focus-within:border-[#9FB1BC]">
-                <span className="grid size-10 shrink-0 place-items-center text-[#315E83]"><Search className="size-4.5" /></span>
-                <input value={q} onChange={(event) => setQ(event.target.value)} placeholder="搜索岗位任务、能力点或现场问题…" className="h-11 min-w-0 flex-1 bg-transparent text-sm text-[#18232D] outline-none placeholder:text-[#929792]" />
-                <button type="submit" disabled={loading || !q.trim()} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] shadow-[0_7px_16px_rgba(36,76,102,.18)] transition-all hover:-translate-y-0.5 hover:bg-[#193B50] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45">
-                  {loading ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}{loading ? "检索中" : "开始检索"}
-                </button>
-              </form>
-
-              <div className="mt-4 flex flex-wrap items-center gap-2.5">
-                <span className="mr-1 text-xs font-bold text-[#736958]">试试搜索</span>
-                {sampleQueries.slice(0, 5).map((sample) => (
-                  <button key={sample} type="button" onClick={() => { setQ(sample); doSearch(sample) }} className="rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-4 py-2 text-xs font-semibold text-[#59636B] shadow-[0_2px_7px_rgba(24,35,45,.035)] transition-all hover:-translate-y-0.5 hover:border-[#AEBAB5] hover:bg-[#E9EEE6] hover:text-[#315E83]">{sample}</button>
-                ))}
-              </div>
+              <span className="rag-evidence-kicker"><FileSearch aria-hidden="true" />岗位原文证据检索</span>
+              <h2 id="rag-evidence-title">查找可核验的岗位依据</h2>
+              <p>输入岗位任务、能力点或现场问题，直接查看相关原文和来源位置。</p>
             </div>
+            <span className={`rag-evidence-service-status ${loading ? "is-loading" : ""}`} role="status">
+              {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <ShieldCheck aria-hidden="true" />}
+              {loading ? "正在检索" : resp ? `${resp.count} 条依据已就绪` : "检索服务已就绪"}
+            </span>
+          </header>
 
-            <div className="overflow-hidden rounded-[20px] border border-[#D7D1C4] bg-[#FFFEFA]/95 shadow-[0_10px_28px_rgba(24,35,45,.055)]">
-              <InfoCard icon={BookOpen} eyebrow="当前检索范围" title={targetRole?.name || course?.name || "全部岗位资料"} description={stats ? `${stats.count} 条岗位知识片段可被检索` : "正在读取岗位知识片段数量"} tone="blue" />
-              <InfoCard icon={ShieldCheck} eyebrow="结果可信度" title="每条答案都有来源" description="保留文件名、页码、相关度与原文入口，便于验证。" tone="green" />
-              <InfoCard icon={Database} eyebrow="检索引擎" title={stats?.engine || "正在连接"} description="先检索相关材料，再把依据交给学习智能体使用。" tone="gold" />
+          <form onSubmit={(event) => { event.preventDefault(); void doSearch(q) }} className="rag-evidence-search-form">
+            <span className="rag-evidence-search-icon"><Search aria-hidden="true" /></span>
+            <input value={q} onChange={(event) => setQ(event.target.value)} placeholder="搜索岗位任务、能力点或现场问题…" aria-label="岗位知识检索问题" />
+            <button type="submit" disabled={loading || !q.trim()}>
+              {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
+              {loading ? "检索中" : "检索岗位依据"}
+            </button>
+          </form>
+
+          <div className="rag-evidence-support-row">
+            <div className="rag-evidence-context" aria-label="当前检索范围">
+              <span><small>当前岗位</small><strong>{roleLabel}</strong></span>
+              <span><small>知识片段</small><strong>{stats ? `${stats.count} 条` : "读取中"}</strong></span>
+              <span><small>检索方式</small><strong>{stats?.engine || "连接中"}</strong></span>
+            </div>
+            <div className="rag-evidence-suggestions" aria-label="推荐问题">
+              <span>推荐问题</span>
+              {sampleQueries.slice(0, 3).map((sample) => (
+                <button key={sample} type="button" onClick={() => { setQ(sample); void doSearch(sample) }}>{sample}</button>
+              ))}
             </div>
           </div>
         </section>
 
-        {error && <div className="mt-4 rounded-2xl border border-[#DFC9BE] bg-[#F6ECE7] p-4 text-sm text-[#9A4E35]">检索暂时失败：{error}</div>}
+        {error && <div className="rag-evidence-error" role="alert">检索暂时失败：{error}</div>}
 
-        <main className="mt-4">
-          <section className="min-w-0">
-            {resp ? (
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-end justify-between gap-2 px-1 py-2">
-                  <div>
-                    <span className="text-[10px] font-bold tracking-[0.12em] text-[#6F8A69]">检索结果</span>
-                    <h2 className="mt-1 text-lg font-bold text-[#18232D]">“{resp.query}” 找到 {resp.count} 条依据</h2>
-                  </div>
-                  <span className="text-[10px] font-semibold text-[#8A8172]">按相对匹配度排序 · 最多显示 {resp.k} 条</span>
+        <main className="rag-evidence-results">
+          {resp ? (
+            <div className="rag-evidence-result-stack">
+              <header className="rag-evidence-results-heading">
+                <div className="min-w-0">
+                  <span>{resp.query === defaultQuery ? "默认知识片段" : "检索结果"}</span>
+                  <h2>“{resp.query}” 找到 {resp.count} 条依据</h2>
                 </div>
-
-                <div className="flex items-start gap-2 rounded-2xl border border-[#C7D2D8] bg-[#F3F6F7] px-3.5 py-3 text-[11px] leading-5 text-[#59666E]">
-                  <CircleHelp className="mt-0.5 size-3.5 shrink-0 text-[#315E83]" />
-                  <p><strong className="text-[#315E83]">相对匹配度如何计算：</strong>{resp.score_meta?.note || "根据岗位知识库资料中的词法与语义排序融合后换算，仅用于区分本次结果先后，不代表答案正确概率。"}</p>
+                <div className="rag-evidence-ranking-note" title={resp.score_meta?.note || "根据词法与语义排序融合后换算，仅用于区分本次结果先后，不代表答案正确概率。"}>
+                  <CircleHelp aria-hidden="true" />
+                  <span>按相对匹配度排序 · 最多 {resp.k} 条 · 仅用于本次排序</span>
                 </div>
+              </header>
 
-                {resp.results.map((result, index) => (
-                  <motion.article key={result.chunk_id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }} className="rounded-[22px] border border-[#CFC8B9] bg-[#FFFEFA] p-5 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
-                    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#E3DED3] pb-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="grid size-7 place-items-center rounded-lg bg-[#E7EDF3] text-[11px] font-bold text-[#315E83]">{String(result.rank ?? index + 1).padStart(2, "0")}</span>
-                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#27343D]"><FileText className="size-3.5 text-[#6F8A69]" />{formatSourceLabel(result.source)}</span>
-                        {result.page != null && <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#8A8172]"><Hash className="size-3" />第 {result.page} 页</span>}
-                        <a
-                          href={sourceLink(result.chunk_id, result.url).href}
-                          target={sourceLink(result.chunk_id, result.url).external ? "_blank" : undefined}
-                          rel={sourceLink(result.chunk_id, result.url).external ? "noreferrer" : undefined}
-                          className="inline-flex items-center gap-1 text-[10px] font-bold text-[#315E83] hover:underline"
-                          title={sourceLink(result.chunk_id, result.url).external ? "打开外部原文" : "查看岗位知识库原文定位"}
-                        >
-                          <ExternalLink className="size-3" />查看原文
-                        </a>
+              {resp.results.map((result, index) => {
+                const link = sourceLink(result.chunk_id, result.url)
+                const metadata = visibleMetadata(result.meta)
+                return (
+                  <motion.article
+                    key={result.chunk_id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.24, delay: Math.min(index * 0.025, 0.15) }}
+                    className="rag-evidence-result-card"
+                  >
+                    <header>
+                      <div className="rag-evidence-source-line">
+                        <span className="rag-evidence-rank">{String(result.rank ?? index + 1).padStart(2, "0")}</span>
+                        <span className="rag-evidence-source"><FileText aria-hidden="true" />{formatSourceLabel(result.source)}</span>
+                        {result.page != null && <span className="rag-evidence-page"><Hash aria-hidden="true" />第 {result.page} 页</span>}
                       </div>
-                      <span
-                        className="rounded-full border border-[#DDD4BF] bg-[#F4ECD8] px-2.5 py-1 text-[10px] font-bold text-[#8E6925]"
-                        title={`${resp.score_meta?.note || "RRF 排名融合分"} 原始分：${result.score.toFixed(6)}`}
-                      >
+                      <span className="rag-evidence-relevance" title={`${resp.score_meta?.note || "排序融合分"} 原始分：${result.score.toFixed(6)}`}>
                         {result.relevance_percent == null ? `排序分 ${result.score.toFixed(4)}` : `相对匹配 ${result.relevance_percent}%`}
                       </span>
-                    </div>
-                    <Markdown content={result.content} wrapLongContent className="mt-4 text-sm leading-7 text-[#27343D] [&_table]:text-left [&_th]:whitespace-nowrap [&_td]:align-top" />
-                    {visibleMetadata(result.meta).length > 0 && <div className="mt-4 flex flex-wrap gap-1.5">{visibleMetadata(result.meta).map(([key, value]) => <span key={key} className="rounded-lg bg-[#F1EDE4] px-2 py-1 text-[10px] text-[#66717B]">{key}={String(value)}</span>)}</div>}
-                  </motion.article>
-                ))}
+                    </header>
 
-                {resp.results.length === 0 && <EmptyResults />}
+                    <Markdown content={result.content} wrapLongContent className="rag-evidence-result-content [&_table]:text-left [&_th]:whitespace-nowrap [&_td]:align-top" />
+
+                    <footer>
+                      <div className="rag-evidence-metadata">
+                        {metadata.map(([key, value]) => <span key={key}>{key}={String(value)}</span>)}
+                      </div>
+                      <a href={link.href} target={link.external ? "_blank" : undefined} rel={link.external ? "noreferrer" : undefined} title={link.external ? "打开外部原文" : "查看岗位知识库原文定位"}>
+                        <ExternalLink aria-hidden="true" />查看原文
+                      </a>
+                    </footer>
+                  </motion.article>
+                )
+              })}
+
+              {resp.results.length === 0 && <EmptyResults />}
+            </div>
+          ) : (
+            <section className="rag-evidence-loading-state" role="status">
+              <div>
+                {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <FileSearch aria-hidden="true" />}
+                <h2>正在加载岗位知识片段</h2>
+                <p>首次进入会自动展示默认检索结果，随后可继续检索更具体的任务或能力点。</p>
               </div>
-            ) : (
-              <section className="grid min-h-[360px] place-items-center rounded-[26px] border border-dashed border-[#C9C2B4] bg-[#F8F6F0] p-8 text-center">
-                <div className="max-w-md">
-                  <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83]"><FileSearch className="size-5" /></span>
-                  <h2 className="mt-4 text-lg font-bold text-[#18232D]">输入一个岗位任务或能力点开始检索</h2>
-                  <p className="mt-2 text-sm leading-6 text-[#66717B]">检索结果会保留岗位知识库中的原始上下文，方便你核对结论并继续完成训练任务。</p>
-                </div>
-              </section>
-            )}
-          </section>
+            </section>
+          )}
         </main>
       </div>
     </div>
   )
 }
 
-function InfoCard({ icon: Icon, eyebrow, title, description, tone }: { icon: typeof Database; eyebrow: string; title: string; description: string; tone: "blue" | "green" | "gold" }) {
-  const colors = { blue: "bg-[#E7EDF3] text-[#315E83]", green: "bg-[#E9EEE6] text-[#557052]", gold: "bg-[#F4ECD8] text-[#8E6925]" }
-  return (
-    <article className="border-b border-[#E3DED3] p-3.5 last:border-b-0">
-      <div className="flex items-start gap-3">
-        <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${colors[tone]}`}><Icon className="size-4" /></span>
-        <div className="min-w-0"><span className="text-[10px] font-bold tracking-[0.1em] text-[#8A8172]">{eyebrow}</span><h3 className="mt-1 text-sm font-bold text-[#18232D]">{title}</h3></div>
-      </div>
-      <p className="mt-1.5 pl-12 text-[11px] leading-5 text-[#66717B]">{description}</p>
-    </article>
-  )
-}
-
 function EmptyResults() {
   return (
-    <div className="rounded-[24px] border border-dashed border-[#C9C2B4] bg-[#F8F6F0] p-10 text-center">
-      <FileSearch className="mx-auto size-6 text-[#8A8172]" />
-      <h3 className="mt-3 text-sm font-bold text-[#18232D]">没有找到匹配片段</h3>
-      <p className="mt-1 text-xs text-[#66717B]">换一个更具体的岗位能力点或任务问题，或使用上方的推荐关键词。</p>
+    <div className="rag-evidence-no-results">
+      <FileSearch aria-hidden="true" />
+      <h3>没有找到匹配片段</h3>
+      <p>换一个更具体的岗位能力点或任务问题，或使用上方的推荐问题。</p>
     </div>
   )
 }

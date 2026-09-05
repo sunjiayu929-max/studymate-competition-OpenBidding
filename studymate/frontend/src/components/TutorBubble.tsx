@@ -225,7 +225,7 @@ export function TutorBubble() {
             exit={{ opacity: 0, x: 12 }}
             onClick={() => setTutorHidden(false)}
             className="fixed bottom-5 right-0 z-50 flex h-11 items-center gap-1.5 rounded-l-full border border-r-0 border-[#CFC8B9] bg-[#FFFEFA]/94 pl-3 pr-2.5 text-[10px] font-bold text-[#315E83] shadow-[0_10px_28px_rgba(24,35,45,.14)] backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#315E83]/45"
-            aria-label="显示 StudyMate 学习助教"
+            aria-label="显示因材智训学习助教"
             title="显示学习助教"
           >
             <MessageCircle className="size-4 text-[#B1842C]" />
@@ -252,7 +252,7 @@ export function TutorBubble() {
                   exit={{ opacity: 0, y: 5, scale: 0.97 }}
                   className="absolute bottom-[calc(100%+8px)] right-0 w-[204px] rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA]/96 px-3 py-2.5 text-left text-[11px] font-semibold leading-[18px] text-[#33424C] shadow-[0_16px_36px_rgba(24,35,45,.16)] backdrop-blur md:bottom-auto md:right-[calc(100%-24px)] md:top-5"
                 >
-                  <span className="mb-1 flex items-center gap-1.5 text-[10px] font-bold tracking-[0.08em] text-[#315E83]"><Sparkles className="size-3.5 text-[#B1842C]" />STUDYMATE 助教</span>
+                  <span className="mb-1 flex items-center gap-1.5 text-[10px] font-bold tracking-[0.08em] text-[#315E83]"><Sparkles className="size-3.5 text-[#B1842C]" />因材智训助教</span>
                   {hintText}
                   <span className="absolute -bottom-1.5 right-8 size-3 rotate-45 border-b border-r border-[#D7D1C4] bg-[#FFFEFA] md:bottom-auto md:-right-1.5 md:top-8 md:border-b-0 md:border-l-0 md:border-r md:border-t" />
                 </motion.button>
@@ -303,8 +303,8 @@ export function TutorBubble() {
               whileHover={{ y: -4 }}
               whileTap={{ scale: 0.98 }}
               className="group relative h-full w-full cursor-grab border-0 bg-transparent p-0 text-left outline-none active:cursor-grabbing"
-              aria-label="打开 StudyMate 真人学习助手（Alt+/）"
-              title="StudyMate 真人学习助手 · 可拖动 · Alt+/"
+              aria-label="打开因材智训真人学习助手（Alt+/）"
+              title="因材智训真人学习助手 · 可拖动 · Alt+/"
             >
               <motion.span
                 className="pointer-events-none absolute inset-x-5 bottom-1 h-6 rounded-[50%] bg-[#244C66]/18 blur-xl transition-colors group-hover:bg-[#244C66]/22"
@@ -316,7 +316,7 @@ export function TutorBubble() {
               >
                 <DigitalHumanVideo
                   state={digitalHumanState}
-                  alt="StudyMate 真人讲师动态入口"
+                  alt="因材智训真人讲师动态入口"
                   priority
                   idleOnly
                   floatingBlend
@@ -372,7 +372,7 @@ export function TutorBubble() {
               transition={{ type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.28 }}
               style={drawerStyle}
               className="fixed inset-y-0 right-0 z-50 flex w-full flex-col overflow-hidden border-l border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_24px_70px_rgba(24,35,45,.22)] sm:inset-y-3 sm:right-3 sm:w-[var(--drawer-width)] sm:max-w-[calc(100vw-24px)] sm:rounded-[26px] sm:border"
-              aria-label="StudyMate 学习助手"
+              aria-label="因材智训学习助手"
             >
               <ResizeHandle width={width} />
 
@@ -380,7 +380,7 @@ export function TutorBubble() {
                 <div className="flex items-center gap-2.5">
                   <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[#D9CFB7] bg-[#244C66] text-[#F2C968] shadow-[0_5px_12px_rgba(36,76,102,.14)]"><Sparkles className="size-4.5" /></span>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[14px] font-bold tracking-[-0.01em] text-[#18232D]">StudyMate 学习助手</div>
+                    <div className="truncate text-[14px] font-bold tracking-[-0.01em] text-[#18232D]">因材智训学习助手</div>
                     <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-[#6F787A]"><span className={`size-1.5 rounded-full ${generating ? "animate-pulse bg-[#B1842C]" : "bg-[#6F8A69]"}`} />《{course?.name || "FDE 岗位知识库"}》· {generating ? "回答在后台继续生成" : "记得当前岗位对话"}</div>
                   </div>
                   <IconButton onClick={() => { setHistoryOpen(false); tutorHistory.startNew(userId, courseId) }} title={generating ? "回答完成后可新建对话" : "新对话"} disabled={generating}><MessageSquarePlus className="size-4" /></IconButton>

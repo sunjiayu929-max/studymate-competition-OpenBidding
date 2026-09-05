@@ -23,9 +23,11 @@ interface Props {
   initialTopic?: string
   /** 岗位训练验收达标后进入的进阶挑战预设。 */
   challengePreset?: boolean
+  /** 直接嵌入页面使用，显示全部设置而不是弹出遮罩层。 */
+  embedded?: boolean
 }
 
-export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", challengePreset = false }: Props) {
+export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", challengePreset = false, embedded = false }: Props) {
   const user = useCurrentUser()
   const USER_ID = user?.user_id ?? 0
   const course = useCurrentCourse()
@@ -56,7 +58,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
       setError(null)
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [challengePreset, open, initialTopic])
+  }, [challengePreset, embedded, open, initialTopic])
 
   useEffect(() => {
     if (!open || !USER_ID || !course) {
@@ -72,7 +74,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
 
   // ESC 关闭
   useEffect(() => {
-    if (!open) return
+    if (!open || embedded) return
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = "hidden"
     const onKey = (e: KeyboardEvent) => {
@@ -83,7 +85,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
       document.body.style.overflow = previousOverflow
       window.removeEventListener("keydown", onKey)
     }
-  }, [open, submitting, onClose])
+  }, [embedded, open, submitting, onClose])
 
   const total = mcq + fill + code
 
@@ -125,16 +127,16 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#18232D]/35 p-3 backdrop-blur-[2px] sm:p-4" role="dialog" aria-modal="true" aria-labelledby="new-quiz-title" onMouseDown={(event) => { if (event.target === event.currentTarget && !submitting) onClose() }}>
+    <div className={embedded ? "quiz-builder-dialog w-full" : "fixed inset-0 z-50 flex items-center justify-center bg-[#18232D]/35 p-3 backdrop-blur-[2px] sm:p-4"} role="dialog" aria-modal={!embedded} aria-labelledby="new-quiz-title" onMouseDown={embedded ? undefined : (event) => { if (event.target === event.currentTarget && !submitting) onClose() }}>
       <motion.div
         initial={{ opacity: 0, y: 16, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 380, damping: 26 }}
-        className="flex max-h-[min(92dvh,780px)] w-full max-w-lg flex-col overflow-hidden rounded-[24px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_24px_70px_rgba(24,35,45,.18)]"
+        className={`quiz-builder-surface flex w-full ${embedded ? "max-w-none rounded-[22px] shadow-[0_10px_28px_rgba(24,35,45,.06)]" : "max-h-[min(92dvh,780px)] max-w-lg rounded-[24px] shadow-[0_24px_70px_rgba(24,35,45,.18)]"} flex-col overflow-hidden border border-[#CFC8B9] bg-[#FFFEFA]`}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-[#D7D1C4] bg-[#F8F6F0] px-5 py-3.5">
+        <div className="quiz-builder-header flex shrink-0 items-center justify-between border-b border-[#D7D1C4] bg-[#F8F6F0] px-5 py-3.5">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="flex size-9 items-center justify-center rounded-full border border-[#DDD4BF] bg-[#F4ECD8] text-[#8E6925]">
+            <div className="quiz-builder-header-icon flex size-9 items-center justify-center rounded-full border border-[#DDD4BF] bg-[#F4ECD8] text-[#8E6925]">
               <BookOpen className="size-4" />
             </div>
             <div className="min-w-0">
@@ -147,7 +149,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
               </div>
             </div>
           </div>
-          <button
+          {!embedded && <button
             type="button"
             onClick={() => !submitting && onClose()}
             disabled={submitting}
@@ -155,27 +157,28 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
             aria-label="关闭"
           >
             <X className="size-4" />
-          </button>
+          </button>}
         </div>
 
-        <div className="min-h-0 space-y-4 overflow-y-auto px-5 py-4">
+        <div className={embedded ? "quiz-builder-body space-y-3 px-4 py-3" : "quiz-builder-body min-h-0 space-y-4 overflow-y-auto px-5 py-4"}>
           {/* 主题 */}
           <Field label="测验主题">
             <input
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               placeholder="综合复习 / 梯度下降 / ..."
-              className="h-10 w-full rounded-xl border border-[#D7D1C4] bg-[#FBFAF6] px-3 text-sm focus:border-[#315E83] focus:outline-none focus:ring-2 focus:ring-[#315E83]/10"
+              className="quiz-topic-input h-10 w-full rounded-xl border border-[#D7D1C4] bg-[#FBFAF6] px-3 text-sm focus:border-[#315E83] focus:outline-none focus:ring-2 focus:ring-[#315E83]/10"
               disabled={submitting}
             />
             <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {sampleTopics.slice(0, 6).map((t) => (
+              {sampleTopics.slice(0, 2).map((t) => (
                 <button
                   key={t}
                   type="button"
                   disabled={submitting}
                   onClick={() => setTopic(t)}
-                  className="inline-flex min-h-8 items-center rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-2.5 py-1 text-[11px] font-medium text-[#66717B] transition-colors hover:border-[#9EAFAF] hover:bg-[#E7EDF3] hover:text-[#315E83]"
+                  aria-pressed={topic === t}
+                  className={`quiz-topic-chip ${topic === t ? "is-active" : ""} inline-flex min-h-8 items-center rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-2.5 py-1 text-[11px] font-medium text-[#66717B] transition-colors hover:border-[#9EAFAF] hover:bg-[#E7EDF3] hover:text-[#315E83]`}
                 >
                   {t}
                 </button>
@@ -183,9 +186,9 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
             </div>
           </Field>
 
-          <div className="rounded-xl border border-[#C9D1CB] bg-[#F5F8F3] px-3 py-2.5">
+          <div className="quiz-adaptive-panel rounded-xl border border-[#C9D1CB] bg-[#F5F8F3] px-3 py-2.5">
             <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-[#E9EEE6] text-[#557052]"><Target className="size-3.5" /></span>
+              <span className="quiz-adaptive-icon mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-[#E9EEE6] text-[#557052]"><Target className="size-3.5" /></span>
               <div className="min-w-0">
                 <strong className="block text-[11px] text-[#3F5840]">错题类型自适应</strong>
                 <p className="mt-0.5 text-[10px] leading-4 text-[#66736A]">{recommendation?.message || "正在读取近期错题，完成后会自动安排同类型变式练习"}</p>
@@ -217,7 +220,7 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
               value={difficulty}
               onChange={(e) => setDifficulty(parseInt(e.target.value))}
               disabled={submitting}
-              className="w-full accent-[#315E83]"
+              className="difficulty-gradient-range w-full"
               aria-label="测验难度"
             />
             <div className="grid grid-cols-4 gap-0 text-[10px] text-[var(--muted-foreground)] mt-0.5">
@@ -256,6 +259,39 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
             </Field>
           )}
 
+          <section className="quiz-generation-brief" aria-label="本轮测评执行摘要">
+            <div className="quiz-generation-brief__heading">
+              <div>
+                <span>GENERATION BRIEF</span>
+                <strong>本轮测评执行摘要</strong>
+              </div>
+              <em>{total} ITEMS · READY</em>
+            </div>
+            <div className="quiz-generation-brief__grid">
+              <div className="quiz-generation-brief__item">
+                <BookOpen className="size-3.5" />
+                <div>
+                  <span>题组结构</span>
+                  <strong>{mcq} 道选择 · {fill} 道填空 · {code} 道编程</strong>
+                </div>
+              </div>
+              <div className="quiz-generation-brief__item">
+                <Target className="size-3.5" />
+                <div>
+                  <span>能力标尺</span>
+                  <strong>{["", "入门", "基础", "进阶", "挑战"][difficulty]}难度 · {mode === "exam" ? "试卷模式" : "闯关模式"}</strong>
+                </div>
+              </div>
+              <div className="quiz-generation-brief__item">
+                <Sparkles className="size-3.5" />
+                <div>
+                  <span>结果归档</span>
+                  <strong>保存得分、解析与错题证据</strong>
+                </div>
+              </div>
+            </div>
+          </section>
+
           {error && (
             <div role="alert" className="rounded-xl border border-[#DFC8BE] bg-[#F4E8E2] px-3 py-2 text-xs text-[#9A4E35]">
               {error}
@@ -263,15 +299,13 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
           )}
         </div>
 
-        <div className="flex shrink-0 flex-col gap-3 border-t border-[#D7D1C4] bg-[#F8F6F0] px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="quiz-builder-footer flex shrink-0 flex-col gap-3 border-t border-[#D7D1C4] bg-[#F8F6F0] px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-[11px] text-[#6F787A]">
             {challengePreset ? "已按本轮任务点预填，并将难度设为进阶" : "结合当前岗位与能力画像生成"}
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>
-              取消
-            </Button>
-            <Button size="sm" onClick={handleStart} disabled={submitting || total === 0 || !course}>
+            {!embedded && <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>取消</Button>}
+            <Button className="quiz-start-button" size="sm" onClick={handleStart} disabled={submitting || total === 0 || !course}>
               {submitting ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" /> 出题中...
@@ -291,8 +325,8 @@ export function NewQuizModal({ open, onClose, onCreated, initialTopic = "", chal
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <div className="text-xs font-medium text-[var(--muted-foreground)] mb-1.5">{label}</div>
+    <div className="quiz-field">
+      <div className="quiz-field-label text-xs font-medium text-[var(--muted-foreground)] mb-1.5">{label}</div>
       {children}
     </div>
   )
@@ -312,24 +346,24 @@ function NumberCell({
   disabled?: boolean
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-[#D7D1C4] bg-[#FBFAF6] px-2.5 py-2">
+    <div className="quiz-number-cell flex flex-col gap-1 rounded-xl border border-[#D7D1C4] bg-[#FBFAF6] px-2.5 py-2">
       <div className="text-[10px] text-[var(--muted-foreground)]">{label}</div>
       <div className="flex items-center justify-between gap-1">
         <button
           type="button"
           disabled={disabled || value <= 0}
           onClick={() => onChange(Math.max(0, value - 1))}
-          className="size-8 rounded-lg border border-[#D7D1C4] bg-[#FFFEFA] text-sm transition-colors hover:bg-[#E7EDF3] disabled:cursor-not-allowed disabled:opacity-30"
+          className="quiz-number-step is-minus size-8 rounded-lg border border-[#D7D1C4] bg-[#FFFEFA] text-sm transition-colors hover:bg-[#E7EDF3] disabled:cursor-not-allowed disabled:opacity-30"
           aria-label={`减少${label}`}
         >
           −
         </button>
-        <div className="text-base font-semibold tabular-nums">{value}</div>
+        <div className="quiz-number-value text-base font-semibold tabular-nums">{value}</div>
         <button
           type="button"
           disabled={disabled || value >= max}
           onClick={() => onChange(Math.min(max, value + 1))}
-          className="size-8 rounded-lg border border-[#D7D1C4] bg-[#FFFEFA] text-sm transition-colors hover:bg-[#E7EDF3] disabled:cursor-not-allowed disabled:opacity-30"
+          className="quiz-number-step is-plus size-8 rounded-lg border border-[#D7D1C4] bg-[#FFFEFA] text-sm transition-colors hover:bg-[#E7EDF3] disabled:cursor-not-allowed disabled:opacity-30"
           aria-label={`增加${label}`}
         >
           +
@@ -351,7 +385,7 @@ function Segmented({
   disabled?: boolean
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="quiz-segmented grid grid-cols-2 gap-2">
       {options.map((opt) => {
         const active = value === opt.value
         return (
@@ -361,7 +395,7 @@ function Segmented({
             disabled={disabled}
             onClick={() => onChange(opt.value)}
             aria-pressed={active}
-            className={`rounded-xl border px-3 py-2 text-left transition-colors ${
+            className={`quiz-segment-option ${active ? "is-active" : ""} rounded-xl border px-3 py-2 text-left transition-colors ${
               active
                 ? "border-[#7F9AAA] bg-[#E7EDF3] text-[#315E83] shadow-[inset_0_0_0_1px_rgba(49,94,131,.08)]"
                 : "border-[#D7D1C4] bg-[#FFFEFA] hover:bg-[#F1EDE4]"

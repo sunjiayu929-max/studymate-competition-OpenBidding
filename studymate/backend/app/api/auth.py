@@ -25,8 +25,6 @@ password_hash = PasswordHash.recommended()
 _dummy_password_hash = password_hash.hash("StudyMate-dummy-password")
 _ephemeral_secret = secrets.token_bytes(32)
 COOKIE_NAME = "sm_session"
-
-
 class SendCodeRequest(BaseModel):
     email: EmailStr
 
@@ -197,7 +195,7 @@ async def register(req: RegisterRequest, response: Response, db: AsyncSession = 
     db.add(user)
     await db.flush()
     if req.account_type == "enterprise_admin":
-        enterprise_name = req.company.strip() or "河南本线商贸有限公司"
+        enterprise_name = req.company.strip() or "未命名企业"
         enterprise = Enterprise(
             name=enterprise_name,
             invite_code=f"SM{user.id:04d}",

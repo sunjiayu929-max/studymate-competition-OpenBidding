@@ -86,7 +86,7 @@ export function RagSource() {
     const chapter = data.source.match(/第\s*\d+\s*章(?:：[^，]+)?/u)?.[0]
     if (chapter) return `来源章节 · ${chapter}`
     if (data.source.includes("后记")) return "来源章节 · 后记：FDE 的职业道德"
-    if (data.source.includes("训练切片")) return "来源章节 · StudyMate FDE 训练场景"
+    if (data.source.includes("训练切片")) return "来源章节 · 因材智训 FDE 训练场景"
     return "来源章节未标注"
   }, [data])
   useTutorContext(data ? {

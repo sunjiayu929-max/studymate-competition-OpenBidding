@@ -1,9 +1,13 @@
 const { API_BASE_URL } = require("./config")
 
-const COOKIE_KEY = "sm_session_cookie"
+const COOKIE_KEY = "yczx_session_cookie"
+const LEGACY_COOKIE_KEY = "sm_session_cookie"
 
 function getCookie() {
-  return wx.getStorageSync(COOKIE_KEY) || ""
+  const cookie = wx.getStorageSync(COOKIE_KEY) || wx.getStorageSync(LEGACY_COOKIE_KEY) || ""
+  if (cookie) wx.setStorageSync(COOKIE_KEY, cookie)
+  wx.removeStorageSync(LEGACY_COOKIE_KEY)
+  return cookie
 }
 
 function captureCookie(headers) {
@@ -17,6 +21,8 @@ function captureCookie(headers) {
 
 function clearSession() {
   wx.removeStorageSync(COOKIE_KEY)
+  wx.removeStorageSync(LEGACY_COOKIE_KEY)
+  wx.removeStorageSync("yczx_user")
   wx.removeStorageSync("sm_user")
 }
 

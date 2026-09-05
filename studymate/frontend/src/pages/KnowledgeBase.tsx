@@ -6,6 +6,7 @@ import {
   FileSearch,
   FileText,
   Loader2,
+  MousePointerClick,
   Pencil,
   Plus,
   RefreshCw,
@@ -19,6 +20,8 @@ import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useCurrentCourse } from "@/store/course"
 import { getSelectedKnowledgeBaseId, setSelectedKnowledgeBaseId } from "@/store/knowledgeBase"
+
+import "./KnowledgeBase.css"
 
 interface KnowledgeDocument {
   id: number
@@ -68,6 +71,14 @@ export function KnowledgeBase() {
   const [message, setMessage] = useState("")
 
   const selected = useMemo(() => items.find((item) => item.id === selectedId) || items[0] || null, [items, selectedId])
+  const selectedReadyCount = useMemo(
+    () => selected?.documents.filter((document) => ["ready", "ready_keyword"].includes(document.status)).length ?? 0,
+    [selected],
+  )
+  const selectedActiveCount = useMemo(
+    () => selected?.documents.filter((document) => ["queued", "parsing", "vectorizing"].includes(document.status)).length ?? 0,
+    [selected],
+  )
 
   const refresh = useCallback(async () => {
     const response = await apiGet<{ items: KnowledgeLibrary[] }>("/knowledge-bases")
@@ -247,131 +258,168 @@ export function KnowledgeBase() {
   }
 
   return (
-    <div className="app-page paper-theme">
-      <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <AppTopbar current="knowledge" appearance="paper" />
+    <div className="app-page paper-theme knowledge-forge-page min-h-dvh pb-14">
+      <div className="w-full px-2 py-3 sm:px-4 sm:py-4 lg:px-3">
+        <AppTopbar className="rounded-none border-x-0 shadow-none" current="knowledge" appearance="paper" labelOverride="自建知识库" groupOverride="个人知识工程" selectionLabel={selected?.name} />
 
-        <main className="mt-4 grid min-h-[calc(100dvh-104px)] gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-          <aside className="rounded-[24px] border border-[#CFC8B9] bg-[#F8F6F0] p-3 shadow-sm">
-            <div className="flex items-center justify-between px-1 py-2">
-              <div><span className="text-[10px] font-bold tracking-[.1em] text-[#6F8A69]">PRIVATE LIBRARIES</span><h2 className="mt-1 text-sm font-bold text-[#18232D]">我的知识库</h2></div>
-              <span className="rounded-full bg-[#E7EDF3] px-2 py-1 text-[9px] font-bold text-[#315E83]">{items.length} 个</span>
+        <main className="knowledge-base-main">
+          <header className="knowledge-base-intro">
+            <div>
+              <span>私有知识工程</span>
+              <h1>让自己的资料，成为助教可引用的证据</h1>
+              <p>选择知识库，查看文档处理状态，并用带来源与页码的结果验证检索质量。</p>
             </div>
-            <div className="mt-2 space-y-1.5">
-              {loading && <div className="h-16 animate-pulse rounded-2xl bg-[#ECE8DE]" />}
-              {items.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => chooseLibrary(item.id)}
-                  className={`flex w-full items-center gap-2.5 rounded-2xl border p-3 text-left transition-colors ${selected?.id === item.id ? "border-[#9FB1BC] bg-[#E7EDF3]" : "border-transparent bg-[#FFFEFA] hover:border-[#D7D1C4]"}`}
-                >
-                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#244C66] text-[#F0D6A4]"><Database className="size-4" /></span>
-                  <span className="min-w-0 flex-1"><strong className="block truncate text-[11px] text-[#18232D]">{item.name}</strong><small className="mt-0.5 block text-[9px] text-[#7A817F]">{item.document_count} 份资料</small></span>
-                  {selectedId === item.id && <CheckCircle2 className="size-3.5 text-[#557052]" />}
-                </button>
-              ))}
-            </div>
-            <form onSubmit={(event) => { event.preventDefault(); void createLibrary() }} className="mt-3 rounded-2xl border border-dashed border-[#C9C2B4] bg-[#FFFEFA] p-2.5">
-              <input ref={nameInputRef} value={name} onChange={(event) => setName(event.target.value)} placeholder="新知识库名称" maxLength={128} className="h-9 w-full rounded-xl border border-[#D7D1C4] bg-[#FDFBF6] px-3 text-[11px] outline-none focus:border-[#9FB1BC]" />
-              <button type="submit" disabled={busy || !name.trim()} className="mt-2 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-[#244C66] text-[10px] font-bold text-white disabled:opacity-40"><Plus className="size-3.5" />创建私有知识库</button>
-            </form>
-          </aside>
+            <dl aria-label="知识库概况">
+              <div><dt>知识库</dt><dd>{items.length}</dd></div>
+              <div><dt>已入库文件</dt><dd>{items.reduce((sum, item) => sum + item.document_count, 0)}</dd></div>
+              <div><dt>处理管线</dt><dd>{hasActiveTask ? "运行中" : "待命"}</dd></div>
+            </dl>
+          </header>
 
-          <section className="min-w-0 overflow-hidden rounded-[26px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_14px_36px_rgba(24,35,45,.06)]">
-            <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D7D1C4] bg-[#F8F6F0] px-4 py-4 sm:px-5">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h1 className="truncate text-base font-bold text-[#18232D]">{selected?.name || "创建第一个私有知识库"}</h1>
-                  {selected && selectedId === selected.id && <span className="rounded-full bg-[#E9EEE6] px-2 py-1 text-[9px] font-bold text-[#557052]">助教已选用</span>}
-                </div>
-                <p className="mt-1 text-[11px] text-[#66717B]">{selected?.bound_course_id ? `已绑定岗位 ID ${selected.bound_course_id}` : "可绑定当前岗位，也可在任意助教会话中使用"}</p>
+          <section className="knowledge-base-workspace" aria-label="私有知识库工作台">
+            <aside className="knowledge-base-rail" aria-label="知识库列表">
+              <div className="knowledge-base-rail-heading">
+                <div><Database /><span><strong>我的知识库</strong><small>选择助教引用源</small></span></div>
+                <b>{items.length}</b>
               </div>
-              {selected && <div className="flex items-center gap-1.5">
-                <button type="button" onClick={renameLibrary} className="grid size-9 place-items-center rounded-xl border border-[#D7D1C4] text-[#59636B] hover:bg-[#ECE8DE]" aria-label="重命名知识库"><Pencil className="size-3.5" /></button>
-                <button type="button" onClick={bindCourse} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#D7D1C4] px-3 text-[10px] font-bold text-[#315E83] hover:bg-[#E7EDF3]"><BookOpen className="size-3.5" />绑定当前岗位</button>
-                <button type="button" onClick={deleteLibrary} className="grid size-9 place-items-center rounded-xl border border-[#DFC8BE] text-[#9A4E35] hover:bg-[#F4E8E2]" aria-label="删除知识库"><Trash2 className="size-3.5" /></button>
-              </div>}
-            </header>
 
-            <div className="border-b border-[#E3DED3] px-4 pt-3 sm:px-5">
-              <button type="button" onClick={() => setTab("library")} className={`mr-5 border-b-2 px-1 pb-3 text-[11px] font-bold ${tab === "library" ? "border-[#315E83] text-[#244C66]" : "border-transparent text-[#7A817F]"}`}>资料与进度</button>
-              <button type="button" onClick={() => setTab("search")} className={`border-b-2 px-1 pb-3 text-[11px] font-bold ${tab === "search" ? "border-[#315E83] text-[#244C66]" : "border-transparent text-[#7A817F]"}`}>RAG 检索测试</button>
-            </div>
+              <div className="knowledge-base-library-list">
+                {loading && <div className="knowledge-base-loading" aria-label="正在加载知识库"><Loader2 className="animate-spin" /></div>}
+                {items.map((item) => (
+                  <button key={item.id} type="button" disabled={busy} onClick={() => chooseLibrary(item.id)} className={selected?.id === item.id ? "is-selected" : ""}>
+                    <span className="knowledge-base-library-icon"><Database /></span>
+                    <span><strong>{item.name}</strong><small>{item.document_count} 份资料 · 点击切换</small></span>
+                    {selected?.id === item.id && <CheckCircle2 className="knowledge-base-library-check" />}
+                  </button>
+                ))}
+              </div>
 
-            {message && <div role="status" className="mx-4 mt-4 rounded-xl border border-[#C7D2D8] bg-[#EDF2F5] px-3 py-2 text-[10px] font-semibold text-[#315E83] sm:mx-5">{message}</div>}
+              <form className={`knowledge-base-create ${selected ? "is-secondary" : "is-primary"}`} onSubmit={(event) => { event.preventDefault(); void createLibrary() }}>
+                <label htmlFor="knowledge-base-name">{selected ? "新建其他知识库" : "创建第一个知识库"}</label>
+                <div>
+                  <input id="knowledge-base-name" ref={nameInputRef} value={name} onChange={(event) => setName(event.target.value)} placeholder="输入知识库名称" maxLength={128} />
+                  <button type="submit" disabled={busy || !name.trim()}>{busy ? <Loader2 className="animate-spin" /> : <Plus />}{selected ? "新建" : "创建知识库"}</button>
+                </div>
+                <small>{selected ? "输入名称后，“新建”按钮会亮起。" : "知识库仅对当前账号可见；输入名称后即可创建。"}</small>
+              </form>
+            </aside>
 
-            {tab === "library" ? (
-              <div className="p-4 sm:p-5">
-                {!selected && (
-                  <div className="grid min-h-[440px] place-items-center rounded-[22px] border border-dashed border-[#D7D1C4] bg-[#FDFBF6] px-6 py-10 text-center">
-                    <div className="max-w-lg">
-                      <span className="mx-auto grid size-14 place-items-center rounded-2xl border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83] shadow-sm">
-                        <Database className="size-6" />
-                      </span>
-                      <h2 className="mt-4 text-lg font-bold text-[#18232D]">把自己的资料接入学习闭环</h2>
-                      <p className="mx-auto mt-2 max-w-md text-[11px] leading-5 text-[#66717B]">
-                        先在左侧创建知识库，再上传 PDF、PPTX、DOCX、Markdown 或 TXT。解析进度、来源页码和失败重试都会在这里真实展示。
-                      </p>
-                      <div className="mx-auto mt-5 grid max-w-md gap-2 text-left sm:grid-cols-3">
-                        {["01 命名建库", "02 上传解析", "03 助教引用"].map((step) => (
-                          <span key={step} className="rounded-xl border border-[#DED8CC] bg-[#FFFEFA] px-3 py-2.5 text-[10px] font-bold text-[#59636B]">{step}</span>
-                        ))}
-                      </div>
-                      <button type="button" onClick={() => nameInputRef.current?.focus()} className="mt-5 inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[10px] font-bold text-white shadow-[0_8px_18px_rgba(36,76,102,.16)] hover:bg-[#193B50]">
-                        <Plus className="size-3.5" />在左侧命名并创建
-                      </button>
+            <div className="knowledge-base-stage">
+              <header className="knowledge-base-current">
+                <div className="knowledge-base-current-copy">
+                  <span className="knowledge-base-kicker">当前助教引用库</span>
+                  <div className="knowledge-base-current-title">
+                    <h2>{selected?.name || "建立首个私有知识库"}</h2>
+                    {selected && <span><i />已选用</span>}
+                  </div>
+                  <p>{selected
+                    ? selected.bound_course_id
+                      ? selected.bound_course_id === course?.id
+                        ? `已绑定当前岗位《${course.name}》，助教会在相关学习场景中使用该库。`
+                        : "已绑定岗位，助教会在相关学习场景中使用该库。"
+                      : "当前为账号私有引用源，可绑定目标岗位并在助教会话中使用。"
+                    : "创建后可上传 PDF、PPTX、DOCX、Markdown 或 TXT。"}</p>
+                </div>
+
+                {selected && (
+                  <div className="knowledge-base-management" aria-label="知识库管理操作">
+                    <span className="knowledge-base-action-hint"><MousePointerClick />点击这里管理当前知识库</span>
+                    <div className="knowledge-base-management-buttons">
+                      <button type="button" disabled={busy} onClick={renameLibrary} className="is-rename"><Pencil />重命名</button>
+                      <button type="button" disabled={busy} onClick={bindCourse} className="is-bind"><BookOpen />{course ? "绑定当前岗位" : "解除岗位绑定"}</button>
+                      <button type="button" disabled={busy} onClick={deleteLibrary} className="is-danger"><Trash2 />删除知识库</button>
                     </div>
                   </div>
                 )}
-                {selected && (
-                  <>
-                    <input ref={fileRef} type="file" className="hidden" accept=".pdf,.pptx,.docx,.md,.markdown,.txt" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadFile(file) }} />
-                    <button type="button" disabled={busy} onClick={() => fileRef.current?.click()} className="flex min-h-[116px] w-full items-center justify-center gap-4 rounded-[22px] border border-dashed border-[#BEB6A7] bg-[#FDFBF6] text-left transition-colors hover:bg-[#F7F2E7] disabled:opacity-50">
-                      <span className="grid size-11 place-items-center rounded-2xl bg-[#E7EDF3] text-[#315E83]">{busy ? <Loader2 className="size-5 animate-spin" /> : <Upload className="size-5" />}</span>
-                      <span><strong className="block text-sm text-[#18232D]">上传学习资料</strong><small className="mt-1 block text-[10px] text-[#7A817F]">PDF、PPTX、DOCX、Markdown、TXT · 单文件 20MB · 后台解析</small></span>
-                    </button>
-                  </>
-                )}
 
-                <div className="mt-4 space-y-2.5">
-                  {selected?.documents.map((document) => (
-                    <article key={document.id} className="flex flex-col gap-3 rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] p-3.5 sm:flex-row sm:items-center">
-                      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#FFFEFA] text-[#315E83] shadow-sm"><FileText className="size-4.5" /></span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2"><strong className="truncate text-[11px] text-[#18232D]">{document.filename}</strong><span className={`shrink-0 rounded-full px-2 py-0.5 text-[8px] font-bold ${document.status === "ready" ? "bg-[#E9EEE6] text-[#557052]" : document.status === "ready_keyword" ? "bg-[#F4ECD8] text-[#8E6925]" : document.status === "error" ? "bg-[#F4E8E2] text-[#9A4E35]" : "bg-[#E7EDF3] text-[#315E83]"}`}>{document.status === "ready" ? "向量检索就绪" : document.status === "ready_keyword" ? "关键词检索就绪" : document.status === "error" ? "处理失败" : document.status === "queued" ? "等待后台处理" : document.status === "vectorizing" ? "正在向量化" : "正在解析"}</span></div>
-                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                          <Progress label="解析" value={document.parse_progress} />
-                          <Progress label="向量化" value={document.vector_progress} />
-                        </div>
-                        <p className={`mt-1.5 text-[9px] ${document.status === "error" ? "text-[#9A4E35]" : "text-[#7A817F]"}`}>{document.page_count ? `${document.page_count} 页 · ` : ""}{document.error_detail || `${Math.ceil(document.size / 1024)} KB`}</p>
-                        {document.ocr_status === "required_unconfigured" && <p className="mt-1 text-[9px] font-semibold text-[#8E6925]">OCR 状态：扫描 PDF 路径可插拔但当前未配置；不会伪装解析成功。</p>}
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1">
-                        {document.retry_available && <button type="button" disabled={busy} onClick={() => void retryDocument(document.id)} className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#D8C9A8] bg-[#FBF7ED] px-2.5 text-[9px] font-bold text-[#8E6925] hover:bg-[#F4ECD8] disabled:opacity-40"><RefreshCw className="size-3" />重试 {document.retry_count}/3</button>}
-                        <button type="button" onClick={() => deleteDocument(document.id)} className="grid size-8 place-items-center rounded-xl text-[#9A4E35] hover:bg-[#F4E8E2]" aria-label={`删除 ${document.filename}`}><Trash2 className="size-3.5" /></button>
-                      </div>
-                    </article>
-                  ))}
-                  {selected && selected.documents.length === 0 && <div className="rounded-2xl border border-dashed border-[#D7D1C4] p-8 text-center text-[11px] text-[#7A817F]">上传资料后，解析、索引和来源页码会在这里展示。</div>}
+                {selected && (
+                  <dl className="knowledge-base-current-stats" aria-label="当前知识库状态">
+                    <div><dt>资料</dt><dd>{selected.document_count}</dd></div>
+                    <div><dt>可检索</dt><dd>{selectedReadyCount}</dd></div>
+                    <div><dt>处理中</dt><dd>{selectedActiveCount}</dd></div>
+                  </dl>
+                )}
+              </header>
+
+              {message && <div role="status" className="knowledge-base-message"><i />{message}</div>}
+
+              {!selected ? (
+                <div className="knowledge-base-empty-stage">
+                  <img src="/images/knowledge-ingestion-engine-v1.png" alt="" />
+                  <p>解析进度、失败原因与可引用证据会在这里集中展示并持续更新。</p>
                 </div>
-              </div>
-            ) : (
-              <div className="p-4 sm:p-5">
-                <form onSubmit={(event) => { event.preventDefault(); void runSearch() }} className="flex gap-2">
-                  <div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8A8172]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="输入岗位能力点或任务问题，验证当前私有库的检索结果" className="h-11 w-full rounded-xl border border-[#D7D1C4] bg-[#FDFBF6] pl-10 pr-3 text-[11px] outline-none focus:border-[#9FB1BC]" /></div>
-                  <button type="submit" disabled={busy || !selected || !query.trim()} className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[10px] font-bold text-white disabled:opacity-40">{busy ? <Loader2 className="size-3.5 animate-spin" /> : <FileSearch className="size-3.5" />}检索</button>
-                </form>
-                <div className="mt-4 space-y-2.5">
-                  {results.map((result) => (
-                    <article key={result.chunk_id} className="rounded-2xl border border-[#D7D1C4] bg-[#F8F6F0] p-4">
-                      <div className="flex items-center justify-between gap-3"><strong className="truncate text-[11px] text-[#244C66]">{result.source}{result.page ? ` · 第 ${result.page} 页` : ""}</strong><span className="shrink-0 rounded-full bg-[#E9EEE6] px-2 py-1 text-[9px] font-bold text-[#557052]">相对匹配 {result.relevance_percent}%</span></div>
-                      <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-[11px] leading-5 text-[#59636B]">{result.content}</p>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            )}
+              ) : (
+                <>
+                  <section className="knowledge-base-upload" aria-label="上传资料">
+                    <input ref={fileRef} type="file" className="hidden" accept=".pdf,.pptx,.docx,.md,.markdown,.txt" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadFile(file) }} />
+                    <div className="knowledge-base-upload-copy">
+                      <span className="knowledge-base-upload-icon"><Upload /></span>
+                      <div><strong>添加资料到当前知识库</strong><small>PDF、PPTX、DOCX、Markdown、TXT · 单文件 20MB</small></div>
+                    </div>
+                    <ol className="knowledge-base-pipeline" aria-label="资料处理流程">
+                      <li><b>1</b>上传</li><li><b>2</b>解析</li><li><b>3</b>向量化</li><li><b>4</b>可检索</li>
+                    </ol>
+                    <div className="knowledge-base-upload-action">
+                      <span><MousePointerClick />建议从这里开始</span>
+                      <button type="button" disabled={busy} onClick={() => fileRef.current?.click()}>
+                        {busy ? <Loader2 className="animate-spin" /> : <Upload />}上传资料
+                      </button>
+                    </div>
+                  </section>
+
+                  <div className="knowledge-base-tabs" role="tablist" aria-label="知识库工作区">
+                    <button type="button" role="tab" aria-selected={tab === "library"} onClick={() => setTab("library")} className={tab === "library" ? "is-active" : ""}><FileText />资料与进度</button>
+                    <button type="button" role="tab" aria-selected={tab === "search"} onClick={() => setTab("search")} className={tab === "search" ? "is-active" : ""}><FileSearch />RAG 检索测试</button>
+                  </div>
+
+                  {tab === "library" ? (
+                    <section className="knowledge-base-documents" role="tabpanel" aria-label="资料与进度">
+                      <div className="knowledge-base-panel-heading"><div><strong>库内资料</strong><small>后台处理进度会自动更新</small></div><span>{selected.documents.length} 份</span></div>
+                      <div className="knowledge-base-document-list">
+                        {selected.documents.map((document) => (
+                          <article key={document.id} className={`knowledge-base-document is-${document.status}`}>
+                            <div className="knowledge-base-file-icon"><FileText /></div>
+                            <div className="knowledge-base-document-body">
+                              <div className="knowledge-base-document-title"><strong>{document.filename}</strong><span>{document.status === "ready" ? "向量检索就绪" : document.status === "ready_keyword" ? "关键词检索就绪" : document.status === "error" ? "处理失败" : document.status === "queued" ? "等待后台处理" : document.status === "vectorizing" ? "正在向量化" : "正在解析"}</span></div>
+                              {["queued", "parsing", "vectorizing"].includes(document.status) && (
+                                <div className="knowledge-base-progress-grid">
+                                  <Progress label="解析" value={document.parse_progress} />
+                                  <Progress label="向量化" value={document.vector_progress} />
+                                </div>
+                              )}
+                              <p>{document.page_count ? `${document.page_count} 页 · ` : ""}{document.error_detail || `${Math.ceil(document.size / 1024)} KB`}</p>
+                              {document.ocr_status === "required_unconfigured" && <p className="knowledge-base-ocr">OCR 状态：扫描 PDF 路径可插拔但当前未配置；不会伪装解析成功。</p>}
+                            </div>
+                            <div className="knowledge-base-document-actions">
+                              {document.retry_available && <button type="button" disabled={busy} onClick={() => void retryDocument(document.id)}><RefreshCw />重试 {document.retry_count}/3</button>}
+                              <button type="button" disabled={busy} onClick={() => deleteDocument(document.id)} className="is-danger" aria-label={`删除 ${document.filename}`}><Trash2 /></button>
+                            </div>
+                          </article>
+                        ))}
+                        {selected.documents.length === 0 && <div className="knowledge-base-document-empty"><FileText /><strong>还没有资料</strong><span>使用上方“上传资料”，处理进度和来源页码会在这里持续更新。</span></div>}
+                      </div>
+                    </section>
+                  ) : (
+                    <section className="knowledge-base-search" role="tabpanel" aria-label="RAG 检索测试">
+                      <div className="knowledge-base-panel-heading"><div><strong>验证引用证据</strong><small>只检索当前选中的私有知识库</small></div><span>最多返回 6 条</span></div>
+                      <form onSubmit={(event) => { event.preventDefault(); void runSearch() }}>
+                        <div><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="输入岗位能力点或任务问题" /></div>
+                        <button type="submit" disabled={busy || !query.trim()}>{busy ? <Loader2 className="animate-spin" /> : <FileSearch />}启动检索</button>
+                      </form>
+                      <div className="knowledge-base-results">
+                        {results.map((result) => (
+                          <article key={result.chunk_id}>
+                            <div><strong>{result.source}{result.page ? ` · 第 ${result.page} 页` : ""}</strong><span>相对匹配 {result.relevance_percent}%</span></div>
+                            <p>{result.content}</p>
+                          </article>
+                        ))}
+                        {!results.length && <div className="knowledge-base-result-empty"><FileSearch /><span>检索结果会在这里形成带来源与页码的证据列表。</span></div>}
+                      </div>
+                    </section>
+                  )}
+                </>
+              )}
+            </div>
           </section>
         </main>
       </div>
@@ -381,9 +429,9 @@ export function KnowledgeBase() {
 
 function Progress({ label, value }: { label: string; value: number }) {
   return (
-    <div>
-      <div className="mb-1 flex justify-between text-[8px] font-bold text-[#7A817F]"><span>{label}</span><span>{value}%</span></div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-[#E2DDD2]"><span className="block h-full rounded-full bg-[#6F8A69]" style={{ width: `${value}%` }} /></div>
+    <div className="knowledge-base-progress">
+      <div><span>{label}</span><span>{value}%</span></div>
+      <div><span style={{ width: `${value}%` }} /></div>
     </div>
   )
 }

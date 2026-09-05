@@ -14,7 +14,6 @@ from app.agents.doc_agent import DocAgent
 from app.agents.mindmap_agent import MindMapAgent
 from app.agents.practice_guide_agent import PracticeGuideAgent
 from app.agents.quiz_agent import QuizAgent, generate_quiz_batch
-from app.agents.reading_agent import ReadingAgent
 from app.agents.code_agent import CodeAgent
 from app.agents.video_agent import VideoAgent
 from app.agents.orchestrator import TrainingLoopOrchestrator, serialize_event
@@ -42,13 +41,12 @@ def _build_orchestrator() -> TrainingLoopOrchestrator:
         diagnosis_agent=DiagnosisAgent(),
         planning_agents=[DomainExpertAgent(), LearningStrategyAgent()],
         plan_arbiter=PlanArbiterAgent(),
-        # 七类岗位资源统一进入审核与发布门禁；不恢复独立学习路径生成器。
+        # 学习资源在独立资源页呈现；工作台只生成六项训练产物。
         generators=[
             DocAgent(),
             PracticeGuideAgent(),
             QuizAgent(),
             MindMapAgent(),
-            ReadingAgent(),
             CodeAgent(),
             VideoAgent(),
         ],
@@ -62,6 +60,43 @@ async def role_context(course_id: int | None = None) -> dict:
     """返回当前知识领域对应的目标岗位与核心能力。"""
     course_cfg = await get_course_by_id(course_id)
     return resolve_training_role(course_cfg.name)
+
+
+@router.get("/history")
+async def workspace_history(user: User = Depends(require_user)) -> dict:
+    """返回数据库中的训练与资源历史，供新浏览器恢复真实学习状态。"""
+    async with async_session_maker() as db:
+        resources = list((await db.scalars(
+            select(Resource)
+            .where(Resource.user_id == user.id)
+            .order_by(Resource.created_at.desc())
+        )).all())
+        runs = list((await db.scalars(
+            select(TrainingRun)
+            .where(TrainingRun.user_id == user.id, TrainingRun.status == "completed")
+            .order_by(TrainingRun.updated_at.desc())
+            .limit(20)
+        )).all())
+    type_counts: dict[str, int] = {}
+    for resource in resources:
+        type_counts[resource.type] = type_counts.get(resource.type, 0) + 1
+    latest = runs[0] if runs else None
+    return {
+        "resource_count": len(resources),
+        "resource_types": type_counts,
+        "training_count": len(runs),
+        "latest_run": None if latest is None else {
+            "run_id": latest.id,
+            "target_role": latest.target_role,
+            "topic": latest.topic,
+            "diagnosis": latest.diagnosis or {},
+            "outputs": latest.outputs or {},
+            "reviews": latest.reviews or {},
+            "decision": latest.decision or {},
+            "feedback": latest.feedback or {},
+            "completed_at": latest.updated_at.isoformat() if latest.updated_at else None,
+        },
+    }
 
 
 @router.post("/generate")
@@ -181,9 +216,9 @@ async def generate(req: GenerateRequest, user: User = Depends(require_user)):
                             citations = []
                         elif out_type == "video":
                             content_str = json.dumps({
-                                "provider": out.get("provider", "minimax"),
-                                "model": out.get("model", "MiniMax-H3"),
-                                "status": out.get("status", "unconfigured"),
+                                "provider": out.get("provider", "frontend"),
+                                "model": out.get("model", "scripted-lecture"),
+                                "status": out.get("status", "script_ready"),
                                 "message": out.get("message", ""),
                                 "video_url": out.get("video_url", ""),
                                 "assembled_video_url": out.get("assembled_video_url", ""),
@@ -204,7 +239,7 @@ async def generate(req: GenerateRequest, user: User = Depends(require_user)):
                                 "segment_count": out.get("segment_count", 0),
                                 "completed_segments": out.get("completed_segments", 0),
                                 "total_duration": out.get("total_duration", out.get("duration", 0)),
-                                "assembly_status": out.get("assembly_status", "pending"),
+                                "assembly_status": out.get("assembly_status", "not_applicable"),
                             }, ensure_ascii=False)
                             citations = (out.get("script") or {}).get("citations", [])
                         else:

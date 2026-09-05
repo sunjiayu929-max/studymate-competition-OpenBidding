@@ -49,6 +49,7 @@ function decorateTask(task) {
     statusLabel: STATUS_LABELS[status] || "待处理",
     typeLabel: task.task_type === "training" ? "岗位训练任务" : "普通阅读任务",
     actionLabel: status === "pending" ? "接受任务" : status === "accepted" ? "开始任务" : "标记为完成",
+    materialSections: parseMaterial(task.material_content, task.description),
   }
 }
 

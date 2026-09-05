@@ -6,6 +6,8 @@
  *
  */
 import { useSyncExternalStore } from "react"
+import { careerDomains } from "@/lib/domainCareerCatalog"
+import { getTargetRoleSelection, setTargetRole } from "@/store/targetRole"
 
 export type UserRole = "student" | "worker" | "enterprise_admin" | "judge" | "admin"
 
@@ -22,6 +24,21 @@ export interface CurrentUser {
 
 const STORAGE_KEY = "sm:current-user"
 export const USER_SESSION_RESET_EVENT = "studymate:user-session-reset"
+const FIXED_FDE_EMAILS = new Set([
+  "sunjiayu@pramate.com", "baixinyue@pramate.com", "yuanshicong@pramate.com",
+  "chenzhuo@pramate.com", "lijiayi@pramate.com", "zhouxiang@pramate.com",
+  "tianyixin@pramate.com", "liufei@pramate.com", "test@pramate.com",
+])
+
+function normalizeUser(user: CurrentUser): CurrentUser {
+  if (!FIXED_FDE_EMAILS.has((user.email || "").toLowerCase())) return user
+  return {
+    ...user,
+    learner_type: "worker",
+    company: "河南本线商贸有限公司",
+    target_role: "前线部署工程师（FDE）",
+  }
+}
 
 function loadFromStorage(): CurrentUser | null {
   try {
@@ -30,7 +47,7 @@ function loadFromStorage(): CurrentUser | null {
     const parsed = JSON.parse(raw) as CurrentUser
     if (typeof parsed.user_id !== "number" || !parsed.name) return null
     const role: UserRole = ["admin", "judge", "enterprise_admin", "worker"].includes(parsed.role) ? parsed.role : "student"
-    return { ...parsed, role }
+    return normalizeUser({ ...parsed, role })
   } catch {
     return null
   }
@@ -48,12 +65,12 @@ class UserStore {
 
   set(u: CurrentUser | null) {
     const previousUserId = this.current?.user_id ?? null
-    this.current = u
+    this.current = u ? normalizeUser(u) : null
     if (u && typeof window !== "undefined") {
       window.dispatchEvent(new Event("studymate:event-tracking-resume"))
     }
     try {
-      if (u) localStorage.setItem(STORAGE_KEY, JSON.stringify(u))
+      if (this.current) localStorage.setItem(STORAGE_KEY, JSON.stringify(this.current))
       else localStorage.removeItem(STORAGE_KEY)
     } catch {
       /* ignore */
@@ -84,6 +101,17 @@ export function useCurrentUser(): CurrentUser | null {
 
 export function setCurrentUser(u: CurrentUser | null) {
   userStore.set(u)
+  // 固定演示账号的目标岗位来自数据库；新浏览器登录后应立即恢复，
+  // 不能要求用户再手动选择一次才看见测验、面试和能力画像数据。
+  if (u?.target_role && !getTargetRoleSelection()) {
+    for (const domain of careerDomains) {
+      const role = domain.roles.find((item) => item.name === u.target_role)
+      if (role) {
+        setTargetRole({ domainId: domain.id, roleId: role.id })
+        break
+      }
+    }
+  }
 }
 
 export function logoutUser() {

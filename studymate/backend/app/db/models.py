@@ -69,6 +69,20 @@ class ProfileSnapshot(Base, TimestampMixin):
     trigger_event: Mapped[str] = mapped_column(String(64))
 
 
+class RoleCertificate(Base, TimestampMixin):
+    """Persisted role certificate shown on the learner's honor wall."""
+    __tablename__ = "role_certificates"
+    __table_args__ = (UniqueConstraint("user_id", "role_id", name="uq_role_certificate_user_role"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    role_id: Mapped[str] = mapped_column(String(128), index=True)
+    role_name: Mapped[str] = mapped_column(String(128))
+    completed_rounds: Mapped[int] = mapped_column(Integer, default=1)
+    issued_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    serial: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+
+
 class Course(Base, TimestampMixin):
     __tablename__ = "courses"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -218,7 +232,7 @@ class UserKnowledgeChunk(Base, TimestampMixin):
 
 
 class Resource(Base, TimestampMixin):
-    """多 Agent 生成的资源。type ∈ {doc, mindmap, quiz, reading, code, video}"""
+    """多 Agent 生成的资源。type ∈ {doc, guide, mindmap, quiz, reading, code, video}"""
     __tablename__ = "resources"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
@@ -229,6 +243,17 @@ class Resource(Base, TimestampMixin):
     citations: Mapped[list] = mapped_column(JSON, default=list)
     agent_id: Mapped[str] = mapped_column(String(64))
     ai_generated: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class ConceptArchive(Base, TimestampMixin):
+    """跨账号共享的可视讲解归档；按主题复用生成结果。"""
+    __tablename__ = "concept_archives"
+    __table_args__ = (UniqueConstraint("question_key", name="uq_concept_archive_question_key"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    question_key: Mapped[str] = mapped_column(String(512), index=True)
+    question: Mapped[str] = mapped_column(String(500))
+    result: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class LearningPath(Base, TimestampMixin):
@@ -334,6 +359,11 @@ class Evaluation(Base, TimestampMixin):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     scores: Mapped[dict] = mapped_column(JSON)
     suggestions: Mapped[list] = mapped_column(JSON, default=list)
+    profile_delta: Mapped[dict] = mapped_column(JSON, default=dict)
+    evidence: Mapped[dict] = mapped_column(JSON, default=dict)
+    summary_markdown: Mapped[str] = mapped_column(Text, default="")
+    next_topics: Mapped[list] = mapped_column(JSON, default=list)
+    profile_version: Mapped[int] = mapped_column(Integer, default=1)
 
 
 class Folder(Base, TimestampMixin):
@@ -449,6 +479,7 @@ class InterviewAttempt(Base, TimestampMixin):
     course_id: Mapped[int | None] = mapped_column(ForeignKey("courses.id"), nullable=True, index=True)
     role_context: Mapped[dict] = mapped_column(JSON, default=dict)
     profile_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
+    # launch_ready / launched / in_progress / completed / abandoned
     status: Mapped[str] = mapped_column(String(32), default="launch_ready", index=True)
     external_interview_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     report: Mapped[dict] = mapped_column(JSON, default=dict)
@@ -477,6 +508,7 @@ class OJLaunchTicket(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    next_path: Mapped[str] = mapped_column(String(512), default="/oj/", nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

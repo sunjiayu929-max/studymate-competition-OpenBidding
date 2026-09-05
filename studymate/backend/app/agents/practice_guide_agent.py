@@ -159,6 +159,12 @@ class PracticeGuideAgent(AgentBase):
             f"[{index + 1}] {item['source']} p.{item.get('page') or '-'}: {item['content'][:120]}"
             for index, item in enumerate(chunks)
         )
+        quality_contract = training_plan.get("quality_contract") or {}
+        required_points = training_plan.get("required_knowledge_points") or []
+        required_text = "、".join(
+            str(item.get("point", item.get("knowledge_point", item))) if isinstance(item, dict) else str(item)
+            for item in required_points
+        ) or "训练计划中的核心知识点"
         system = f"""你是{domain}领域的{target_role}实训专家。请严格依据知识库生成《{topic}》岗位实操指南。
 
 学情诊断：{json.dumps(diagnosis, ensure_ascii=False)}
@@ -166,11 +172,14 @@ class PracticeGuideAgent(AgentBase):
 知识库依据：
 {references}
 审核返工要求：{json.dumps(revision_feedback, ensure_ascii=False)}
+质量合同：{json.dumps(quality_contract, ensure_ascii=False)}
+本主题必须覆盖的黄金知识点：{required_text}
 
 必须使用 Markdown，并完整包含以下标题：
 任务目标与验收标准、环境与前置条件、操作步骤、预期结果、异常处理、安全边界、验收清单。
 每个专业结论使用 [n] 引用；没有依据时明确写“证据不足，触发自动补证返工”，不得编造。
 操作步骤必须包含输入、操作、预期结果和失败处理，默认使用教学仿真环境；验收清单必须呼应训练计划的成果证据与验收标准。
+对每个黄金知识点给出实际操作、检查项或验收证据；资料没有支持的具体阈值、版本或设备条件不得自行编造。
 """
         buffer = ""
         async for token in get_llm_client().chat_stream(

@@ -34,6 +34,12 @@ class DocAgent(AgentBase):
         revision_feedback = (context.get("revision_feedback") or {}).get("doc", [])
         training_plan = context.get("training_plan") or {}
         persona = course_cfg.persona if course_cfg else f"{course_name}岗位训练助理"
+        quality_contract = training_plan.get("quality_contract") or {}
+        required_points = training_plan.get("required_knowledge_points") or []
+        required_text = "、".join(
+            str(item.get("point", item.get("knowledge_point", item))) if isinstance(item, dict) else str(item)
+            for item in required_points
+        ) or "训练计划中的核心知识点"
 
         # 构造引用块的简短表示传给 LLM（每条 ≤ 80 字）
         ref_block = "\n".join(
@@ -175,6 +181,13 @@ def gradient_descent(x, y, lr=0.01, n_iter=1000):
         revision_feedback: list[str] | None = None,
     ) -> str:
         llm = get_llm_client()
+        plan = training_plan or {}
+        quality_contract = plan.get("quality_contract") or {}
+        required_points = plan.get("required_knowledge_points") or []
+        required_text = "、".join(
+            str(item.get("point", item.get("knowledge_point", item))) if isinstance(item, dict) else str(item)
+            for item in required_points
+        ) or "训练计划中的核心知识点"
         sys_prompt = f"""你是一位{persona}，正在为学习者生成{domain}领域、目标岗位“{target_role}”下「{topic}」的个性化岗位讲义。
 
 【学生画像】
@@ -196,6 +209,8 @@ def gradient_descent(x, y, lr=0.01, n_iter=1000):
 4. 代码块用 ```python ... ```
 5. 篇幅 600-900 字
 6. 根据画像调整难度和示例，且必须服务于训练计划中的优先能力、任务成果与验收标准
+7. 本轮质量合同要求：{json.dumps(quality_contract, ensure_ascii=False)}
+8. 必须在正文的概念解释、示例或验收清单中覆盖：{required_text}；每个知识点都要有可定位的引用或明确说明证据不足
 
 【语言要求（必须严格遵守）】
 - 全文必须使用**简体中文**，包括小节标题、正文、解释、误区说明

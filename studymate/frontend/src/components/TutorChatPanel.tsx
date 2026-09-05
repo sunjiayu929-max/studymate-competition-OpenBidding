@@ -6,12 +6,12 @@
  * - 自动注入当前页面 page_context（store/tutorContext）
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
-import { AlertCircle, ArrowLeft, Send, Loader2, Bot, User, Headphones, Paperclip, Trash2, X, FileText, Code2, Sparkles, History, MessageSquarePlus, RotateCcw, Square, ScanLine } from "lucide-react"
+import { Link } from "react-router-dom"
+import { AlertCircle, ArrowLeft, Send, Loader2, Bot, User, Paperclip, Trash2, X, FileText, Code2, Sparkles, History, MessageSquarePlus, MessageCircleMore, RotateCcw, Square, ScanLine } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Markdown } from "@/components/Markdown"
 import { MicButton } from "@/components/MicButton"
-import { SpeakerButton } from "@/components/SpeakerButton"
+import { SpeakerButton, type SpeakerStatus } from "@/components/SpeakerButton"
 import { VoiceSelector } from "@/components/VoiceSelector"
 import { TutorConversationPanel } from "@/components/TutorConversationPanel"
 import { LearningMethodSelector } from "@/components/LearningMethodSelector"
@@ -35,6 +35,9 @@ import { useTutorPageContext } from "@/store/tutorContext"
 import { useTargetRole } from "@/store/targetRole"
 import { tutorGenerationStore, useTutorDraft, useTutorGeneration } from "@/store/tutorGeneration"
 import { formatTutorDisplayContent } from "@/lib/tutorFormatting"
+import type { DigitalHumanState } from "@/lib/digitalHuman"
+import { prepareSpeechText } from "@/lib/speechText"
+import { StreamingTtsPipeline } from "@/lib/ttsPipeline"
 import {
   setTutorLearningMethod,
   useTutorLearningMethod,
@@ -50,6 +53,8 @@ interface TutorChatPanelProps {
   showStarters?: boolean
   captureMode?: boolean
   onCaptureModeChange?: (enabled: boolean) => void
+  onSpeechStatusChange?: (status: SpeakerStatus) => void
+  onVoiceConversationStateChange?: (state: DigitalHumanState | null) => void
 }
 
 export function TutorChatPanel({
@@ -58,8 +63,9 @@ export function TutorChatPanel({
   showStarters = true,
   captureMode = false,
   onCaptureModeChange,
+  onSpeechStatusChange,
+  onVoiceConversationStateChange,
 }: TutorChatPanelProps) {
-  const navigate = useNavigate()
   const user = useCurrentUser()
   const USER_ID = user?.user_id ?? 0
   const course = useCurrentCourse()
@@ -126,6 +132,12 @@ export function TutorChatPanel({
   const [imgHint, setImgHint] = useState("")
   const [dragActive, setDragActive] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [conversationMode, setConversationMode] = useState(false)
+  const [micActivationToken, setMicActivationToken] = useState(0)
+  const [micStopToken, setMicStopToken] = useState(0)
+  const conversationModeRef = useRef(false)
+  const autoSpeechRef = useRef<StreamingTtsPipeline | null>(null)
+  const lastAutoSpokenRef = useRef("")
 
   const handleLearningMethodChange = useCallback((method: TutorLearningMethod) => {
     setTutorLearningMethod(USER_ID, courseId, method)
@@ -268,6 +280,87 @@ export function TutorChatPanel({
     [status, USER_ID, courseId, setInput, startStream]
   )
 
+  const handleConversationTranscript = useCallback((text: string, isFinal: boolean) => {
+    setInput(text)
+    if (!isFinal || !text.trim()) return
+    onVoiceConversationStateChange?.("thinking")
+    handleSend(text)
+  }, [handleSend, onVoiceConversationStateChange, setInput])
+
+  const handleConversationMicState = useCallback((recording: boolean) => {
+    if (recording) onVoiceConversationStateChange?.("listening")
+    else if (conversationModeRef.current && status !== "open") onVoiceConversationStateChange?.("thinking")
+  }, [onVoiceConversationStateChange, status])
+
+  const stopConversationMode = useCallback(() => {
+    conversationModeRef.current = false
+    setConversationMode(false)
+    setMicStopToken((value) => value + 1)
+    autoSpeechRef.current?.cancel()
+    autoSpeechRef.current = null
+    onSpeechStatusChange?.("idle")
+    onVoiceConversationStateChange?.(null)
+  }, [onSpeechStatusChange, onVoiceConversationStateChange])
+
+  const toggleConversationMode = useCallback(() => {
+    if (conversationModeRef.current) {
+      stopConversationMode()
+      return
+    }
+    const latestAssistant = [...tutorHistory.get(USER_ID, courseId)].reverse().find((message) => message.role === "assistant")
+    lastAutoSpokenRef.current = latestAssistant?.content || ""
+    conversationModeRef.current = true
+    setConversationMode(true)
+    onVoiceConversationStateChange?.("listening")
+    setMicActivationToken((value) => value + 1)
+  }, [USER_ID, courseId, onVoiceConversationStateChange, stopConversationMode])
+
+  useEffect(() => {
+    if (!conversationMode || status === "open") return
+    const latest = persistedMessages.at(-1)
+    if (latest?.role !== "assistant" || !latest.content || latest.content === lastAutoSpokenRef.current) return
+    lastAutoSpokenRef.current = latest.content
+    const speechText = prepareSpeechText(latest.content)
+    if (!speechText) {
+      onVoiceConversationStateChange?.("listening")
+      setMicActivationToken((value) => value + 1)
+      return
+    }
+
+    autoSpeechRef.current?.cancel()
+    onSpeechStatusChange?.("loading")
+    onVoiceConversationStateChange?.("thinking")
+    const pipeline = new StreamingTtsPipeline({
+      prefetch: 1,
+      onPlaybackStart: () => {
+        onSpeechStatusChange?.("playing")
+        onVoiceConversationStateChange?.("speaking")
+      },
+      onDrain: () => {
+        if (autoSpeechRef.current === pipeline) autoSpeechRef.current = null
+        onSpeechStatusChange?.("idle")
+        if (!conversationModeRef.current) return
+        onVoiceConversationStateChange?.("listening")
+        setMicActivationToken((value) => value + 1)
+      },
+      onError: (error) => {
+        console.error("[TutorConversation] TTS 失败：", error)
+        if (autoSpeechRef.current === pipeline) autoSpeechRef.current = null
+        setImgHint("回答已显示，但自动朗读失败；你可以继续文字提问")
+        stopConversationMode()
+      },
+    })
+    autoSpeechRef.current = pipeline
+    pipeline.append(speechText)
+    pipeline.finish()
+  }, [conversationMode, onSpeechStatusChange, onVoiceConversationStateChange, persistedMessages, status, stopConversationMode])
+
+  useEffect(() => () => {
+    conversationModeRef.current = false
+    autoSpeechRef.current?.cancel()
+    onVoiceConversationStateChange?.(null)
+  }, [onVoiceConversationStateChange])
+
   const handleStop = useCallback(() => {
     if (status !== "open") return
     tutorGenerationStore.stop(USER_ID, courseId)
@@ -318,7 +411,7 @@ export function TutorChatPanel({
             <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
             <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#DDD4BF] bg-[#F4ECD8] text-[#9B7429]"><Bot className="size-4" /></span>
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-[15px] font-bold text-[#18232D]">StudyMate 岗位助教</h2>
+              <h2 className="truncate text-[15px] font-bold text-[#18232D]">因材智训岗位助教</h2>
               <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">正在学习「{courseLabel}」· {learningMethod === "feynman" ? "讲清后复述" : "一次解决一个问题"}</p>
             </div>
           </div>
@@ -453,7 +546,7 @@ export function TutorChatPanel({
               </div>
             ) : (
               <>
-                {messages.map((message, index) => <Bubble key={index} role={message.role} content={message.content} images={message.images} attachments={message.attachments} delivery={message.delivery} errorDetail={message.error_detail} onRetry={message.delivery === "error" || message.delivery === "stopped" ? () => handleRetry(index) : undefined} />)}
+                {messages.map((message, index) => <Bubble key={index} role={message.role} content={message.content} images={message.images} attachments={message.attachments} delivery={message.delivery} errorDetail={message.error_detail} onRetry={message.delivery === "error" || message.delivery === "stopped" ? () => handleRetry(index) : undefined} onSpeechStatusChange={onSpeechStatusChange} />)}
                 {streaming && <Bubble role="assistant" content={streaming} streaming />}
                 {status === "open" && !streaming && (
                   <div className="min-w-0 pr-10 sm:pr-16">
@@ -517,8 +610,30 @@ export function TutorChatPanel({
                   <button type="button" onClick={() => fileRef.current?.click()} disabled={status === "open" || imgBusy} title="上传图片、PDF、Markdown、文本或代码" aria-label="上传附件" className="grid size-9 place-items-center rounded-xl text-[#66717B] transition-colors hover:bg-[#F4ECD8] hover:text-[#8E6925] disabled:opacity-40">
                     {imgBusy ? <Loader2 className="size-4 animate-spin" /> : <Paperclip className="size-4" />}
                   </button>
-                  <MicButton size="sm" onTranscript={(text) => setInput(text)} onError={(error) => console.error("ASR 失败：", error)} />
-                  <button type="button" onClick={() => navigate("/tutor/voice")} title="进入实时语音对话" aria-label="进入实时语音对话" className="grid size-9 place-items-center rounded-xl text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]"><Headphones className="size-4" /></button>
+                  <MicButton
+                    size="sm"
+                    activationToken={micActivationToken}
+                    stopToken={micStopToken}
+                    vadEos={1800}
+                    onTranscript={(text, isFinal) => conversationModeRef.current ? handleConversationTranscript(text, isFinal) : setInput(text)}
+                    onStateChange={handleConversationMicState}
+                    onError={(error) => {
+                      console.error("ASR 失败：", error)
+                      setImgHint("语音识别连接失败，请检查语音服务配置")
+                      if (conversationModeRef.current) stopConversationMode()
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={toggleConversationMode}
+                    disabled={!conversationMode && status === "open"}
+                    aria-pressed={conversationMode}
+                    title={conversationMode ? "结束数字人对话" : "与数字人对话"}
+                    className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-[11px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${conversationMode ? "border-[#315E83] bg-[#244C66] text-white shadow-[0_5px_12px_rgba(36,76,102,.18)]" : "border-[#D7D1C4] bg-[#FFFEFA] text-[#59636B] hover:border-[#9FB1BC] hover:bg-[#E7EDF3] hover:text-[#244C66]"}`}
+                  >
+                    <MessageCircleMore className={`size-4 ${conversationMode ? "animate-pulse" : ""}`} />
+                    <span>{conversationMode ? "结束对话" : "数字人对话"}</span>
+                  </button>
                 </div>
                 <button type={status === "open" ? "button" : "submit"} onClick={status === "open" ? handleStop : undefined} disabled={status !== "open" && !input.trim() && pendingImages.length === 0 && pendingFiles.length === 0} className={`grid size-10 place-items-center rounded-xl text-[#FFFEFA] shadow-[0_7px_16px_rgba(36,76,102,.18)] transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40 ${status === "open" ? "bg-[#A05137] hover:bg-[#873F2A]" : "bg-[#244C66] hover:bg-[#193B50]"}`} aria-label={status === "open" ? "停止生成并保留当前回答" : "发送问题"}>
                   {status === "open" ? <Square className="size-3.5 fill-current" /> : <Send className="size-4" />}
@@ -690,6 +805,7 @@ function Bubble({
   onRetry,
   streaming,
   compact,
+  onSpeechStatusChange,
 }: {
   role: "user" | "assistant"
   content: string
@@ -700,6 +816,7 @@ function Bubble({
   onRetry?: () => void
   streaming?: boolean
   compact?: boolean
+  onSpeechStatusChange?: (status: SpeakerStatus) => void
 }) {
   const isUser = role === "user"
   const displayContent = isUser ? content : formatTutorDisplayContent(content)
@@ -715,7 +832,7 @@ function Bubble({
               {streaming && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-[#9B7429]" />}
             </div>
             {(delivery === "error" || delivery === "stopped") && <ResponseIssue delivery={delivery} detail={errorDetail} onRetry={onRetry} />}
-            {!streaming && content && delivery !== "error" && delivery !== "stopped" && <div className="mt-2"><SpeakerButton text={content} /></div>}
+            {!streaming && content && delivery !== "error" && delivery !== "stopped" && <div className="mt-2"><SpeakerButton text={content} onStatusChange={onSpeechStatusChange} /></div>}
           </div>
         </div>
       )

@@ -15,6 +15,15 @@ fi
 
 ACTION="${1:-up}"
 
+DEPLOY_LOCK_FILE="${DEPLOY_LOCK_FILE:-${TMPDIR:-/tmp}/studymate-deploy.lock}"
+if [[ "$ACTION" == "up" || "$ACTION" == "down" ]]; then
+  exec 9>"$DEPLOY_LOCK_FILE"
+  if ! flock -n 9; then
+    echo "Another StudyMate deployment is already running." >&2
+    exit 1
+  fi
+fi
+
 dotenv_value() {
   local env_file="$1"
   local wanted_key="$2"
@@ -43,6 +52,24 @@ dotenv_value() {
   ' "$env_file"
 }
 
+reject_compose_env_overrides() {
+  # docker compose gives inherited shell variables precedence over --env-file.
+  # A stale SITE_ADDRESS or profile flag can therefore deploy a valid-looking
+  # stack with the wrong public routing. Fail closed when both values exist.
+  [[ -f "$DEPLOY_ENV_FILE" ]] || return 0
+  local key configured inherited
+  for key in SITE_ADDRESS HTTP_PORT HTTPS_PORT COMPOSE_PROFILES DATABASE_URL SEED_DEMO_USERS; do
+    configured="$(dotenv_value "$DEPLOY_ENV_FILE" "$key")"
+    if [[ -n "$configured" && -n "${!key+x}" ]]; then
+      inherited="${!key}"
+      if [[ "$inherited" != "$configured" ]]; then
+        echo "Shell environment $key overrides $DEPLOY_ENV_FILE; unset it before deploying." >&2
+        exit 1
+      fi
+    fi
+  done
+}
+
 AI_INTERVIEW_ENABLED="${AI_INTERVIEW_ENABLED:-$(dotenv_value "$DEPLOY_ENV_FILE" AI_INTERVIEW_ENABLED)}"
 AI_INTERVIEW_ENABLED="${AI_INTERVIEW_ENABLED:-0}"
 AI_INTERVIEW_DIR="${AI_INTERVIEW_DIR:-$(dotenv_value "$DEPLOY_ENV_FILE" AI_INTERVIEW_DIR)}"
@@ -57,6 +84,12 @@ OJ_DIR="${OJ_DIR:-../oj}"
 if [[ "$OJ_DIR" != /* ]]; then
   OJ_DIR="$PROJECT_DIR/$OJ_DIR"
 fi
+REQUIRE_DEPLOY_BRANCH="${REQUIRE_DEPLOY_BRANCH:-$(dotenv_value "$DEPLOY_ENV_FILE" REQUIRE_DEPLOY_BRANCH)}"
+REQUIRE_DEPLOY_BRANCH="${REQUIRE_DEPLOY_BRANCH:-0}"
+REQUIRE_BACKUP="${REQUIRE_BACKUP:-$(dotenv_value "$DEPLOY_ENV_FILE" REQUIRE_BACKUP)}"
+REQUIRE_BACKUP="${REQUIRE_BACKUP:-0}"
+BACKUP_SCRIPT="${BACKUP_SCRIPT:-$(dotenv_value "$DEPLOY_ENV_FILE" BACKUP_SCRIPT)}"
+BACKUP_SCRIPT="${BACKUP_SCRIPT:-/home/deploy/studymate-ops/backup-db.sh}"
 
 case "$AI_INTERVIEW_ENABLED" in
   0|1) ;;
@@ -93,6 +126,90 @@ oj_compose() {
     cd "$OJ_DIR"
     docker compose "$@"
   )
+}
+
+preflight_repository() {
+  local root branch
+  root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -z "$root" ]]; then
+    if [[ "$REQUIRE_DEPLOY_BRANCH" == "1" ]]; then
+      local revision
+      revision="${DEPLOY_SOURCE_REVISION:-$(dotenv_value "$DEPLOY_ENV_FILE" DEPLOY_SOURCE_REVISION)}"
+      if [[ -z "$revision" || "$revision" == replace-with-* ]]; then
+        echo "Deployment source has no Git metadata; set DEPLOY_SOURCE_REVISION in $DEPLOY_ENV_FILE." >&2
+        exit 1
+      fi
+    fi
+    return 0
+  fi
+
+  if [[ "$REQUIRE_DEPLOY_BRANCH" == "1" ]]; then
+    branch="$(git -C "$root" symbolic-ref --short HEAD 2>/dev/null || true)"
+    if [[ "$branch" != "merge-competition" ]]; then
+      echo "Production deployment must run from merge-competition (received: ${branch:-detached})." >&2
+      exit 1
+    fi
+  fi
+  if [[ -f "$root/.gitmodules" ]]; then
+    if git -C "$root" submodule status --recursive | grep -qE '^[+-]'; then
+      echo "One or more Git submodules are uninitialized or at an unexpected revision." >&2
+      git -C "$root" submodule status --recursive >&2 || true
+      exit 1
+    fi
+    [[ -f "$root/ai-interview/docker-compose.yml" ]] || { echo "ai-interview submodule is missing." >&2; exit 1; }
+    [[ -f "$root/oj/docker-compose.yml" ]] || { echo "oj submodule is missing." >&2; exit 1; }
+  fi
+}
+
+preflight_effective_compose() {
+  local rendered configured_site
+  reject_compose_env_overrides
+  rendered="$("${COMPOSE[@]}" config 2>/dev/null)" || {
+    echo "Unable to render the effective Docker Compose configuration." >&2
+    exit 1
+  }
+  if [[ -f "$DEPLOY_ENV_FILE" ]] && [[ "$(dotenv_value "$DEPLOY_ENV_FILE" COMPOSE_PROFILES)" == *public* ]]; then
+    configured_site="$(dotenv_value "$DEPLOY_ENV_FILE" SITE_ADDRESS)"
+    if [[ -z "$configured_site" || "$configured_site" == replace-with-* ]]; then
+      echo "Public deployment requires a real SITE_ADDRESS in $DEPLOY_ENV_FILE." >&2
+      exit 1
+    fi
+    if ! grep -Fq "SITE_ADDRESS: $configured_site" <<<"$rendered"; then
+      echo "Effective Compose configuration does not use SITE_ADDRESS=$configured_site." >&2
+      exit 1
+    fi
+  fi
+}
+
+refresh_caddy_config() {
+  # Caddyfile is bind-mounted into the container. A deployment sync can
+  # replace the host file atomically, leaving a long-lived container attached
+  # to the old inode. Compare the mounted bytes and recreate only Caddy when
+  # that happens; otherwise reload the current config in place.
+  if ! "${COMPOSE[@]}" config --services 2>/dev/null | grep -qx caddy; then
+    return 0
+  fi
+
+  local host_hash container_hash
+  host_hash="$(sha256sum "$PROJECT_DIR/Caddyfile" | awk '{print $1}')"
+  container_hash="$(docker exec studymate-caddy sha256sum /etc/caddy/Caddyfile 2>/dev/null | awk '{print $1}' || true)"
+  if [[ -z "$container_hash" || "$host_hash" != "$container_hash" ]]; then
+    echo "Refreshing Caddy bind mount after configuration sync."
+    "${COMPOSE[@]}" up -d --no-deps --force-recreate caddy
+    return 0
+  fi
+
+  docker exec studymate-caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+}
+
+backup_gate() {
+  [[ "$REQUIRE_BACKUP" == "1" ]] || return 0
+  [[ -x "$BACKUP_SCRIPT" ]] || {
+    echo "Required backup script is missing or not executable: $BACKUP_SCRIPT" >&2
+    exit 1
+  }
+  echo "Running deployment backup gate: $BACKUP_SCRIPT"
+  "$BACKUP_SCRIPT"
 }
 
 require_ai_project() {
@@ -208,6 +325,7 @@ preflight_oj() {
   require_config_value "$oj_env_file" MONGO_ROOT_PASSWORD >/dev/null
   require_config_value "$oj_env_file" HYDRO_MONGO_USERNAME >/dev/null
   require_config_value "$oj_env_file" HYDRO_MONGO_PASSWORD >/dev/null
+  sso_only="$(require_config_value "$oj_env_file" STUDYMATE_SSO_ONLY)"
 
   local expected_public="https://${site_address%/}/oj"
   local expected_hydro="${expected_public}/"
@@ -221,6 +339,10 @@ preflight_oj() {
   fi
   if [[ "$backend_secret" != "$oj_secret" ]]; then
     echo "StudyMate and OJ service secrets do not match." >&2
+    exit 1
+  fi
+  if [[ "$sso_only" != "1" ]]; then
+    echo "STUDYMATE_SSO_ONLY in $oj_env_file must be 1 for production." >&2
     exit 1
   fi
 }
@@ -291,9 +413,18 @@ start_oj() {
 
 case "$ACTION" in
   up)
+    preflight_repository
     preflight_ai
     preflight_oj
-    "${COMPOSE[@]}" up -d --build --remove-orphans
+    preflight_effective_compose
+    backup_gate
+    compose_up_args=(-d --remove-orphans)
+    if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
+      compose_up_args+=(--build)
+    else
+      echo "Main image build skipped (SKIP_BUILD=1)."
+    fi
+    "${COMPOSE[@]}" up "${compose_up_args[@]}"
     if [[ "${SKIP_PISTON_INIT:-0}" != "1" ]] \
       && "${COMPOSE[@]}" ps --status running --services | grep -qx piston-api; then
       bash scripts/init-piston.sh
@@ -301,6 +432,7 @@ case "$ACTION" in
       echo "Piston runtime initialization skipped (profile disabled or explicitly skipped)."
     fi
     "${COMPOSE[@]}" ps
+    refresh_caddy_config
     if ai_enabled; then
       start_ai
       ai_compose ps
@@ -311,8 +443,10 @@ case "$ACTION" in
     fi
     ;;
   preflight)
+    preflight_repository
     preflight_ai
     preflight_oj
+    preflight_effective_compose
     echo "Deployment preflight passed."
     ;;
   status)

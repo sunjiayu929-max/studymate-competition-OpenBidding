@@ -7,7 +7,7 @@
         <text class="brand-subtitle">INTELLIGENT LEARNING STUDIO</text>
       </view>
     </view>
-    <view class="online-status"><view class="online-dot"></view><text>7 个智能体在线</text></view>
+    <view class="online-status"><view class="online-dot"></view><text>8 个智能体在线</text></view>
   </view>
 
   <view class="auth-shell">

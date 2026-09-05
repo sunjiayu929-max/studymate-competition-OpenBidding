@@ -1,0 +1,722 @@
+.honors-v2 {
+  --h-ink: #172b4d;
+  --h-blue: #276a9a;
+  --h-gold: #b27b21;
+  color: var(--h-ink);
+  background-color: #edf5fb;
+  background-image:
+    linear-gradient(180deg, rgba(247, 251, 254, 0.76), rgba(241, 248, 252, 0.9)),
+    url("/images/honor-vault-background-v1.png");
+  background-position: center top;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+.honors-v2 .app-topbar {
+  position: relative !important;
+  top: auto !important;
+}
+
+.honors-v2 .app-topbar-real-icon {
+  width: 54px;
+  height: 54px;
+  min-width: 54px;
+}
+
+.honors-v2 .app-topbar-real-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 7px 10px rgba(46, 81, 108, 0.18));
+}
+
+.honors-v2 .app-topbar-copy > div {
+  font-size: 0.75rem;
+}
+
+.honors-v2 .app-topbar-copy > h1 {
+  font-size: 1.15rem;
+}
+
+.honors-v2 .app-topbar-role-context {
+  font-size: 0.85rem;
+}
+
+.honors-v2 svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.honors-v2-summary {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) minmax(360px, 0.9fr) auto;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 0.75rem;
+  border: 1px solid rgba(190, 207, 219, 0.82);
+  border-radius: 18px;
+  padding: 0.85rem 1rem;
+  background: linear-gradient(110deg, rgba(250, 253, 255, 0.94), rgba(238, 247, 252, 0.86));
+  box-shadow: 0 10px 28px rgba(28, 55, 78, 0.07);
+  backdrop-filter: blur(10px);
+}
+
+.honors-v2-summary-copy {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.honors-v2-summary-icon {
+  display: grid;
+  width: 2.8rem;
+  height: 2.8rem;
+  flex: none;
+  place-items: center;
+  border: 1px solid #d8c698;
+  border-radius: 14px;
+  color: #9b6c1c;
+  background: linear-gradient(145deg, #fff9e8, #e8f5fa);
+  box-shadow: 0 7px 16px rgba(66, 91, 108, 0.08);
+}
+
+.honors-v2-summary-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.honors-v2-summary-copy small,
+.honors-v2-summary-copy strong,
+.honors-v2-summary-copy p {
+  display: block;
+}
+
+.honors-v2-summary-copy small {
+  color: #52758e;
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+
+.honors-v2-summary-copy strong {
+  margin-top: 0.15rem;
+  color: #143b5a;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.honors-v2-summary-copy p {
+  margin-top: 0.18rem;
+  color: #5c7588;
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.honors-v2-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-inline: 1px solid #d9e3e9;
+}
+
+.honors-v2-summary-stats > div {
+  min-width: 0;
+  padding: 0.2rem 0.85rem;
+  border-right: 1px solid #dfe7ec;
+}
+
+.honors-v2-summary-stats > div:last-child {
+  border-right: 0;
+}
+
+.honors-v2-summary-stats span,
+.honors-v2-summary-stats strong {
+  display: block;
+}
+
+.honors-v2-summary-stats span {
+  color: #648096;
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.honors-v2-summary-stats strong {
+  margin-top: 0.12rem;
+  overflow: hidden;
+  color: #164d75;
+  font-size: 1.65rem;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.honors-v2-summary-stats strong.compact {
+  font-size: 0.9rem;
+  line-height: 1.85;
+}
+
+.honors-v2-summary-stats small {
+  margin-left: 0.12rem;
+  font-size: 0.68rem;
+}
+
+.honors-v2-sync {
+  display: inline-flex;
+  min-width: 8.2rem;
+  height: 2.35rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid #cedce5;
+  border-radius: 999px;
+  padding: 0 0.85rem;
+  color: #5c7486;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 0.85rem;
+  font-weight: 850;
+}
+
+.honors-v2-sync.is-ready {
+  border-color: #b9dace;
+  color: #1d715c;
+  background: #edf8f3;
+}
+
+.honors-v2-sync.is-syncing {
+  border-color: #bdd9e7;
+  color: #246f96;
+  background: #edf7fb;
+}
+
+.honors-v2-sync.is-syncing svg,
+.honors-v2-loading > svg {
+  animation: h-spin 0.9s linear infinite;
+}
+
+.honors-v2-wall {
+  margin-top: 1rem;
+}
+
+.honors-v2-wall-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 0.2rem;
+}
+
+.honors-v2-wall-heading small {
+  color: #477596;
+  font-size: 0.75rem;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+}
+
+.honors-v2-wall-heading h2 {
+  margin-top: 0.1rem;
+  color: #123653;
+  font-size: 1.65rem;
+  font-weight: 950;
+  letter-spacing: -0.035em;
+}
+
+.honors-v2-wall-heading > span {
+  border: 1px solid #d4e0e7;
+  border-radius: 999px;
+  padding: 0.38rem 0.72rem;
+  color: #426b84;
+  background: rgba(250, 253, 255, 0.72);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.honors-v2-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 0.65rem;
+}
+
+.honors-v2-card {
+  --card-accent: #b1842c;
+  --card-soft: #fbf2dc;
+  --card-beam: #fff5b9;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--card-accent) 42%, #dce5eb);
+  border-radius: 20px;
+  background: linear-gradient(155deg, #fffef9, color-mix(in srgb, var(--card-soft) 88%, #fff));
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--card-accent) 12%, transparent);
+  animation: h-card-charge-glow 3.8s ease-in-out infinite;
+  transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
+}
+
+.honors-v2-card.is-blue {
+  --card-accent: #316f9b;
+  --card-soft: #e9f3fa;
+  --card-beam: #bdeaff;
+}
+
+.honors-v2-card.is-cyan {
+  --card-accent: #258376;
+  --card-soft: #e6f5f1;
+  --card-beam: #b8f2df;
+}
+
+.honors-v2-card::before {
+  position: absolute;
+  z-index: 3;
+  inset-block: -20%;
+  left: -35%;
+  width: 18%;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--card-beam), transparent);
+  transform: skewX(-18deg);
+  animation: h-card-scan 2.82s ease-in-out infinite;
+}
+
+.honors-v2-card::after {
+  --h-charge-angle: 0deg;
+  position: absolute;
+  z-index: 5;
+  inset: -1px;
+  padding: 3px;
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--h-charge-angle),
+    transparent 0 28%,
+    color-mix(in srgb, var(--card-accent) 28%, transparent) 36%,
+    var(--card-accent) 43%,
+    #fffbd9 47%,
+    var(--card-accent) 51%,
+    transparent 60% 76%,
+    color-mix(in srgb, var(--card-accent) 34%, transparent) 82%,
+    #fff 87%,
+    var(--card-accent) 91%,
+    transparent 97%
+  );
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--card-accent) 72%, transparent));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: h-card-border-charge 3.8s linear infinite;
+}
+
+.honors-v2-card:hover,
+.honors-v2-card:focus-within {
+  border-color: var(--card-accent);
+  box-shadow: 0 17px 36px color-mix(in srgb, var(--card-accent) 19%, transparent);
+  transform: translateY(-3px);
+}
+
+.honors-v2-card:hover::after {
+  animation-duration: 1.9s;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--card-accent) 72%, transparent));
+}
+
+.honors-v2-card:focus-within::after {
+  animation-duration: 1.6s;
+  filter: drop-shadow(0 0 9px color-mix(in srgb, var(--card-accent) 76%, transparent));
+}
+
+.honors-v2-card-no {
+  position: absolute;
+  z-index: 3;
+  top: 0.8rem;
+  left: 0.85rem;
+  color: var(--card-accent);
+  font-size: 0.65rem;
+  font-weight: 900;
+}
+
+.honors-v2-card button {
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+
+.honors-v2-card button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--card-accent) 58%, white);
+  outline-offset: -3px;
+  border-radius: inherit;
+}
+
+.honors-v2-certificate {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  border-bottom: 1px solid color-mix(in srgb, var(--card-accent) 30%, #d8c9a8);
+}
+
+.honors-v2-certificate > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.honors-v2-certificate > div {
+  position: absolute;
+  inset: 18% 14% auto;
+  color: #173653;
+  text-align: center;
+}
+
+.honors-v2-certificate small {
+  color: #9b7429;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.honors-v2-certificate h3 {
+  margin-top: 0.25rem;
+  font-family: serif;
+  font-size: clamp(1rem, 2vw, 1.55rem);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.honors-v2-certificate i {
+  display: block;
+  width: 5rem;
+  height: 1px;
+  margin: 0.65rem auto;
+  background: #c49a4c;
+}
+
+.honors-v2-certificate strong {
+  display: block;
+  overflow: hidden;
+  font-family: serif;
+  font-size: clamp(1.1rem, 2.2vw, 1.75rem);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.honors-v2-certificate p {
+  max-width: 82%;
+  margin: 0.45rem auto;
+  color: #53646d;
+  font-size: 0.78rem;
+}
+
+.honors-v2-certificate > span {
+  position: absolute;
+  right: 11%;
+  bottom: 8%;
+  display: grid;
+  width: 14%;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 2px double #be9345;
+  border-radius: 50%;
+  color: #9a722c;
+  background: rgba(255, 247, 229, 0.88);
+  animation: h-certificate-seal-breathe 2.8s ease-in-out infinite;
+}
+
+.honors-v2-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding: 0.95rem 1rem;
+}
+
+.honors-v2-card-meta > div {
+  min-width: 0;
+}
+
+.honors-v2-card-meta span,
+.honors-v2-card-meta small {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.honors-v2-card-meta > div > span {
+  color: var(--card-accent);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.honors-v2-card-meta strong {
+  display: block;
+  margin-top: 0.35rem;
+  overflow: hidden;
+  font-size: 1.08rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.honors-v2-card-meta small {
+  margin-top: 0.35rem;
+  color: #647785;
+  font-size: 0.8rem;
+}
+
+.honors-v2-view {
+  position: relative;
+  flex: none;
+  border: 1px solid color-mix(in srgb, var(--card-accent) 36%, #ddd);
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  color: var(--card-accent);
+  background: color-mix(in srgb, var(--card-soft) 72%, #fff);
+  font-size: 0.8rem !important;
+  font-weight: 850;
+}
+
+.honors-v2-loading,
+.honors-v2-empty {
+  display: grid;
+  min-height: 310px;
+  margin-top: 0.65rem;
+  place-items: center;
+  align-content: center;
+  border: 1px dashed #c8d8e3;
+  border-radius: 20px;
+  padding: 2rem;
+  text-align: center;
+  background: rgba(249, 253, 255, 0.76);
+  box-shadow: 0 10px 28px rgba(31, 67, 91, 0.06);
+}
+
+.honors-v2-loading > svg {
+  width: 1.7rem;
+  height: 1.7rem;
+  color: #347fa5;
+}
+
+.honors-v2-loading strong {
+  margin-top: 0.85rem;
+  color: #173b56;
+  font-size: 0.95rem;
+}
+
+.honors-v2-loading span {
+  margin-top: 0.35rem;
+  color: #657d8d;
+  font-size: 0.72rem;
+}
+
+.honors-v2-empty > span {
+  display: grid;
+  width: 3.5rem;
+  height: 3.5rem;
+  place-items: center;
+  border: 1px solid #d9c48f;
+  border-radius: 16px;
+  color: #a5741e;
+  background: #fff8e7;
+}
+
+.honors-v2-empty > span svg {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.honors-v2-empty h3 {
+  margin-top: 1rem;
+  color: #173b56;
+  font-size: 1.18rem;
+  font-weight: 900;
+}
+
+.honors-v2-empty p {
+  max-width: 31rem;
+  margin-top: 0.45rem;
+  color: #5f7788;
+  font-size: 0.76rem;
+  line-height: 1.65;
+}
+
+.honors-v2-empty a {
+  display: inline-flex;
+  height: 2.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.1rem;
+  border-radius: 0.75rem;
+  padding: 0 1.2rem;
+  color: #fff;
+  background: #245f86;
+  box-shadow: 0 8px 20px rgba(36, 95, 134, 0.18);
+  font-size: 0.75rem;
+  font-weight: 850;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.honors-v2-empty a:hover {
+  background: #194d70;
+  transform: translateY(-1px);
+}
+
+.honors-v2-empty a:focus-visible {
+  outline: 2px solid #83c9e8;
+  outline-offset: 3px;
+}
+
+@keyframes h-spin {
+  to { transform: rotate(360deg); }
+}
+
+@property --h-charge-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes h-card-scan {
+  0%, 2% { left: -35%; }
+  91.36%, 100% { left: 125%; }
+}
+
+@keyframes h-card-border-charge {
+  to { --h-charge-angle: 360deg; }
+}
+
+@keyframes h-card-charge-glow {
+  0%, 100% {
+    box-shadow:
+      0 12px 30px color-mix(in srgb, var(--card-accent) 12%, transparent),
+      0 0 0 0 color-mix(in srgb, var(--card-accent) 0%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 16px 36px color-mix(in srgb, var(--card-accent) 16%, transparent),
+      0 0 18px color-mix(in srgb, var(--card-accent) 25%, transparent);
+  }
+}
+
+@keyframes h-certificate-seal-breathe {
+  50% {
+    box-shadow: 0 0 28px color-mix(in srgb, var(--card-accent) 22%, transparent);
+  }
+}
+
+@media (max-width: 1100px) {
+  .honors-v2-summary {
+    grid-template-columns: minmax(280px, 1fr) minmax(330px, 1fr);
+  }
+
+  .honors-v2-sync {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 767px) {
+  .honors-v2 {
+    background-attachment: scroll;
+  }
+
+  .honors-v2 .app-topbar-real-icon {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+  }
+
+  .honors-v2-summary {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin-top: 0.6rem;
+    border-radius: 16px;
+    padding: 0.75rem;
+  }
+
+  .honors-v2-summary-icon {
+    width: 2.55rem;
+    height: 2.55rem;
+  }
+
+  .honors-v2-summary-copy strong {
+    font-size: 1.12rem;
+  }
+
+  .honors-v2-summary-copy p {
+    font-size: 0.8rem;
+  }
+
+  .honors-v2-summary-stats {
+    min-height: 3.4rem;
+    border: 1px solid #d9e3e9;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.48);
+  }
+
+  .honors-v2-summary-stats > div {
+    padding: 0.38rem 0.55rem;
+  }
+
+  .honors-v2-summary-stats strong {
+    font-size: 1.12rem;
+  }
+
+  .honors-v2-summary-stats strong.compact {
+    font-size: 0.72rem;
+    line-height: 1.75;
+  }
+
+  .honors-v2-sync {
+    min-width: 0;
+    height: 2rem;
+    justify-self: start;
+    padding-inline: 0.7rem;
+    font-size: 0.75rem;
+  }
+
+  .honors-v2-wall {
+    margin-top: 0.8rem;
+  }
+
+  .honors-v2-wall-heading h2 {
+    font-size: 1.3rem;
+  }
+
+  .honors-v2-cards {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+    margin-top: 0.55rem;
+  }
+
+  .honors-v2-card:hover,
+  .honors-v2-card:focus-within {
+    transform: none;
+  }
+
+  .honors-v2-loading,
+  .honors-v2-empty {
+    min-height: 270px;
+    padding: 1.5rem 1rem;
+  }
+
+  .honors-v2-empty h3 {
+    font-size: 1.05rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1179px) {
+  .honors-v2-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .honors-v2 *,
+  .honors-v2 *::before,
+  .honors-v2 *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

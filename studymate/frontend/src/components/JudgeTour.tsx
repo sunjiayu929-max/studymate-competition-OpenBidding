@@ -95,7 +95,7 @@ const GUIDE_STEPS: TourStep[] = [
   {
     to: "/profile",
     phase: "建立个性化依据",
-    label: "岗位能力画像",
+    label: "学情画像构建",
     title: "通过自然对话建立可持续更新的画像",
     description: "知识基础、认知风格、资源偏好、目标、薄弱点与学习节奏会被提取成结构化画像，并形成可追踪版本。",
     check: "补充一句学习目标或困难，观察右侧画像维度与版本号是否随对话更新。",
@@ -109,10 +109,10 @@ const GUIDE_STEPS: TourStep[] = [
     to: "/competency",
     phase: "开展岗位训练",
     label: "岗位训练中心",
-    title: "观察能力地图与 15 个协作节点的真实协作过程",
+    title: "观察能力地图与 14 个协作节点的真实协作过程",
     description: "系统先诊断学情，再生成七类岗位资源，由三项独立审核和总裁决决定发布或返工；全过程和最终资源都可见。",
-    check: "发起一次岗位训练，查看 15 个协作节点、计划协商、审核分数和裁决状态；批准发布后进入任一资源验证训练入口。",
-    evidence: ["15 个协作节点", "提案博弈与计划仲裁", "三项交叉审核", "裁决返工与发布门禁"],
+    check: "发起一次岗位训练，查看 14 个协作节点、计划协商、审核分数和裁决状态；批准发布后进入任一资源验证训练入口。",
+    evidence: ["14 个协作节点", "提案博弈与计划仲裁", "三项交叉审核", "裁决返工与发布门禁"],
     time: "90 秒",
     icon: LayoutDashboard,
     color: "#6F8A69",
@@ -484,7 +484,7 @@ export function JudgeTour() {
               </span>
               <button type="button" onClick={() => setMinimized(false)} className="min-w-0 flex-1 text-left">
                 <div className="text-[10px] font-bold tracking-[0.1em] text-[#8E6925]">新手指引 · {completedCount}/{guideSteps.length}</div>
-                <div className="mt-0.5 truncate text-xs font-bold text-[#18232D]">{showWelcome ? "从这里开始认识 StudyMate" : `${stepIndex + 1}. ${currentStep.label}`}</div>
+                <div className="mt-0.5 truncate text-xs font-bold text-[#18232D]">{showWelcome ? "从这里开始认识因材智训" : `${stepIndex + 1}. ${currentStep.label}`}</div>
               </button>
               <button type="button" onClick={() => setMinimized(false)} className="grid size-8 place-items-center rounded-lg border border-[#D7D1C4] text-[#315E83] hover:bg-[#E7EDF3]" aria-label="展开新手指引"><ListChecks className="size-4" /></button>
               <button type="button" onClick={closeTour} className="grid size-8 place-items-center rounded-lg text-[#7A817F] hover:bg-[#F1EDE4] hover:text-[#18232D]" aria-label="关闭新手指引"><X className="size-4" /></button>
@@ -537,7 +537,7 @@ export function JudgeTour() {
                 <div className="min-h-0 flex-1 overflow-y-auto p-4">
                   <div className="rounded-[18px] border border-[#D8C9A8] bg-[#FBF7ED] p-4">
                     <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.12em] text-[#8E6925]">
-                      <Sparkles className="size-3.5" /> 第一次来 StudyMate？
+                      <Sparkles className="size-3.5" /> 第一次来因材智训？
                     </div>
                     <h2 className="mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D]">先完成一次最短学习闭环</h2>
                     <p className="mt-1.5 text-[12px] leading-5 text-[#66717B]">不用一次看懂所有功能。跟着下面三步走一遍，你就知道它如何真正帮助学习。</p>
@@ -546,7 +546,7 @@ export function JudgeTour() {
                   <div className="mt-3 space-y-2">
                     {[
                       ["01", "选择目标岗位", "确定岗位知识库与训练上下文"],
-                      ["02", "运行岗位闭环", "让 15 个协作节点完成诊断、协商、生成、审核与裁决"],
+                      ["02", "运行岗位闭环", "让 14 个协作节点完成诊断、协商、生成、审核与裁决"],
                       ["03", "测验并查看报告", "用结果更新画像与下一步路线"],
                     ].map(([index, title, detail]) => (
                       <div key={index} className="flex items-center gap-3 rounded-xl border border-[#E3DED3] bg-white px-3 py-2.5">

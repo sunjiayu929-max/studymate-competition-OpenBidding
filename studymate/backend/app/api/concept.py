@@ -7,18 +7,17 @@
 - 每步脚本天然就是一句旁白，是后续「讲课模式 + 讯飞 TTS 连播」的原料。
 - 无 LLM Key 或外部调用异常时，退回通用骨架脚本，保证页面不空白。
 """
-import asyncio
 import json
-import uuid
+import re
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
-from app.agents.video_agent import (
-    VideoAgent,
-    _build_script as _build_video_script,
-    preview_video_plan,
-)
+from app.agents.video_agent import _build_script as _build_video_script
+from app.db import async_session_maker
+from app.db.models import ConceptArchive
 from app.deps import require_user
 from app.llm import get_llm_client, has_llm_key
 
@@ -27,6 +26,30 @@ router = APIRouter(prefix="/concept", tags=["concept"])
 PROVIDER = "qwen"  # 与助教同引擎
 
 _VALID_STATES = {"active", "done", "idle"}
+DEFAULT_SHOWCASE_QUESTION = "FDE这个岗位是干什么的？"
+
+DEFAULT_SHOWCASE_RESULT = {
+    "matched": False,
+    "key": None,
+    "title": DEFAULT_SHOWCASE_QUESTION,
+    "intro": "我用一份公共示例讲解 FDE 的岗位边界、工作闭环和交付价值。",
+    "script": {
+        "concept": DEFAULT_SHOWCASE_QUESTION,
+        "summary": "FDE 把客户现场问题转成可落地、可验证、可复用的交付方案。",
+        "steps": [
+            {"title": "岗位定位", "desc": "FDE 连接产品与客户现场，不只解释产品，还要让方案真正跑起来。", "nodes": []},
+            {"title": "理解场景", "desc": "先澄清业务目标、使用流程、数据条件、权限边界和验收标准。", "nodes": []},
+            {"title": "完成集成", "desc": "把数据、接口、网络、配置与业务规则接起来，形成可执行方案。", "nodes": []},
+            {"title": "现场验证", "desc": "通过关键任务、运行记录和业务指标确认方案可用、可交付。", "nodes": []},
+            {"title": "复盘沉淀", "desc": "记录风险、客户反馈和产品改进点，让一次交付变成下一次的能力。", "nodes": []},
+        ],
+        "pitfall": "FDE 不等同于单纯售前、客服或驻场开发，核心是对客户现场的落地结果负责。",
+        "visual": "board",
+    },
+    "generated": True,
+    "mock": False,
+    "shared": True,
+}
 
 
 class ConceptItem(BaseModel):
@@ -46,36 +69,57 @@ class ExplainRequest(BaseModel):
     sample_tasks: list[str] = Field(default_factory=list, max_length=8)
 
 
-class VideoRequest(BaseModel):
-    question: str = Field(min_length=1, max_length=500)
-    target_role: str = Field(min_length=1, max_length=120)
-    role_summary: str = Field(default="", max_length=500)
-    core_competencies: list[str] = Field(default_factory=list, max_length=8)
-    sample_tasks: list[str] = Field(default_factory=list, max_length=8)
-
-
-# 即时岗位视频只在进程内保存任务状态；正式资源包仍由工作台数据库持久化。
-_VIDEO_JOBS: dict[str, dict] = {}
-_VIDEO_JOB_LIMIT = 100
-
-
-def _video_context(req: VideoRequest, user_id: int) -> dict:
-    return {
-        "user_id": user_id,
-        "topic": req.question,
-        "target_role": req.target_role,
-        "role_summary": req.role_summary,
-        "core_competencies": req.core_competencies,
-        "sample_tasks": req.sample_tasks,
-        "generation_round": 1,
-    }
-
-
 def _title_of(concepts: list[ConceptItem], key: str) -> str:
     for c in concepts:
         if c.key == key:
             return c.title
     return key
+
+
+def _archive_key(question: str) -> str:
+    """让同一主题的空格、大小写和末尾标点差异共享一份归档。"""
+    normalized = re.sub(r"\s+", "", question.strip()).casefold()
+    return normalized.rstrip("。！？!?；;，,")
+
+
+async def _load_shared_archive(question: str) -> dict | None:
+    key = _archive_key(question)
+    async with async_session_maker() as db:
+        archive = await db.scalar(select(ConceptArchive).where(ConceptArchive.question_key == key))
+        return dict(archive.result) if archive else None
+
+
+async def _save_shared_archive(question: str, result: dict) -> dict:
+    """首次生成时写入公共归档；并发请求命中唯一键时读取先写入的版本。"""
+    key = _archive_key(question)
+    async with async_session_maker() as db:
+        archive = await db.scalar(select(ConceptArchive).where(ConceptArchive.question_key == key))
+        if archive:
+            return dict(archive.result)
+        db.add(ConceptArchive(question_key=key, question=question.strip(), result=result))
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            archive = await db.scalar(select(ConceptArchive).where(ConceptArchive.question_key == key))
+            if archive:
+                return dict(archive.result)
+            raise
+    return result
+
+
+async def ensure_default_archive() -> None:
+    """把全局 FDE 示例写入公共归档，行为与 PPT 的预置示例一致。"""
+    key = _archive_key(DEFAULT_SHOWCASE_QUESTION)
+    async with async_session_maker() as db:
+        archive = await db.scalar(select(ConceptArchive).where(ConceptArchive.question_key == key))
+        if archive is None:
+            db.add(ConceptArchive(
+                question_key=key,
+                question=DEFAULT_SHOWCASE_QUESTION,
+                result=DEFAULT_SHOWCASE_RESULT,
+            ))
+            await db.commit()
 
 
 # ============================ 通用脚本编排 ============================
@@ -175,7 +219,11 @@ async def _build_script(question: str, llm) -> dict:
 
 
 @router.post("/explain")
-async def explain(req: ExplainRequest):
+async def explain(req: ExplainRequest, _user=Depends(require_user)):
+    shared = await _load_shared_archive(req.question)
+    if shared:
+        return shared
+
     keys = {c.key for c in req.concepts}
     key_ok = has_llm_key(PROVIDER)
 
@@ -193,7 +241,7 @@ async def explain(req: ExplainRequest):
                 "mock": True,
             }
         # 没命中 → 通用模板兜底（仍有图画讲解）
-        return {
+        return await _save_shared_archive(req.question, {
             "matched": False,
             "key": None,
             "title": req.question,
@@ -201,7 +249,7 @@ async def explain(req: ExplainRequest):
             "script": _mock_script(req.question),
             "generated": True,
             "mock": True,
-        }
+        })
 
     # —— LLM 分类：先尝试命中手写动画 ——
     catalog = "\n".join(f"- {c.key}：{c.title}（{c.course}）" for c in req.concepts)
@@ -257,7 +305,7 @@ async def explain(req: ExplainRequest):
 
     # —— 没命中 → LLM 现场编排通用动画脚本 ——
     script = await _build_script(req.question, llm)
-    return {
+    return await _save_shared_archive(req.question, {
         "matched": False,
         "key": None,
         "title": req.question,
@@ -265,23 +313,20 @@ async def explain(req: ExplainRequest):
         "script": script,
         "generated": True,
         "mock": False,
-    }
-
-
-async def _silent_emit(_event: str, _data: dict) -> None:
-    """即时讲解不需要把后台 Agent 事件暴露成工作台 SSE。"""
+    })
 
 
 def _video_job_initial(context: dict, job_id: str) -> dict:
+    """保留旧数据结构的脚本快照兼容辅助函数；不创建后台视频任务。"""
     script = _build_video_script(context)
     return {
         "job_id": job_id,
         "type": "video",
         "title": script["title"],
-        "provider": "minimax",
-        "model": "MiniMax-H3",
-        "status": "queued",
-        "message": "视频任务已提交，正在排队生成。",
+        "provider": "frontend",
+        "model": "scripted-lecture",
+        "status": "script_ready",
+        "message": "可视讲解脚本与分镜已生成，将使用前端动画、黑板和语音播放。",
         "video_url": "",
         "assembled_video_url": "",
         "task_id": "",
@@ -292,7 +337,7 @@ def _video_job_initial(context: dict, job_id: str) -> dict:
         "completed_segments": 0,
         "segment_urls": [],
         "segments": script["segments"],
-        "assembly_status": "pending",
+        "assembly_status": "not_applicable",
         "has_audio": True,
         "ratio": "16:9",
         "script": script,
@@ -303,54 +348,3 @@ def _video_job_initial(context: dict, job_id: str) -> dict:
         "estimated_cost_rmb": script["estimated_cost_rmb"],
         "actual_cost_rmb": 0,
     }
-
-
-async def _run_video_job(job_id: str, context: dict) -> None:
-    async def progress(output: dict) -> None:
-        job = _VIDEO_JOBS.get(job_id)
-        if job is not None:
-            job["output"] = {**job["output"], **output, "job_id": job_id}
-
-    context = {**context, "_video_progress": progress}
-    try:
-        output = await VideoAgent().run(context, _silent_emit)
-        job = _VIDEO_JOBS.get(job_id)
-        if job is not None:
-            job["output"] = {**job["output"], **output, "job_id": job_id}
-    except Exception:  # 后台任务必须把异常转成可轮询的失败状态
-        job = _VIDEO_JOBS.get(job_id)
-        if job is not None:
-            job["output"] = {
-                **job["output"],
-                "status": "failed",
-                "message": "视频后台任务失败，请查看服务日志。",
-                "job_id": job_id,
-            }
-
-
-@router.post("/video")
-async def generate_concept_video(req: VideoRequest, user=Depends(require_user)):
-    """提交岗位视频后台任务；即时结果不进入正式资源包和审核链。"""
-    context = _video_context(req, user.id)
-    job_id = str(uuid.uuid4())
-    initial = _video_job_initial(context, job_id)
-    _VIDEO_JOBS[job_id] = {"user_id": user.id, "output": initial}
-    while len(_VIDEO_JOBS) > _VIDEO_JOB_LIMIT:
-        _VIDEO_JOBS.pop(next(iter(_VIDEO_JOBS)))
-    asyncio.create_task(_run_video_job(job_id, context))
-    return initial
-
-
-@router.post("/video/preview")
-async def preview_concept_video(req: VideoRequest, user=Depends(require_user)):
-    """生成前预估时长与成本；此接口不调用外部模型，也不扣费。"""
-    return preview_video_plan(_video_context(req, user.id))
-
-
-@router.get("/video/{job_id}")
-async def get_concept_video_job(job_id: str, user=Depends(require_user)):
-    """查询即时岗位视频后台任务；只允许任务所属用户访问。"""
-    job = _VIDEO_JOBS.get(job_id)
-    if job is None or job["user_id"] != user.id:
-        raise HTTPException(status_code=404, detail="视频任务不存在或已过期")
-    return job["output"]

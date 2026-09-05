@@ -14,7 +14,7 @@
 .worker-label {
   display: block;
   margin-top: 4rpx;
-  color: #6d8269;
+  color: #5f8193;
   font-size: 20rpx;
   font-weight: 800;
   letter-spacing: 2rpx;
@@ -41,12 +41,13 @@
 .enterprise-hero,
 .join-card {
   padding: 30rpx;
-  background: #f4f9f2;
+  border-color: #bcd9e7;
+  background: linear-gradient(135deg, #f4fafd 0%, #e5f3f8 100%);
 }
 
 .hero-kicker {
   display: block;
-  color: #5b7658;
+  color: #397b9e;
   font-size: 21rpx;
   font-weight: 800;
   letter-spacing: 2rpx;
@@ -55,7 +56,7 @@
 .hero-title {
   display: block;
   margin-top: 14rpx;
-  color: #243827;
+  color: #18384d;
   font-size: 38rpx;
   font-weight: 800;
   line-height: 1.35;
@@ -64,14 +65,14 @@
 .hero-detail {
   display: block;
   margin-top: 10rpx;
-  color: #657661;
+  color: #638091;
   font-size: 24rpx;
 }
 
 .hero-rule {
   height: 1rpx;
   margin: 26rpx 0 20rpx;
-  background: #d6e2d4;
+  background: #c6dfeb;
 }
 
 .stats-row {
@@ -80,7 +81,7 @@
 
 .stat-item {
   flex: 1;
-  border-right: 1rpx solid #d6e2d4;
+  border-right: 1rpx solid #c6dfeb;
   text-align: center;
 }
 
@@ -99,14 +100,14 @@
 }
 
 .stat-number {
-  color: #293d2a;
+  color: #21465e;
   font-size: 36rpx;
   font-weight: 800;
 }
 
 .stat-label {
   margin-top: 4rpx;
-  color: #7a8677;
+  color: #718b99;
   font-size: 21rpx;
 }
 
@@ -123,7 +124,7 @@
 .empty-subtitle {
   display: block;
   margin-top: 16rpx;
-  color: #7a8677;
+  color: #718b99;
   font-size: 21rpx;
   line-height: 1.6;
 }
@@ -140,7 +141,7 @@
 }
 
 .task-count {
-  color: #7a8677;
+  color: #718b99;
   font-size: 22rpx;
 }
 
@@ -151,6 +152,7 @@
 .task-card {
   margin-bottom: 18rpx;
   padding: 26rpx;
+  border-color: #cee3ed;
 }
 
 .task-head,
@@ -164,7 +166,7 @@
 .task-title {
   display: block;
   margin-top: 20rpx;
-  color: #293d2a;
+  color: #21465e;
   font-size: 30rpx;
   font-weight: 800;
   line-height: 1.45;
@@ -173,20 +175,20 @@
 .task-description {
   display: block;
   margin-top: 12rpx;
-  color: #738071;
+  color: #688596;
   font-size: 24rpx;
   line-height: 1.7;
 }
 
 .task-foot {
   margin-top: 22rpx;
-  color: #7c8879;
+  color: #718b99;
   font-size: 21rpx;
 }
 
 .task-action {
   flex-shrink: 0;
-  color: #52704d;
+  color: #2f7196;
   font-weight: 800;
 }
 
