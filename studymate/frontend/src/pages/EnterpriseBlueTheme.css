@@ -1,0 +1,108 @@
+﻿/* Unified light-blue palette for enterprise views. Keep this scoped so the
+   rest of the application can retain its page-specific semantic colors. */
+.paper-theme.enterprise-blue-theme,
+.enterprise-blue-theme.app-page {
+  background:
+    radial-gradient(circle at 82% 0%, rgba(131, 211, 232, .20), transparent 30rem),
+    linear-gradient(180deg, #f7fcfe 0%, #edf7fa 48%, #e4f1f6 100%) !important;
+}
+
+.enterprise-blue-theme {
+  --enterprise-blue-950: #173b57;
+  --enterprise-blue-900: #214c68;
+  --enterprise-blue-800: #2b6385;
+  --enterprise-blue-700: #347da3;
+  --enterprise-blue-600: #4b98ba;
+  --enterprise-blue-200: #c9e2ee;
+  --enterprise-blue-100: #e4f3f8;
+  --enterprise-blue-050: #f5fbfd;
+}
+
+.enterprise-blue-theme [class~="bg-[#F4F9F2]"],
+.enterprise-blue-theme [class~="bg-[#F3F9F1]"],
+.enterprise-blue-theme [class~="bg-[#F7FBF5]"],
+.enterprise-blue-theme [class~="bg-[#F7F9F6]"],
+.enterprise-blue-theme [class~="bg-[#F5F7F4]"],
+.enterprise-blue-theme [class~="bg-[#F0F6EE]"],
+.enterprise-blue-theme [class~="bg-[#F0F4EE]"],
+.enterprise-blue-theme [class~="bg-[#FBFDFB]"] {
+  background-color: var(--enterprise-blue-050) !important;
+}
+
+.enterprise-blue-theme [class~="bg-[#EAF4E7]"],
+.enterprise-blue-theme [class~="bg-[#E5F0E2]"],
+.enterprise-blue-theme [class~="bg-[#E8F1E5]"],
+.enterprise-blue-theme [class~="bg-[#E9EFE7]"],
+.enterprise-blue-theme [class~="bg-[#DDF2E9]"],
+.enterprise-blue-theme [class~="bg-[#E4F2F0]"] {
+  background-color: var(--enterprise-blue-100) !important;
+}
+
+.enterprise-blue-theme [class~="bg-[#52704D]"],
+.enterprise-blue-theme [class~="bg-[#6D9168]"],
+.enterprise-blue-theme [class~="bg-[#6D9A68]"],
+.enterprise-blue-theme [class~="bg-[#5C8C62]"],
+.enterprise-blue-theme [class~="bg-[#79A173]"] {
+  background-color: var(--enterprise-blue-700) !important;
+}
+
+.enterprise-blue-theme [class~="text-[#52704D]"],
+.enterprise-blue-theme [class~="text-[#5B7658]"],
+.enterprise-blue-theme [class~="text-[#6F976B]"],
+.enterprise-blue-theme [class~="text-[#63735F]"],
+.enterprise-blue-theme [class~="text-[#668064]"],
+.enterprise-blue-theme [class~="text-[#657661]"],
+.enterprise-blue-theme [class~="text-[#687667]"],
+.enterprise-blue-theme [class~="text-[#6B7E69]"],
+.enterprise-blue-theme [class~="text-[#738071]"],
+.enterprise-blue-theme [class~="text-[#748273]"],
+.enterprise-blue-theme [class~="text-[#778477]"],
+.enterprise-blue-theme [class~="text-[#7A8677]"],
+.enterprise-blue-theme [class~="text-[#7C8879]"],
+.enterprise-blue-theme [class~="text-[#80907F]"],
+.enterprise-blue-theme [class~="text-[#899588]"],
+.enterprise-blue-theme [class~="text-[#9AA598]"],
+.enterprise-blue-theme [class~="text-[#18745E]"],
+.enterprise-blue-theme [class~="text-[#34736D]"] {
+  color: #5f7f91 !important;
+}
+
+.enterprise-blue-theme [class~="text-[#293D2A]"],
+.enterprise-blue-theme [class~="text-[#243827]"],
+.enterprise-blue-theme [class~="text-[#334934]"],
+.enterprise-blue-theme [class~="text-[#536153]"] {
+  color: var(--enterprise-blue-900) !important;
+}
+
+.enterprise-blue-theme [class~="border-[#D6E2D4]"],
+.enterprise-blue-theme [class~="border-[#D7E1D4]"],
+.enterprise-blue-theme [class~="border-[#D8E4D5]"],
+.enterprise-blue-theme [class~="border-[#D8E5D5]"],
+.enterprise-blue-theme [class~="border-[#D9E6D6]"],
+.enterprise-blue-theme [class~="border-[#DCE5D9]"],
+.enterprise-blue-theme [class~="border-[#E0E9DE]"],
+.enterprise-blue-theme [class~="border-[#E3EBDD]"],
+.enterprise-blue-theme [class~="border-[#E6ECE3]"],
+.enterprise-blue-theme [class~="border-[#E9EFE7]"],
+.enterprise-blue-theme [class~="border-[#EEF2EC]"] {
+  border-color: var(--enterprise-blue-200) !important;
+}
+
+.enterprise-blue-theme [class~="hover:bg-[#EAF4E7]"]:hover,
+.enterprise-blue-theme [class~="hover:bg-[#F1F6EF]"]:hover,
+.enterprise-blue-theme [class~="hover:bg-[#FBFDFB]"]:hover {
+  background-color: #e5f3f9 !important;
+}
+
+.enterprise-blue-theme [class~="focus:border-[#52704D]"]:focus {
+  border-color: var(--enterprise-blue-600) !important;
+}
+
+.enterprise-blue-theme [class*="shadow-[0_14px_38px_rgba(59,92,58"] {
+  box-shadow: 0 14px 38px rgba(44, 113, 145, .08) !important;
+}
+
+.enterprise-blue-theme .app-topbar {
+  --app-topbar-icon-accent: #347da3;
+  --app-topbar-icon-soft: #e4f3f8;
+}

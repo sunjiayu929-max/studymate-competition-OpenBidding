@@ -1,0 +1,95 @@
+﻿/* Shared light-blue treatment for the six generated workspace resources. */
+.workspace-blue-theme {
+  --workspace-blue-950: #173b57;
+  --workspace-blue-900: #214c68;
+  --workspace-blue-700: #347da3;
+  --workspace-blue-600: #4b98ba;
+  --workspace-blue-200: #c9e2ee;
+  --workspace-blue-100: #e4f3f8;
+  --workspace-blue-050: #f6fbfd;
+  color: var(--workspace-blue-900);
+}
+
+.paper-theme.workspace-blue-theme,
+.workspace-blue-theme.app-page {
+  background:
+    radial-gradient(circle at 82% 0%, rgba(131, 211, 232, .18), transparent 30rem),
+    linear-gradient(180deg, #f7fcfe 0%, #edf7fa 48%, #e4f1f6 100%) !important;
+}
+
+.workspace-blue-theme [class~="bg-[#FFFEFA]"],
+.workspace-blue-theme [class~="bg-[#FDFBF6]"],
+.workspace-blue-theme [class~="bg-[#FBF9F4]"],
+.workspace-blue-theme [class~="bg-[#FCFAF5]"],
+.workspace-blue-theme [class~="bg-[#F8F6F0]"] {
+  background-color: #f8fcfe !important;
+}
+
+.workspace-blue-theme [class~="bg-[#E7EDF3]"],
+.workspace-blue-theme [class~="bg-[#E8EDE5]"],
+.workspace-blue-theme [class~="bg-[#E9EEE6]"],
+.workspace-blue-theme [class~="bg-[#F5F8F3]"] {
+  background-color: var(--workspace-blue-100) !important;
+}
+
+.workspace-blue-theme [class~="border-[#CFC8B9]"],
+.workspace-blue-theme [class~="border-[#D1C9BA]"],
+.workspace-blue-theme [class~="border-[#D7D1C4]"],
+.workspace-blue-theme [class~="border-[#DDD7CB]"],
+.workspace-blue-theme [class~="border-[#E0DACE]"],
+.workspace-blue-theme [class~="border-[#DFE8DC]"],
+.workspace-blue-theme [class~="border-[#C9D1CB]"],
+.workspace-blue-theme [class~="border-[#BFCABE]"] {
+  border-color: var(--workspace-blue-200) !important;
+}
+
+.workspace-blue-theme [class~="text-[#8A8172]"],
+.workspace-blue-theme [class~="text-[#9A9285]"],
+.workspace-blue-theme [class~="text-[#66736A]"],
+.workspace-blue-theme [class~="text-[#59666E]"],
+.workspace-blue-theme [class~="text-[#737C80]"] {
+  color: #668398 !important;
+}
+
+.workspace-blue-theme [class~="text-[#18232D]"],
+.workspace-blue-theme [class~="text-[#243746]"],
+.workspace-blue-theme [class~="text-[#27343D]"],
+.workspace-blue-theme [class~="text-[#24372E]"] {
+  color: var(--workspace-blue-900) !important;
+}
+
+.workspace-blue-theme [class~="text-[#315E83]"],
+.workspace-blue-theme [class~="text-[#355C8A]"],
+.workspace-blue-theme [class~="text-[#557052]"],
+.workspace-blue-theme [class~="text-[#6F8A69]"] {
+  color: var(--workspace-blue-700) !important;
+}
+
+.workspace-blue-theme [class~="bg-[#244C66]"],
+.workspace-blue-theme [class~="bg-[#557052]"] {
+  background-color: var(--workspace-blue-700) !important;
+}
+
+.workspace-blue-theme [class~="hover:bg-[#E7EDF3]"]:hover,
+.workspace-blue-theme [class~="hover:bg-[#F1EDE4]"]:hover,
+.workspace-blue-theme [class~="hover:bg-[#F5F8F3]"]:hover,
+.workspace-blue-theme [class~="hover:bg-[#E9EEE6]"]:hover {
+  background-color: #e5f3f9 !important;
+}
+
+.workspace-blue-theme [class~="text-[#B1842C]"],
+.workspace-blue-theme [class~="text-[#8E6925]"],
+.workspace-blue-theme [class~="text-[#946B27]"] {
+  color: #347da3 !important;
+}
+
+.workspace-blue-theme [class~="bg-[#F4ECD8]"],
+.workspace-blue-theme [class~="bg-[#F4E8E2]"],
+.workspace-blue-theme [class~="bg-[#FCF7F4]"] {
+  background-color: #edf7fa !important;
+}
+
+.workspace-blue-theme .app-topbar {
+  --app-topbar-icon-accent: #347da3;
+  --app-topbar-icon-soft: #e4f3f8;
+}

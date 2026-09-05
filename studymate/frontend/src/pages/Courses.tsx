@@ -2,7 +2,6 @@ import { useMemo, useState, type CSSProperties } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { motion } from "framer-motion"
 import {
-  ArrowLeft,
   ArrowRight,
   BriefcaseBusiness,
   CheckCircle2,
@@ -79,7 +78,6 @@ export function Courses() {
   const returnTo = requestedReturnTo?.startsWith("/") && !requestedReturnTo.startsWith("//")
     ? requestedReturnTo
     : "/profile"
-  const returnLabel = returnTo.startsWith("/workspace") ? "返回训练资源" : returnTo.startsWith("/competency") ? "返回训练中心" : "建立岗位画像"
 
   async function selectRole(role: CareerRole) {
     setActivationError("")
@@ -147,35 +145,6 @@ export function Courses() {
           {activationError && <div role="alert" className="career-route-alert"><span>{activationError}</span>{requiresLogin && <Link to="/login">前往登录</Link>}</div>}
         </section>
 
-        <CareerRouteTransfer
-          from={`岗位目录 · ${domain.roles.length} 条航线`}
-          to="航向状态同步"
-          label="ORBIT TELEMETRY · 02"
-          variant="satellite"
-        />
-
-        <section className="career-route-hero career-route-summary">
-          <span className="career-route-summary-radar" aria-hidden="true"><i /><i /><i /></span>
-          <div className="career-route-live"><span className="career-route-live-dot" />CAREER ROUTE · ONLINE <i>岗位导航状态</i></div>
-          <div className="career-route-hero-grid">
-            <div className="career-route-identity">
-              <div className="career-route-index"><strong>03</strong><span>职业航线状态</span><i>ROUTE STATUS</i></div>
-              <h2>岗位上下文<br /><em>{storedRole ? "已经就绪" : "等待确认"}</em></h2>
-              <p>确认岗位后，画像、学习资源和测验将自动切换至同一训练航向。</p>
-              <div className="career-route-summary-metrics" aria-label="航线同步信息">
-                <span><small>领域航向</small><strong>{domain.name}</strong></span>
-                <span><small>同步模块</small><strong>画像 · 资源 · 测验</strong></span>
-              </div>
-            </div>
-            <div className="career-route-status">
-              <span className="career-route-status-icon"><Target /></span>
-              <div><small>当前导航状态</small><strong>{storedRole ? storedRole.name : "航向待确认"}</strong><p>{storedRole ? "岗位上下文已就绪，可重新选择航向" : "返回上方选择领域与岗位"}</p></div>
-              <span className="career-route-status-signal" aria-hidden="true"><i /><b>{storedRole ? "ROUTE SYNCED" : "ROUTE STANDBY"}</b></span>
-              <Link to={returnTo}><ArrowLeft />{returnLabel}</Link>
-            </div>
-          </div>
-          <div className="career-route-track" aria-label="岗位选择路径"><i /><span className="is-active"><b>01</b>选择领域</span><span><b>02</b>浏览岗位</span><span className={storedRole ? "is-done" : ""}><b>03</b>确认航向</span><span className={storedRole ? "is-done" : ""}><b>04</b>进入训练</span></div>
-        </section>
       </div>
     </main>
   )

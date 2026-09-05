@@ -483,3 +483,85 @@
   .quiz-split-workspace .quiz-history-heading > small { display: none; }
   .quiz-split-workspace .quiz-session-grid { grid-template-columns: 1fr; }
 }
+
+/* Keep the quiz builder content-sized and paginate history four records at a time. */
+.quiz-split-workspace {
+  align-items: start;
+}
+
+.quiz-split-workspace > .quiz-builder-panel {
+  height: auto;
+  align-self: start;
+}
+
+.quiz-library-page .quiz-split-workspace .quiz-builder-dialog,
+.quiz-library-page .quiz-split-workspace .quiz-builder-surface {
+  height: auto;
+}
+
+.quiz-library-page .quiz-split-workspace .quiz-builder-body {
+  flex: none;
+  align-content: start;
+}
+
+.quiz-split-workspace > .quiz-history-panel {
+  height: auto;
+  align-self: start;
+}
+
+.quiz-split-workspace .quiz-session-grid {
+  overflow: visible;
+}
+
+.quiz-history-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(76, 139, 172, .24);
+  color: #58758a;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.quiz-history-pagination > div {
+  display: flex;
+  gap: 7px;
+}
+
+.quiz-history-pagination button {
+  display: grid;
+  width: 34px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid #b8d4e2;
+  border-radius: 10px;
+  color: #235f80;
+  background: #f7fcfe;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.quiz-history-pagination button:hover:not(:disabled) {
+  border-color: #72aeca;
+  color: #174b68;
+  background: #e4f3f8;
+}
+
+.quiz-history-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: .38;
+}
+
+.quiz-history-pagination svg {
+  width: 15px;
+  height: 15px;
+}
+
+@media (max-width: 640px) {
+  .quiz-history-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

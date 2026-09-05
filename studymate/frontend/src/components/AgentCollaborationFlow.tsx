@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react"
 import type { LucideIcon } from "lucide-react"
 import {
   BadgeCheck,
@@ -16,7 +17,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import type { WorkspaceState } from "@/store/workspace"
-import { InteractiveCanvas } from "@/components/InteractiveCanvas"
+
 
 type WorkspaceAgent = WorkspaceState["agents"][number]
 type AgentStatus = WorkspaceAgent["status"]
@@ -43,26 +44,26 @@ interface FlowEdgeDefinition {
 const NODE_WIDTH = 205
 const NODE_HEIGHT = 142
 const CANVAS_WIDTH = 1780
-const CANVAS_HEIGHT = 760
+const CANVAS_HEIGHT = 610
 
 const FLOW_COLUMNS = [
   { x: 18, width: 160, step: "输入", title: "训练任务", detail: "岗位目标与当前学情", tone: { background: "#F2F6FA", border: "#C8D4DF", text: "#587087", title: "#2F4D68" } },
-  { x: 235, width: 500, step: "01", title: "分析", detail: "学情诊断 · 领域专家 · 教学策略", tone: { background: "#F8EEEE", border: "#DFC6C3", text: "#94605F", title: "#673F42" } },
-  { x: 800, width: 205, step: "02", title: "生成", detail: "六类资源统一生成", tone: { background: "#FBF3E8", border: "#DEC8AA", text: "#8C6A3D", title: "#654A28" } },
-  { x: 1080, width: 220, step: "03", title: "校验", detail: "三项交叉校验", tone: { background: "#F8F5E9", border: "#D9CFAB", text: "#817344", title: "#5D522C" } },
-  { x: 1360, width: 205, step: "04", title: "决策", detail: "汇总证据并决策", tone: { background: "#F3EFF8", border: "#D2C7DE", text: "#776589", title: "#554465" } },
+  { x: 235, width: 500, step: "01", title: "分析", detail: "学情诊断 · 领域专家 · 教学策略", tone: { background: "#F0D6D3", border: "#CC8F8A", text: "#874746", title: "#5B2F33" } },
+  { x: 800, width: 205, step: "02", title: "生成", detail: "六类资源统一生成", tone: { background: "#F5DEBD", border: "#C99F68", text: "#7B511C", title: "#573710" } },
+  { x: 1080, width: 220, step: "03", title: "校验", detail: "三项交叉校验", tone: { background: "#F0E6B9", border: "#C2B163", text: "#6C5A17", title: "#4E420D" } },
+  { x: 1360, width: 205, step: "04", title: "决策", detail: "汇总证据并决策", tone: { background: "#E3D8F1", border: "#B19ACB", text: "#614B77", title: "#443251" } },
   { x: 1600, width: 160, step: "门禁", title: "发布门禁", detail: "通过或自动返工", tone: { background: "#EEF5F1", border: "#C5D8CF", text: "#58776A", title: "#35594A" } },
 ] as const
 
 const FLOW_NODES: FlowNodeDefinition[] = [
-  { id: "diagnosis", x: 245, y: 305, width: NODE_WIDTH, height: NODE_HEIGHT, group: "01 · 分析", icon: BrainCircuit, fallbackName: "学情诊断 Agent", fallbackDescription: "定位岗位能力盲区与训练起点" },
-  { id: "domain_expert", x: 510, y: 130, width: NODE_WIDTH, height: NODE_HEIGHT, group: "01 · 分析", icon: BriefcaseBusiness, fallbackName: "领域专家 Agent", fallbackDescription: "提出专业覆盖与验收要求" },
-  { id: "learning_strategy", x: 510, y: 500, width: NODE_WIDTH, height: NODE_HEIGHT, group: "01 · 分析", icon: Gauge, fallbackName: "教学策略 Agent", fallbackDescription: "平衡时间预算、难度与认知负荷" },
-  { id: "resource_generation", x: 800, y: 305, width: NODE_WIDTH, height: NODE_HEIGHT, group: "02 · 生成", icon: Sparkles, fallbackName: "资源生成 Agent", fallbackDescription: "统一生成六类岗位训练资源" },
+  { id: "diagnosis", x: 245, y: 275, width: NODE_WIDTH, height: NODE_HEIGHT, group: "01 · 分析", icon: BrainCircuit, fallbackName: "学情诊断 Agent", fallbackDescription: "定位岗位能力盲区与训练起点" },
+  { id: "domain_expert", x: 510, y: 110, width: NODE_WIDTH, height: NODE_HEIGHT, group: "01 · 分析", icon: BriefcaseBusiness, fallbackName: "领域专家 Agent", fallbackDescription: "提出专业覆盖与验收要求" },
+  { id: "learning_strategy", x: 510, y: 440, width: NODE_WIDTH, height: NODE_HEIGHT, group: "01 · 分析", icon: Gauge, fallbackName: "教学策略 Agent", fallbackDescription: "平衡时间预算、难度与认知负荷" },
+  { id: "resource_generation", x: 800, y: 275, width: NODE_WIDTH, height: NODE_HEIGHT, group: "02 · 生成", icon: Sparkles, fallbackName: "资源生成 Agent", fallbackDescription: "统一生成六类岗位训练资源" },
   { id: "evidence_review", x: 1085, y: 110, width: NODE_WIDTH, height: NODE_HEIGHT, group: "03 · 校验", icon: SearchCheck, fallbackName: "事实与来源校验 Agent", fallbackDescription: "交叉核对资源依据、引用与来源" },
-  { id: "practice_review", x: 1085, y: 305, width: NODE_WIDTH, height: NODE_HEIGHT, group: "03 · 校验", icon: ShieldCheck, fallbackName: "实操规范校验 Agent", fallbackDescription: "检查步骤、代码、异常与安全边界" },
-  { id: "difficulty_review", x: 1085, y: 500, width: NODE_WIDTH, height: NODE_HEIGHT, group: "03 · 校验", icon: FileCheck2, fallbackName: "难度与覆盖校验 Agent", fallbackDescription: "校准资源难度与岗位能力覆盖" },
-  { id: "arbiter", x: 1360, y: 305, width: NODE_WIDTH, height: NODE_HEIGHT, group: "04 · 决策", icon: BadgeCheck, fallbackName: "总决策 Agent", fallbackDescription: "汇总三项校验证据并决策发布或返工" },
+  { id: "practice_review", x: 1085, y: 275, width: NODE_WIDTH, height: NODE_HEIGHT, group: "03 · 校验", icon: ShieldCheck, fallbackName: "实操规范校验 Agent", fallbackDescription: "检查步骤、代码、异常与安全边界" },
+  { id: "difficulty_review", x: 1085, y: 440, width: NODE_WIDTH, height: NODE_HEIGHT, group: "03 · 校验", icon: FileCheck2, fallbackName: "难度与覆盖校验 Agent", fallbackDescription: "校准资源难度与岗位能力覆盖" },
+  { id: "arbiter", x: 1360, y: 275, width: NODE_WIDTH, height: NODE_HEIGHT, group: "04 · 决策", icon: BadgeCheck, fallbackName: "总决策 Agent", fallbackDescription: "汇总三项校验证据并决策发布或返工" },
 ]
 
 const FLOW_EDGES: FlowEdgeDefinition[] = [
@@ -81,8 +82,8 @@ const FLOW_EDGES: FlowEdgeDefinition[] = [
 ]
 
 const VIRTUAL_NODES = {
-  task: { x: 18, y: 321, width: 160, height: 110 },
-  publish: { x: 1600, y: 321, width: 160, height: 110 },
+  task: { x: 18, y: 291, width: 160, height: 110 },
+  publish: { x: 1600, y: 291, width: 160, height: 110 },
 } as const
 
 const RESOURCE_AGENT_IDS = ["doc", "guide", "quiz", "mindmap", "code", "video"]
@@ -163,6 +164,17 @@ function agentDescription(agent: WorkspaceAgent | undefined, definition: FlowNod
 }
 
 export function AgentCollaborationFlow({ workspace }: { workspace: WorkspaceState }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(0)
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width))
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [])
+  // Fit the complete graph to its container; no zoom, panning or wheel capture.
+  const scale = Math.min(width / CANVAS_WIDTH, 340 / CANVAS_HEIGHT)
   const agentMap = new Map(workspace.agents.map((agent) => [agent.meta.id, agent]))
   const statusMap = new Map(FLOW_NODES.map((definition) => [definition.id, agentMap.get(definition.id)?.status ?? "pending"]))
   statusMap.set("resource_generation", aggregateResourceStatus(agentMap))
@@ -179,11 +191,11 @@ export function AgentCollaborationFlow({ workspace }: { workspace: WorkspaceStat
   return (
     <div className={cn("agent-flow-shell mt-5 overflow-hidden rounded-[24px] border border-[#D7E2EF] bg-[#F9FBFE] shadow-[inset_0_1px_0_rgba(255,255,255,.9)]", workspace.status === "running" && "is-running")}>
       <div className="flex flex-col gap-3 border-b border-[#DFE7F1] bg-white/90 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div><div className="text-base font-extrabold text-[#294B73]">多智能体协作过程</div><p className="mt-1 text-[13px] text-[#64758A]">任务沿分析、生成、校验、决策与发布门禁实时流转。</p></div>
+        <div><div className="text-base font-extrabold text-[#294B73]">02 · 多智能体协作过程</div><p className="mt-1 text-[13px] text-[#64758A]">任务沿分析、生成、校验、决策与发布门禁实时流转。</p></div>
         <div className="flex flex-wrap items-center gap-3"><div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs font-semibold text-[#5D7088]"><FlowLegend color="#AEBCCE" label="等待" dashed /><FlowLegend color="#2E72D2" label="执行中" dashed active /><FlowLegend color="#2C9677" label="已完成" /></div></div>
       </div>
-      <InteractiveCanvas canvasWidth={CANVAS_WIDTH} canvasHeight={CANVAS_HEIGHT} viewportHeight={640} label="多智能体实时协作流程" className="bg-[#FBFCFD]">
-        <div className="relative" style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}><div className="agent-flow-grid pointer-events-none absolute inset-0" />
+      <div ref={containerRef} className="agent-flow-fit relative w-full bg-[#FBFCFD]" style={{ height: width ? CANVAS_HEIGHT * scale : undefined, aspectRatio: width ? undefined : `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}` }} role="group" aria-label="多智能体实时协作流程">
+        <div className="relative" style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, transform: `scale(${scale})`, transformOrigin: "top left", marginLeft: Math.max(0, (width - CANVAS_WIDTH * scale) / 2) }}><div className="agent-flow-grid pointer-events-none absolute inset-0" />
           {FLOW_COLUMNS.map((column) => <div key={column.title} className="absolute top-5 z-[3] text-center" style={{ left: column.x, width: column.width }}><div className="mx-auto w-fit min-w-[126px] rounded-[14px] border px-4 py-2.5 shadow-[0_4px_10px_rgba(48,72,98,.07)]" style={{ backgroundColor: column.tone.background, borderColor: column.tone.border }}><div className="text-[11px] font-black tracking-[.1em]" style={{ color: column.tone.text }}>{column.step}</div><div className="mt-0.5 text-[14px] font-extrabold" style={{ color: column.tone.title }}>{column.title}</div><div className="mt-1 text-[11px]" style={{ color: column.tone.text }}>{column.detail}</div></div></div>)}
           <svg className="pointer-events-none absolute inset-0 z-[2]" width={CANVAS_WIDTH} height={CANVAS_HEIGHT} viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`} aria-hidden="true">
             <defs><linearGradient id="agent-energy-gradient" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#568EDB" /><stop offset="38%" stopColor="#63D5F5" /><stop offset="56%" stopColor="#E5FAFF" /><stop offset="74%" stopColor="#7D72EC" /><stop offset="100%" stopColor="#568EDB" /></linearGradient><marker id="agent-flow-arrow-pending" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#AEBCCE" /></marker><marker id="agent-flow-arrow-active" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2E72D2" /></marker><marker id="agent-flow-arrow-done" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2C9677" /></marker><marker id="agent-flow-arrow-error" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#C35B43" /></marker></defs>
@@ -193,7 +205,7 @@ export function AgentCollaborationFlow({ workspace }: { workspace: WorkspaceStat
           {FLOW_NODES.map((definition) => <AgentFlowNode key={definition.id} definition={definition} agent={agentMap.get(definition.id)} status={statusOf(definition.id)} description={agentDescription(agentMap.get(definition.id), definition, workspace)} />)}
           <VirtualNode x={VIRTUAL_NODES.publish.x} y={VIRTUAL_NODES.publish.y} width={VIRTUAL_NODES.publish.width} height={VIRTUAL_NODES.publish.height} icon={publishStatus === "done" ? Check : LockKeyhole} eyebrow="发布门禁" title={publishStatus === "done" ? "资源已发布" : workspace.decision?.decision === "rework" ? "携带意见返工" : "等待总决策"} status={publishStatus} />
         </div>
-      </InteractiveCanvas>
+      </div>
       <div className="flex items-center justify-between border-t border-[#E1E8F1] bg-white px-4 py-3 text-xs text-[#65768C]"><span>流程事件与校验结果实时同步</span><span className="font-bold text-[#526B88]">第 {workspace.generationRound} 轮 · 10 个流程节点</span></div>
     </div>
   )
@@ -212,10 +224,10 @@ function AgentFlowNode({ definition, agent, status, description }: { definition:
 }
 
 function agentNodeBackground(id: string) {
-  if (["diagnosis", "domain_expert", "learning_strategy"].includes(id)) return "#FCF6F5"
-  if (id === "resource_generation") return "#FCF7EF"
-  if (["evidence_review", "practice_review", "difficulty_review"].includes(id)) return "#FBF9F0"
-  if (id === "arbiter") return "#F8F5FB"
+  if (["diagnosis", "domain_expert", "learning_strategy"].includes(id)) return "#F5DFDC"
+  if (id === "resource_generation") return "#F7E6CC"
+  if (["evidence_review", "practice_review", "difficulty_review"].includes(id)) return "#F4EDC9"
+  if (id === "arbiter") return "#EAE2F3"
   return "#FFFFFF"
 }
 

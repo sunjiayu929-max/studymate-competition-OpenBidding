@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { ArrowRight, Send, Loader2, RotateCw, Headphones, Paperclip, X, ShieldCheck, Sparkles, Target, AlertTriangle, Clock3, ImagePlus, GraduationCap, BriefcaseBusiness, Save, UserRound, ChevronDown } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { AppTopbar } from "@/components/AppTopbar"
+import { ProfileRadar } from "@/components/ProfileRadar"
 import { Markdown } from "@/components/Markdown"
 import { MicButton } from "@/components/MicButton"
 import { SpeakerButton } from "@/components/SpeakerButton"
@@ -567,6 +568,25 @@ export function ProfileChat() {
               </div>
             </form>
           </aside>
+
+          <section className="profile-radar-section" aria-labelledby="profile-radar-title">
+            <div className="profile-secondary-heading">
+              <div>
+                <span>能力信号</span>
+                <h2 id="profile-radar-title">学情画像雷达</h2>
+              </div>
+              <Sparkles />
+            </div>
+            {profile ? (
+              <div className="profile-radar-grid">
+                <ProfileRadar title="知识基础" data={profile.dims.knowledge_base} color="#315E83" height={124} />
+                <ProfileRadar title="认知风格" data={profile.dims.cognitive_style} color="#B85C3E" height={124} />
+                <ProfileRadar title="资源偏好" data={profile.dims.preference} color="#6F8A69" height={124} />
+              </div>
+            ) : (
+              <div className="profile-radar-empty">画像加载后，这里会实时显示知识基础、认知风格和资源偏好。</div>
+            )}
+          </section>
 
           {hasProfileContent && (
             <section className="profile-next-card">

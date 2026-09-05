@@ -10,6 +10,8 @@ import {
   ArrowRight,
   BookOpenCheck,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   History,
   Library,
@@ -28,6 +30,8 @@ import { useCurrentUser } from "@/store/user"
 import { listQuizSessions, type QuizSession } from "@/lib/quizSession"
 import "./QuizLibrary.css"
 
+const QUIZ_HISTORY_PAGE_SIZE = 4
+
 export function QuizLibrary() {
   useTrackPage("quiz")
   const navigate = useNavigate()
@@ -42,6 +46,7 @@ export function QuizLibrary() {
   const [error, setError] = useState<string | null>(null)
   const [modalTopic, setModalTopic] = useState("")
   const [challengePreset, setChallengePreset] = useState(false)
+  const [historyPage, setHistoryPage] = useState(1)
 
   useEffect(() => {
     if (!course || searchParams.get("create") !== "1") return
@@ -95,6 +100,17 @@ export function QuizLibrary() {
     return { total: sessions.length, submitted: submitted.length, avg: Math.round(avg) }
   }, [sessions])
 
+  const historyPageCount = Math.max(1, Math.ceil(sessions.length / QUIZ_HISTORY_PAGE_SIZE))
+  const currentHistoryPage = Math.min(historyPage, historyPageCount)
+  const visibleSessions = useMemo(() => {
+    const start = (currentHistoryPage - 1) * QUIZ_HISTORY_PAGE_SIZE
+    return sessions.slice(start, start + QUIZ_HISTORY_PAGE_SIZE)
+  }, [currentHistoryPage, sessions])
+
+  useEffect(() => {
+    setHistoryPage(1)
+  }, [courseId])
+
   return (
     <main className="app-page paper-theme quiz-library-page min-h-dvh">
       <div className="quiz-library-frame">
@@ -138,9 +154,20 @@ export function QuizLibrary() {
               ) : sessions.length === 0 ? (
                 <EmptyHint />
               ) : (
-                <div className="quiz-session-grid">
-                  {sessions.map((session) => <SessionCard key={session.id} session={session} onOpen={() => navigate(`/quiz/${session.id}`)} />)}
-                </div>
+                <>
+                  <div className="quiz-session-grid">
+                    {visibleSessions.map((session) => <SessionCard key={session.id} session={session} onOpen={() => navigate(`/quiz/${session.id}`)} />)}
+                  </div>
+                  {historyPageCount > 1 && (
+                    <nav className="quiz-history-pagination" aria-label="历史测验分页">
+                      <span>第 {currentHistoryPage} / {historyPageCount} 页 · 共 {sessions.length} 条</span>
+                      <div>
+                        <button type="button" onClick={() => setHistoryPage(Math.max(1, currentHistoryPage - 1))} disabled={currentHistoryPage === 1} aria-label="上一页"><ChevronLeft /></button>
+                        <button type="button" onClick={() => setHistoryPage(Math.min(historyPageCount, currentHistoryPage + 1))} disabled={currentHistoryPage === historyPageCount} aria-label="下一页"><ChevronRight /></button>
+                      </div>
+                    </nav>
+                  )}
+                </>
               )}
             </section>
           </div>

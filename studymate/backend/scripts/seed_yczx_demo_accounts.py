@@ -333,28 +333,6 @@ def ensure_enterprise(conn: sqlite3.Connection) -> tuple[int, int, list[int]]:
 
 
 def seed_profile(conn: sqlite3.Connection, user_id: int, index: int) -> None:
-    base = 68 + index % 5
-    topics = (
-        "岗位认知", "需求澄清", "价值假设", "数据预检", "字段映射", "接口联调",
-        "异常降级", "灰度发布", "部署验收", "客户沟通", "交付复盘", "综合演练",
-    )
-    rounds = []
-    for n, topic in enumerate(topics):
-        completed = ANCHOR - timedelta(days=max(1, 88 - n * 7 + index % 4))
-        accuracy = min(96, base + n * 2 + (1 if n > 7 else 0))
-        rounds.append({
-            "run_id": f"yczx-{user_id}-{n+1:02d}",
-            "domain": "特定软件开发",
-            "target_role": ROLE,
-            "topic": topic,
-            "accuracy": accuracy,
-            "answered_count": 8 + n % 4,
-            "wrong_count": max(0, round((100 - accuracy) / 12)),
-            "next_action": "补做边界场景并更新交付检查清单" if accuracy < 85 else "进入下一项岗位综合任务",
-            "difficulty_delta": 1 if n in {4, 8, 11} else 0,
-            "completed_at": completed.isoformat(),
-        })
-    rounds.reverse()
     dims = {
         "knowledge_base": {"math": 3 + index % 2, "programming": 4, "cs_foundation": 3 + index % 2, "data_sql": 4, "subject_prior": 4},
         "cognitive_style": {"practice_first": 5, "stepwise": 4, "challenge_seeking": 3 + index % 2, "reflective": 4},
@@ -371,7 +349,7 @@ def seed_profile(conn: sqlite3.Connection, user_id: int, index: int) -> None:
         "profile_coverage": {"knowledge_base": True, "cognitive_style": True, "resource_preference": True, "employment_skills": True},
         "theory_assessments": {},
         "interview_assessments": {},
-        "training_rounds": rounds,
+        "training_rounds": [],
     }
     conn.execute("INSERT INTO profiles (user_id,dims,version,updated_at) VALUES (?,?,9,?)", (user_id, jd(dims), ANCHOR))
     triggers = (
@@ -844,6 +822,14 @@ def validate(conn: sqlite3.Connection) -> None:
             if actual != count:
                 raise RuntimeError(f"{email} 的 {table} 数量异常：期望 {count}，实际 {actual}")
         profile_dims = json.loads(conn.execute("SELECT dims FROM profiles WHERE user_id=?", (user_id,)).fetchone()[0])
+        if profile_dims.get("training_rounds"):
+            raise RuntimeError(f"{email} FDE training progress must be zero")
+        fde_certificates = conn.execute(
+            "SELECT COUNT(*) FROM role_certificates WHERE user_id=? AND (lower(role_id)='fde' OR lower(role_name) LIKE '%fde%')",
+            (user_id,),
+        ).fetchone()[0]
+        if fde_certificates:
+            raise RuntimeError(f"{email} still has an FDE certificate")
         if not all(profile_dims.get("profile_coverage", {}).values()):
             raise RuntimeError(f"{email} 的画像采集覆盖不完整")
         if not profile_dims.get("theory_assessments") or not profile_dims.get("interview_assessments"):

@@ -24,6 +24,7 @@ import { setTargetRole } from "@/store/targetRole"
 import { useCurrentUser } from "@/store/user"
 
 import "./EnterpriseHub.css"
+import "./EnterpriseBlueTheme.css"
 
 type Context = {
   name: string
@@ -180,7 +181,7 @@ export function EnterpriseHub() {
   const completedCount = learnerTasks.filter((task) => task.assignment_status === "completed").length
 
   return (
-    <main className={cn("app-page paper-theme enterprise-hub-page min-h-dvh pb-12", !isAdmin && "is-learner")}>
+    <main className={cn("app-page paper-theme enterprise-blue-theme enterprise-hub-page min-h-dvh pb-12", !isAdmin && "is-learner")}>
       <div className="mx-auto max-w-[1440px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
         <AppTopbar current="home" appearance="paper" labelOverride={isAdmin ? "企业管理员工作台" : "企业任务中心"} groupOverride="企业培训协作" selectionLabel={context?.enterprise?.name || (isAdmin ? "河南本线商贸有限公司" : "尚未加入企业")} />
         <section className="mt-4 overflow-hidden rounded-[26px] border border-[#D6E2D4] bg-[#F4F9F2] p-5 shadow-[0_14px_38px_rgba(59,92,58,.08)] sm:p-7">

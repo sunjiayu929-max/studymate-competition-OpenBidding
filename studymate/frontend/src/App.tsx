@@ -71,14 +71,16 @@ function ScrollToTop() {
 function GlobalTutorBubble() {
   const location = useLocation()
   const user = useCurrentUser()
-  const [homeUniverseVisible, setHomeUniverseVisible] = useState(location.pathname === "/")
+  const [homeUniverseVisible, setHomeUniverseVisible] = useState(false)
 
   useEffect(() => {
     if (location.pathname !== "/") {
       setHomeUniverseVisible(false)
       return
     }
-    setHomeUniverseVisible(true)
+    // The immersive home universe was removed; keep the floating tutor visible
+    // on the normal home page unless another view explicitly hides it.
+    setHomeUniverseVisible(false)
     const onVisibility = (event: Event) => {
       setHomeUniverseVisible(Boolean((event as CustomEvent<{ visible?: boolean }>).detail?.visible))
     }

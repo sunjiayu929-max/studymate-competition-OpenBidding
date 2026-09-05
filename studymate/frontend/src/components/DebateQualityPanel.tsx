@@ -26,13 +26,12 @@ export function DebateQualityPanel({ workspace }: { workspace: WorkspaceState })
   const completed = Boolean(debate || workspace.decision || Object.keys(workspace.reviews).length)
 
   return (
-    <details open className="competency-section debate-quality-panel mt-4">
+    <details className="competency-section debate-quality-panel mt-4">
       <summary className="debate-quality-header cursor-pointer list-none [&::-webkit-details-marker]:hidden">
         <div className="debate-quality-heading">
           <span className="debate-quality-emblem"><img src="/images/quality-inspection-instrument-v1.png" alt="" aria-hidden="true" /></span>
-          <div className="debate-quality-copy"><span>02 · 质量复核</span><h2>多重校验，一次看清</h2><p>资源陈述 → 三项校验 → 修改回应 → 最终决策</p></div>
-          <i className="debate-quality-flight" aria-hidden="true"><span className="is-upper"><img src="/images/section-helicopter-v1.png" alt="" /></span><span className="is-lower"><img src="/images/section-helicopter-v1.png" alt="" /></span></i>
-          <div className="debate-quality-status"><span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-black", active ? "bg-[#DCEEFF] text-[#2467AB]" : completed ? "bg-[#E1F2EB] text-[#20755F]" : "bg-white/75 text-[#315D7B]")}>{active && <i className="size-2 animate-pulse rounded-full bg-[#2E72D2]" />}{active ? "实时同步中" : completed ? "已记录" : "等待复核"}</span><span className="inline-flex items-center gap-1 text-[12px] font-bold text-[#285A7D]">展开查看 <ArrowRight className="size-4" /></span></div>
+          <div className="debate-quality-copy is-title-only"><span>03 · 辩论实录与交叉验证审核</span><p>资源陈述 → 三项校验 → 修改回应 → 最终决策</p></div>
+          <div className="debate-quality-status"><span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-black", active ? "bg-[#DCEEFF] text-[#2467AB]" : completed ? "bg-[#E1F2EB] text-[#20755F]" : "bg-white/75 text-[#315D7B]")}>{active && <i className="size-2 animate-pulse rounded-full bg-[#2E72D2]" />}{active ? "实时同步中" : completed ? "已记录" : "等待复核"}</span><span className="inline-flex items-center gap-1 text-[12px] font-bold text-[#285A7D]"><span className="debate-open-label">展开查看</span><span className="debate-close-label">收起详情</span> <ArrowRight className="size-4" /></span></div>
         </div>
       </summary>
       <div className="debate-quality-content space-y-4">

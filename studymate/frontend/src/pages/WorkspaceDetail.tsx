@@ -19,6 +19,8 @@ import { MindMapView } from "@/components/MindMapView"
 import { CodeBlock } from "@/components/CodeBlock"
 import { ConceptAutoExplain } from "@/components/concepts/ConceptAutoExplain"
 
+import "./WorkspaceDetail.css"
+
 // 资源详情共用一条路由，但每次只展示一种资源；重组件按实际分支加载，避免一次下载全部渲染器。
 const Markdown = lazy(() => import("@/components/Markdown").then((module) => ({ default: module.Markdown })))
 const QuizCard = lazy(() => import("@/components/QuizCard").then((module) => ({ default: module.QuizCard })))
@@ -256,7 +258,7 @@ export function WorkspaceDetail() {
 
   if (!isValidAgent || !meta) {
     return (
-      <div className="app-page paper-theme">
+      <div className="app-page paper-theme workspace-blue-theme">
         <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
           <PageHeader
             current="workspace"
@@ -337,7 +339,7 @@ export function WorkspaceDetail() {
   }
 
   return (
-    <div className="app-page paper-theme">
+    <div className="app-page paper-theme workspace-blue-theme">
       <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
         <PageHeader
           current="workspace"

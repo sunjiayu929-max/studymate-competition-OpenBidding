@@ -209,10 +209,6 @@ function runPersistentEval(
   return task
 }
 
-const RESOURCE_LABEL: Record<string, string> = {
-  doc: "讲解文档", mindmap: "思维导图", quiz: "智能题目", reading: "拓展阅读",
-  code: "代码案例", path: "学习路径", concept: "可视讲解", note: "学习笔记", video: "视频",
-}
 
 function formatReportTime(value?: string | number | null) {
   if (!value) return "时间未记录"
@@ -587,14 +583,7 @@ export function Report() {
               </button>}
           </div>}
         </section>
-        <nav className="report-live-stage" aria-label="报告处理阶段">
-          {["采集", "分析", "反馈", "行动"].map((label, index) => {
-            const activeStep = workspaceGenerating ? 0 : loading ? 1 : report ? 3 : hasEvalData ? 1 : 0
-            const stateClass = index < activeStep ? "is-done" : index === activeStep ? "is-current" : ""
-            return <span key={label} className={`report-live-stage-card is-stage-${index + 1} ${stateClass}`}><i>0{index + 1}</i><b>{label}</b></span>
-          })}
-        </nav>
-
+        <LearningStatsCards stats={learningStats} />
         {error && (
           <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-[#DFC8BE] bg-[#F4E8E2] p-3 text-sm text-[#9A4E35]">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
@@ -694,6 +683,43 @@ export function Report() {
             </div>
 
             {/* 评估总结 markdown */}
+            <div className="report-live-analysis-grid">
+              {trendData.length >= 2 && <TrendLineCard data={trendData} />}
+
+              {/* 新报告显示主题×难度热力图；旧报告继续使用原柱状图。 */}
+              {hasTopicDifficultyData ? (
+                <TopicDifficultyHeatmap data={topicDifficultyData} overall={report.scores.by_topic} />
+              ) : topicBarData.length > 0 ? (
+                <div className="report-live-topic-chart rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] p-5">
+                  <div className="text-sm font-semibold mb-3 flex items-center gap-1.5">
+                    <BarChart3 className="size-4 text-[#B85C3E]" /> 按主题正确率
+                  </div>
+                  <ResponsiveContainer width="100%" height={200} minWidth={0}>
+                    <BarChart data={topicBarData} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                      <XAxis dataKey="topic" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
+                      <Tooltip
+                        contentStyle={{
+                          background: "var(--card)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 8,
+                          fontSize: 12,
+                        }}
+                        formatter={((v: unknown, _n: unknown, p: unknown) => {
+                          const payload = (p as { payload?: { correct: number; total: number } })?.payload
+                          const c = payload?.correct ?? 0
+                          const t = payload?.total ?? 0
+                          return [`${v}% (${c}/${t})`, "正确率"]
+                        }) as never}
+                      />
+                      <Bar dataKey="rate" fill="#B85C3E" radius={[6, 6, 0, 0]} minPointSize={8} maxBarSize={72} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : null}
+            </div>
+
             {report.summary_markdown && (
               <div className="report-live-summary rounded-[22px] border border-[#D7D1C4] bg-[#F8F6F0] p-5">
                 <div className="text-sm font-semibold mb-2 flex items-center gap-1.5">
@@ -742,52 +768,7 @@ export function Report() {
               )}
             </div>
 
-            <div className="report-live-analysis-grid">
-              {trendData.length >= 2 && <TrendLineCard data={trendData} />}
 
-              {/* 新报告显示主题×难度热力图；旧报告继续使用原柱状图。 */}
-              {hasTopicDifficultyData ? (
-                <TopicDifficultyHeatmap data={topicDifficultyData} overall={report.scores.by_topic} />
-              ) : topicBarData.length > 0 ? (
-                <div className="report-live-topic-chart rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] p-5">
-                  <div className="text-sm font-semibold mb-3 flex items-center gap-1.5">
-                    <BarChart3 className="size-4 text-[#B85C3E]" /> 按主题正确率
-                  </div>
-                  <ResponsiveContainer width="100%" height={200} minWidth={0}>
-                    <BarChart data={topicBarData} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="topic" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
-                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
-                      <Tooltip
-                        contentStyle={{
-                          background: "var(--card)",
-                          border: "1px solid var(--border)",
-                          borderRadius: 8,
-                          fontSize: 12,
-                        }}
-                        formatter={((v: unknown, _n: unknown, p: unknown) => {
-                          const payload = (p as { payload?: { correct: number; total: number } })?.payload
-                          const c = payload?.correct ?? 0
-                          const t = payload?.total ?? 0
-                          return [`${v}% (${c}/${t})`, "正确率"]
-                        }) as never}
-                      />
-                      <Bar dataKey="rate" fill="#B85C3E" radius={[6, 6, 0, 0]} minPointSize={8} maxBarSize={72} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : null}
-            </div>
-
-            <CapabilitySignalCard delta={report.profile_delta} />
-
-            <ReportEvidenceStrip
-              evidence={reportEvidence}
-              generatedAt={report.generated_at}
-              profileVersion={report.profile_version}
-              currentProfileVersion={profile?.version ?? null}
-            />
-            <LearningStatsCards stats={learningStats} />
 
             <div className="text-center text-[10px] text-[var(--muted-foreground)] pt-2">
               本报告由因材智训评估智能体根据答题数据与学习行为生成 · {formatReportTime(report.generated_at)}
@@ -798,48 +779,6 @@ export function Report() {
         </section>
       </div>
     </div>
-  )
-}
-
-function ReportEvidenceStrip({
-  evidence, generatedAt, profileVersion, currentProfileVersion,
-}: {
-  evidence?: EvalEvidence
-  generatedAt?: string
-  profileVersion: number
-  currentProfileVersion: number | null
-}) {
-  const stale = currentProfileVersion != null && currentProfileVersion !== profileVersion
-  const resourceLabel = evidence?.resources_consumed.length
-    ? evidence.resources_consumed.map((key) => RESOURCE_LABEL[key] || key).slice(0, 3).join("、")
-    : "未记录资源"
-  const cells = [
-    { label: "目标岗位上下文", value: evidence?.course_name || "旧版报告未记录", icon: BookOpen },
-    { label: "岗位训练任务", value: evidence?.topic || evidence?.topics_studied?.[0] || "历史训练", icon: Target },
-    { label: "输入证据", value: evidence ? `${evidence.quiz_count} 题 · ${evidence.resources_consumed.length} 类资源` : "已归档", icon: Layers3 },
-    { label: "生成时间", value: formatReportTime(generatedAt), icon: Clock },
-  ]
-  return (
-    <section aria-label="报告生成依据" className="report-live-evidence rounded-[22px] border border-[#C7D2D8] bg-[#F3F6F7] p-4">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <div className="flex items-center gap-1.5 text-xs font-bold text-[#315E83]"><ShieldCheck className="size-3.5" />报告生成依据</div>
-          <p className="mt-1 text-[11px] leading-5 text-[#66717B]">{evidence ? `已冻结本次输入快照：${resourceLabel}` : "这是兼容保留的旧版报告；未记录的证据不会用当前会话数据冒充。"}</p>
-        </div>
-        <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold ${stale ? "border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]" : "border-[#C9D1CB] bg-[#E9EEE6] text-[#557052]"}`}>
-          {stale ? <History className="size-3" /> : <CheckCircle2 className="size-3" />}
-          {stale ? `基于画像 v${profileVersion} · 当前 v${currentProfileVersion}` : `画像 v${profileVersion} 已核对`}
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {cells.map(({ label, value, icon: Icon }, index) => (
-          <div key={label} className={`report-live-evidence-cell is-tone-${index + 1} min-w-0 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-2.5`}>
-            <span className="flex items-center gap-1 text-[9px] font-bold tracking-[0.08em] text-[#8A8172]"><Icon className="size-3" />{label}</span>
-            <strong className="mt-1 block truncate text-[11px] text-[#27343D]" title={value}>{value}</strong>
-          </div>
-        ))}
-      </div>
-    </section>
   )
 }
 
@@ -1389,42 +1328,6 @@ function DeltaBlock({
 }
 
 */
-
-function CapabilitySignalCard({ delta }: { delta: ProfileDelta }) {
-  const groups = [
-    { label: "知识能力", values: delta.knowledge_base || {}, tone: "knowledge" },
-    { label: "资源偏好", values: delta.preference || {}, tone: "preference" },
-    { label: "就业技能", values: delta.employment_skills || {}, tone: "employment" },
-  ]
-  const weakPoints = [...(delta.weak_points?.topics || []), ...(delta.weak_points?.error_types || [])]
-  const signalCount = groups.reduce((total, group) => total + Object.keys(group.values).length, 0) + weakPoints.length
-
-  return (
-    <section className="report-live-capability" aria-label="能力变化信号">
-      <div className="report-live-capability-heading">
-        <span><Activity className="size-4" /> ABILITY DELTA</span>
-        <div><h3>能力变化信号</h3><p>将本次学习反馈拆分为知识、偏好、就业技能与待强化项。</p></div>
-        <strong>{String(signalCount).padStart(2, "0")}<small> 项变化</small></strong>
-      </div>
-      <div className="report-live-capability-grid">
-        {groups.map((group) => {
-          const entries = Object.entries(group.values).filter(([, value]) => Math.abs(value) > .001)
-          return (
-            <article key={group.label} className={`is-${group.tone} ${entries.length ? "has-change" : "is-steady"}`}>
-              <span>{group.label}</span>
-              <strong>{entries.length ? `${entries.length} 项` : "稳定"}</strong>
-              <div>{entries.slice(0, 3).map(([key, value]) => <i key={key}>{key}<b>{value > 0 ? "+" : ""}{value.toFixed(1)}</b></i>)}</div>
-            </article>
-          )
-        })}
-        <article className={`is-weakness ${weakPoints.length ? "has-change" : "is-steady"}`}>
-          <span>待强化项</span><strong>{weakPoints.length ? `${weakPoints.length} 项` : "未发现"}</strong>
-          <div>{weakPoints.slice(0, 3).map((item) => <i key={item}>{item}</i>)}</div>
-        </article>
-      </div>
-    </section>
-  )
-}
 
 function TrendLineCard({
   data,

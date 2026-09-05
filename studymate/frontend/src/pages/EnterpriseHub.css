@@ -1,3 +1,10 @@
+/* Page-level blue background matching the main StudyMate workbench. */
+.paper-theme.enterprise-hub-page {
+  background:
+    radial-gradient(circle at 82% 0%, rgba(131, 211, 232, .18), transparent 30rem),
+    linear-gradient(180deg, #f7fcfe 0%, #edf7fa 48%, #e4f1f6 100%) !important;
+}
+
 /* 从业者企业任务中心：沿用 StudyMate 的冷静蓝色工作台语言，减少装饰性动效。 */
 .enterprise-hub-page.is-learner {
   --enterprise-blue-900: #214c68;

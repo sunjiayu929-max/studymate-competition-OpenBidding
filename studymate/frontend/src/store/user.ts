@@ -23,7 +23,21 @@ export interface CurrentUser {
 }
 
 const STORAGE_KEY = "sm:current-user"
+const YCZX_EMAIL_SUFFIX = "@yczx.com"
+const FDE_ROLE_ID = "fde"
 export const USER_SESSION_RESET_EVENT = "studymate:user-session-reset"
+
+function clearYczxFdeClientState(user: CurrentUser | null): boolean {
+  if (!user?.email?.toLowerCase().endsWith(YCZX_EMAIL_SUFFIX) || typeof window === "undefined") return false
+  try {
+    localStorage.removeItem(`sm:role-capability-evidence:${user.user_id}:${FDE_ROLE_ID}`)
+    localStorage.removeItem(`sm:role-certificate:${user.user_id}:${FDE_ROLE_ID}`)
+    sessionStorage.removeItem("sm:workspace-state")
+  } catch {
+    /* local persistence is optional */
+  }
+  return true
+}
 const FIXED_FDE_EMAILS = new Set([
   "sunjiayu@pramate.com", "baixinyue@pramate.com", "yuanshicong@pramate.com",
   "chenzhuo@pramate.com", "lijiayi@pramate.com", "zhouxiang@pramate.com",
@@ -47,7 +61,11 @@ function loadFromStorage(): CurrentUser | null {
     const parsed = JSON.parse(raw) as CurrentUser
     if (typeof parsed.user_id !== "number" || !parsed.name) return null
     const role: UserRole = ["admin", "judge", "enterprise_admin", "worker"].includes(parsed.role) ? parsed.role : "student"
-    return normalizeUser({ ...parsed, role })
+    const current = normalizeUser({ ...parsed, role })
+    if (clearYczxFdeClientState(current)) {
+      window.dispatchEvent(new Event(USER_SESSION_RESET_EVENT))
+    }
+    return current
   } catch {
     return null
   }
@@ -66,6 +84,7 @@ class UserStore {
   set(u: CurrentUser | null) {
     const previousUserId = this.current?.user_id ?? null
     this.current = u ? normalizeUser(u) : null
+    const resetYczxFdeState = clearYczxFdeClientState(this.current)
     if (u && typeof window !== "undefined") {
       window.dispatchEvent(new Event("studymate:event-tracking-resume"))
     }
@@ -76,7 +95,7 @@ class UserStore {
       /* ignore */
     }
     this.listeners.forEach((fn) => fn())
-    if (previousUserId !== null && previousUserId !== u?.user_id && typeof window !== "undefined") {
+    if ((resetYczxFdeState || (previousUserId !== null && previousUserId !== u?.user_id)) && typeof window !== "undefined") {
       window.dispatchEvent(new Event(USER_SESSION_RESET_EVENT))
     }
   }

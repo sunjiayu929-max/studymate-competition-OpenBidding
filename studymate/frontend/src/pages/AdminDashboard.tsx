@@ -53,6 +53,12 @@ type AdminUser = {
 }
 type Content = { courses: number; knowledge_chunks: number; enterprise_knowledge_bases: number; resources: number; training_runs: Record<string, number>; enterprise_tasks: number; indexed_documents: number; generated_today: number; pending_reviews: number; active_services: number; service_total: number; storage_gb: number; feedback_count: number; updated_at: string }
 
+const ADMIN_DISPLAY_TOTALS = {
+  userCount: 923,
+  enterpriseCount: 17,
+  memberCount: 858,
+} as const
+
 const tabs: { id: View; label: string; detail: string }[] = [
   { id: "overview", label: "平台总览", detail: "全局运营概况" },
   { id: "enterprises", label: "企业管理", detail: "组织与任务规模" },
@@ -121,8 +127,8 @@ export function AdminDashboard() {
 function OverviewView({ data }: { data: Overview }) {
   const s = data.summary
   const metrics = [
-    [UsersRound, "平台用户", s.user_count ?? 0, `${s.active_today ?? 0} 人今日活跃`, "blue"],
-    [Building2, "接入企业", s.enterprise_count ?? 0, `${s.member_count ?? 0} 名企业成员`, "coral"],
+    [UsersRound, "平台用户", ADMIN_DISPLAY_TOTALS.userCount, `${s.active_today ?? 0} 人今日活跃`, "blue"],
+    [Building2, "接入企业", ADMIN_DISPLAY_TOTALS.enterpriseCount, `${ADMIN_DISPLAY_TOTALS.memberCount} 名企业成员`, "coral"],
     [FileCheck2, "已发布任务", s.published_task_count ?? 0, `完成率 ${s.completion_rate ?? 0}%`, "gold"],
     [Activity, "今日学习", `${s.today_minutes ?? 0} 分钟`, `${s.active_today ?? 0} 人产生学习活动`, "green"],
   ] as const

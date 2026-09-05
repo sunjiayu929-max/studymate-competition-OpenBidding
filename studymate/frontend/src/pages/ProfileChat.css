@@ -68,8 +68,8 @@
 .profile-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 400px);
-  grid-template-areas: "chat summary" "chat identity" "next next";
-  grid-template-rows: auto 1fr auto;
+  grid-template-areas: "chat summary" "chat identity" "radar radar" "next next";
+  grid-template-rows: auto 1fr auto auto;
   gap: .85rem 1rem;
   align-items: stretch;
   margin-top: .7rem;
@@ -874,6 +874,60 @@
   outline-offset: 2px;
 }
 
+.profile-radar-section {
+  grid-area: radar;
+  min-width: 0;
+  padding: .9rem;
+  border: 1px solid rgba(83, 153, 188, .36);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(248, 253, 255, .96), rgba(227, 243, 251, .9));
+  box-shadow: 0 12px 30px rgba(44, 105, 137, .08);
+}
+
+.profile-radar-section .profile-secondary-heading {
+  margin-bottom: .65rem;
+}
+
+.profile-radar-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .7rem;
+}
+
+.profile-radar-grid .profile-radar-card {
+  padding: .65rem;
+  border-color: rgba(83, 153, 188, .34);
+  background: linear-gradient(145deg, rgba(255, 255, 255, .96), rgba(235, 247, 252, .92));
+  box-shadow: 0 8px 20px rgba(44, 105, 137, .07);
+}
+
+.profile-radar-grid .profile-radar-card > div:first-of-type > div:first-child {
+  color: #214c68;
+}
+
+.profile-radar-grid .recharts-polar-grid-concentric path,
+.profile-radar-grid .recharts-polar-grid-angle line {
+  stroke: #c5dfe9;
+}
+
+.profile-radar-grid .recharts-polar-angle-axis-tick text {
+  fill: #58798c;
+}
+
+.profile-radar-empty {
+  display: grid;
+  min-height: 150px;
+  place-items: center;
+  padding: 1rem;
+  border: 1px dashed rgba(83, 153, 188, .38);
+  border-radius: 16px;
+  color: #58768a;
+  background: rgba(255, 255, 255, .62);
+  font-size: .8rem;
+  font-weight: 650;
+  text-align: center;
+}
+
 @media (max-width: 1180px) {
   .profile-workspace {
     grid-template-columns: minmax(0, 1fr) 350px;
@@ -887,7 +941,7 @@
 @media (max-width: 900px) {
   .profile-workspace {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "summary" "chat" "identity" "next";
+    grid-template-areas: "summary" "chat" "identity" "radar" "next";
     grid-template-rows: auto;
   }
 
@@ -1039,6 +1093,10 @@
 
   .profile-next-card {
     align-items: flex-start;
+  }
+
+  .profile-radar-grid {
+    grid-template-columns: 1fr;
   }
 }
 

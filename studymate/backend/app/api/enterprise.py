@@ -94,7 +94,7 @@ FDE_CAPABILITIES = (
     },
 )
 
-DEMO_MEMBER_SEEDS = (
+_DEMO_MEMBER_SEED_HEAD = (
     ("陈思远", "fde-demo-01@lanshan.example", 91, 72, 1180),
     ("李婧", "fde-demo-02@lanshan.example", 86, 64, 1050),
     ("王子涵", "fde-demo-03@lanshan.example", 94, 81, 1260),
@@ -109,20 +109,47 @@ DEMO_MEMBER_SEEDS = (
     ("邓博文", "fde-demo-12@lanshan.example", 85, 63, 1010),
 )
 
-DEMO_MEMBER_ROLES = {
-    "fde-demo-01@lanshan.example": "AI Agent 开发工程师",
-    "fde-demo-02@lanshan.example": "AI Agent 开发工程师",
-    "fde-demo-03@lanshan.example": "AI Agent 开发工程师",
-    "fde-demo-04@lanshan.example": "AI Agent 开发工程师",
-    "fde-demo-05@lanshan.example": "AI Agent 开发工程师",
-    "fde-demo-06@lanshan.example": "AI Agent 开发工程师",
-    "fde-demo-07@lanshan.example": "AI Infra 工程师",
-    "fde-demo-08@lanshan.example": "AI Infra 工程师",
-    "fde-demo-09@lanshan.example": "AI Infra 工程师",
-    "fde-demo-10@lanshan.example": "AI Infra 工程师",
-    "fde-demo-11@lanshan.example": "AI Infra 工程师",
-    "fde-demo-12@lanshan.example": "AI Infra 工程师",
-}
+# The eight fixed @pramate.com accounts are also FDE members. These demo-only
+# counts therefore add up to 182, producing the requested 190-person board.
+DEMO_ROLE_COUNTS = (
+    ("前线部署工程师（FDE）", 42),
+    ("AI-native应用前端开发工程师", 30),
+    ("大模型应用开发工程师", 40),
+    ("企业RAG应用实施工程师", 30),
+    ("大模型安全工程师", 40),
+)
+
+BOARD_ROLE_COUNTS = (
+    ("\u524d\u7ebf\u90e8\u7f72\u5de5\u7a0b\u5e08\uff08FDE\uff09", 50),
+    ("AI-native\u5e94\u7528\u524d\u7aef\u5f00\u53d1\u5de5\u7a0b\u5e08", 30),
+    ("\u5927\u6a21\u578b\u5e94\u7528\u5f00\u53d1\u5de5\u7a0b\u5e08", 40),
+    ("\u4f01\u4e1aRAG\u5e94\u7528\u5b9e\u65bd\u5de5\u7a0b\u5e08", 30),
+    ("\u5927\u6a21\u578b\u5b89\u5168\u5de5\u7a0b\u5e08", 40),
+)
+
+def _build_demo_member_seeds() -> tuple[tuple[str, str, int, int, int], ...]:
+    seeds = list(_DEMO_MEMBER_SEED_HEAD)
+    roles = {email: DEMO_ROLE_COUNTS[0][0] for _, email, *_ in seeds}
+    for role, target_count in DEMO_ROLE_COUNTS:
+        existing_count = sum(value == role for value in roles.values())
+        for _ in range(target_count - existing_count):
+            number = len(seeds) + 1
+            email = f"employee-{number:03d}@lanshan.example"
+            progress = 64 + (number * 7) % 33
+            today_minutes = 24 + (number * 11) % 62
+            total_minutes = 680 + (number * 83) % 920
+            seeds.append((f"演示成员{number:03d}", email, progress, today_minutes, total_minutes))
+            roles[email] = role
+    return tuple(seeds)
+
+
+DEMO_MEMBER_SEEDS = _build_demo_member_seeds()
+DEMO_MEMBER_ROLES = {}
+_seed_index = 0
+for _role, _count in DEMO_ROLE_COUNTS:
+    for _seed in DEMO_MEMBER_SEEDS[_seed_index:_seed_index + _count]:
+        DEMO_MEMBER_ROLES[_seed[1]] = _role
+    _seed_index += _count
 
 FIXED_MEMBER_METRICS = {
     "sunjiayu": (92, 86, 1180),
@@ -840,6 +867,9 @@ async def _seed_demo_dashboard_data(db: AsyncSession, enterprise: Enterprise) ->
 
 
 async def _enterprise_dashboard_payload(db: AsyncSession, enterprise: Enterprise) -> dict:
+    # Keep the showcase dashboard data in sync with the configured role mix.
+    # The seeder is idempotent and only runs for the demo enterprise.
+    await _ensure_demo_dashboard_data(db, enterprise)
     member_rows = (await db.execute(
         select(EnterpriseMembership, User)
         .join(User, User.id == EnterpriseMembership.user_id)
@@ -851,8 +881,34 @@ async def _enterprise_dashboard_payload(db: AsyncSession, enterprise: Enterprise
         .order_by(EnterpriseMembership.created_at.asc())
     )).all()
     member_rows = [pair for pair in member_rows if (pair[1].email or "").lower() != "test@pramate.com"]
+    # The demo board has a fixed, presentation-friendly role mix. Preserve
+    # real enterprise members, then cap generated @lanshan.example rows to the
+    # remaining slots so stale seed rows cannot make the headline counts drift.
+    desired_role_counts = dict(BOARD_ROLE_COUNTS)
+    real_rows = [pair for pair in member_rows if not _is_demo_member(pair[1])]
+    demo_rows = [pair for pair in member_rows if _is_demo_member(pair[1])]
+    real_role_counts: dict[str, int] = {}
+    for membership, learner in real_rows:
+        role = learner.target_role or membership.job_title or DEMO_ROLE_COUNTS[0][0]
+        if role in {"AI Agent ?????", "AI Agent ???"}:
+            role = "??RAG???????"
+        elif role in {"AI Infra ???"}:
+            role = "??????????"
+        real_role_counts[role] = real_role_counts.get(role, 0) + 1
+    demo_limits = {
+        role: max(0, desired_role_counts[role] - real_role_counts.get(role, 0))
+        for role in desired_role_counts
+    }
+    demo_seen: dict[str, int] = {}
+    capped_demo_rows = []
+    for pair in demo_rows:
+        role = DEMO_MEMBER_ROLES.get(pair[1].email or "", DEMO_ROLE_COUNTS[0][0])
+        if demo_seen.get(role, 0) >= demo_limits.get(role, 0):
+            continue
+        demo_seen[role] = demo_seen.get(role, 0) + 1
+        capped_demo_rows.append(pair)
     member_rows = sorted(
-        member_rows,
+        real_rows + capped_demo_rows,
         key=lambda pair: (_is_fixed_member(pair[1]), pair[1].name or ""),
     )
     tasks = list((await db.scalars(select(EnterpriseTask).where(

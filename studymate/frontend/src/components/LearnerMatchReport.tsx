@@ -134,9 +134,9 @@ export function LearnerMatchReport(props: LearnerMatchReportProps) {
         <div className="learner-signal-detail-switcher">
           <div className="learner-signal-detail-hint"><MousePointerClick className="size-3.5" /><span>点击下方按钮切换查看</span></div>
           <div className="learner-signal-detail-tabs" role="tablist" aria-label="报告详情">
-            <button id="learner-detail-tab-evidence" type="button" role="tab" aria-selected={activeDetail === "evidence"} aria-controls="learner-detail-panel-evidence" onClick={() => setActiveDetail("evidence")}><span>判断依据</span><small>{activeDetail === "evidence" ? "正在查看" : "点击查看"}</small></button>
-            <button id="learner-detail-tab-resources" type="button" role="tab" aria-selected={activeDetail === "resources"} aria-controls="learner-detail-panel-resources" onClick={() => setActiveDetail("resources")}><span>匹配资源</span><small>{activeDetail === "resources" ? "正在查看" : "点击查看"}</small></button>
-            <button id="learner-detail-tab-path" type="button" role="tab" aria-selected={activeDetail === "path"} aria-controls="learner-detail-panel-path" onClick={() => setActiveDetail("path")}><span>学习路径</span><small>{activeDetail === "path" ? "正在查看" : "点击查看"}</small></button>
+            <button id="learner-detail-tab-evidence" type="button" role="tab" aria-selected={activeDetail === "evidence"} aria-controls="learner-detail-panel-evidence" onClick={() => setActiveDetail("evidence")}><span>知识盲区定位</span><small>{activeDetail === "evidence" ? "正在查看" : "点击查看"}</small></button>
+            <button id="learner-detail-tab-resources" type="button" role="tab" aria-selected={activeDetail === "resources"} aria-controls="learner-detail-panel-resources" onClick={() => setActiveDetail("resources")}><span>资源难度匹配曲线</span><small>{activeDetail === "resources" ? "正在查看" : "点击查看"}</small></button>
+            <button id="learner-detail-tab-path" type="button" role="tab" aria-selected={activeDetail === "path"} aria-controls="learner-detail-panel-path" onClick={() => setActiveDetail("path")}><span>学习路径规划图</span><small>{activeDetail === "path" ? "正在查看" : "点击查看"}</small></button>
           </div>
         </div>
 
@@ -294,11 +294,20 @@ function SignalMetric({ label, value, detail, tone }: { label: string; value: st
   return <div className={`learner-signal-metric learner-signal-metric--${tone}`}><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>
 }
 
-export function ReportPathMap({ capabilities, targetRoleName, selectedId, onSelect }: { capabilities: ReportCapability[]; targetRoleName: string; selectedId?: string; onSelect: (id: string) => void }) {
+export function ReportPathMap({ capabilities, targetRoleName, selectedId, onSelect, viewportHeight = 400, fit = false }: { capabilities: ReportCapability[]; targetRoleName: string; selectedId?: string; onSelect: (id: string) => void; viewportHeight?: number; fit?: boolean }) {
   const layout = buildReportRouteLayout(capabilities)
   const nodeById = new Map(layout.nodes.map((node) => [node.id, node]))
   const finalReady = capabilities.length > 0 && capabilities.every((node) => node.level >= 3)
   const assessment = nodeById.get("final-assessment")
+  const fitPaddingX = 48
+  const fitPaddingY = 34
+  const routeBounds = layout.nodes.reduce((bounds, node) => ({
+    minX: Math.min(bounds.minX, node.point.x - ROUTE_NODE_WIDTH / 2),
+    maxX: Math.max(bounds.maxX, node.point.x + ROUTE_NODE_WIDTH / 2),
+    minY: Math.min(bounds.minY, node.point.y - ROUTE_NODE_HEIGHT / 2),
+    maxY: Math.max(bounds.maxY, node.point.y + ROUTE_NODE_HEIGHT / 2),
+  }), { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity })
+  const fittedViewBox = `${routeBounds.minX - fitPaddingX} ${routeBounds.minY - fitPaddingY} ${routeBounds.maxX - routeBounds.minX + fitPaddingX * 2} ${routeBounds.maxY - routeBounds.minY + fitPaddingY * 2}`
 
   const edgePath = (source: RoutePoint, target: RoutePoint) => {
     const startX = source.x + ROUTE_NODE_WIDTH / 2
@@ -307,8 +316,7 @@ export function ReportPathMap({ capabilities, targetRoleName, selectedId, onSele
     return `M ${startX} ${source.y} C ${startX + controlOffset} ${source.y}, ${endX - controlOffset} ${target.y}, ${endX} ${target.y}`
   }
 
-  return <div onWheelCapture={passLockedCanvasWheelToPage}><InteractiveCanvas canvasWidth={layout.width} canvasHeight={layout.height} viewportHeight={400} label={`${targetRoleName || "目标岗位"}路径地图`} className="rounded-[18px] border border-[#D7DEE8] bg-white">
-    <svg viewBox={`0 0 ${layout.width} ${layout.height}`} width={layout.width} height={layout.height} role="img" aria-label={`${targetRoleName || "目标岗位"}路径地图`}>
+  const chart = (<svg viewBox={fit ? fittedViewBox : `0 0 ${layout.width} ${layout.height}`} preserveAspectRatio="xMidYMid meet" width={fit ? "100%" : layout.width} height={fit ? viewportHeight : layout.height} role="img" aria-label={`${targetRoleName || "目标岗位"}路径地图`}>
       <defs>
         <pattern id="learner-report-route-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none" stroke="#DDE7F2" strokeWidth="1" opacity=".55" /></pattern>
         <marker id="learner-report-route-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9AAFC7" /></marker>
@@ -333,8 +341,11 @@ export function ReportPathMap({ capabilities, targetRoleName, selectedId, onSele
         return <foreignObject className="route-node" key={node.id} x={routeNode.point.x - ROUTE_NODE_WIDTH / 2} y={routeNode.point.y - ROUTE_NODE_HEIGHT / 2} width={ROUTE_NODE_WIDTH} height={ROUTE_NODE_HEIGHT}><button type="button" onClick={() => onSelect(node.id)} className="h-full w-full rounded-[14px] border-2 px-4 py-3 text-left shadow-[0_6px_16px_rgba(50,77,110,.09)] transition" style={{ backgroundColor: meta.fill, borderColor: selectedId === node.id ? "#315F91" : meta.stroke }}><span className="block text-[12px] font-extrabold" style={{ color: meta.stroke }}>{meta.label} · L{node.level}/L3</span><strong className="mt-1.5 block truncate text-[16px] leading-5 text-[#172E49]">{node.name}</strong><small className="mt-1 block line-clamp-2 text-[12px] leading-4 text-[#52667E]">{node.task}</small></button></foreignObject>
       })}
       {assessment && <foreignObject x={assessment.point.x - ROUTE_NODE_WIDTH / 2} y={assessment.point.y - ROUTE_NODE_HEIGHT / 2} width={ROUTE_NODE_WIDTH} height={ROUTE_NODE_HEIGHT}><div className={cn("grid h-full place-items-center rounded-[14px] border-2 px-4 text-center shadow-[0_6px_16px_rgba(50,77,110,.09)]", finalReady ? "border-[#2A8A70] bg-[#E6F6EF]" : "border-[#A8B0BC] bg-[#F5F6F8]")}><div>{finalReady ? <Flag className="mx-auto size-5 text-[#2A8A70]" /> : <Lock className="mx-auto size-5 text-[#7A8798]" />}<strong className="mt-1.5 block truncate text-[15px] text-[#1E3652]">岗位综合情境验收</strong><small className="mt-1 block max-w-full truncate text-[11px] text-[#586B82]">目标：{targetRoleName || "目标岗位"}</small><small className="mt-0.5 block text-[11px] text-[#586B82]">{finalReady ? "可以进入岗位验收" : `还需完成 ${capabilities.filter((node) => node.level < 3).length} 项能力`}</small></div></div></foreignObject>}
-    </svg>
-  </InteractiveCanvas></div>
+    </svg>)
+  if (fit) {
+    return <div className="rounded-[18px] border border-[#D7DEE8] bg-white">{chart}</div>
+  }
+  return <div onWheelCapture={passLockedCanvasWheelToPage}><InteractiveCanvas canvasWidth={layout.width} canvasHeight={layout.height} viewportHeight={viewportHeight} label={`${targetRoleName || "目标岗位"}路径地图`} className="rounded-[18px] border border-[#D7DEE8] bg-white">{chart}</InteractiveCanvas></div>
 }
 
 export function ReportPathProgress({ capabilities, targetRoleName }: { capabilities: ReportCapability[]; targetRoleName: string }) {

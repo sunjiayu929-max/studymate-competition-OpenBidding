@@ -32,16 +32,22 @@ from app.deps import require_system_admin
 router = APIRouter(prefix="/admin", tags=["system-admin"])
 
 PLATFORM_ENTERPRISE_SEEDS = (
-    ("河南智联工业技术有限公司", "ZHILIAN-OPS", "工业视觉实施工程师"),
-    ("中原云策信息技术有限公司", "ZHONGYUAN-OPS", "企业 RAG 应用实施工程师"),
-    ("郑州新算力科技有限公司", "XINSUANLI-OPS", "AI 平台运维工程师"),
+    ("郑州澜善科技有限公司", "ZHILIAN-OPS", "工业视觉实施工程师"),
+    ("河南本线商贸有限公司", "ZHONGYUAN-OPS", "企业 RAG 应用实施工程师"),
+    ("河南七度农业科技有限公司", "XINSUANLI-OPS", "AI 平台运维工程师"),
 )
+
+PLATFORM_ENTERPRISE_MEMBER_COUNTS = {
+    "ZHILIAN-OPS": 60,
+    "ZHONGYUAN-OPS": 100,
+    "XINSUANLI-OPS": 80,
+}
 
 PLATFORM_ENTERPRISE_DISPLAY = (
     ("河南数智供应链有限公司", "HN-SUPPLY", "罗文博", 38, 16, 18, 86),
     ("中原智造装备有限公司", "ZY-MFG", "韩清越", 46, 21, 24, 83),
     ("郑州启明数据服务有限公司", "QM-DATA", "陆嘉宁", 29, 14, 16, 91),
-    ("郑州澜善科技有限公司", "YS-SOFT", "程远舟", 34, 18, 20, 79),
+    ("郑州澜善科技有限公司", "YS-SOFT", "程远舟", 60, 18, 20, 79),
     ("洛阳恒智工业系统有限公司", "LY-HENGZHI", "梁若川", 41, 19, 22, 88),
     ("开封新程信息技术有限公司", "KF-XINCHENG", "宋知远", 27, 12, 14, 82),
     ("河南中科物流科技有限公司", "HN-LOGISTICS", "秦致远", 32, 15, 17, 85),
@@ -139,6 +145,14 @@ async def _ensure_platform_enterprises(db: AsyncSession) -> None:
                     due_label="本周完成",
                 ))
             changed = True
+        else:
+            owner = await db.get(User, enterprise.owner_id)
+            if enterprise.name != name:
+                enterprise.name = name
+                changed = True
+            if owner is not None and owner.company != name:
+                owner.company = name
+                changed = True
     if changed:
         await db.commit()
 
@@ -170,6 +184,7 @@ async def _enterprise_rows(db: AsyncSession) -> list[dict]:
         ))).all())
         completed = sum(item.status == "completed" for item in assignments)
         is_pramate_demo = enterprise.invite_code in {"PRAMATE-DEMO", "SM-DEMO"}
+        fixed_member_count = PLATFORM_ENTERPRISE_MEMBER_COUNTS.get(enterprise.invite_code)
         floor_members, floor_tasks, floor_libraries, floor_completion = (
             PLATFORM_ENTERPRISE_FLOORS[3]
             if is_pramate_demo
@@ -181,7 +196,7 @@ async def _enterprise_rows(db: AsyncSession) -> list[dict]:
             "status": enterprise.status,
             "invite_code": enterprise.invite_code,
             "owner": {"id": owner.id, "name": owner.name},
-            "member_count": floor_members if is_pramate_demo else max(int(member_count), floor_members),
+            "member_count": 140 if is_pramate_demo else fixed_member_count if fixed_member_count is not None else max(int(member_count), floor_members),
             "published_task_count": floor_tasks if is_pramate_demo else max(int(task_count), floor_tasks),
             "knowledge_base_count": floor_libraries if is_pramate_demo else max(int(knowledge_count), floor_libraries),
             "assignment_count": max(len(assignments), floor_members * floor_tasks),

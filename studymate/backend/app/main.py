@@ -69,6 +69,85 @@ def _seed_password_matches(password: str, stored_hash: str | None) -> bool:
         return False
 
 
+_YCZX_FDE_RESET_MIGRATION = "2026.09.05-yczx-fde-progress-reset"
+
+
+async def _reset_yczx_fde_learning_state(conn) -> None:
+    """Reset FDE completion state for YCZX demo accounts exactly once per database."""
+    applied = await conn.execute(
+        text("SELECT 1 FROM system_migrations WHERE version = :version LIMIT 1"),
+        {"version": _YCZX_FDE_RESET_MIGRATION},
+    )
+    if applied.first():
+        return
+
+    rows = await conn.execute(
+        text(
+            "SELECT profiles.user_id, profiles.dims "
+            "FROM profiles JOIN users ON users.id = profiles.user_id "
+            "WHERE lower(users.email) LIKE '%@yczx.com'"
+        )
+    )
+    for user_id, raw_dims in rows.fetchall():
+        try:
+            dims = json.loads(raw_dims) if isinstance(raw_dims, str) else dict(raw_dims or {})
+        except (TypeError, ValueError):
+            dims = {}
+        if dims.get("training_rounds"):
+            dims["training_rounds"] = []
+            await conn.execute(
+                text(
+                    "UPDATE profiles SET dims = :dims, version = version + 1, "
+                    "updated_at = CURRENT_TIMESTAMP WHERE user_id = :user_id"
+                ),
+                {"dims": json.dumps(dims, ensure_ascii=False), "user_id": user_id},
+            )
+
+    snapshot_rows = await conn.execute(
+        text(
+            "SELECT profile_snapshots.id, profile_snapshots.snapshot "
+            "FROM profile_snapshots JOIN users ON users.id = profile_snapshots.user_id "
+            "WHERE lower(users.email) LIKE '%@yczx.com'"
+        )
+    )
+    for snapshot_id, raw_snapshot in snapshot_rows.fetchall():
+        try:
+            snapshot = json.loads(raw_snapshot) if isinstance(raw_snapshot, str) else dict(raw_snapshot or {})
+        except (TypeError, ValueError):
+            snapshot = {}
+        if snapshot.get("training_rounds"):
+            snapshot["training_rounds"] = []
+            await conn.execute(
+                text("UPDATE profile_snapshots SET snapshot = :snapshot WHERE id = :snapshot_id"),
+                {"snapshot": json.dumps(snapshot, ensure_ascii=False), "snapshot_id": snapshot_id},
+            )
+
+    await conn.execute(
+        text(
+            "DELETE FROM role_certificates WHERE user_id IN "
+            "(SELECT id FROM users WHERE lower(email) LIKE '%@yczx.com') "
+            "AND (lower(role_id) = 'fde' OR lower(role_name) LIKE '%fde%')"
+        )
+    )
+    await conn.execute(
+        text(
+            "DELETE FROM learning_paths WHERE user_id IN "
+            "(SELECT id FROM users WHERE lower(email) LIKE '%@yczx.com') "
+            "AND course_id IN (SELECT id FROM courses WHERE name = 'FDE \u5c97\u4f4d\u77e5\u8bc6\u5e93')"
+        )
+    )
+    await conn.execute(
+        text(
+            "INSERT INTO system_migrations (version, description, applied_at) "
+            "VALUES (:version, :description, CURRENT_TIMESTAMP)"
+        ),
+        {
+            "version": _YCZX_FDE_RESET_MIGRATION,
+            "description": "Reset all YCZX demo accounts FDE learning progress and remove FDE certificates",
+        },
+    )
+
+
 async def _ensure_columns(conn):
     """开发期轻量 migration：create_all 不会 ALTER 已存在的表，
     新增列时这里补 ADD COLUMN（仅 SQLite，幂等）。
@@ -238,6 +317,8 @@ async def _ensure_columns(conn):
             "applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)"
         )
     )
+    await _reset_yczx_fde_learning_state(conn)
+
     migrations = (
         ("2026.07.29-base", "开发期轻量迁移基线"),
         ("2026.07.29-private-knowledge-jobs", "私有知识库后台任务、原文件校验、OCR 状态与安全重试"),

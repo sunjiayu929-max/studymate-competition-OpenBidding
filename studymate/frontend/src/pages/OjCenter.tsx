@@ -1,4 +1,4 @@
-import { ArrowUpRight, Clock3, ExternalLink, Gauge, MonitorCog, ScanLine, ShieldCheck } from "lucide-react"
+import { ArrowUpRight, ExternalLink, MonitorCog, ScanLine } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { AppTopbar } from "@/components/AppTopbar"
@@ -63,11 +63,7 @@ export function OjCenter() {
           <div className="oj-prep-section-heading"><span className="oj-prep-section-icon"><ScanLine className="size-5" /></span><div><span>01 · 题目训练</span><h2 id="oj-collections">精选题单</h2><p>按目标与阶段选择练习，点击直达对应题单。</p></div><i className="oj-prep-heading-line" aria-hidden="true"><b /></i></div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{collections.map((item, index) => <a key={item.slug} href={collectionHref(item.slug)} className="oj-prep-collection group"><span className="oj-prep-cover"><img src={item.cover} alt={item.coverAlt} loading="lazy" /><i aria-hidden="true" /><b>{String(index + 1).padStart(2, "0")}</b></span><div className="oj-prep-collection-body"><div className="flex items-start justify-between gap-2"><p className="oj-prep-eyebrow">{item.eyebrow}</p><ArrowUpRight className="size-4 shrink-0" /></div><h3>{item.title}</h3><p>{item.description}</p><strong>{item.count}</strong></div></a>)}</div>
         </section>
-        <div className="oj-prep-transition is-readiness" aria-hidden="true"><span>TRAINING COMPLETE</span><i /><i /><i /><b>考场信号中继</b><em /></div>
-        <section className="oj-prep-section border-y px-3 py-8 sm:px-5 lg:px-6" aria-labelledby="oj-start">
-          <div className="oj-prep-section-heading"><span className="oj-prep-section-icon"><Clock3 className="size-5" /></span><div><span>02 · 临场准备</span><h2 id="oj-start">评测通道就绪</h2><p>账号互通、编译运行与结果回传均在同一练习链路内完成。</p></div><i className="oj-prep-heading-line" aria-hidden="true"><b /></i></div>
-          <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_repeat(2,260px)]"><div className="oj-prep-info-panel"><span>操作说明 / OPERATION</span><h3>在线编写并提交代码，实时评测</h3><p>进入时将自动使用当前因材智训账号登录在线判题系统，无需再次注册或登录。</p></div><div className="oj-prep-note"><ShieldCheck className="size-5" /><div><h3>账号说明</h3><p>首次进入会自动创建对应判题账号，无需维护第二套账户。</p></div></div><div className="oj-prep-note"><Gauge className="size-5" /><div><h3>判题说明</h3><p>常见语言均可提交，用时、内存与评测结果实时返回。</p></div></div></div>
-        </section>
+
       </div>
     </main>
   )

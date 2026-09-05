@@ -94,6 +94,18 @@ class YczxDemoSeedTests(unittest.TestCase):
             with self.subTest(email=email):
                 for table, count in expected.items():
                     self.assertEqual(self._count(table, user_id), count, table)
+                profile_dims = json.loads(
+                    self.conn.execute(
+                        "SELECT dims FROM profiles WHERE user_id = ?", (user_id,)
+                    ).fetchone()[0]
+                )
+                self.assertEqual(profile_dims.get("training_rounds"), [])
+                fde_certificates = self.conn.execute(
+                    "SELECT COUNT(*) FROM role_certificates "
+                    "WHERE user_id = ? AND (lower(role_id) = 'fde' OR lower(role_name) LIKE '%fde%')",
+                    (user_id,),
+                ).fetchone()[0]
+                self.assertEqual(fde_certificates, 0)
                 latest = self.conn.execute(
                     "SELECT scores, evidence, profile_delta FROM evaluations WHERE user_id=? ORDER BY created_at DESC LIMIT 1",
                     (user_id,),

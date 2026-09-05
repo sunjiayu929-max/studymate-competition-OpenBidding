@@ -172,7 +172,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [logoutOpen, setLogoutOpen] = useState(false)
   const [logoutBusy, setLogoutBusy] = useState(false)
-  const [homeUniverseVisible, setHomeUniverseVisible] = useState(pathname === "/")
+  const [homeUniverseVisible, setHomeUniverseVisible] = useState(false)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(readGroups)
   const [enterpriseMember, setEnterpriseMember] = useState<boolean | null>(null)
 
@@ -219,7 +219,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       setHomeUniverseVisible(false)
       return
     }
-    setHomeUniverseVisible(true)
+    // Current home no longer renders the immersive universe, so keep the shared
+    // navigation visible. A future home experience can still override this via
+    // the visibility event below.
+    setHomeUniverseVisible(false)
     const onVisibility = (event: Event) => {
       setHomeUniverseVisible(Boolean((event as CustomEvent<{ visible?: boolean }>).detail?.visible))
     }

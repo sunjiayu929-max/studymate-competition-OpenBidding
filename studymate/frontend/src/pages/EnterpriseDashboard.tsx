@@ -5,6 +5,7 @@ import {
   BookOpenCheck,
   BriefcaseBusiness,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   Clock3,
   FileCheck2,
@@ -67,6 +68,8 @@ const taskStatus: Record<string, { label: string; className: string }> = {
   expired: { label: "已逾期", className: "bg-[#FBE9E1] text-[#A05235]" },
 }
 
+const MEMBERS_PER_PAGE = 8
+
 const assignmentStatus: Record<string, string> = { pending: "待接受", accepted: "已接受", in_progress: "进行中", completed: "已完成" }
 
 function enterpriseRoleLabel(roleName: string) {
@@ -112,7 +115,7 @@ export function EnterpriseDashboard() {
   }
 
   return (
-    <main className="app-page paper-theme min-h-dvh pb-12">
+    <main className="app-page paper-theme enterprise-blue-theme enterprise-dashboard-page min-h-dvh pb-12">
       <div className="mx-auto max-w-[1440px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
         <AppTopbar current="home" appearance="paper" labelOverride="企业运营看板" groupOverride="企业培训协作" selectionLabel={data?.enterprise.name || "河南本线商贸有限公司"} />
         <header className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-[24px] border border-[#D6E2D4] bg-[#F4F9F2] p-5 shadow-[0_14px_38px_rgba(59,92,58,.08)] sm:p-7">
@@ -137,10 +140,19 @@ function DashboardContent({ data, onMemberClick }: { data: Dashboard; onMemberCl
   const taskPreview = data.tasks.slice(0, 4)
   const taskPreviewNeedsFallback = taskPreview.length > 1 && taskPreview.every((task) => task.completion_rate >= 100)
   const [selectedRole, setSelectedRole] = useState(data.roles[0]?.name || "")
+  const [memberPage, setMemberPage] = useState(1)
   const filteredMembers = useMemo(
     () => selectedRole ? data.members.filter((member) => member.target_role === selectedRole) : data.members,
     [data.members, selectedRole],
   )
+  const memberTotalPages = Math.max(1, Math.ceil(filteredMembers.length / MEMBERS_PER_PAGE))
+  const currentMemberPage = Math.min(memberPage, memberTotalPages)
+  const visibleMembers = useMemo(() => {
+    const start = (currentMemberPage - 1) * MEMBERS_PER_PAGE
+    return filteredMembers.slice(start, start + MEMBERS_PER_PAGE)
+  }, [currentMemberPage, filteredMembers])
+
+  useEffect(() => { setMemberPage(1) }, [selectedRole, data.members.length])
   return <>
     <section className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
       <Metric icon={UsersRound} label="企业员工" value={`${summary.employee_count}`} detail={`${summary.active_learners} 人今日有学习活动`} tone="blue" />
@@ -176,12 +188,24 @@ function DashboardContent({ data, onMemberClick }: { data: Dashboard; onMemberCl
 
     <section className="mt-4 rounded-2xl border border-[#DCE5D9] bg-white p-5">
       <div className="flex flex-wrap items-start justify-between gap-3"><SectionHeading icon={UsersRound} title="员工学习进度" detail={`当前查看 ${selectedRole ? enterpriseRoleLabel(selectedRole) : "全部岗位"}，点击上方岗位卡即可切换。`} /><span className="text-[10px] font-semibold text-[#899588]">共 {filteredMembers.length} 人</span></div>
-      <div className="mt-4 hidden overflow-x-auto md:block"><table className="w-full min-w-[780px] text-left"><thead><tr className="border-b border-[#E6ECE3] text-[10px] font-bold text-[#899588]"><th className="px-3 py-2">成员</th><th className="px-3 py-2">岗位</th><th className="px-3 py-2">当前任务</th><th className="px-3 py-2">进度</th><th className="px-3 py-2">今日学习</th><th className="px-3 py-2">状态</th><th className="px-3 py-2" /></tr></thead><tbody>{filteredMembers.map((member) => <MemberRow key={member.id} member={member} onClick={onMemberClick} />)}</tbody></table></div>
-      <div className="mt-4 space-y-2.5 md:hidden">{filteredMembers.map((member) => <button type="button" key={member.id} onClick={() => onMemberClick(member)} className="w-full rounded-xl border border-[#E6ECE3] bg-[#FBFDFB] p-3 text-left"><div className="flex items-start justify-between gap-3"><div><strong className="text-xs text-[#334934]">{member.name}</strong><p className="mt-1 text-[10px] text-[#748273]">{enterpriseRoleLabel(member.job_title)}</p></div><ChevronRight className="size-4 text-[#9AA598]" /></div><div className="mt-3 flex items-center justify-between text-[10px] text-[#748273]"><span>任务进度 {member.progress}%</span><span>今日 {member.today_minutes} 分钟</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#E9EFE7]"><div className="h-full rounded-full bg-[#6D9A68]" style={{ width: `${member.progress}%` }} /></div></button>)}</div>
+      <div className="mt-4 hidden overflow-x-auto md:block"><table className="w-full min-w-[780px] text-left"><thead><tr className="border-b border-[#E6ECE3] text-[10px] font-bold text-[#899588]"><th className="px-3 py-2">成员</th><th className="px-3 py-2">岗位</th><th className="px-3 py-2">当前任务</th><th className="px-3 py-2">进度</th><th className="px-3 py-2">今日学习</th><th className="px-3 py-2">状态</th><th className="px-3 py-2" /></tr></thead><tbody>{visibleMembers.map((member) => <MemberRow key={member.id} member={member} onClick={onMemberClick} />)}</tbody></table></div>
+      <div className="mt-4 space-y-2.5 md:hidden">{visibleMembers.map((member) => <button type="button" key={member.id} onClick={() => onMemberClick(member)} className="w-full rounded-xl border border-[#E6ECE3] bg-[#FBFDFB] p-3 text-left"><div className="flex items-start justify-between gap-3"><div><strong className="text-xs text-[#334934]">{member.name}</strong><p className="mt-1 text-[10px] text-[#748273]">{enterpriseRoleLabel(member.job_title)}</p></div><ChevronRight className="size-4 text-[#9AA598]" /></div><div className="mt-3 flex items-center justify-between text-[10px] text-[#748273]"><span>任务进度 {member.progress}%</span><span>今日 {member.today_minutes} 分钟</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#E9EFE7]"><div className="h-full rounded-full bg-[#6D9A68]" style={{ width: `${member.progress}%` }} /></div></button>)}</div>
+      <MemberPager currentPage={currentMemberPage} totalPages={memberTotalPages} onChange={setMemberPage} />
     </section>
 
     <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] leading-5 text-[#899588]"><span className="rounded-full bg-[#F7F3EA] px-2 py-1 font-bold text-[#8B7042]">数据口径</span><span>{data.meta.data_note}</span></div>
   </>
+}
+
+function MemberPager({ currentPage, totalPages, onChange }: { currentPage: number; totalPages: number; onChange: (page: number) => void }) {
+  return <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#DCE5D9] pt-3 text-[10px] text-[#899588]">
+    <span>?? {MEMBERS_PER_PAGE} ? ? ? {currentPage} / {totalPages} ?</span>
+    <div className="flex items-center gap-1.5">
+      <button type="button" onClick={() => onChange(Math.max(1, currentPage - 1))} disabled={currentPage <= 1} aria-label="???" className="grid size-8 place-items-center rounded-lg border border-[#DCE5D9] bg-white text-[#52704D] transition hover:bg-[#EAF4E7] disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft className="size-3.5" /></button>
+      <span className="min-w-8 text-center font-bold text-[#52704D]">{currentPage}</span>
+      <button type="button" onClick={() => onChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage >= totalPages} aria-label="???" className="grid size-8 place-items-center rounded-lg border border-[#DCE5D9] bg-white text-[#52704D] transition hover:bg-[#EAF4E7] disabled:cursor-not-allowed disabled:opacity-40"><ChevronRight className="size-3.5" /></button>
+    </div>
+  </div>
 }
 
 function MemberRow({ member, onClick }: { member: Member; onClick: (member: Member) => void }) {

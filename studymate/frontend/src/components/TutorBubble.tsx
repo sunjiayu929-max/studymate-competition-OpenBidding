@@ -224,11 +224,11 @@ export function TutorBubble() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 12 }}
             onClick={() => setTutorHidden(false)}
-            className="fixed bottom-5 right-0 z-50 flex h-11 items-center gap-1.5 rounded-l-full border border-r-0 border-[#CFC8B9] bg-[#FFFEFA]/94 pl-3 pr-2.5 text-[10px] font-bold text-[#315E83] shadow-[0_10px_28px_rgba(24,35,45,.14)] backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#315E83]/45"
+            className="fixed bottom-5 right-0 z-50 flex h-11 items-center gap-1.5 rounded-l-full border border-r-0 border-[#B8D3E1] bg-[#FFFFFF]/94 pl-3 pr-2.5 text-[10px] font-bold text-[#2F6F95] shadow-[0_10px_28px_rgba(24,35,45,.14)] backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F6F95]/45"
             aria-label="显示因材智训学习助教"
             title="显示学习助教"
           >
-            <MessageCircle className="size-4 text-[#B1842C]" />
+            <MessageCircle className="size-4 text-[#2F7CA2]" />
             显示助教
           </motion.button>
         )}
@@ -250,11 +250,11 @@ export function TutorBubble() {
                   initial={{ opacity: 0, y: 8, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 5, scale: 0.97 }}
-                  className="absolute bottom-[calc(100%+8px)] right-0 w-[204px] rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA]/96 px-3 py-2.5 text-left text-[11px] font-semibold leading-[18px] text-[#33424C] shadow-[0_16px_36px_rgba(24,35,45,.16)] backdrop-blur md:bottom-auto md:right-[calc(100%-24px)] md:top-5"
+                  className="absolute bottom-[calc(100%+8px)] right-0 w-[204px] rounded-2xl border border-[#C5DDE8] bg-[#FFFFFF]/96 px-3 py-2.5 text-left text-[11px] font-semibold leading-[18px] text-[#33424C] shadow-[0_16px_36px_rgba(24,35,45,.16)] backdrop-blur md:bottom-auto md:right-[calc(100%-24px)] md:top-5"
                 >
-                  <span className="mb-1 flex items-center gap-1.5 text-[10px] font-bold tracking-[0.08em] text-[#315E83]"><Sparkles className="size-3.5 text-[#B1842C]" />因材智训助教</span>
+                  <span className="mb-1 flex items-center gap-1.5 text-[10px] font-bold tracking-[0.08em] text-[#2F6F95]"><Sparkles className="size-3.5 text-[#2F7CA2]" />因材智训助教</span>
                   {hintText}
-                  <span className="absolute -bottom-1.5 right-8 size-3 rotate-45 border-b border-r border-[#D7D1C4] bg-[#FFFEFA] md:bottom-auto md:-right-1.5 md:top-8 md:border-b-0 md:border-l-0 md:border-r md:border-t" />
+                  <span className="absolute -bottom-1.5 right-8 size-3 rotate-45 border-b border-r border-[#C5DDE8] bg-[#FFFFFF] md:bottom-auto md:-right-1.5 md:top-8 md:border-b-0 md:border-l-0 md:border-r md:border-t" />
                 </motion.button>
               )}
             </AnimatePresence>
@@ -264,7 +264,7 @@ export function TutorBubble() {
                 event.stopPropagation()
                 setTutorHidden(true)
               }}
-              className="absolute left-1 top-1 z-20 grid size-7 place-items-center rounded-full border border-[#D7D1C4] bg-[#FFFEFA]/88 text-[#66717B] shadow-sm backdrop-blur transition hover:bg-white hover:text-[#A05137] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#315E83]/45"
+              className="absolute left-1 top-1 z-20 grid size-7 place-items-center rounded-full border border-[#C5DDE8] bg-[#FFFFFF]/88 text-[#5E7988] shadow-sm backdrop-blur transition hover:bg-white hover:text-[#B85C3E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F6F95]/45"
               aria-label="隐藏学习助教"
               title="隐藏学习助教"
             >
@@ -307,7 +307,7 @@ export function TutorBubble() {
               title="因材智训真人学习助手 · 可拖动 · Alt+/"
             >
               <motion.span
-                className="pointer-events-none absolute inset-x-5 bottom-1 h-6 rounded-[50%] bg-[#244C66]/18 blur-xl transition-colors group-hover:bg-[#244C66]/22"
+                className="pointer-events-none absolute inset-x-5 bottom-1 h-6 rounded-[50%] bg-[#225E7D]/18 blur-xl transition-colors group-hover:bg-[#225E7D]/22"
                 animate={reduceMotion ? undefined : { scaleX: [1, 1.08, 1], opacity: [0.62, 0.82, 0.62] }}
                 transition={{ duration: 4.8, repeat: Infinity, ease: "easeInOut" }}
               />
@@ -342,8 +342,8 @@ export function TutorBubble() {
                   />
                 </>
               )}
-              <span className="pointer-events-none absolute right-2 top-3 flex items-center gap-1.5 rounded-full bg-[#FFFEFA]/82 px-2 py-1 text-[9px] font-bold tracking-[0.08em] text-[#315E83] shadow-sm backdrop-blur transition group-focus-visible:ring-2 group-focus-visible:ring-[#315E83]/55">
-                <span className={`size-2 rounded-full border border-[#FFFEFA] shadow-sm ${generating ? "animate-pulse bg-[#B1842C]" : "bg-[#6F8A69]"}`} />
+              <span className="pointer-events-none absolute right-2 top-3 flex items-center gap-1.5 rounded-full bg-[#FFFFFF]/82 px-2 py-1 text-[9px] font-bold tracking-[0.08em] text-[#2F6F95] shadow-sm backdrop-blur transition group-focus-visible:ring-2 group-focus-visible:ring-[#2F6F95]/55">
+                <span className={`size-2 rounded-full border border-[#FFFFFF] shadow-sm ${generating ? "animate-pulse bg-[#2F7CA2]" : "bg-[#6F8A69]"}`} />
                 {generating ? "思考中" : "在线"}
               </span>
             </motion.button>
@@ -362,7 +362,7 @@ export function TutorBubble() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={closeTutorBubble}
-              className="fixed inset-0 z-40 bg-[#18232D]/20 sm:hidden"
+              className="fixed inset-0 z-40 bg-[#18394D]/20 sm:hidden"
             />
             <motion.aside
               key="studymate-drawer"
@@ -371,17 +371,17 @@ export function TutorBubble() {
               exit={{ x: "105%", opacity: 0.7 }}
               transition={{ type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.28 }}
               style={drawerStyle}
-              className="fixed inset-y-0 right-0 z-50 flex w-full flex-col overflow-hidden border-l border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_24px_70px_rgba(24,35,45,.22)] sm:inset-y-3 sm:right-3 sm:w-[var(--drawer-width)] sm:max-w-[calc(100vw-24px)] sm:rounded-[26px] sm:border"
+              className="fixed inset-y-0 right-0 z-50 flex w-full flex-col overflow-hidden border-l border-[#B8D3E1] bg-[#FFFFFF] shadow-[0_24px_70px_rgba(24,35,45,.22)] sm:inset-y-3 sm:right-3 sm:w-[var(--drawer-width)] sm:max-w-[calc(100vw-24px)] sm:rounded-[26px] sm:border"
               aria-label="因材智训学习助手"
             >
               <ResizeHandle width={width} />
 
-              <header className="shrink-0 border-b border-[#D7D1C4] bg-[#F8F6F0] px-3 py-3">
+              <header className="shrink-0 border-b border-[#C5DDE8] bg-[#EAF5FA] px-3 py-3">
                 <div className="flex items-center gap-2.5">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[#D9CFB7] bg-[#244C66] text-[#F2C968] shadow-[0_5px_12px_rgba(36,76,102,.14)]"><Sparkles className="size-4.5" /></span>
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[#B5D1DF] bg-[#225E7D] text-[#F2C968] shadow-[0_5px_12px_rgba(36,76,102,.14)]"><Sparkles className="size-4.5" /></span>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[14px] font-bold tracking-[-0.01em] text-[#18232D]">因材智训学习助手</div>
-                    <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-[#6F787A]"><span className={`size-1.5 rounded-full ${generating ? "animate-pulse bg-[#B1842C]" : "bg-[#6F8A69]"}`} />《{course?.name || "FDE 岗位知识库"}》· {generating ? "回答在后台继续生成" : "记得当前岗位对话"}</div>
+                    <div className="truncate text-[14px] font-bold tracking-[-0.01em] text-[#18394D]">因材智训学习助手</div>
+                    <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-[#6F787A]"><span className={`size-1.5 rounded-full ${generating ? "animate-pulse bg-[#2F7CA2]" : "bg-[#6F8A69]"}`} />《{course?.name || "FDE 岗位知识库"}》· {generating ? "回答在后台继续生成" : "记得当前岗位对话"}</div>
                   </div>
                   <IconButton onClick={() => { setHistoryOpen(false); tutorHistory.startNew(userId, courseId) }} title={generating ? "回答完成后可新建对话" : "新对话"} disabled={generating}><MessageSquarePlus className="size-4" /></IconButton>
                   <IconButton onClick={() => setHistoryOpen((value) => !value)} title={generating ? "回答完成后可切换历史" : "历史会话"} active={historyOpen} disabled={generating}><History className="size-4" /></IconButton>
@@ -415,7 +415,7 @@ export function TutorBubble() {
 }
 
 function IconButton({ children, onClick, title, active, disabled }: { children: React.ReactNode; onClick: () => void; title: string; active?: boolean; disabled?: boolean }) {
-  return <button type="button" onClick={onClick} disabled={disabled} title={title} aria-label={title} className={`grid size-8 shrink-0 place-items-center rounded-xl border transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${active ? "border-[#9FB1BC] bg-[#E7EDF3] text-[#244C66]" : "border-transparent text-[#66717B] hover:border-[#D7D1C4] hover:bg-[#FFFEFA] hover:text-[#244C66]"}`}>{children}</button>
+  return <button type="button" onClick={onClick} disabled={disabled} title={title} aria-label={title} className={`grid size-8 shrink-0 place-items-center rounded-xl border transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${active ? "border-[#8CB6C8] bg-[#DCEEF5] text-[#225E7D]" : "border-transparent text-[#5E7988] hover:border-[#C5DDE8] hover:bg-[#FFFFFF] hover:text-[#225E7D]"}`}>{children}</button>
 }
 
 function ResizeHandle({ width }: { width: number }) {
@@ -431,5 +431,5 @@ function ResizeHandle({ width }: { width: number }) {
     document.body.style.cursor = "ew-resize"
     return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); document.body.style.userSelect = ""; document.body.style.cursor = "" }
   }, [resizing])
-  return <div onMouseDown={(event) => { startRef.current = { x: event.clientX, width }; setResizing(true) }} className={`absolute inset-y-0 left-0 z-20 hidden w-1.5 cursor-ew-resize sm:block ${resizing ? "bg-[#B1842C]/35" : "hover:bg-[#B1842C]/20"}`} title="拖动调整宽度" />
+  return <div onMouseDown={(event) => { startRef.current = { x: event.clientX, width }; setResizing(true) }} className={`absolute inset-y-0 left-0 z-20 hidden w-1.5 cursor-ew-resize sm:block ${resizing ? "bg-[#2F7CA2]/35" : "hover:bg-[#2F7CA2]/20"}`} title="拖动调整宽度" />
 }
