@@ -7,33 +7,45 @@ const STATUS_LABELS = {
   completed: "已完成",
 }
 
-function parseMaterial(content, fallback) {
-  const source = String(content || fallback || "暂无资料内容").replace(/\r\n/g, "\n").trim()
-  const sections = []
-  let current = { title: "", body: [] }
+function cleanMarkdown(value) {
+  if (!value) return value
+  return String(value)
+    .replace(/\r\n?/g, "\n")
+    .replace(/^[ \t]*#{1,6}[ \t]*/gm, "")
+    .replace(/^[ \t]*```[^\n]*\n?/gm, "")
+    .replace(/^[ \t]*~~~[^\n]*\n?/gm, "")
+    .replace(/^[ \t]*>[ \t]?/gm, "")
+    .replace(/^[ \t]*[-*+][ \t]+/gm, "• ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/\*([^*\n]+)\*/g, "$1")
+    .replace(/_([^_\n]+)_/g, "$1")
+    .trim()
+}
 
-  source.split("\n").forEach((line) => {
-    const heading = line.trim().match(/^#{1,6}\s+(.+)$/)
-    if (heading) {
-      if (current.title || current.body.length) {
-        sections.push({ title: current.title, body: current.body.join("\n").trim() })
-      }
-      current = { title: heading[1].trim(), body: [] }
-      return
-    }
-    current.body.push(line)
-  })
-
-  if (current.title || current.body.length) {
-    sections.push({ title: current.title, body: current.body.join("\n").trim() })
+function cleanKnowledgeBase(knowledgeBase) {
+  if (!knowledgeBase || !Array.isArray(knowledgeBase.materials)) return knowledgeBase
+  return {
+    ...knowledgeBase,
+    name: cleanMarkdown(knowledgeBase.name),
+    materials: knowledgeBase.materials.map((item) => ({
+      ...item,
+      title: cleanMarkdown(item.title),
+      detail: cleanMarkdown(item.detail),
+    })),
   }
-  return sections.filter((section) => section.title || section.body)
 }
 
 function decorateTask(task) {
   const status = task.assignment_status || "pending"
   return {
     ...task,
+    title: cleanMarkdown(task.title),
+    description: cleanMarkdown(task.description),
+    material_title: cleanMarkdown(task.material_title),
+    material_content: cleanMarkdown(task.material_content),
+    knowledge_base: cleanKnowledgeBase(task.knowledge_base),
     statusLabel: STATUS_LABELS[status] || "待处理",
     typeLabel: task.task_type === "training" ? "岗位训练任务" : "普通阅读任务",
     actionLabel: status === "pending" ? "接受任务" : status === "accepted" ? "开始任务" : "标记为完成",
