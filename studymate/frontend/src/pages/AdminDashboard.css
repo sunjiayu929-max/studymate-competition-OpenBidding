@@ -1,0 +1,103 @@
+/* 系统管理员工作台：统一为低饱和浅蓝，突出平台数据而不是装饰性反馈。 */
+.admin-dashboard-page {
+  --admin-blue-900: #21465f;
+  --admin-blue-800: #285873;
+  --admin-blue-700: #2f6f95;
+  --admin-blue-600: #3984aa;
+  --admin-blue-200: #c9e0eb;
+  --admin-blue-100: #e3f1f7;
+  --admin-blue-050: #f4fafd;
+}
+
+.admin-dashboard-page[class~="bg-[#F3F0E7]"] {
+  background-color: #edf6fa !important;
+  background-image: linear-gradient(180deg, #f3f9fc 0%, #edf6fa 100%) !important;
+}
+
+.admin-dashboard-page [class~="border-[#E1CFC6]"] {
+  border-color: var(--admin-blue-200) !important;
+}
+
+.admin-dashboard-page [class~="bg-[#FFF9F5]"] {
+  border-color: var(--admin-blue-200) !important;
+  background: linear-gradient(135deg, #f8fcfe 0%, #eaf5fa 100%) !important;
+  box-shadow: 0 14px 38px rgba(46, 112, 145, .08) !important;
+}
+
+.admin-dashboard-page [class~="border-[#DFC8BE]"],
+.admin-dashboard-page [class~="border-[#D7D1C4]"],
+.admin-dashboard-page [class~="border-[#E7E2D8]"],
+.admin-dashboard-page [class~="border-[#F0ECE4]"] {
+  border-color: var(--admin-blue-200) !important;
+}
+
+.admin-dashboard-page [class~="bg-[#FFFEFA]"],
+.admin-dashboard-page [class~="bg-white"] {
+  background-color: rgba(255, 255, 255, .92) !important;
+}
+
+.admin-dashboard-page [class~="bg-[#E7EDF3]"],
+.admin-dashboard-page [class~="bg-[#E4F2F0]"],
+.admin-dashboard-page [class~="bg-[#EAF4E7]"],
+.admin-dashboard-page [class~="bg-[#F4E8E2]"],
+.admin-dashboard-page [class~="bg-[#F4ECD8]"] {
+  background-color: var(--admin-blue-100) !important;
+}
+
+.admin-dashboard-page [class~="text-[#315E83]"],
+.admin-dashboard-page [class~="text-[#34736D]"],
+.admin-dashboard-page [class~="text-[#52704D]"],
+.admin-dashboard-page [class~="text-[#9A4E35]"],
+.admin-dashboard-page [class~="text-[#946B27]"] {
+  color: var(--admin-blue-700) !important;
+}
+
+.admin-dashboard-page [class~="text-[#3D2922]"],
+.admin-dashboard-page [class~="text-[#334934]"],
+.admin-dashboard-page [class~="text-[#2D3739]"] {
+  color: var(--admin-blue-900) !important;
+}
+
+.admin-dashboard-page [class~="text-[#7E6C64]"],
+.admin-dashboard-page [class~="text-[#68736F]"],
+.admin-dashboard-page [class~="text-[#748078]"],
+.admin-dashboard-page [class~="text-[#89928C]"],
+.admin-dashboard-page [class~="text-[#929994]"],
+.admin-dashboard-page [class~="text-[#9AA09B]"],
+.admin-dashboard-page [class~="text-[#8B938D]"] {
+  color: #6d8795 !important;
+}
+
+.admin-dashboard-page [class~="bg-[#FFF2EC]"],
+.admin-dashboard-page [class~="bg-[#FFF5F0]"] {
+  background-color: #f1f8fb !important;
+}
+
+.admin-dashboard-page [class~="border-[#DFC8BE]"] {
+  border-color: var(--admin-blue-200) !important;
+}
+
+.admin-dashboard-page [class~="hover:bg-[#FFF2EC]"]:hover {
+  background-color: #e3f1f7 !important;
+}
+
+.admin-dashboard-page [class~="bg-[#6D8DA5]"] {
+  background-color: #6f9bb5 !important;
+}
+
+.admin-dashboard-page [class*="transition"] {
+  transition-duration: 120ms !important;
+}
+
+.admin-dashboard-page .app-topbar-symbol-fallback::before,
+.admin-dashboard-page .app-topbar-symbol-fallback::after {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-dashboard-page [class*="transition"],
+  .admin-dashboard-page .animate-spin {
+    transition: none !important;
+    animation: none !important;
+  }
+}

@@ -31,8 +31,9 @@ except ModuleNotFoundError:  # direct execution: python scripts/build_seed_db.py
     )
 
 
-EXPECTED_COURSE_COUNT = 5
-EXPECTED_KNOWLEDGE_CHUNK_COUNT = 1709
+EXPECTED_COURSE_COUNT = 25
+EXPECTED_KNOWLEDGE_CHUNK_COUNT = 2190
+EXPECTED_EMBEDDED_CHUNK_COUNT = 1709
 
 
 def parse_args() -> argparse.Namespace:
@@ -114,8 +115,11 @@ def validate_required_content(conn: sqlite3.Connection) -> dict[str, int]:
         )
     if stats["chunks_with_content"] != EXPECTED_KNOWLEDGE_CHUNK_COUNT:
         raise RuntimeError("基础知识库存在正文为空的知识块")
-    if stats["chunks_with_embedding"] != EXPECTED_KNOWLEDGE_CHUNK_COUNT:
-        raise RuntimeError("基础知识库存在向量为空的知识块")
+    if stats["chunks_with_embedding"] != EXPECTED_EMBEDDED_CHUNK_COUNT:
+        raise RuntimeError(
+            "基础课程向量数量异常："
+            f"期望 {EXPECTED_EMBEDDED_CHUNK_COUNT}，实际 {stats['chunks_with_embedding']}"
+        )
     if stats["courses_with_knowledge"] != EXPECTED_COURSE_COUNT:
         raise RuntimeError("部分基础课程没有关联知识块")
     if stats["user_sessions"] or stats["email_verification_codes"]:

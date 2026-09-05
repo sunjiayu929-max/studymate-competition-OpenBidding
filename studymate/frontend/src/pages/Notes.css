@@ -1,0 +1,130 @@
+/* /notes 私有减法覆盖：保留业务反馈，关闭不承载状态的循环装饰。 */
+.notes-studio .app-topbar-real-icon img,
+.notes-studio .notes-studio-panel.is-running {
+  animation: none;
+}
+
+.notes-studio .notes-studio-editor::before,
+.notes-studio .notes-studio-empty-editor::before,
+.notes-studio .notes-studio-action-button::after {
+  content: none;
+  animation: none;
+}
+
+.notes-studio .notes-studio-panel:hover {
+  transform: none;
+}
+
+.notes-studio .notes-studio-preview {
+  padding: 1rem;
+}
+
+.notes-studio .notes-studio-preview-article {
+  max-width: 880px;
+}
+
+.notes-studio .notes-studio-preview-copy {
+  color: #2d4353;
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.notes-studio .notes-studio-preview-copy h1,
+.notes-studio .notes-studio-preview-copy h2,
+.notes-studio .notes-studio-preview-copy h3 {
+  letter-spacing: -0.02em;
+}
+
+.notes-studio .notes-studio-preview-copy h2 {
+  margin: 1.5rem 0 0.7rem;
+  padding-bottom: 0.55rem;
+  font-size: 1.25rem;
+  line-height: 1.35;
+}
+
+.notes-studio .notes-studio-preview-copy h2:first-child {
+  margin-top: 0;
+}
+
+.notes-studio .notes-studio-preview-copy h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1.2rem 0 0.45rem;
+  color: #285f82;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.notes-studio .notes-studio-preview-copy h3::before {
+  width: 3px;
+  height: 1em;
+  border-radius: 999px;
+  content: "";
+  background: #62b7d7;
+}
+
+.notes-studio .notes-studio-preview-copy p {
+  margin: 0.55rem 0;
+  line-height: 1.7;
+}
+
+.notes-studio .notes-studio-preview-copy ul,
+.notes-studio .notes-studio-preview-copy ol {
+  margin: 0.55rem 0;
+  padding-left: 1.2rem;
+}
+
+.notes-studio .notes-studio-preview-copy li {
+  margin: 0.18rem 0;
+  line-height: 1.65;
+}
+
+.notes-studio .notes-studio-preview-copy li::marker {
+  color: #3f789a;
+  font-size: 0.82em;
+}
+
+.notes-studio .notes-studio-preview-copy strong {
+  color: #20394a;
+  font-weight: 700;
+}
+
+@media (min-width: 640px) {
+  .notes-studio .notes-studio-preview {
+    padding: 1.25rem clamp(1.25rem, 3vw, 2rem);
+  }
+
+  .notes-studio .notes-studio-frame {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .notes-studio .app-topbar {
+    min-height: 44px !important;
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+  }
+
+  .notes-studio .app-topbar-symbol {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+  }
+
+  .notes-studio .app-topbar-role-context {
+    height: 32px;
+  }
+
+  .notes-studio .notes-studio-shell {
+    margin-top: 0.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .notes-studio .notes-studio-workspace {
+    /* 8px page top + 44px topbar + 8px gap + 8px bottom + shell borders. */
+    height: calc(100dvh - 70px);
+    min-height: 540px;
+  }
+}

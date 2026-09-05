@@ -6,6 +6,11 @@ __pycache__/
 venv/
 .env
 .deploy.env
+.env.*
+!.env.example
+.deploy*.env
+*.env
+!*.env.example
 
 # Node
 node_modules/

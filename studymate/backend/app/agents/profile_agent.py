@@ -17,23 +17,23 @@ from app.schemas.profile import ProfileDims
 SPLIT = "---PROFILE-UPDATE---"
 
 _SCORE_FIELDS: dict[str, set[str]] = {
-    "knowledge_base": {"math", "programming", "statistics", "english", "subject_prior"},
-    "cognitive_style": {"visual", "reading", "hands_on", "auditory"},
+    "knowledge_base": {"math", "programming", "cs_foundation", "data_sql", "subject_prior"},
+    "cognitive_style": {"practice_first", "stepwise", "challenge_seeking", "reflective"},
     "preference": {"document", "mindmap", "quiz", "code", "video", "reading"},
     "employment_skills": {"programming", "algorithms", "data_ai", "systems", "engineering", "professional"},
 }
 _PACE_INTENSITIES = {"slow", "medium", "fast", "intensive"}
 _KNOWLEDGE_TERMS = (
-    "数学", "编程", "代码", "python", "java", "c++", "统计", "概率", "英语",
-    "岗位知识", "领域知识", "专业知识", "课程基础", "技术基础",
+    "数学", "编程", "代码", "python", "java", "c++", "操作系统", "计算机网络", "数据结构",
+    "数据库", "sql", "岗位知识", "领域知识", "专业知识", "课程基础", "技术基础",
 )
 _KNOWLEDGE_LEVEL_TERMS = (
     "熟悉", "掌握", "擅长", "扎实", "熟练", "了解", "学过", "没学", "基础",
     "一般", "薄弱", "较弱", "较好", "零基础",
 )
 _COGNITIVE_TERMS = (
-    "图示", "图表", "可视化", "阅读理解", "看文档理解", "动手理解", "边做边学",
-    "实操理解", "听讲", "讲解理解", "学习方式", "认知方式",
+    "动手", "边做边学", "实操", "先上手", "循序渐进", "由浅入深", "打牢基础",
+    "挑战", "难题", "复盘", "总结", "错题", "笔记", "学习方式", "认知方式", "理解方式",
 )
 _RESOURCE_TERMS = (
     "文档", "讲义", "思维导图", "小测", "测验", "代码实操", "实操任务", "视频",
@@ -93,7 +93,7 @@ SYSTEM_PROMPT = """你是一位耐心的领域岗位训练顾问，正在通过�
 ---PROFILE-UPDATE---
 {
   "knowledge_base": {"math": 3, "programming": 4, "subject_prior": 2},
-  "cognitive_style": {"visual": 5},
+  "cognitive_style": {"practice_first": 5, "stepwise": 4},
   "goals": {"primary": "应聘前线部署工程师 / 完成岗位项目 / 补齐交付能力"},
   "weak_points": {"topics": ["概率论", "操作系统调度"]},
   "pace": {"hours_per_week": 8, "intensity": "medium"},
@@ -105,9 +105,12 @@ SYSTEM_PROMPT = """你是一位耐心的领域岗位训练顾问，正在通过�
 }
 
 【画像 schema】（值类型注意，每项 0-5 分，goals/weak_points 是字符串/数组）
-- knowledge_base: math/programming/statistics/english/subject_prior (int 0-5)
-  · subject_prior 是「当前目标岗位领域的先验分」，可跨岗位复用
-- cognitive_style: visual/reading/hands_on/auditory (int 0-5)
+- knowledge_base: math/programming/cs_foundation/data_sql/subject_prior (int 0-5)
+  · math=数学基础, programming=编程基础, cs_foundation=计算机基础（数据结构/操作系统/计算机网络等核心课）,
+    data_sql=数据库与 SQL, subject_prior=「当前目标岗位领域的先验分」，可跨岗位复用
+- cognitive_style: practice_first/stepwise/challenge_seeking/reflective (int 0-5)
+  · practice_first=实践优先（边做边学、先上手再补理论）, stepwise=循序渐进（小步推进、打牢基础）,
+    challenge_seeking=挑战导向（喜欢直接挑战综合/有难度的任务）, reflective=复盘总结（习惯做笔记、复盘错题）
 - goals: primary(str)/deadline(str)/target_topics(list[str])
 - weak_points: topics(list[str])/error_types(list[str])
 - pace: hours_per_week(int 0-40)/intensity(str: slow/medium/fast/intensive)
@@ -209,7 +212,7 @@ def _evidence_covers_missing(field: str, evidence: str, target_role: str | None)
         return any(term in text for term in _KNOWLEDGE_TERMS) and any(term in text for term in _KNOWLEDGE_LEVEL_TERMS)
     if field == "认知风格":
         return any(term in text for term in _COGNITIVE_TERMS) or (
-            any(term in text for term in ("图示", "图表", "阅读", "动手", "实操", "听讲"))
+            any(term in text for term in ("动手", "实操", "实践", "理论", "挑战", "难题", "循序渐进", "复盘", "总结", "错题"))
             and any(term in text for term in ("理解", "学习", "习惯", "偏好", "更喜欢"))
         )
     if field == "资源偏好":
@@ -236,9 +239,9 @@ def next_profile_question(missing: list[str]) -> str:
         return "你与目标岗位相关的课程或技术基础怎样？请说说比较熟悉和较薄弱的内容。"
     if pending & {"认知风格", "资源偏好"}:
         if {"认知风格", "资源偏好"} <= pending:
-            return "学习新内容时，你更容易通过图示、阅读、讲解还是动手实践理解？希望训练中多提供文档、思维导图、视频、代码实操还是小测？"
+            return "学新内容时，你更喜欢先动手实践还是先吃透理论？偏爱循序渐进还是直接挑战综合难题？希望训练中多提供文档、思维导图、视频、代码实操还是小测？"
         if "认知风格" in pending:
-            return "学习新内容时，你更容易通过图示、阅读、讲解还是动手实践理解？"
+            return "学新内容时，你更喜欢先动手实践还是先吃透理论？偏爱循序渐进还是直接挑战综合难题？"
         return "训练资源方面，你更希望多提供文档、思维导图、视频、代码实操还是小测？"
     if pending & {"就业技能与实践经历", "学习目标与时间安排"}:
         if {"就业技能与实践经历", "学习目标与时间安排"} <= pending:
@@ -494,10 +497,10 @@ def _supplement_descriptive_dimensions(evidence_context: str, patch: dict) -> No
         return
 
     knowledge_terms: dict[str, tuple[str, ...]] = {
-        "math": ("数学", "高数", "线性代数"),
+        "math": ("数学", "高数", "线性代数", "概率"),
         "programming": ("编程", "代码", "python", "java", "c++", "javascript"),
-        "statistics": ("统计", "概率"),
-        "english": ("英语", "英文"),
+        "cs_foundation": ("操作系统", "计算机网络", "计算机组成", "数据结构", "计算机基础"),
+        "data_sql": ("数据库", "sql", "mysql"),
         "subject_prior": ("岗位知识", "领域知识", "专业知识", "课程基础", "技术基础"),
     }
     if any(term in text for term in _KNOWLEDGE_LEVEL_TERMS):
@@ -510,10 +513,10 @@ def _supplement_descriptive_dimensions(evidence_context: str, patch: dict) -> No
                 knowledge[field] = _score_from_nearby_text(text, min(positions))
 
     cognitive_map: dict[str, tuple[str, ...]] = {
-        "visual": ("图示", "图表", "可视化", "思维导图"),
-        "reading": ("阅读理解", "看文档理解", "阅读学习"),
-        "hands_on": ("动手理解", "边做边学", "实操理解", "动手实践"),
-        "auditory": ("听讲", "讲解理解"),
+        "practice_first": ("动手理解", "边做边学", "实操理解", "动手实践", "先上手", "先做再学"),
+        "stepwise": ("循序渐进", "由浅入深", "打牢基础", "小步", "一步一步"),
+        "challenge_seeking": ("挑战", "难题", "综合项目", "有难度"),
+        "reflective": ("复盘", "错题", "做笔记", "总结"),
     }
     cognitive = patch.setdefault("cognitive_style", {})
     for field, terms in cognitive_map.items():

@@ -1,4 +1,4 @@
-# StudyMate 文档总索引
+# 因材智训文档总索引
 
 `docs/` 保存竞赛来源材料、当前开发计划、参考资料和最终交付文档；应用的当前技术文档位于 [`../studymate/docs/`](../studymate/docs/)。
 

@@ -1,33 +1,58 @@
-import { useMemo, useState } from "react"
+import { useMemo, useState, type CSSProperties } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { motion } from "framer-motion"
 import {
-  ArrowLeft,
   ArrowRight,
-  BookOpenCheck,
   BriefcaseBusiness,
   CheckCircle2,
-  Cpu,
+  Compass,
+  Factory,
+  MapPinned,
   Network,
   Sparkles,
   Target,
 } from "lucide-react"
 
 import { AppTopbar } from "@/components/AppTopbar"
-import { apiGet, apiPost } from "@/lib/api"
+import { ApiError, apiGet, apiPost } from "@/lib/api"
 import { careerDomains, type CareerDomain, type CareerRole, type DomainId } from "@/lib/domainCareerCatalog"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { setCurrentCourse, type CourseInfo } from "@/store/course"
 import { setTargetRole, useTargetRole } from "@/store/targetRole"
 import { clearWorkspaceState } from "@/store/workspace"
+import "./Courses.css"
 
-const domainOrder: DomainId[] = ["ai", "software", "industrial"]
-const domainIcons = { ai: Sparkles, software: BriefcaseBusiness, industrial: Network }
+const domainOrder: DomainId[] = ["ai", "software", "industrial", "smart-manufacturing"]
+const domainIcons = { ai: Sparkles, software: BriefcaseBusiness, industrial: Network, "smart-manufacturing": Factory }
 const domainTones = {
   ai: { cover: "from-[#315E83] to-[#6F8A69]", chip: "bg-[#E7EDF3] text-[#315E83]" },
   software: { cover: "from-[#7E6B83] to-[#315E83]", chip: "bg-[#EEE9EF] text-[#7E6B83]" },
   industrial: { cover: "from-[#8E6925] to-[#3E7774]", chip: "bg-[#F4ECD8] text-[#8E6925]" },
+  "smart-manufacturing": { cover: "from-[#3E7774] to-[#315E83]", chip: "bg-[#E3EFEC] text-[#2F6D68]" },
 }
+
+const roleCoverImages = {
+  "ai-agent": "/career-covers/ai-agent.webp",
+  "ai-infra": "/career-covers/ai-infra.webp",
+  "embodied-ai": "/career-covers/embodied-ai.webp",
+  "llm-security": "/career-covers/llm-security.webp",
+  "llm-application": "/career-covers/llm-application.webp",
+  fde: "/career-covers/fde.webp",
+  devsecops: "/career-covers/devsecops.webp",
+  "rag-implementation": "/career-covers/rag-implementation.webp",
+  mlops: "/career-covers/mlops.webp",
+  "ai-native-frontend": "/career-covers/ai-native-frontend.webp",
+  "industrial-architect": "/career-covers/industrial-architect.webp",
+  "industrial-data": "/career-covers/industrial-data.webp",
+  "edge-ai": "/career-covers/edge-ai.webp",
+  "industrial-vision": "/career-covers/industrial-vision.webp",
+  "industrial-network": "/career-covers/industrial-network.webp",
+  "mes-engineer": "/career-covers/mes-engineer.webp",
+  "multimodal-llm": "/career-covers/multimodal-llm.webp",
+  "industrial-ai-agent": "/career-covers/industrial-ai-agent.webp",
+  "smart-manufacturing-software": "/career-covers/smart-manufacturing-software.webp",
+  "iot-specialist": "/career-covers/iot-specialist.webp",
+} as const
 
 interface CourseListResponse {
   items: CourseInfo[]
@@ -46,109 +71,98 @@ export function Courses() {
   const storedDomain = careerDomains.find((item) => item.roles.some((role) => role.id === storedRole?.id))?.id
   const [domainId, setDomainId] = useState<DomainId>(storedDomain ?? "ai")
   const [activationError, setActivationError] = useState("")
+  const [requiresLogin, setRequiresLogin] = useState(false)
   const [activatingRoleId, setActivatingRoleId] = useState("")
   const domain = domains.find((item) => item.id === domainId) ?? domains[0]
   const requestedReturnTo = searchParams.get("returnTo")
   const returnTo = requestedReturnTo?.startsWith("/") && !requestedReturnTo.startsWith("//")
     ? requestedReturnTo
     : "/profile"
-  const returnLabel = returnTo.startsWith("/workspace") ? "返回资源工坊" : returnTo.startsWith("/competency") ? "返回训练驾驶舱" : "进入画像诊断"
 
   async function selectRole(role: CareerRole) {
     setActivationError("")
+    setRequiresLogin(false)
     const roleChanged = storedRole?.id !== role.id
-    if (role.id !== "fde") {
-      setTargetRole({ domainId: domain.id, roleId: role.id })
-      setCurrentCourse(null)
-      if (roleChanged) clearWorkspaceState()
-      navigate(returnTo, { replace: true })
-      return
-    }
-
     setActivatingRoleId(role.id)
     try {
       const response = await apiGet<CourseListResponse>("/courses")
-      const fdeCourse = response.items.find((course) => course.name === "FDE 岗位知识库")
-      if (!fdeCourse) throw new Error("FDE 知识库尚未加载")
+      const roleCourse = response.items.find((course) => course.name === role.courseName)
+      if (!roleCourse) throw new Error(`${role.name} 知识库尚未加载`)
       setTargetRole({ domainId: domain.id, roleId: role.id })
-      setCurrentCourse(fdeCourse)
-      void apiPost("/theory-assessments/prepare", {
-        role_id: role.id,
-        role_name: role.name,
-        course_id: fdeCourse.id,
-        competencies: role.skills,
-      }).catch(() => undefined)
+      setCurrentCourse(roleCourse)
+      if (role.id === "fde") {
+        void apiPost("/theory-assessments/prepare", {
+          role_id: role.id,
+          role_name: role.name,
+          course_id: roleCourse.id,
+          competencies: role.skills,
+        }).catch(() => undefined)
+      }
       if (roleChanged) clearWorkspaceState()
       navigate(returnTo, { replace: true })
-    } catch {
-      setActivationError("FDE 知识库暂未连接。请重新登录后刷新页面，再点击进入岗位训练。")
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        setRequiresLogin(true)
+        setActivationError("登录会话已失效，尚未读取岗位知识库。请重新登录后再选择岗位。")
+      } else {
+        setActivationError(`${role.name} 的岗位资料加载失败：${error instanceof Error ? error.message : "请稍后重试"}`)
+      }
     } finally {
       setActivatingRoleId("")
     }
   }
 
   return (
-    <main className="app-page paper-theme min-h-dvh">
-      <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <AppTopbar current="courses" appearance="paper" labelOverride="岗位空间" groupOverride="求职准备" selectionLabel={storedRole?.name ?? "选择目标岗位"} />
-
-        <section className="mt-4 min-h-[calc(100dvh-120px)] overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)]">
-          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D7D1C4] bg-[#F8F6F0] px-5 py-3.5">
-            <div className="flex min-w-0 items-center gap-3">
-              <Link to={returnTo} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]"><ArrowLeft className="size-3.5" /><span className="hidden sm:inline">{returnLabel}</span></Link>
-              <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
-              <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Target className="size-4" /></span>
-              <div className="min-w-0"><h1 className="text-[15px] font-bold text-[#18232D]">选择你的目标岗位</h1><p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">先选择领域，再选择该领域的目标岗位</p></div>
-            </div>
-            <div className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-[11px] font-bold ${storedRole ? "border-[#C9D1CB] bg-[#E9EEE6] text-[#557052]" : "border-[#D7D1C4] bg-[#FFFEFA] text-[#7A817F]"}`}>
-              {storedRole ? <CheckCircle2 className="size-3.5" /> : <BookOpenCheck className="size-3.5" />}{storedRole ? `当前目标岗位 · ${storedRole.name}` : "请选择目标岗位"}
-            </div>
-          </header>
-
-          <div className="p-4 sm:p-5">
-            <div className="relative mb-5 overflow-hidden rounded-[24px] border border-[#D7D1C4] bg-[#F8F6F0] px-5 py-5 sm:px-6">
-              <div className="pointer-events-none absolute -right-16 -top-20 size-52 rounded-full border border-[#DDD4BF]" />
-              <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] text-[#6F8A69]"><Sparkles className="size-3.5 text-[#B1842C]" />岗位训练模式</span>
-              <h2 className="relative mt-2 text-xl font-bold tracking-[-0.03em] text-[#18232D]">从领域进入目标岗位，再围绕岗位能力开展训练</h2>
-              <p className="relative mt-1.5 max-w-3xl text-sm leading-6 text-[#66717B]">岗位是求职者的训练目标；后续学情诊断、知识库检索、资源生成和测评都会围绕所选岗位进行。</p>
-            </div>
-
-            <section aria-labelledby="domain-heading">
-              <div className="mb-3 flex items-center gap-2"><span className="grid size-6 place-items-center rounded-full bg-[#E7EDF3] text-[10px] font-bold text-[#315E83]">1</span><h2 id="domain-heading" className="text-sm font-bold text-[#18232D]">选择领域</h2></div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+    <main className="app-page paper-theme career-route-page min-h-dvh">
+      <div className="career-route-shell">
+        <AppTopbar current="courses" appearance="paper" labelOverride="岗位空间" groupOverride="职业航线导航" selectionLabel={storedRole?.name ?? "等待选择目标岗位"} iconImage="/images/courses-career-route-compass-v1.png" />
+        <section className="career-route-section career-route-selector" aria-labelledby="domain-heading">
+          <div className="career-route-section-heading"><span className="career-route-heading-symbol is-compass"><Compass /></span><div><small>01 · 立即选择 / SELECT ROLE</small><h1 id="domain-heading">选择目标岗位</h1><p>先切换职业领域，再直接点击下方岗位卡片确认。</p></div><aside><Target />当前：{storedRole?.name ?? "尚未选择"}</aside></div>
+          <div className="career-route-domain-grid">
                 {domains.map((item) => {
                   const Icon = domainIcons[item.id]
                   const selected = item.id === domain.id
-                  return <button key={item.id} type="button" onClick={() => setDomainId(item.id)} className={`flex min-h-20 items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${selected ? "border-[#315E83] bg-[#EAF1F5] shadow-[0_8px_20px_rgba(49,94,131,.10)]" : "border-[#D7D1C4] bg-[#FFFEFA] hover:border-[#9FB1BC] hover:bg-[#F8F6F0]"}`}>
-                    <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${selected ? "bg-[#315E83] text-[#F2C968]" : "bg-[#F4ECD8] text-[#8E6925]"}`}><Icon className="size-4" /></span>
-                    <span className="min-w-0"><strong className="block text-sm text-[#18232D]">{item.name}</strong><small className="mt-1 block text-[11px] text-[#66717B]">{item.roles.length} 个岗位方向</small></span>
+                  return <button key={item.id} type="button" onClick={() => setDomainId(item.id)} className={selected ? "is-selected" : ""}>
+                    <span><Icon /></span><b>{String(domainOrder.indexOf(item.id) + 1).padStart(2, "0")}</b>
+                    <div><strong>{item.name}</strong><small>{item.roles.length} 条岗位航线</small></div>{selected && <CheckCircle2 />}
                   </button>
                 })}
               </div>
-            </section>
+        </section>
 
-            <section className="mt-6 border-t border-[#E3DED3] pt-5" aria-labelledby="role-heading">
-              <div className="mb-4 flex flex-wrap items-end justify-between gap-2"><div><span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[.12em] text-[#B1842C]"><BriefcaseBusiness className="size-3.5" />{domain.name.toUpperCase()}</span><h2 id="role-heading" className="mt-1 text-lg font-bold text-[#18232D]">选择该领域的目标岗位</h2></div><p className="max-w-xl text-[11px] leading-5 text-[#66717B]">{domain.description}</p></div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <CareerRouteTransfer
+          from={`职业领域 · ${domain.name}`}
+          to="可选岗位航线"
+          label="ROUTE TRANSFER · 01"
+          variant="aircraft"
+        />
+
+        <section className="career-route-section career-route-role-section" aria-labelledby="role-heading">
+          <div className="career-route-section-heading"><span className="career-route-heading-symbol is-destination"><MapPinned /></span><div><small>02 · 岗位航线 / DESTINATION</small><h2 id="role-heading">「{domain.name}」可选岗位</h2><p>{domain.description}</p></div><aside><BriefcaseBusiness />{domain.roles.length} 个可选岗位</aside></div>
+          <div className="career-route-role-grid">
                 {domain.roles.map((role, index) => <RoleBook key={role.id} role={role} domainId={domain.id} index={index} selected={storedRole?.id === role.id} activating={activatingRoleId === role.id} onSelect={() => void selectRole(role)} />)}
               </div>
-              {activationError && <p role="alert" className="mt-4 border border-[#DFC9BE] bg-[#F6ECE7] px-3 py-2 text-xs text-[#9A4E35]">{activationError}</p>}
-            </section>
-          </div>
+          {activationError && <div role="alert" className="career-route-alert"><span>{activationError}</span>{requiresLogin && <Link to="/login">前往登录</Link>}</div>}
         </section>
+
       </div>
     </main>
   )
 }
 
+function CareerRouteTransfer({ from, to, label, variant }: { from: string; to: string; label: string; variant: "aircraft" | "satellite" }) {
+  return <div className={`career-route-transfer is-${variant}`} aria-label={`${from}与${to}之间的双向航线`}>
+    <div className="career-route-flight-lane" aria-hidden="true"><i className="is-eastbound" /><i className="is-westbound" /><b>{label} · BIDIRECTIONAL</b></div>
+  </div>
+}
+
 function RoleBook({ role, domainId, index, selected, activating, onSelect }: { role: CareerRole; domainId: DomainId; index: number; selected: boolean; activating: boolean; onSelect: () => void }) {
   const tone = domainTones[domainId]
-  const Icon = domainId === "ai" ? Cpu : domainId === "industrial" ? Network : BriefcaseBusiness
-  return <motion.article initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: index * 0.05 }} className={`group relative min-h-[224px] overflow-hidden rounded-[22px] border bg-[#FFFEFA] shadow-[0_8px_22px_rgba(24,35,45,.04)] transition-all hover:-translate-y-1 hover:shadow-[0_18px_34px_rgba(24,35,45,.11)] ${selected ? "border-[#7F9AAA] ring-2 ring-[#315E83]/12" : "border-[#D7D1C4] hover:border-[#AEBAB5]"}`}>
-    <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${tone.cover}`} />
-    <button type="button" onClick={onSelect} disabled={activating} className="relative z-10 grid h-full min-h-[224px] w-full grid-cols-[104px_minmax(0,1fr)] gap-4 p-4 text-left disabled:cursor-wait sm:grid-cols-[116px_minmax(0,1fr)]">
-      <span className={`relative my-auto block aspect-[0.73] w-full overflow-hidden rounded-[9px] border border-black/10 bg-gradient-to-br ${tone.cover} shadow-[0_12px_22px_rgba(24,35,45,.18),-5px_0_0_#ece7db]`}><span className="absolute left-3 top-4 text-[9px] font-bold tracking-[.1em] text-white/75">TARGET ROLE</span><span className="absolute inset-x-3 top-11 h-px bg-white/35" /><Icon className="absolute left-3 top-[44%] size-7 text-[#F5D989]" /><span className="absolute inset-x-3 bottom-4 text-[11px] font-bold leading-4 text-white">{role.name}</span><span className="pointer-events-none absolute inset-y-0 left-0 w-2 bg-gradient-to-r from-black/20 to-transparent" /></span>
-      <span className="flex min-w-0 flex-col py-1"><span className="flex min-h-6 items-start justify-end">{selected ? <span className="inline-flex items-center gap-1 rounded-full bg-[#E9EEE6] px-2 py-1 text-[10px] font-bold text-[#557052]"><CheckCircle2 className="size-3" />已选择</span> : role.knowledgeBaseState === "ready" ? <span className="rounded-full bg-[#E9EEE6] px-2 py-1 text-[10px] font-bold text-[#557052]">知识库已导入</span> : <span className="rounded-full bg-[#F8F1E4] px-2 py-1 text-[10px] font-bold text-[#8E6925]">待建设</span>}</span><strong className="mt-3 text-lg leading-6 tracking-[-.025em] text-[#18232D]">{role.name}</strong><span className="mt-1.5 text-xs leading-5 text-[#66717B]">{role.summary}</span><span className="mt-auto flex w-full items-end justify-between gap-2 pt-4"><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${tone.chip}`}>{role.knowledgeBase?.chunkCount ? `${role.knowledgeBase.chunkCount} 条知识片段` : "岗位目录"}</span><span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-[#315E83]">{activating ? "正在进入" : role.id === "fde" ? "进入岗位训练" : "选择岗位"}<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" /></span></span></span>
+  const cover = roleCoverImages[role.id as keyof typeof roleCoverImages]
+  return <motion.article initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: index * 0.05 }} className={`career-route-role-card career-route-role-card--${index + 1} ${role.knowledgeBaseState === "ready" ? "is-ready" : "is-building"} ${selected ? "is-selected" : ""} ${activating ? "is-activating" : ""}`} style={{ "--route-accent": tone.cover.includes("315E83") ? "#315e83" : "#3e7774" } as CSSProperties}>
+    <button type="button" onClick={onSelect} disabled={activating}>
+      <span className="career-route-role-image"><img src={cover} alt={`${role.name}职业场景封面`} loading="lazy" /></span>
+      <span className="career-route-role-copy"><span className="career-route-role-meta"><b>{String(index + 1).padStart(2, "0")}</b><i><span className="career-route-state-beacon" />{selected ? "CURRENT ROUTE" : role.knowledgeBaseState === "ready" ? "READY TO BOARD" : "BUILDING"}</i></span><strong>{role.name}</strong><p>{role.summary}</p><span className="career-route-skill-row">{role.skills.slice(0, 3).map((skill) => <small key={skill}>{skill}</small>)}</span><span className="career-route-role-action">{activating ? <><Sparkles />航线校准中</> : selected ? <><CheckCircle2 />当前目标岗位</> : <>{role.id === "fde" ? "进入岗位训练" : "确认目标岗位"}<ArrowRight /></>}</span></span>
     </button>
   </motion.article>
 }

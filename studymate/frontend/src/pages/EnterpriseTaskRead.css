@@ -1,0 +1,14 @@
+/* Page-level blue background matching the main StudyMate workbench. */
+.paper-theme.enterprise-task-page {
+  color: #214c68;
+  background:
+    radial-gradient(circle at 82% 0%, rgba(131, 211, 232, .18), transparent 30rem),
+    linear-gradient(180deg, #f7fcfe 0%, #edf7fa 48%, #e4f1f6 100%) !important;
+}
+
+.paper-theme.enterprise-task-page .app-topbar {
+  border-color: rgba(92, 158, 192, .28);
+  background: rgba(247, 252, 255, .68);
+  box-shadow: 0 10px 28px rgba(44, 105, 137, .06);
+  backdrop-filter: blur(8px);
+}

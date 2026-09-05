@@ -77,6 +77,10 @@ class Settings(BaseSettings):
     # 例：COSYVOICE_API_KEYS=sk-aaa,sk-bbb
     COSYVOICE_API_KEYS: str = ""
 
+    # 仅供历史视频工具兼容的本地媒体目录；当前岗位可视讲解使用前端脚本播放。
+    VIDEO_MEDIA_DIR: str = "./data/video_media"
+    VIDEO_REQUEST_TIMEOUT_SECONDS: float = 30.0
+
     # 讯飞 TTS 子模式：online=在线语音合成(v2/tts)；oral=超拟人语音合成(v1 oral，音质更高)
     # 切超拟人只需把 XFYUN_TTS_MODE 设 oral 并填下面三项（凭据来自讯飞控制台「超拟人合成」服务）
     XFYUN_TTS_MODE: str = "online"
@@ -102,7 +106,7 @@ class Settings(BaseSettings):
     SMTP_USERNAME: str = ""
     SMTP_PASSWORD: str = ""  # QQ 邮箱 SMTP 授权码，不是 QQ 密码
     SMTP_FROM_EMAIL: str = ""
-    SMTP_FROM_NAME: str = "StudyMate"
+    SMTP_FROM_NAME: str = "因材智训"
     EMAIL_CODE_EXPIRE_MINUTES: int = 10
     EMAIL_CODE_RESEND_SECONDS: int = 60
     EMAIL_CODE_MAX_ATTEMPTS: int = 5
@@ -111,6 +115,21 @@ class Settings(BaseSettings):
     AUTH_SECRET_KEY: str = ""
     SESSION_EXPIRE_DAYS: int = 7
     SESSION_COOKIE_SECURE: bool = False
+
+    # AI interview is a separately deployed service. These values are only
+    # consumed server-side; the frontend never receives the integration key.
+    AI_INTERVIEW_PUBLIC_URL: str = ""
+    AI_INTERVIEW_SERVICE_SECRET: str = ""
+    AI_INTERVIEW_TICKET_TTL_SECONDS: int = 120
+    AI_INTERVIEW_SIGNATURE_TTL_SECONDS: int = 300
+    AI_INTERVIEW_MAX_ACTIVE_ATTEMPTS: int = 2
+
+    # Independent Hydro OJ integration. The secret is server-only and must
+    # match STUDYMATE_SERVICE_SECRET in the OJ service environment.
+    OJ_PUBLIC_URL: str = ""
+    OJ_SERVICE_SECRET: str = ""
+    OJ_TICKET_TTL_SECONDS: int = 120
+    OJ_SIGNATURE_TTL_SECONDS: int = 300
 
     @model_validator(mode="after")
     def disable_external_services_in_safe_offline(self):
@@ -131,6 +150,7 @@ class Settings(BaseSettings):
             "SMTP_PASSWORD",
             "SMTP_FROM_EMAIL",
             "PISTON_URL",
+            "AI_INTERVIEW_SERVICE_SECRET",
         ):
             setattr(self, field, "")
         self.PRIVATE_KNOWLEDGE_OCR_MODE = "unconfigured"

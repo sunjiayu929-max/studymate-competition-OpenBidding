@@ -154,6 +154,9 @@ function normalizeMarkdownProse(segment: string): string {
     /(^|\n)([^|\n][^\n]*)\n(\|[^\n]+\|)\n(\|[\s:|-]+)/gu,
     "$1$2\n\n$3\n$4",
   )
+  // Some imported materials contain an empty line after every table row.
+  // GFM then treats the pipe-delimited rows as paragraphs rather than a table.
+  next = next.replace(/(\|[^\n]*\|)\n[ \t]*\n(?=\|[^\n]*\|)/gu, "$1\n")
   return next
 }
 

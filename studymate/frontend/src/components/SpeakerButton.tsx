@@ -14,7 +14,7 @@ import { motion } from "framer-motion"
 import { prepareSpeechText } from "@/lib/speechText"
 import { StreamingTtsPipeline } from "@/lib/ttsPipeline"
 
-type Status = "idle" | "loading" | "playing"
+export type SpeakerStatus = "idle" | "loading" | "playing"
 
 const globalState: { stopCurrent: (() => void) | null } = { stopCurrent: null }
 
@@ -23,10 +23,11 @@ interface Props {
   size?: "sm" | "md"
   className?: string
   onError?: (err: Error) => void
+  onStatusChange?: (status: SpeakerStatus) => void
 }
 
-export function SpeakerButton({ text, size = "sm", onError, className = "" }: Props) {
-  const [status, setStatus] = useState<Status>("idle")
+export function SpeakerButton({ text, size = "sm", onError, onStatusChange, className = "" }: Props) {
+  const [status, setStatus] = useState<SpeakerStatus>("idle")
   const pipelineRef = useRef<StreamingTtsPipeline | null>(null)
   const unmountedRef = useRef(false)
   // 稳定的 stop 引用（每次 render 仅更新内部实现，外部 .current 不变）
@@ -49,6 +50,10 @@ export function SpeakerButton({ text, size = "sm", onError, className = "" }: Pr
       }
     }
   }, [])
+
+  useEffect(() => {
+    onStatusChange?.(status)
+  }, [onStatusChange, status])
 
   const handleClick = () => {
     // 已经在播 / 在合成 → 自己停掉

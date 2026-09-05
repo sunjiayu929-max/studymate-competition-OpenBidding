@@ -9,6 +9,7 @@ import { chromium } from "playwright"
 const port = Number(process.env.STUDYMATE_PPT_UI_PORT || 4183)
 const baseUrl = process.env.STUDYMATE_BASE_URL || `http://127.0.0.1:${port}`
 let preview = null
+const outlineRequests = []
 
 async function waitForServer(url, timeoutMs = 20_000) {
   const deadline = Date.now() + timeoutMs
@@ -151,7 +152,14 @@ await context.route("**/api/**", async (route) => {
   if (path.startsWith("/profile/snapshots/")) return json(route, { count: 0, items: [] })
   if (path === "/tutor/models") return json(route, { default: "qwen", items: [{ id: "qwen", label: "Qwen", description: "视觉叙事", configured: true, recommended: true }] })
   if (path === "/knowledge-bases") return json(route, { items: [] })
-  if (path === "/ppt/outline") return json(route, { mode: "model", provider: "qwen", message: "已生成视觉叙事", slides })
+  if (path === "/ppt/outline") {
+    const payload = request.postDataJSON()
+    outlineRequests.push(payload)
+    if (!payload.allow_local_fallback) {
+      return json(route, { detail: "Qwen 尚未配置，可明确选择使用本地策略继续" }, 503)
+    }
+    return json(route, { mode: "local_fallback", provider: "qwen", message: "已按明确选择使用本地策略", slides })
+  }
   if (path.startsWith("/events")) return json(route, { ok: true })
   return json(route, {})
 })
@@ -163,26 +171,48 @@ page.on("pageerror", (error) => {
 
 try {
   await page.goto(`${baseUrl}/ppt`, { waitUntil: "domcontentloaded" })
-  await page.getByText("让模型先讲好故事，再生成可编辑演示文稿", { exact: true }).waitFor()
+  await page.getByRole("heading", { name: "把主题或知识来源变成可编辑 PPT", exact: true }).waitFor()
   const skipGuide = page.getByRole("button", { name: /暂时跳过/u })
   if (await skipGuide.isVisible().catch(() => false)) await skipGuide.click()
+  assert.equal(await page.getByRole("button", { name: "生成演示文稿", exact: true }).count(), 1)
+  await page.getByText("示例演示稿 · 可直接编辑", { exact: true }).waitFor()
   await page.getByPlaceholder("例如：梯度下降的直觉与应用").fill("梯度下降")
-  await page.getByRole("button", { name: "使用所选模型生成" }).click()
+  await page.getByRole("button", { name: "生成演示文稿", exact: true }).click()
+  await page.getByRole("alert").waitFor()
+  assert.equal(outlineRequests[0]?.allow_local_fallback, false)
+  await page.getByRole("button", { name: "明确使用本地策略", exact: true }).click()
   await page.getByLabel("页面标题").waitFor()
+  assert.equal(outlineRequests[1]?.allow_local_fallback, true)
   assert.equal(await page.getByLabel("页面标题").inputValue(), "梯度下降不是“往下走”那么简单")
   assert.ok(await page.getByText("流程推进", { exact: true }).count() >= 1)
 
   await page.getByText("一次更新由四个动作闭环完成", { exact: true }).click()
   await page.getByLabel("步骤标题 1").waitFor()
   assert.equal(await page.getByLabel("步骤标题 1").inputValue(), "观察误差")
-  assert.equal(await page.locator('select').filter({ has: page.locator('option[value="process"]') }).inputValue(), "process")
 
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
-  assert.ok(overflow <= 1, `PPT page has horizontal overflow: ${overflow}px`)
+  const desktopOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+  assert.ok(desktopOverflow <= 1, `PPT desktop page has horizontal overflow: ${desktopOverflow}px`)
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.waitForTimeout(650)
+  const mobileLayout = await page.evaluate(() => {
+    const editor = document.querySelector(".ppt-studio-editor")?.getBoundingClientRect()
+    const previewPane = document.querySelector(".ppt-studio-preview")?.getBoundingClientRect()
+    const canvas = document.querySelector('.ppt-studio-preview [class*="aspect-video"]')?.getBoundingClientRect()
+    return {
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      editorWidth: editor?.width || 0,
+      previewWidth: previewPane?.width || 0,
+      canvasWidth: canvas?.width || 0,
+    }
+  })
+  assert.ok(mobileLayout.overflow <= 1, `PPT mobile page has horizontal overflow: ${mobileLayout.overflow}px`)
+  assert.ok(mobileLayout.previewWidth <= mobileLayout.editorWidth + 1, `PPT mobile preview must stay inside the editor: ${JSON.stringify(mobileLayout)}`)
+  assert.ok(mobileLayout.canvasWidth <= mobileLayout.previewWidth + 1, `PPT mobile canvas must scale inside the preview: ${JSON.stringify(mobileLayout)}`)
   if (process.env.PPT_UI_SCREENSHOT) {
     await page.screenshot({ path: process.env.PPT_UI_SCREENSHOT, fullPage: true })
   }
-  console.log("ppt-ui-check: model-driven visual layouts render and remain editable")
+  console.log("ppt-ui-check: single explicit generation flow, editable layouts, and responsive containment verified")
 } finally {
   await context.close()
   await browser.close()

@@ -36,7 +36,7 @@ from typing import Any
 from app.llm import get_llm_client, has_llm_key
 
 
-VALID_KNOWLEDGE_DIMS = {"math", "programming", "statistics", "english", "subject_prior"}
+VALID_KNOWLEDGE_DIMS = {"math", "programming", "cs_foundation", "data_sql", "subject_prior"}
 VALID_PREFERENCE_DIMS = {"document", "mindmap", "quiz", "code", "video", "reading"}
 VALID_EMPLOYMENT_DIMS = {"programming", "algorithms", "data_ai", "systems", "engineering", "professional"}
 
@@ -167,7 +167,7 @@ async def _llm_eval(scores: dict, engagement: dict, dims: dict, quiz_results: li
 输出结构（不要 Markdown 包裹）：
 {{
   "profile_delta": {{
-    "knowledge_base": {{ "subject_prior"?: int, "math"?: int, "programming"?: int, "statistics"?: int }},
+    "knowledge_base": {{ "subject_prior"?: int, "math"?: int, "programming"?: int, "cs_foundation"?: int, "data_sql"?: int }},
     "weak_points": {{ "topics": [str], "error_types": [str] }},
     "preference": {{ "video"?: int, "reading"?: int, "code"?: int, "mindmap"?: int }},
     "employment_skills": {{ "programming"?: int, "algorithms"?: int, "data_ai"?: int, "systems"?: int, "engineering"?: int }}

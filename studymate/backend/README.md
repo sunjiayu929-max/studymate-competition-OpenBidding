@@ -1,4 +1,4 @@
-# StudyMate 后端
+# 因材智训后端
 
 后端基于 FastAPI、SQLAlchemy 和 SQLite，负责认证、学习画像、课程 RAG、多智能体生成、助教对话、测验、报告、外部资源适配与在线代码运行代理。
 
@@ -31,6 +31,16 @@ python -m pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+岗位视频片段合成依赖宿主机的 `ffmpeg`。Ubuntu/Debian 裸跑后端前安装：
+
+```bash
+sudo apt-get update
+sudo apt-get install -y ffmpeg fonts-noto-cjk
+ffmpeg -version
+```
+
+使用 `docker compose` 部署时不需要单独安装；`backend/Dockerfile` 会在镜像构建阶段自动安装 `ffmpeg`。
+
 验证：
 
 ```bash
@@ -61,7 +71,7 @@ python scripts/run_safe_offline.py \
 
 - 默认数据库：`sqlite:///./studymate.db`。
 - 首次本地裸跑时，缺少 `studymate.db` 会从 `resources/seed/studymate.db.gz` 自动初始化；已有数据库不会被覆盖。
-- 当前知识库规模：5 门课程、1709 个知识块。
+- 当前知识库规模：25 门基础与岗位课程、2189 个知识块；其中 1709 个基础知识块带检索向量，岗位资料支持关键词检索。
 - 检索链路：BM25 关键词检索 + Qwen `text-embedding-v3` 1024 维语义检索，再通过 RRF 融合。
 - 向量以 JSON 形式保存在 SQLite `knowledge_chunks.embedding`；当前主链路不依赖 Chroma。
 - 用户私有资料存储在 `user_knowledge_bases`、`user_knowledge_documents`、`user_knowledge_chunks`，每次读写都以登录用户 `user_id` 过滤。原文件保存到 `PRIVATE_KNOWLEDGE_DIR` 的用户隔离目录，上传返回后台任务状态；解析进度、校验和、失败、中断恢复与重试次数持久化。

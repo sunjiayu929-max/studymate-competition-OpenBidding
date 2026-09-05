@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { useNavigate, useParams, Link } from "react-router-dom"
-import { FileText, BookOpen, Hash, ExternalLink, Sparkles, NotebookText, Check, Plus, Loader2, Target, Database, ShieldCheck, UserRoundSearch, CheckCircle2, CircleHelp, ArrowLeft, ArrowRight, BarChart3, Wrench } from "lucide-react"
+import { FileText, BookOpen, Hash, ExternalLink, Sparkles, NotebookText, Check, Plus, Loader2, Target, Database, ShieldCheck, UserRoundSearch, CheckCircle2, CircleHelp, ArrowLeft, ArrowRight, BarChart3, Wrench, Network, Code2, Film } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { PageHeader } from "@/components/PageHeader"
 import type { ProfileMiniData } from "@/components/ProfileMiniCard"
@@ -15,21 +15,29 @@ import { useCurrentCourse } from "@/store/course"
 import { useCurrentUser } from "@/store/user"
 import { SaveToNotebookModal } from "@/components/SaveToNotebookModal"
 import { FeedbackThumb } from "@/components/FeedbackThumb"
+import { MindMapView } from "@/components/MindMapView"
+import { CodeBlock } from "@/components/CodeBlock"
+import { ConceptAutoExplain } from "@/components/concepts/ConceptAutoExplain"
+
+import "./WorkspaceDetail.css"
 
 // 资源详情共用一条路由，但每次只展示一种资源；重组件按实际分支加载，避免一次下载全部渲染器。
 const Markdown = lazy(() => import("@/components/Markdown").then((module) => ({ default: module.Markdown })))
 const QuizCard = lazy(() => import("@/components/QuizCard").then((module) => ({ default: module.QuizCard })))
 
-// 当前岗位训练资源包只生成并发布这三类可审核的核心成果。
-type AgentKey = "doc" | "guide" | "quiz"
+// 当前岗位训练资源包包含六类成果；拓展资源统一收纳在可视讲解中。
+type AgentKey = "doc" | "guide" | "quiz" | "mindmap" | "code" | "video"
 
 const META: Record<AgentKey, { title: string; icon: LucideIcon; color: string }> = {
   doc:     { title: "岗位定制讲义", icon: FileText,    color: "text-[#355C8A]" },
   guide:   { title: "实操指南",   icon: Wrench,      color: "text-[#A05137]" },
   quiz:    { title: "岗位分阶测试", icon: BookOpen,    color: "text-[#3E7774]" },
+  mindmap: { title: "思维导图", icon: Network, color: "text-[#B85C3E]" },
+  code:    { title: "代码案例", icon: Code2, color: "text-[#7E6B83]" },
+  video:   { title: "可视讲解", icon: Film, color: "text-[#9B7429]" },
 }
 
-const ORDER: AgentKey[] = ["doc", "guide", "quiz"]
+const ORDER: AgentKey[] = ["doc", "guide", "quiz", "mindmap", "code", "video"]
 
 function ResourcePager({
   current,
@@ -76,6 +84,8 @@ function ResourcePager({
         <div className="flex min-w-0 flex-1 justify-end">
           {next ? (
             <Link to={`/workspace/r/${next}`} className={`${linkClass} justify-end text-right`}><span><span className="block text-[9px] font-semibold text-[#8A8172]">下一资源</span>{META[next].title}</span><ArrowRight className="size-3.5" /></Link>
+          ) : current === "video" && variant === "footer" ? (
+            <Link to="/competency#training-resources" className={`${linkClass} justify-end text-right`}><span><span className="block text-[9px] font-semibold text-[#8A8172]">完成浏览</span>返回岗位训练中心</span><ArrowRight className="size-3.5" /></Link>
           ) : <span className="hidden sm:block" />}
         </div>
       </div>
@@ -140,6 +150,9 @@ export function WorkspaceDetail() {
       case "doc": return Boolean(outputs.doc?.content || stream.doc)
       case "guide": return Boolean(outputs.guide?.content || stream.guide)
       case "quiz": return Boolean(outputs.quiz?.items?.length || stream.quiz)
+      case "mindmap": return Boolean(outputs.mindmap?.content || stream.mindmap)
+      case "code": return Boolean(outputs.code?.code)
+      case "video": return true
       default: return false
     }
   }, [agentId, isValidAgent, outputs, released, stream])
@@ -227,6 +240,11 @@ export function WorkspaceDetail() {
         })
         return lines.join("\n").slice(0, 1400)
       }
+      case "video": {
+        const video = outputs.video
+        if (!video?.script) return undefined
+        return `【岗位可视讲解脚本】\n${video.script.title}\n旁白：${video.script.voiceover}\n分镜：${video.script.shots.map((shot, index) => `${index + 1}. ${shot.description}`).join("；")}`.slice(0, 1400)
+      }
       default:
         return undefined
     }
@@ -240,7 +258,7 @@ export function WorkspaceDetail() {
 
   if (!isValidAgent || !meta) {
     return (
-      <div className="app-page paper-theme">
+      <div className="app-page paper-theme workspace-blue-theme">
         <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
           <PageHeader
             current="workspace"
@@ -256,7 +274,7 @@ export function WorkspaceDetail() {
                 <span className="mx-auto grid size-12 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><CircleHelp className="size-5" /></span>
                 <p className="mt-3 text-[11px] font-bold tracking-[0.12em] text-[#B1842C]">资源地址有误 · 已保护当前任务</p>
                 <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#18232D]">这个资源入口不存在</h2>
-                <p className="mx-auto mt-2 max-w-[520px] text-xs leading-5 text-[#6F787A]">当前岗位训练资源包只发布以下 3 类核心成果。其余资源入口暂保留在工作台，当前阶段不生成详情内容。</p>
+                <p className="mx-auto mt-2 max-w-[520px] text-xs leading-5 text-[#6F787A]">当前岗位训练资源包支持六类经发布门禁批准的训练成果；学习路径不作为独立生成资源。</p>
               </div>
               <div className="flex flex-wrap justify-center gap-2 px-5 py-5" aria-label="支持的资源类型">
                 {ORDER.map((key) => {
@@ -265,7 +283,7 @@ export function WorkspaceDetail() {
                 })}
               </div>
               <div className="flex flex-col-reverse gap-2 border-t border-[#E0DACE] bg-[#FCFAF5] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <span className="text-xs font-semibold text-[#8A8172]">其他资源入口将在后续阶段开放</span>
+                <span className="text-xs font-semibold text-[#8A8172]">请返回岗位训练中心选择已发布资源</span>
                 <Link to="/competency" className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-white transition-colors hover:bg-[#1D4058]"><Sparkles className="size-4" />返回岗位训练中心</Link>
               </div>
             </section>
@@ -321,7 +339,7 @@ export function WorkspaceDetail() {
   }
 
   return (
-    <div className="app-page paper-theme">
+    <div className="app-page paper-theme workspace-blue-theme">
       <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
         <PageHeader
           current="workspace"
@@ -377,7 +395,7 @@ export function WorkspaceDetail() {
             courseName={evidenceCourseName}
             topic={topic}
             retrievedCount={outputs.retriever?.chunks?.length || 0}
-            citationCount={agentId === "guide" ? outputs.guide?.citations?.length || 0 : outputs.doc?.citations?.length || 0}
+            citationCount={agentId === "guide" ? outputs.guide?.citations?.length || 0 : agentId === "video" ? outputs.video?.script?.citations?.length || 0 : outputs.doc?.citations?.length || 0}
           />
         )}
 
@@ -447,6 +465,8 @@ export function WorkspaceDetail() {
                       index={i}
                       topic={topic}
                       allItems={outputs.quiz?.items as QuizItem[]}
+                      initialAttempt={state.quizAttempts[q.id]}
+                      initialAttempts={state.quizAttempts}
                       onSubmit={(r) => workspaceStore.recordQuizAttempt(r)}
                     />
                   ))}
@@ -497,6 +517,26 @@ export function WorkspaceDetail() {
                   <EmptyHint icon={Icon} label="题库 Agent 还未输出" />
                 )
               )
+            )}
+
+            {agentId === "mindmap" && (
+              outputs.mindmap?.content || stream.mindmap ? (
+                <MindMapView markdown={outputs.mindmap?.content || stream.mindmap} height="620px" defaultExpandLevel={2} />
+              ) : (
+                <EmptyHint icon={Icon} label="思维导图 Agent 还未输出" />
+              )
+            )}
+
+            {agentId === "code" && (
+              outputs.code?.code ? (
+                <CodeBlock data={outputs.code} />
+              ) : (
+                <EmptyHint icon={Icon} label="代码 Agent 还未输出" />
+              )
+            )}
+
+            {agentId === "video" && (
+              <VideoResource topic={topic} userId={user?.user_id ?? 0} />
             )}
 
             </Suspense>
@@ -568,6 +608,9 @@ const RESOURCE_STRATEGY: Record<AgentKey, string> = {
   doc: "用岗位知识库原文建立能力主线，并针对薄弱点增加解释层次",
   guide: "把岗位任务拆成环境、步骤、预期、异常、安全边界与验收清单",
   quiz: "围绕薄弱点与当前主题生成多题型掌握度验证",
+  mindmap: "用结构化关系帮助你建立岗位任务的整体认知",
+  code: "围绕岗位任务提供可运行示例，连接理解与实际操作",
+  video: "用动画和外部拓展资源解释岗位任务中的关键原理与应用",
 }
 
 function ResourceEvidenceBar({
@@ -617,6 +660,24 @@ function ResourceEvidenceBar({
   )
 }
 
+function VideoResource({ topic, userId }: { topic: string; userId: number }) {
+  return (
+    <section className="overflow-hidden rounded-[20px] border border-[#D7D1C4] bg-[#FBF9F4] p-4 sm:p-5">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><Film className="size-4" /></span>
+        <div>
+          <p className="text-[10px] font-bold tracking-[0.12em] text-[#8E6925]">动画讲解</p>
+          <h2 className="mt-1 text-base font-bold text-[#18232D]">用动画理解原理与岗位应用</h2>
+          <p className="mt-1 text-[11px] leading-5 text-[#66717B]">系统会优先匹配动画库；没有对应动画时，自动生成分步动画或黑板讲解，并在下方补充相关外部学习资源。</p>
+        </div>
+      </div>
+      <div className="mt-4">
+        <ConceptAutoExplain topic={topic} userId={userId} />
+      </div>
+    </section>
+  )
+}
+
 function EvidenceCell({
   icon: Icon,
   label,
@@ -657,7 +718,7 @@ function NoData({ resourceTitle, onBack }: { resourceTitle: string; onBack: () =
           <p className="mt-3 text-[11px] font-bold tracking-[0.12em] text-[#8E6925]">等待生成 · 操作可继续</p>
           <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#18232D]">这份{resourceTitle}还未生成</h2>
           <p className="mx-auto mt-2 max-w-[560px] text-xs leading-5 text-[#6F787A]">
-            返回岗位训练中心启动本轮任务后，11 个核心 Agent 会依次完成诊断、计划协商、生成、审核与裁决；批准发布后可在这里核对内容并进入笔记、测验或报告。
+            返回岗位训练中心启动本轮任务后，14 个协作节点会依次完成诊断、计划协商、六类资源生成、审核与裁决；批准发布后可在这里核对内容并进入笔记、测验或报告。
           </p>
         </div>
 

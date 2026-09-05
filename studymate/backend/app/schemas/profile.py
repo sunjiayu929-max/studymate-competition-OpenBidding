@@ -9,22 +9,26 @@ from pydantic import BaseModel, Field
 class KnowledgeBase(BaseModel):
     """知识基础：每个子项 0-5 分。默认 3 = 中位估计（对话开始后被实际抽取覆盖）。
 
-    subject_prior 是通用「当前目标岗位领域的先验」分，可被不同岗位的画像/评估复用。
-    保留 ml_prior alias 用于向后兼容旧数据。
+    维度对齐训练中心课程与岗位要求；subject_prior 是通用「当前目标岗位领域的先验」分，
+    可被不同岗位的画像/评估复用。历史字段的旧值在读取归一化时按 schema 丢弃。
     """
     math: int = Field(3, ge=0, le=5, description="数学基础")
     programming: int = Field(3, ge=0, le=5, description="编程基础")
-    statistics: int = Field(3, ge=0, le=5, description="统计/概率")
-    english: int = Field(3, ge=0, le=5, description="英语阅读")
+    cs_foundation: int = Field(3, ge=0, le=5, description="计算机基础（数据结构/操作系统/网络等核心课）")
+    data_sql: int = Field(3, ge=0, le=5, description="数据库与 SQL")
     subject_prior: int = Field(3, ge=0, le=5, description="当前岗位领域先验")
 
 
 class CognitiveStyle(BaseModel):
-    """认知风格偏好：0-5 分越高代表越偏好该方式。默认 3 = 中性。"""
-    visual: int = Field(3, ge=0, le=5, description="视觉化（图表/动画）")
-    reading: int = Field(3, ge=0, le=5, description="阅读/文档")
-    hands_on: int = Field(3, ge=0, le=5, description="动手实操/代码")
-    auditory: int = Field(3, ge=0, le=5, description="听讲解/视频")
+    """认知风格：学习行为风格，0-5 分越高代表越偏向该风格。默认 3 = 中性。
+
+    每维直接映射训练策略：实践优先→先安排实操任务；循序渐进→更细的学习路径粒度；
+    挑战导向→更早进入综合/进阶任务；复盘总结→多推错题复盘与笔记整理。
+    """
+    practice_first: int = Field(3, ge=0, le=5, description="实践优先（边做边学，先上手再补理论）")
+    stepwise: int = Field(3, ge=0, le=5, description="循序渐进（小步推进、打牢基础）")
+    challenge_seeking: int = Field(3, ge=0, le=5, description="挑战导向（喜欢综合/有难度的任务）")
+    reflective: int = Field(3, ge=0, le=5, description="复盘总结（习惯笔记、错题复盘）")
 
 
 class Goals(BaseModel):
@@ -92,6 +96,34 @@ class TheoryAssessmentEvidence(BaseModel):
     completed_at: str
 
 
+class InterviewAssessmentEvidence(BaseModel):
+    """Latest completed simulated-interview evidence for one target role."""
+    attempt_id: str
+    role_id: str
+    role_name: str
+    course_id: int | None = None
+    overall_score: float = Field(ge=0, le=100)
+    role_match_score: float = Field(ge=0, le=100)
+    general_score: float = Field(ge=0, le=100)
+    competency_scores: dict[str, float] = Field(default_factory=dict)
+    weak_competencies: list[str] = Field(default_factory=list)
+    completed_at: str
+
+
+class TrainingRoundEvidence(BaseModel):
+    """某目标岗位一次训练闭环验收后的学习证据，随每轮反馈回写画像。"""
+    run_id: str
+    domain: str = ""
+    target_role: str = ""
+    topic: str = ""
+    accuracy: float | None = None
+    answered_count: int = 0
+    wrong_count: int = 0
+    next_action: str = ""
+    difficulty_delta: int = 0
+    completed_at: str = ""
+
+
 class ProfileDims(BaseModel):
     """完整画像。和 db.models.Profile.dims 一一对应。"""
     knowledge_base: KnowledgeBase = Field(default_factory=KnowledgeBase)
@@ -106,6 +138,14 @@ class ProfileDims(BaseModel):
     theory_assessments: dict[str, TheoryAssessmentEvidence] = Field(
         default_factory=dict,
         description="按目标岗位 role_id 保存的理论基线证据",
+    )
+    interview_assessments: dict[str, InterviewAssessmentEvidence] = Field(
+        default_factory=dict,
+        description="按目标岗位 role_id 保存的模拟面试证据",
+    )
+    training_rounds: list[TrainingRoundEvidence] = Field(
+        default_factory=list,
+        description="岗位训练闭环逐轮学习证据，最新一轮在前",
     )
 
 
@@ -137,4 +177,11 @@ class ProfilePatch(BaseModel):
 
 def normalize_profile_dims(value: dict | None) -> dict:
     """Fill newly added dimensions for legacy JSON without mutating profile version."""
+    if isinstance(value, dict):
+        # 维度语义调整时的一次性迁移：旧「动手实操」偏好转为新「实践优先」。
+        style = value.get("cognitive_style")
+        if isinstance(style, dict) and "practice_first" not in style and "hands_on" in style:
+            migrated = dict(style)
+            migrated["practice_first"] = style["hands_on"]
+            value = {**value, "cognitive_style": migrated}
     return ProfileDims.model_validate(value or {}).model_dump()

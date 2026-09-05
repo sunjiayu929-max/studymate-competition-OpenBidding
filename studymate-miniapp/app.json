@@ -1,0 +1,17 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/register/register",
+    "pages/home/home",
+    "pages/task-detail/task-detail"
+  ],
+  "window": {
+    "navigationBarTitleText": "因材智训",
+    "navigationBarBackgroundColor": "#edf7fb",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#edf7fb",
+    "backgroundTextStyle": "light"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

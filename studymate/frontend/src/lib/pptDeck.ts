@@ -84,7 +84,7 @@ function addFooter(slide: PptSlide, draft: PptSlideDraft, index: number, total: 
     w: 0.9,
     h: 0.14,
     fontFace: TITLE_FONT,
-    fontSize: 7.5,
+    fontSize: 9.5,
     bold: true,
     color: palette.primary,
     align: "right",
@@ -96,7 +96,7 @@ function addFooter(slide: PptSlide, draft: PptSlideDraft, index: number, total: 
     w: 9.4,
     h: 0.14,
     fontFace: TITLE_FONT,
-    fontSize: 6.5,
+    fontSize: 8.5,
     color: palette.primary,
     margin: 0,
     breakLine: false,
@@ -110,7 +110,7 @@ function addHeader(slide: PptSlide, draft: PptSlideDraft, palette: PptPalette) {
     w: 5.8,
     h: 0.2,
     fontFace: TITLE_FONT,
-    fontSize: 8,
+    fontSize: 10,
     bold: true,
     charSpacing: 1.5,
     color: palette.accent,
@@ -156,13 +156,13 @@ function addCover(pptx: PptxGenJS, slide: PptSlide, draft: PptSlideDraft, palett
     fill: { color: palette.panel },
     line: { color: palette.panel },
   })
-  addText(slide, draft.kicker || "STUDYMATE STORY", {
+  addText(slide, draft.kicker || "因材智训 STORY", {
     x: 0.82,
     y: 1.35,
     w: 5.6,
     h: 0.24,
     fontFace: TITLE_FONT,
-    fontSize: 9,
+    fontSize: 10,
     bold: true,
     charSpacing: 2,
     color: palette.accent,
@@ -213,13 +213,13 @@ function addCover(pptx: PptxGenJS, slide: PptSlide, draft: PptSlideDraft, palett
     h: 0,
     line: { color: palette.accent, width: 3 },
   })
-  addText(slide, "STUDYMATE  ·  EDITABLE DECK", {
+  addText(slide, "因材智训  ·  EDITABLE DECK", {
     x: 0.84,
     y: 5.88,
     w: 4,
     h: 0.2,
     fontFace: TITLE_FONT,
-    fontSize: 7.5,
+    fontSize: 8.5,
     bold: true,
     charSpacing: 1.2,
     color: palette.primary,
@@ -333,7 +333,7 @@ function addContent(pptx: PptxGenJS, slide: PptSlide, draft: PptSlideDraft, pale
     w: 2.8,
     h: 0.24,
     fontFace: TITLE_FONT,
-    fontSize: 9,
+    fontSize: 10,
     bold: true,
     charSpacing: 1.4,
     color: palette.accent,
@@ -369,7 +369,7 @@ function addCase(pptx: PptxGenJS, slide: PptSlide, draft: PptSlideDraft, palette
     w: 3.1,
     h: 0.25,
     fontFace: TITLE_FONT,
-    fontSize: 9,
+    fontSize: 10,
     bold: true,
     charSpacing: 1.4,
     color: palette.accent,
@@ -586,7 +586,7 @@ function addSpotlight(pptx: PptxGenJS, slide: PptSlide, draft: PptSlideDraft, pa
     w: 5,
     h: 0.24,
     fontFace: TITLE_FONT,
-    fontSize: 9,
+    fontSize: 10,
     bold: true,
     charSpacing: 1.8,
     color: palette.accent,
@@ -688,7 +688,7 @@ function addChart(pptx: PptxGenJS, slide: PptSlide, draft: PptSlideDraft, palett
       w: barWidth,
       h: 0.35,
       fontFace: TITLE_FONT,
-      fontSize: 9,
+      fontSize: 10,
       color: palette.primary,
       align: "center",
       margin: 0,
@@ -709,7 +709,7 @@ function addChart(pptx: PptxGenJS, slide: PptSlide, draft: PptSlideDraft, palett
     w: 2.9,
     h: 0.25,
     fontFace: TITLE_FONT,
-    fontSize: 9,
+    fontSize: 10,
     bold: true,
     charSpacing: 1.2,
     color: palette.accent,
@@ -745,7 +745,7 @@ function addSummary(pptx: PptxGenJS, slide: PptSlide, draft: PptSlideDraft, pale
     w: 4.5,
     h: 0.24,
     fontFace: TITLE_FONT,
-    fontSize: 9,
+    fontSize: 10,
     bold: true,
     charSpacing: 1.6,
     color: palette.accent,
@@ -832,7 +832,7 @@ function addQa(pptx: PptxGenJS, slide: PptSlide, draft: PptSlideDraft, palette: 
     w: 4.8,
     h: 0.25,
     fontFace: TITLE_FONT,
-    fontSize: 9,
+    fontSize: 10,
     bold: true,
     charSpacing: 1.6,
     color: palette.accent,
@@ -889,10 +889,10 @@ export function populateEditableDeck(
 ) {
   const { palette, topic } = options
   pptx.layout = "LAYOUT_WIDE"
-  pptx.author = "StudyMate"
+  pptx.author = "因材智训"
   pptx.subject = topic
   pptx.title = topic
-  pptx.company = "StudyMate"
+  pptx.company = "因材智训"
   pptx.theme = {
     headFontFace: TITLE_FONT,
     bodyFontFace: TITLE_FONT,

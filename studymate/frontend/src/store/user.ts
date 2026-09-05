@@ -6,18 +6,53 @@
  *
  */
 import { useSyncExternalStore } from "react"
+import { careerDomains } from "@/lib/domainCareerCatalog"
+import { getTargetRoleSelection, setTargetRole } from "@/store/targetRole"
 
-export type UserRole = "student" | "judge" | "admin"
+export type UserRole = "student" | "worker" | "enterprise_admin" | "judge" | "admin"
 
 export interface CurrentUser {
   user_id: number
   name: string
   email?: string | null
   role: UserRole
+  learner_type?: "student" | "worker"
+  study_stage?: string
+  company?: string
+  target_role?: string
 }
 
 const STORAGE_KEY = "sm:current-user"
+const YCZX_EMAIL_SUFFIX = "@yczx.com"
+const FDE_ROLE_ID = "fde"
 export const USER_SESSION_RESET_EVENT = "studymate:user-session-reset"
+
+function clearYczxFdeClientState(user: CurrentUser | null): boolean {
+  if (!user?.email?.toLowerCase().endsWith(YCZX_EMAIL_SUFFIX) || typeof window === "undefined") return false
+  try {
+    localStorage.removeItem(`sm:role-capability-evidence:${user.user_id}:${FDE_ROLE_ID}`)
+    localStorage.removeItem(`sm:role-certificate:${user.user_id}:${FDE_ROLE_ID}`)
+    sessionStorage.removeItem("sm:workspace-state")
+  } catch {
+    /* local persistence is optional */
+  }
+  return true
+}
+const FIXED_FDE_EMAILS = new Set([
+  "sunjiayu@pramate.com", "baixinyue@pramate.com", "yuanshicong@pramate.com",
+  "chenzhuo@pramate.com", "lijiayi@pramate.com", "zhouxiang@pramate.com",
+  "tianyixin@pramate.com", "liufei@pramate.com", "test@pramate.com",
+])
+
+function normalizeUser(user: CurrentUser): CurrentUser {
+  if (!FIXED_FDE_EMAILS.has((user.email || "").toLowerCase())) return user
+  return {
+    ...user,
+    learner_type: "worker",
+    company: "河南本线商贸有限公司",
+    target_role: "前线部署工程师（FDE）",
+  }
+}
 
 function loadFromStorage(): CurrentUser | null {
   try {
@@ -25,8 +60,12 @@ function loadFromStorage(): CurrentUser | null {
     if (!raw) return null
     const parsed = JSON.parse(raw) as CurrentUser
     if (typeof parsed.user_id !== "number" || !parsed.name) return null
-    const role: UserRole = parsed.role === "admin" || parsed.role === "judge" ? parsed.role : "student"
-    return { ...parsed, role }
+    const role: UserRole = ["admin", "judge", "enterprise_admin", "worker"].includes(parsed.role) ? parsed.role : "student"
+    const current = normalizeUser({ ...parsed, role })
+    if (clearYczxFdeClientState(current)) {
+      window.dispatchEvent(new Event(USER_SESSION_RESET_EVENT))
+    }
+    return current
   } catch {
     return null
   }
@@ -44,18 +83,19 @@ class UserStore {
 
   set(u: CurrentUser | null) {
     const previousUserId = this.current?.user_id ?? null
-    this.current = u
+    this.current = u ? normalizeUser(u) : null
+    const resetYczxFdeState = clearYczxFdeClientState(this.current)
     if (u && typeof window !== "undefined") {
       window.dispatchEvent(new Event("studymate:event-tracking-resume"))
     }
     try {
-      if (u) localStorage.setItem(STORAGE_KEY, JSON.stringify(u))
+      if (this.current) localStorage.setItem(STORAGE_KEY, JSON.stringify(this.current))
       else localStorage.removeItem(STORAGE_KEY)
     } catch {
       /* ignore */
     }
     this.listeners.forEach((fn) => fn())
-    if (previousUserId !== null && previousUserId !== u?.user_id && typeof window !== "undefined") {
+    if ((resetYczxFdeState || (previousUserId !== null && previousUserId !== u?.user_id)) && typeof window !== "undefined") {
       window.dispatchEvent(new Event(USER_SESSION_RESET_EVENT))
     }
   }
@@ -80,6 +120,17 @@ export function useCurrentUser(): CurrentUser | null {
 
 export function setCurrentUser(u: CurrentUser | null) {
   userStore.set(u)
+  // 固定演示账号的目标岗位来自数据库；新浏览器登录后应立即恢复，
+  // 不能要求用户再手动选择一次才看见测验、面试和能力画像数据。
+  if (u?.target_role && !getTargetRoleSelection()) {
+    for (const domain of careerDomains) {
+      const role = domain.roles.find((item) => item.name === u.target_role)
+      if (role) {
+        setTargetRole({ domainId: domain.id, roleId: role.id })
+        break
+      }
+    }
+  }
 }
 
 export function logoutUser() {

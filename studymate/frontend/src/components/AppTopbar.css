@@ -1,0 +1,139 @@
+.app-topbar-symbol {
+  position: relative;
+  isolation: isolate;
+}
+
+.app-shell-content > .paper-theme.app-page .app-topbar {
+  min-height: 60px;
+  padding-right: 4px !important;
+  padding-left: 4px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.app-shell-content > .paper-theme.app-page .app-topbar::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(44,115,157,.38), rgba(89,185,221,.18) 55%, transparent);
+}
+
+.app-topbar-copy {
+  position: relative;
+  z-index: 1;
+}
+
+.app-topbar-symbol-fallback {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--app-topbar-icon-accent) 38%, white);
+  border-radius: 14px 14px 14px 5px;
+  color: var(--app-topbar-icon-accent);
+  background:
+    radial-gradient(circle at 72% 22%, rgba(255,255,255,.96) 0 8%, transparent 9%),
+    linear-gradient(145deg, rgba(255,255,255,.92), var(--app-topbar-icon-soft));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.94), 0 8px 18px color-mix(in srgb, var(--app-topbar-icon-accent) 18%, transparent);
+}
+
+.app-topbar-symbol-fallback::before {
+  position: absolute;
+  z-index: -1;
+  inset: 6px;
+  border: 1px solid color-mix(in srgb, var(--app-topbar-icon-accent) 24%, transparent);
+  border-radius: 9px 9px 9px 3px;
+  content: "";
+  transform: rotate(45deg) scale(.72);
+}
+
+.app-topbar-symbol-fallback::after {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 5px;
+  height: 5px;
+  border: 1px solid rgba(255,255,255,.9);
+  border-radius: 50%;
+  content: "";
+  background: var(--app-topbar-icon-accent);
+  box-shadow: 0 0 8px var(--app-topbar-icon-accent);
+}
+
+.app-topbar-symbol-fallback > svg {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--app-topbar-icon-accent) 20%, transparent));
+}
+
+.app-topbar-symbol[data-page-icon="report"],
+.app-topbar-symbol[data-page-icon="learnerReport"],
+.app-topbar-symbol[data-page-icon="capabilityProfile"] {
+  border-radius: 50%;
+}
+
+.app-topbar-symbol[data-page-icon="honor"],
+.app-topbar-symbol[data-page-icon="tests"] {
+  border-radius: 12px 4px 12px 4px;
+}
+
+.app-topbar-real-icon {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-topbar-role-context {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.app-topbar-role-context:focus-visible {
+  outline: 2px solid #4e91ba;
+  outline-offset: 2px;
+}
+
+@media (max-width: 639px) {
+  .app-shell-content > .paper-theme.app-page .app-topbar {
+    min-height: 78px;
+    align-content: center;
+    flex-wrap: wrap;
+    padding-right: 4px !important;
+    padding-left: 48px !important;
+    column-gap: 10px;
+    row-gap: 3px;
+  }
+
+  .app-shell-content > .paper-theme.app-page .app-topbar > .app-topbar-symbol {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+  }
+
+  .app-shell-content > .paper-theme.app-page .app-topbar > .app-topbar-real-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .app-shell-content > .paper-theme.app-page .app-topbar > .app-topbar-copy {
+    flex-basis: calc(100% - 46px);
+  }
+
+  .app-shell-content > .paper-theme.app-page .app-topbar > .app-topbar-role-context {
+    width: auto;
+    max-width: calc(100% - 46px);
+    height: 26px;
+    margin-left: 46px;
+    padding-right: 9px;
+    padding-left: 9px;
+    border-radius: 9px;
+    font-size: 10px;
+  }
+}

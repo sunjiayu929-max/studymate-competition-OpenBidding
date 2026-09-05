@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -12,6 +13,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.agents.quiz_agent import _grounded_mock_fill
 from app.api.theory_assessments import (
     _answer_is_correct,
+    _assessment_is_current,
+    _assessment_missing_fields,
     _knowledge_level,
     _prepare_assessment,
     _profile_score,
@@ -59,9 +62,34 @@ class TheoryAssessmentUnitTests(unittest.TestCase):
         dims.pace.hours_per_week = 8
         self.assertEqual(_profile_score(dims, 2), 80)
 
+    def test_assessment_gate_only_requires_diagnostic_profile_dimensions(self):
+        dims = ProfileDims()
+        dims.learner_background.education = "计算机专业本科"
+        dims.pace.hours_per_week = 8
+        dims.profile_coverage.knowledge_base = True
+
+        self.assertEqual(_assessment_missing_fields(dims, "前线部署工程师（FDE）"), [])
+
+    def test_submitted_assessment_must_still_exist_in_current_profile_evidence(self):
+        assessment = TheoryAssessment(id=7, role_id="fde", status="submitted")
+        dims = ProfileDims()
+        self.assertFalse(_assessment_is_current(assessment, dims))
+
+        dims = ProfileDims.model_validate({"theory_assessments": {"fde": {
+            "assessment_id": 7,
+            "role_id": "fde",
+            "role_name": "前线部署工程师（FDE）",
+            "score": 80,
+            "knowledge_level": "进阶",
+            "completed_at": "2026-08-26T09:00:00",
+        }}})
+        self.assertTrue(_assessment_is_current(assessment, dims))
+
     def test_answers_and_level_boundaries(self):
         self.assertTrue(_answer_is_correct("2", 2))
         self.assertFalse(_answer_is_correct(None, 0))
+        self.assertTrue(_answer_is_correct(" 交付验证 ", "交付验证/验收验证", "fill"))
+        self.assertFalse(_answer_is_correct("系统集成", "交付验证/验收验证", "fill"))
         self.assertEqual([_knowledge_level(value) for value in (39, 40, 59, 60, 79, 80)], [
             "入门", "基础", "基础", "应用", "应用", "进阶",
         ])
@@ -180,11 +208,7 @@ class TheoryAssessmentPersistenceTests(unittest.IsolatedAsyncioTestCase):
                 dims.goals.target_topics = ["交付验证"]
                 dims.pace.hours_per_week = 8
                 dims.learner_background.education = "计算机专业本科"
-                dims.learner_background.practice_status = "none"
                 dims.profile_coverage.knowledge_base = True
-                dims.profile_coverage.cognitive_style = True
-                dims.profile_coverage.resource_preference = True
-                dims.profile_coverage.employment_skills = True
                 db.add_all([user, Profile(user_id=32, dims=dims.model_dump(), version=2)])
                 await db.commit()
                 materials = [{"content": "上线前必须核验回滚策略和验收口径。", "source": "FDE 岗位知识库"}]
@@ -208,6 +232,11 @@ class TheoryAssessmentPersistenceTests(unittest.IsolatedAsyncioTestCase):
             await engine.dispose()
             self.assertEqual(response["status"], "ready")
             self.assertEqual(len(response["items"]), 8)
+            self.assertEqual(Counter(item["type"] for item in response["items"]), {
+                "mcq": 6,
+                "fill": 2,
+            })
+            self.assertGreaterEqual(len({item["difficulty"] for item in response["items"]}), 2)
             self.assertTrue(all(item["source"] == "FDE 岗位知识库" for item in response["items"]))
 
     async def test_background_preparation_is_persisted_and_idempotent(self):

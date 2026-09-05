@@ -5,7 +5,6 @@
  * 填充、讲完自动下一段，配讯飞 TTS 语音 —— 像看一节录播微课。
  *   - 不逐字打字（那像 AI 生成文字）；每个要点整块淡入 + 粉笔下划线划出。
  *   - 视频播放器式控制条：播放/暂停 + 章节进度条(可点跳) + 第几讲 + 重播 + 静音 + 全屏。
- *   - 右下角预留「数字人老师」画中画位：接入讯飞虚拟人后把视频流塞进 TeacherSlot 即可。
  *   - 纯文字驱动 → 任意概念都能讲，确定性渲染、当场必出；无 TTS 自动退回静音定时连播。
  */
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -170,9 +169,6 @@ export function BlackboardAnim({ script }: { script: ConceptScript }) {
           </ol>
         </div>
 
-        {/* 右下角数字人老师占位（接入讯飞虚拟人后替换为视频流） */}
-        <TeacherSlot speaking={started && playing && !muted} />
-
         {/* 起播封面 */}
         <AnimatePresence>
           {!started && (
@@ -283,22 +279,5 @@ export function BlackboardAnim({ script }: { script: ConceptScript }) {
         </div>
       )}
     </>
-  )
-}
-
-/** 右下角「数字人老师」画中画位 —— 接入讯飞虚拟人后把这里换成视频流/canvas */
-function TeacherSlot({ speaking }: { speaking: boolean }) {
-  return (
-    <div className="absolute bottom-4 right-4 w-[88px] sm:w-[104px]">
-      <div className="relative rounded-lg overflow-hidden border border-white/25 bg-gradient-to-b from-[#16302a] to-[#0a1f19] aspect-[3/4] shadow-lg flex flex-col items-center justify-center gap-1">
-        {/* 占位粉笔老师剪影 */}
-        <div className={`size-9 rounded-full bg-[#f2efe6]/85 flex items-center justify-center text-emerald-900 ${speaking ? "animate-pulse" : ""}`}>
-          <GraduationCap className="size-5" />
-        </div>
-        <span className="text-[9px] text-white/70 leading-tight text-center px-1">数字人老师</span>
-        <span className="text-[8px] text-amber-300/80 leading-tight text-center px-1">讯飞虚拟人·待接入</span>
-        {speaking && <span className="absolute top-1 right-1 size-1.5 rounded-full bg-emerald-400 animate-pulse" />}
-      </div>
-    </div>
   )
 }

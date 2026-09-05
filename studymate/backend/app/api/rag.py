@@ -90,35 +90,56 @@ def _source_context_item(row: KnowledgeChunk, current_id: int) -> dict:
 
 
 @router.get("/chunks/{chunk_id}")
-async def get_source_chunk(chunk_id: int, db: AsyncSession = Depends(get_db)):
+async def get_source_chunk(chunk_id: str, db: AsyncSession = Depends(get_db)):
     """返回命中片段及同一岗位资料的相邻上下文，供“查看原文”页定位。"""
-    row = await db.get(KnowledgeChunk, chunk_id)
+    # Imported catalogues expose their deterministic chroma_id to the UI.
+    # Fall back to the legacy numeric primary key for old search history.
+    row = (
+        await db.scalars(
+            select(KnowledgeChunk).where(KnowledgeChunk.chroma_id == chunk_id)
+        )
+    ).first()
+    if row is None and chunk_id.isdigit():
+        row = await db.get(KnowledgeChunk, int(chunk_id))
     if row is None:
         raise HTTPException(status_code=404, detail="原文片段不存在")
 
     course = await db.get(Course, row.course_id)
+    # 范冰 FDE 指南是本项目的重点可演示资料：按该指南的稳定目录顺序
+    # 提供更多相邻段落；其他来源继续严格限制在同一个出处内。
+    is_fanbing_fde = (row.chroma_id or "").startswith("fde-v1:")
+    context_scope = [KnowledgeChunk.course_id == row.course_id]
+    if is_fanbing_fde:
+        context_scope.append(KnowledgeChunk.chroma_id.like("fde-v1:%"))
+        context_limit = 6
+    else:
+        material_path = str((row.meta or {}).get("material_path") or "").strip()
+        if material_path:
+            context_scope.append(KnowledgeChunk.meta["material_path"].as_string() == material_path)
+        else:
+            context_scope.append(KnowledgeChunk.source == row.source)
+        context_limit = 4
+
     before = (
         await db.scalars(
             select(KnowledgeChunk)
             .where(
-                KnowledgeChunk.course_id == row.course_id,
-                KnowledgeChunk.source == row.source,
+                *context_scope,
                 KnowledgeChunk.id < row.id,
             )
             .order_by(KnowledgeChunk.id.desc())
-            .limit(2)
+            .limit(context_limit)
         )
     ).all()
     after = (
         await db.scalars(
             select(KnowledgeChunk)
             .where(
-                KnowledgeChunk.course_id == row.course_id,
-                KnowledgeChunk.source == row.source,
+                *context_scope,
                 KnowledgeChunk.id > row.id,
             )
             .order_by(KnowledgeChunk.id.asc())
-            .limit(2)
+            .limit(context_limit)
         )
     ).all()
     context_rows = [*reversed(before), row, *after]

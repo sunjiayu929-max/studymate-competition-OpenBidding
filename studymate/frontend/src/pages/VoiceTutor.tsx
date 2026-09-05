@@ -671,7 +671,7 @@ export function VoiceTutor() {
           </Button>
           <div className="flex min-w-0 items-center gap-2 text-sm">
             <span className="grid size-8 place-items-center rounded-xl bg-[#E7EDF3] text-[#315E83]"><Mic2 className="size-4" /></span>
-            <span className="hidden font-bold text-[#18232D] min-[390px]:inline">StudyMate 实时语音</span>
+            <span className="hidden font-bold text-[#18232D] min-[390px]:inline">因材智训实时语音</span>
             <span className="hidden text-xs text-[var(--muted-foreground)] md:inline">·</span>
             <span className="hidden max-w-32 truncate text-xs text-[var(--muted-foreground)] md:inline">{courseLabel}</span>
           </div>
