@@ -5,6 +5,9 @@ import { JudgeTour } from "@/components/JudgeTour"
 import { JudgeDemoMode } from "@/components/JudgeDemoMode"
 import { SiteFiling } from "@/components/SiteFiling"
 import { AppShell } from "@/components/AppShell"
+import { apiGet } from "@/lib/api"
+import { setCurrentCourse, useCurrentCourse, type CourseInfo } from "@/store/course"
+import { useTargetRole } from "@/store/targetRole"
 import { useCurrentUser } from "@/store/user"
 
 // 页面按路由拆包：首屏只下载当前页面，图表、PDF、编辑器等重依赖不再一次性阻塞启动。
@@ -14,8 +17,9 @@ const RagDemo = lazy(() => import("@/pages/RagDemo").then((m) => ({ default: m.R
 const RagSource = lazy(() => import("@/pages/RagSource").then((m) => ({ default: m.RagSource })))
 const WorkspaceDetail = lazy(() => import("@/pages/WorkspaceDetail").then((m) => ({ default: m.WorkspaceDetail })))
 const TutorChat = lazy(() => import("@/pages/TutorChat").then((m) => ({ default: m.TutorChat })))
-const VoiceTutor = lazy(() => import("@/pages/VoiceTutor").then((m) => ({ default: m.VoiceTutor })))
 const Report = lazy(() => import("@/pages/Report").then((m) => ({ default: m.Report })))
+const LearnerMatchReportPage = lazy(() => import("@/pages/LearnerMatchReportPage").then((m) => ({ default: m.LearnerMatchReportPage })))
+const RoleCapabilityProfilePage = lazy(() => import("@/pages/RoleCapabilityProfilePage").then((m) => ({ default: m.RoleCapabilityProfilePage })))
 const Tests = lazy(() => import("@/pages/Tests").then((m) => ({ default: m.Tests })))
 const Courses = lazy(() => import("@/pages/Courses").then((m) => ({ default: m.Courses })))
 const Notes = lazy(() => import("@/pages/Notes").then((m) => ({ default: m.Notes })))
@@ -30,32 +34,53 @@ const PptGenerator = lazy(() => import("@/pages/PptGenerator").then((m) => ({ de
 const LearningResources = lazy(() => import("@/pages/LearningResources").then((m) => ({ default: m.LearningResources })))
 const CareerExplorer = lazy(() => import("@/pages/CareerExplorer").then((m) => ({ default: m.CareerExplorer })))
 const CompetencyTraining = lazy(() => import("@/pages/CompetencyTraining").then((m) => ({ default: m.CompetencyTraining })))
+const HonorWall = lazy(() => import("@/pages/HonorWall").then((m) => ({ default: m.HonorWall })))
+const AIInterview = lazy(() => import("@/pages/AIInterview").then((m) => ({ default: m.AIInterview })))
+const OjCenter = lazy(() => import("@/pages/OjCenter").then((m) => ({ default: m.OjCenter })))
+const EnterpriseHub = lazy(() => import("@/pages/EnterpriseHub").then((m) => ({ default: m.EnterpriseHub })))
+const EnterpriseDashboard = lazy(() => import("@/pages/EnterpriseDashboard").then((m) => ({ default: m.EnterpriseDashboard })))
+const EnterpriseTaskRead = lazy(() => import("@/pages/EnterpriseTaskRead").then((m) => ({ default: m.EnterpriseTaskRead })))
+const AdminDashboard = lazy(() => import("@/pages/AdminDashboard").then((m) => ({ default: m.AdminDashboard })))
 const Login = lazy(() => import("@/pages/Login").then((m) => ({ default: m.Login })))
 const NotFound = lazy(() => import("@/pages/NotFound").then((m) => ({ default: m.NotFound })))
 const TutorBubble = lazy(() => import("@/components/TutorBubble").then((m) => ({ default: m.TutorBubble })))
 
 // 登录、助教自身、沉浸工具与高密度数据页不叠加悬浮人物，避免遮挡关键控件和数据卡。
-const BUBBLE_HIDDEN_PATHS = ["/login", "/tutor", "/tutor/voice", "/concept", "/ppt", "/report", "/tests", "/competency"]
+const BUBBLE_HIDDEN_PATHS = ["/login", "/tutor", "/concept", "/ppt", "/report", "/learner-report", "/capability-profile", "/tests"]
 
 function ScrollToTop() {
-  const { pathname } = useLocation()
+  const { pathname, hash } = useLocation()
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" })
-  }, [pathname])
+    const scrollToDestination = () => {
+      if (hash) {
+        document.getElementById(hash.slice(1))?.scrollIntoView({ block: "start", behavior: "auto" })
+        return
+      }
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" })
+    }
+    const frame = window.requestAnimationFrame(scrollToDestination)
+    const timeout = window.setTimeout(scrollToDestination, 100)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(timeout)
+    }
+  }, [pathname, hash])
   return null
 }
 
 function GlobalTutorBubble() {
   const location = useLocation()
   const user = useCurrentUser()
-  const [homeUniverseVisible, setHomeUniverseVisible] = useState(location.pathname === "/")
+  const [homeUniverseVisible, setHomeUniverseVisible] = useState(false)
 
   useEffect(() => {
     if (location.pathname !== "/") {
       setHomeUniverseVisible(false)
       return
     }
-    setHomeUniverseVisible(true)
+    // The immersive home universe was removed; keep the floating tutor visible
+    // on the normal home page unless another view explicitly hides it.
+    setHomeUniverseVisible(false)
     const onVisibility = (event: Event) => {
       setHomeUniverseVisible(Boolean((event as CustomEvent<{ visible?: boolean }>).detail?.visible))
     }
@@ -72,9 +97,30 @@ function GlobalTutorBubble() {
 }
 
 function GlobalSiteFiling() {
-  const { pathname } = useLocation()
-  if (pathname === "/tutor/voice") return null
   return <SiteFiling />
+}
+
+function RestoreRoleCourse() {
+  const user = useCurrentUser()
+  const targetRole = useTargetRole()
+  const currentCourse = useCurrentCourse()
+
+  useEffect(() => {
+    if (!user || !targetRole || currentCourse?.name === targetRole.courseName) return
+    let cancelled = false
+    apiGet<{ items: CourseInfo[] }>("/courses")
+      .then(({ items }) => {
+        if (cancelled) return
+        const matched = items.find((item) => item.name === targetRole.courseName && (item.chunk_count ?? 0) > 0)
+        if (matched) setCurrentCourse(matched)
+      })
+      .catch(() => {
+        // 岗位仍保留；知识库接口恢复后会在下一次登录或切换岗位时再次同步。
+      })
+    return () => { cancelled = true }
+  }, [currentCourse?.name, targetRole, user])
+
+  return null
 }
 
 function RootEntry() {
@@ -83,31 +129,57 @@ function RootEntry() {
     if (!user) window.location.replace("/landing/index.html")
   }, [user])
   if (!user) return null
+  if (user.role === "admin") return <Navigate to="/admin" replace />
+  if (user.role === "enterprise_admin") return <Navigate to="/enterprise/dashboard" replace />
   return <AppShell><Home /></AppShell>
+}
+
+function SystemAdminEntry() {
+  const user = useCurrentUser()
+  if (!user) return <RequireAuth><div /></RequireAuth>
+  if (user.role !== "admin") return <Navigate to="/" replace />
+  return <AppShell><AdminDashboard /></AppShell>
 }
 
 function ProtectedPage({ children }: { children: ReactNode }) {
   return <RequireAuth><AppShell>{children}</AppShell></RequireAuth>
 }
 
+function EnterpriseDashboardEntry() {
+  const user = useCurrentUser()
+  if (!user) return <RequireAuth><div /></RequireAuth>
+  if (user.role !== "enterprise_admin") {
+    return <Navigate to="/enterprise" replace />
+  }
+  return <AppShell><EnterpriseDashboard /></AppShell>
+}
+
+function LearnerTaskReadEntry() {
+  const user = useCurrentUser()
+  if (!user) return <RequireAuth><div /></RequireAuth>
+  if (user.role === "admin") return <Navigate to="/admin" replace />
+  if (user.role === "enterprise_admin") return <Navigate to="/enterprise" replace />
+  return <ProtectedPage><EnterpriseTaskRead /></ProtectedPage>
+}
+
 function RouteFallback() {
   return (
-    <div className="app-page paper-theme grid min-h-dvh place-items-center px-5">
-      <div className="w-full max-w-sm rounded-[24px] border border-[#D7D1C4] bg-[#FFFEFA] p-6 shadow-[0_18px_45px_rgba(24,35,45,.08)]">
+    <div className="app-page route-fallback-studio grid min-h-dvh place-items-center px-5">
+      <div className="route-fallback-panel w-full max-w-sm rounded-[24px] border p-6">
         <div className="flex items-center gap-3">
-          <span className="relative grid size-11 place-items-center rounded-2xl bg-[#244C66] text-[#F0D6A4]">
-            <span className="absolute inset-0 animate-ping rounded-2xl bg-[#244C66] opacity-15" />
+          <span className="route-fallback-mark relative grid size-11 place-items-center rounded-2xl text-[#EAF9FF]">
+            <span className="absolute inset-0 animate-ping rounded-2xl bg-[#2B86AE] opacity-20" />
             <span className="relative text-lg">✦</span>
           </span>
           <div className="flex-1">
-            <div className="h-3 w-28 animate-pulse rounded-full bg-[#D7D1C4]" />
-            <div className="mt-2 h-2 w-44 max-w-full animate-pulse rounded-full bg-[#ECE8DE]" />
+            <div className="h-3 w-28 animate-pulse rounded-full bg-[#9FC8DC]" />
+            <div className="mt-2 h-2 w-44 max-w-full animate-pulse rounded-full bg-[#D4EAF3]" />
           </div>
         </div>
-        <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[#ECE8DE]">
-          <div className="h-full w-2/3 animate-pulse rounded-full bg-[#6F8A69]" />
+        <div className="route-fallback-progress mt-5 h-1.5 overflow-hidden rounded-full">
+          <div className="route-fallback-progress-value h-full w-2/3 animate-pulse rounded-full" />
         </div>
-        <p className="mt-3 text-center text-[11px] font-medium text-[#66717B]">正在打开你的学习空间…</p>
+        <p className="mt-3 text-center text-[11px] font-medium text-[#52758B]">正在打开你的学习空间…</p>
       </div>
     </div>
   )
@@ -126,9 +198,9 @@ class RouteErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
       <div className="app-page paper-theme grid min-h-dvh place-items-center px-5">
         <section role="alert" className="w-full max-w-lg rounded-[28px] border border-[#DFC8BE] bg-[#FFFEFA] p-6 text-center shadow-[0_18px_48px_rgba(24,35,45,.09)] sm:p-8">
           <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#DFC8BE] bg-[#F4E8E2] text-xl text-[#9A4E35]">!</span>
-          <p className="mt-4 text-[10px] font-bold tracking-[0.12em] text-[#9A4E35]">页面资源加载中断</p>
-          <h1 className="mt-1 text-xl font-bold tracking-[-0.03em] text-[#18232D]">当前学习记录仍然安全</h1>
-          <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#66717B]">可能是网络短暂波动或页面资源更新。重新加载即可继续，工作台生成结果与答题证据不会被清空。</p>
+          <p className="mt-4 text-[10px] font-bold tracking-[0.12em] text-[#9A4E35]">加载失败</p>
+          <h1 className="mt-1 text-xl font-bold tracking-[-0.03em] text-[#18232D]">页面暂时无法打开</h1>
+          <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#66717B]">可能是网络波动。学习记录不会丢失，请重新加载。</p>
           <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
             <button type="button" onClick={() => window.location.reload()} className="inline-flex h-10 items-center justify-center rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] hover:bg-[#193B50]">重新加载当前页面</button>
             <button type="button" onClick={() => { window.location.href = "/" }} className="inline-flex h-10 items-center justify-center rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-5 text-xs font-bold text-[#59636B] hover:bg-[#F1EDE4]">返回学习首页</button>
@@ -143,11 +215,13 @@ export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <RestoreRoleCourse />
       <RouteErrorBoundary>
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<RootEntry />} />
+          <Route path="/admin" element={<SystemAdminEntry />} />
           <Route path="/profile" element={<ProtectedPage><ProfileChat /></ProtectedPage>} />
           <Route path="/rag" element={<ProtectedPage><RagDemo /></ProtectedPage>} />
           <Route path="/rag/source/:chunkId" element={<ProtectedPage><RagSource /></ProtectedPage>} />
@@ -156,10 +230,21 @@ export default function App() {
           <Route path="/resources" element={<ProtectedPage><LearningResources /></ProtectedPage>} />
           <Route path="/career" element={<ProtectedPage><CareerExplorer /></ProtectedPage>} />
           <Route path="/competency" element={<ProtectedPage><CompetencyTraining /></ProtectedPage>} />
+          <Route path="/honors" element={<ProtectedPage><HonorWall /></ProtectedPage>} />
+          <Route path="/learner-report" element={<ProtectedPage><LearnerMatchReportPage /></ProtectedPage>} />
+          <Route path="/capability-profile" element={<ProtectedPage><RoleCapabilityProfilePage /></ProtectedPage>} />
+          <Route path="/competency/resources" element={<Navigate to="/competency" replace />} />
+          <Route path="/competency/audit" element={<Navigate to="/competency" replace />} />
+          <Route path="/competency/report" element={<Navigate to="/learner-report" replace />} />
+          <Route path="/ai-interview" element={<ProtectedPage><AIInterview /></ProtectedPage>} />
+          <Route path="/oj-center" element={<ProtectedPage><OjCenter /></ProtectedPage>} />
+          <Route path="/enterprise" element={<ProtectedPage><EnterpriseHub /></ProtectedPage>} />
+          <Route path="/enterprise/dashboard" element={<EnterpriseDashboardEntry />} />
+          <Route path="/enterprise/tasks/:taskId/read" element={<LearnerTaskReadEntry />} />
           <Route path="/workspace" element={<Navigate to="/competency" replace />} />
           <Route path="/workspace/r/:agentId" element={<ProtectedPage><WorkspaceDetail /></ProtectedPage>} />
           <Route path="/tutor" element={<ProtectedPage><TutorChat /></ProtectedPage>} />
-          <Route path="/tutor/voice" element={<ProtectedPage><VoiceTutor /></ProtectedPage>} />
+          <Route path="/tutor/voice" element={<Navigate to="/tutor" replace />} />
           <Route path="/report" element={<ProtectedPage><Report /></ProtectedPage>} />
           <Route path="/courses" element={<ProtectedPage><Courses /></ProtectedPage>} />
           <Route path="/notes" element={<ProtectedPage><Notes /></ProtectedPage>} />

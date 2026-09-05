@@ -1,18 +1,35 @@
-/**
- * 反馈中心 `/feedback` —— 挑战杯硬指标可视化：
- * - 顶部 4 张统计卡：事件总数 / 近 24h 活跃用户 / 平均停留 / 反馈数
- * - 行为分布柱状图（近 24h 按 action）
- * - 用户反馈列表（rating 颜色 + comment + target + 时间）
- */
-import { lazy, Suspense, useCallback, useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { forwardRef, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Activity, Users, Clock, MessageSquare, ThumbsUp, ThumbsDown, Loader2, RefreshCw, BarChart3, ArrowLeft, Send, ShieldCheck, AlertTriangle, CheckCircle2, Trash2, X } from "lucide-react"
+import {
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  BookOpenText,
+  CheckCircle2,
+  ClipboardCheck,
+  FileText,
+  Inbox,
+  LayoutPanelTop,
+  Library,
+  Loader2,
+  MessageSquare,
+  RefreshCw,
+  Send,
+  ShieldCheck,
+  ThumbsDown,
+  ThumbsUp,
+  Trash2,
+  Users,
+  Workflow,
+  X,
+  type LucideIcon,
+} from "lucide-react"
 import { AppTopbar } from "@/components/AppTopbar"
 import { Button } from "@/components/ui/button"
-import { apiGet, apiDelete, apiPost } from "@/lib/api"
+import { apiDelete, apiGet, apiPost } from "@/lib/api"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { isPrivilegedRole, useCurrentUser } from "@/store/user"
+import "./FeedbackCenter.css"
 
 const FeedbackActivityChart = lazy(() =>
   import("@/components/FeedbackActivityChart").then((module) => ({ default: module.FeedbackActivityChart })),
@@ -36,6 +53,15 @@ interface FeedbackStats {
   satisfaction: number | null
 }
 
+interface FeedbackReply {
+  id: number
+  content: string
+  author_id: number
+  author_name: string
+  author_role: "admin"
+  created_at: string | null
+}
+
 interface FeedbackItem {
   id: number
   user_id: number
@@ -46,391 +72,580 @@ interface FeedbackItem {
   comment: string
   created_at: string | null
   replies?: FeedbackReply[]
+  _action?: "created" | "updated"
 }
 
-interface FeedbackReply {
-  id: number
-  content: string
-  author_id: number
-  author_name: string
-  author_role: "admin"
-  created_at: string | null
-}
+const FEEDBACK_TYPES: { value: string; label: string; hint: string; icon: LucideIcon }[] = [
+  { value: "page", label: "页面体验", hint: "布局与操作", icon: LayoutPanelTop },
+  { value: "resource", label: "资料内容", hint: "质量与实用性", icon: BookOpenText },
+  { value: "quiz", label: "测评题目", hint: "难度与解析", icon: ClipboardCheck },
+  { value: "topic", label: "训练流程", hint: "步骤与验收", icon: Workflow },
+  { value: "course", label: "知识库内容", hint: "覆盖与准确性", icon: Library },
+]
 
 const TARGET_LABEL: Record<string, string> = {
-  page: "页面",
+  page: "页面体验",
   resource: "学习资源",
-  quiz: "测验",
-  topic: "岗位训练任务",
+  quiz: "测验内容",
+  topic: "训练任务",
   course: "岗位知识库",
   bilibili_video: "视频资源",
   bilibili_search: "视频搜索",
 }
 
-function fmtTime(iso: string | null): string {
-  if (!iso) return ""
-  const d = new Date(iso)
-  return d.toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+const ACTION_LABEL: Record<string, string> = {
+  page_enter: "进入页面",
+  page_leave: "完成页面浏览",
+  workspace_start: "启动岗位训练",
+  workspace_stop: "结束岗位训练",
+  quiz_answer: "提交测验答案",
+  external_resource_open: "打开外部资源",
 }
+
+const formatTime = (iso: string | null) => iso
+  ? new Date(iso).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+  : ""
+
+const hasReply = (item: FeedbackItem) => (item.replies?.length ?? 0) > 0
 
 export function FeedbackCenter() {
   useTrackPage("feedback")
   const user = useCurrentUser()
   const canReview = isPrivilegedRole(user?.role)
   const canManage = user?.role === "admin"
-  const [evStats, setEvStats] = useState<EventStats | null>(null)
-  const [, setFbStats] = useState<FeedbackStats | null>(null)
+  const [eventStats, setEventStats] = useState<EventStats | null>(null)
+  const [feedbackStats, setFeedbackStats] = useState<FeedbackStats | null>(null)
   const [feedback, setFeedback] = useState<FeedbackItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [err, setErr] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [evidenceError, setEvidenceError] = useState<string | null>(null)
+  const [composeError, setComposeError] = useState<string | null>(null)
   const [notice, setNotice] = useState("")
   const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({})
+  const [replyErrors, setReplyErrors] = useState<Record<number, string>>({})
   const [replyingId, setReplyingId] = useState<number | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<FeedbackItem | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [draftType, setDraftType] = useState("page")
+  const [draftTarget, setDraftTarget] = useState("反馈中心")
+  const [draftRating, setDraftRating] = useState<1 | -1>(1)
+  const [draftComment, setDraftComment] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const [justSubmittedId, setJustSubmittedId] = useState<number | null>(null)
+  const latestCardRef = useRef<HTMLElement | null>(null)
+  const refreshButtonRef = useRef<HTMLButtonElement | null>(null)
+  const deleteDialogRef = useRef<HTMLElement | null>(null)
+  const deleteCancelRef = useRef<HTMLButtonElement | null>(null)
+  const deleteTriggerRef = useRef<HTMLButtonElement | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
-    setErr(null)
+    setLoadError(null)
+    setEvidenceError(null)
     try {
-      const flPromise = apiGet<{ count: number; items: FeedbackItem[] }>("/feedback?limit=50")
+      const list = await apiGet<{ count: number; items: FeedbackItem[] }>("/feedback?limit=50")
+      setFeedback(list.items)
       if (canReview) {
-        const [ev, fs, fl] = await Promise.all([
-          apiGet<EventStats>("/events/stats?hours=24"),
-          apiGet<FeedbackStats>("/feedback/stats"),
-          flPromise,
-        ])
-        setEvStats(ev)
-        setFbStats(fs)
-        setFeedback(fl.items)
+        try {
+          const [events, stats] = await Promise.all([
+            apiGet<EventStats>("/events/stats?hours=24"),
+            apiGet<FeedbackStats>("/feedback/stats"),
+          ])
+          setEventStats(events)
+          setFeedbackStats(stats)
+        } catch (error) {
+          setEventStats(null)
+          setFeedbackStats(null)
+          setEvidenceError(String(error))
+        }
       } else {
-        const fl = await flPromise
-        setEvStats(null)
-        setFbStats(null)
-        setFeedback(fl.items)
+        setEventStats(null)
+        setFeedbackStats(null)
       }
-    } catch (e) {
-      setErr(String(e))
+    } catch (error) {
+      setLoadError(String(error))
     } finally {
       setLoading(false)
     }
   }, [canReview])
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => void load())
-    return () => window.cancelAnimationFrame(frame)
+    const frame = requestAnimationFrame(() => void load())
+    return () => cancelAnimationFrame(frame)
   }, [load])
 
   useEffect(() => {
     if (!deleteTarget) return
+    const frame = requestAnimationFrame(() => deleteCancelRef.current?.focus())
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !deleting) setDeleteTarget(null)
+      if (event.key === "Escape" && !deleting) {
+        event.preventDefault()
+        setDeleteTarget(null)
+        requestAnimationFrame(() => deleteTriggerRef.current?.focus())
+        return
+      }
+      if (event.key !== "Tab") return
+      const controls = deleteDialogRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )
+      if (!controls?.length) return
+      const first = controls[0]
+      const last = controls[controls.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
-    window.addEventListener("keydown", onKeyDown)
-    return () => window.removeEventListener("keydown", onKeyDown)
+    addEventListener("keydown", onKeyDown)
+    return () => {
+      cancelAnimationFrame(frame)
+      removeEventListener("keydown", onKeyDown)
+    }
   }, [deleteTarget, deleting])
+
+  const flash = (message: string) => {
+    setNotice(message)
+    window.setTimeout(() => setNotice(""), 4200)
+  }
+
+  const closeDeleteDialog = () => {
+    if (deleting) return
+    setDeleteTarget(null)
+    setDeleteError(null)
+    requestAnimationFrame(() => deleteTriggerRef.current?.focus())
+  }
+
+  const openDeleteDialog = (item: FeedbackItem, trigger: HTMLButtonElement) => {
+    deleteTriggerRef.current = trigger
+    setDeleteError(null)
+    setDeleteTarget(item)
+  }
 
   const removeOne = async (id: number) => {
     setDeleting(true)
-    setErr(null)
+    setDeleteError(null)
     try {
       await apiDelete(`/feedback/${id}`)
       setDeleteTarget(null)
+      setFeedback((items) => items.filter((item) => item.id !== id))
+      flash("反馈已删除")
       await load()
-      setNotice("反馈已删除")
-      window.setTimeout(() => setNotice(""), 3600)
-    } catch (e) {
-      setErr(String(e))
+      requestAnimationFrame(() => refreshButtonRef.current?.focus())
+    } catch (error) {
+      setDeleteError(String(error))
     } finally {
       setDeleting(false)
     }
   }
 
-  const sendReply = async (feedbackId: number) => {
-    const content = (replyDrafts[feedbackId] || "").trim()
+  const sendReply = async (id: number) => {
+    const content = (replyDrafts[id] || "").trim()
     if (!content) return
-    setReplyingId(feedbackId)
-    setErr(null)
+    setReplyingId(id)
+    setReplyErrors((errors) => ({ ...errors, [id]: "" }))
     try {
-      await apiPost(`/feedback/${feedbackId}/replies`, { content })
-      setReplyDrafts((drafts) => ({ ...drafts, [feedbackId]: "" }))
+      await apiPost(`/feedback/${id}/replies`, { content })
+      setReplyDrafts((drafts) => ({ ...drafts, [id]: "" }))
       await load()
-      setNotice("回复已发送，用户下次打开反馈中心即可看到")
-      window.setTimeout(() => setNotice(""), 4200)
-    } catch (e) {
-      setErr(String(e))
+      flash("处理结果已回传")
+    } catch (error) {
+      setReplyErrors((errors) => ({ ...errors, [id]: String(error) }))
     } finally {
       setReplyingId(null)
     }
   }
 
-  // 行为分布使用前端静态展示数据，选取主要学习行为便于阅读。
-  const chartData = [
-    { name: "进入页面", count: 738 },
-    { name: "启动工作台", count: 689 },
-    { name: "提交答题", count: 712 },
-    { name: "打开外部资源", count: 674 },
-    { name: "查看岗位推荐", count: 721 },
-    { name: "生成学习资源", count: 766 },
-  ]
-  const chartTotal = chartData.reduce((total, item) => total + item.count, 0)
-  const totalEventCount = 4647
-  const averageStayDuration = "7200.6s"
-  const feedbackSummary = { total: 2986, up: 2854, down: 132, satisfaction: "96%" }
+  const submitFeedback = async () => {
+    const targetId = draftTarget.trim()
+    const comment = draftComment.trim()
+    if (!targetId || !comment) return
+    setSubmitting(true)
+    setComposeError(null)
+    try {
+      const saved = await apiPost<FeedbackItem>("/feedback", {
+        target_type: draftType,
+        target_id: targetId,
+        rating: draftRating,
+        comment,
+      })
+      setFeedback((items) => [saved, ...items.filter((item) => item.id !== saved.id)])
+      setJustSubmittedId(saved.id)
+      setDraftComment("")
+      flash(saved._action === "updated" ? "反馈已更新，可继续查看处理进度" : "反馈已提交，可继续查看处理进度")
+      await load()
+    } catch (error) {
+      setComposeError(String(error))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const resetSubmittedState = () => {
+    setJustSubmittedId(null)
+    setNotice("")
+    setComposeError(null)
+  }
+
+  const chartData = useMemo(
+    () => (eventStats?.by_action ?? [])
+      .filter((item) => item.count > 0)
+      .slice(0, 6)
+      .map((item) => ({ name: ACTION_LABEL[item.action] ?? item.action, count: item.count })),
+    [eventStats],
+  )
+
+  const featuredFeedback = justSubmittedId == null
+    ? feedback[0]
+    : feedback.find((item) => item.id === justSubmittedId) ?? feedback[0]
+  const repliedCount = feedback.filter(hasReply).length
+  const pendingCount = Math.max(0, feedback.length - repliedCount)
+  const commentRate = feedbackStats?.total
+    ? Math.round((feedbackStats.with_comment / feedbackStats.total) * 100)
+    : null
+  const satisfaction = feedbackStats?.satisfaction == null
+    ? null
+    : Math.round(feedbackStats.satisfaction * 100)
 
   return (
-    <div className="app-page paper-theme">
-      <div className="mx-auto max-w-[1720px] px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
-        <AppTopbar current="feedback" appearance="paper" />
-        <section className="mt-4 min-h-[calc(100dvh-120px)] overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)]">
-          <header className="flex items-center justify-between gap-2.5 border-b border-[#D7D1C4] bg-[#F8F6F0] px-3 py-3.5 sm:gap-3 sm:px-5">
-            <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
-              <Link to="/" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]"><ArrowLeft className="size-3.5" /><span className="hidden sm:inline">返回首页</span></Link>
-              <span className="h-6 w-px bg-[#D7D1C4]" />
-              <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#DFC9BE] bg-[#F4E8E2] text-[#9A4E35]"><MessageSquare className="size-4" /></span>
-              <div className="min-w-0 flex-1"><h1 className="truncate text-[15px] font-bold text-[#18232D]">StudyMate 反馈中心</h1><p className="mt-0.5 truncate text-[11px] text-[#6F787A]">{canManage ? "查看全部用户反馈，并由管理员统一回复" : canReview ? "评审观察视图：查看反馈统计与处理进度" : "查看我的反馈以及管理员回复"}</p></div>
+    <div className="feedback-center app-page">
+      <div className="feedback-center-shell">
+        <AppTopbar className="rounded-none border-x-0 shadow-none" current="feedback" appearance="paper" />
+        <main className="feedback-center-main">
+          <header className="feedback-center-intro">
+            <div>
+              <span>反馈中心</span>
+              <h1>说出真实体验，查看处理回复</h1>
+              <p>选择对象并写下具体意见；提交后，你可以在这里持续查看管理员回复。</p>
             </div>
-            <Button size="sm" variant="outline" onClick={load} disabled={loading} className="border-[#D7D1C4] bg-[#FFFEFA] text-[#59636B] hover:bg-[#F1EDE4]">
-              {loading ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-              刷新
-            </Button>
-          </header>
-          <div className="p-4 sm:p-5">
-
-        {err && (
-          <div role="alert" className="mb-3 flex items-start gap-2 rounded-xl border border-[#DFC8BE] bg-[#F4E8E2] p-3 text-sm text-[#9A4E35]">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0" /><span className="min-w-0 flex-1">{err}</span>
-            <button type="button" onClick={() => setErr(null)} aria-label="关闭错误提示" className="grid size-6 shrink-0 place-items-center rounded-lg hover:bg-[#EBDAD1]"><X className="size-3.5" /></button>
-          </div>
-        )}
-
-        <AnimatePresence>
-          {notice ? (
-            <motion.div role="status" aria-live="polite" initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="mb-3 flex items-center gap-2 rounded-xl border border-[#C9D1CB] bg-[#E9EEE6] p-3 text-sm font-medium text-[#557052]">
-              <CheckCircle2 className="size-4 shrink-0" /><span className="min-w-0 flex-1">{notice}</span>
-              <button type="button" onClick={() => setNotice("")} aria-label="关闭成功提示" className="grid size-6 shrink-0 place-items-center rounded-lg hover:bg-[#DDE6DA]"><X className="size-3.5" /></button>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-
-        {canReview && <>
-        {/* 管理统计卡 */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-          <StatCard
-            icon={Activity}
-            label="累计事件"
-            value={totalEventCount}
-            sub={`近 24h ${chartTotal}`}
-            tone="indigo"
-            onClick={() => document.getElementById("feedback-activity-chart")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-          />
-          <StatCard
-            icon={Users}
-            label="24h 活跃用户"
-            value={evStats?.unique_users ?? "—"}
-            sub="按登录用户去重"
-            tone="emerald"
-          />
-          <StatCard
-            icon={Clock}
-            label="平均停留时长"
-            value={averageStayDuration}
-            sub="近 24h"
-            tone="amber"
-          />
-          <StatCard
-            icon={MessageSquare}
-            label="收到反馈"
-            value={feedbackSummary.total}
-            sub={`赞 ${feedbackSummary.up} · 踩 ${feedbackSummary.down} · 满意度 ${feedbackSummary.satisfaction}`}
-            tone="rose"
-          />
-        </div>
-        </>}
-
-        {/* 行为分布柱图 */}
-        {canReview && <div id="feedback-activity-chart" className="paper-lift mb-5 scroll-mt-4 rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] p-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <BarChart3 className="size-4 text-[#315E83]" />
-              行为分布（近 24h · 按事件类型）
-            </div>
-            <span className="rounded-full border border-[#D7D1C4] bg-[#F8F6F0] px-2.5 py-1 text-[10px] font-medium text-[#66717B]">
-              共 {chartTotal} 次行为
+            <span className={`feedback-center-sync ${loadError ? "is-error" : ""}`}>
+              {loading ? <Loader2 className="size-4 animate-spin" /> : loadError ? <AlertTriangle className="size-4" /> : <CheckCircle2 className="size-4" />}
+              {loading ? "正在加载" : loadError ? "加载失败" : "数据已更新"}
             </span>
-          </div>
-          <Suspense fallback={<ChartLoading />}>
-            <FeedbackActivityChart data={chartData} />
-          </Suspense>
-        </div>}
+          </header>
 
-        {/* 反馈列表 */}
-        <div className="overflow-hidden rounded-[22px] border border-[#D7D1C4] bg-[#FFFEFA] shadow-[0_8px_24px_rgba(24,35,45,.035)]">
-          <div className="flex items-center justify-between border-b border-[#D7D1C4] bg-[#F8F6F0] px-4 py-3">
-            <div className="text-sm font-medium">{canManage ? "用户反馈（最近 50 条）" : canReview ? "反馈评审视图（最近 50 条）" : "我的反馈"}</div>
-          </div>
-          {loading && feedback.length === 0 ? (
-            <FeedbackListLoading />
-          ) : feedback.length === 0 ? (
-            <div className="grid min-h-52 place-items-center px-5 py-10 text-center">
-              <div><span className="mx-auto grid size-11 place-items-center rounded-2xl border border-[#DFC8BE] bg-[#F4E8E2] text-[#9A4E35]"><MessageSquare className="size-4" /></span><strong className="mt-3 block text-sm text-[#243746]">{canReview ? "还没有收到用户反馈" : "你还没有提交反馈"}</strong><p className="mt-1 max-w-md text-[11px] leading-5 text-[#7A817F]">{canReview ? "用户在资源详情页提交评价后，这里会显示评分、评论、来源与管理员处理情况。" : "从任意资源详情页的评价入口提交，管理员回复会汇总在这里。"}</p><Button size="sm" variant="outline" onClick={() => void load()} className="mt-4 border-[#D7D1C4] bg-[#FFFEFA]"><RefreshCw className="size-3.5" />重新检查</Button></div>
-            </div>
-          ) : (
-            <ul className="divide-y divide-[#E3DED3]">
-              {feedback.map((f) => (
-                <motion.li
-                  key={f.id}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="group flex items-start gap-3 p-4 transition-colors hover:bg-[#F8F6F0]"
-                >
-                  <RatingBadge rating={f.rating} />
-                  <div className="flex-1 min-w-0">
-                    <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#7A817F]">
-                      <code className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--muted)]">{TARGET_LABEL[f.target_type] || "反馈对象"}</code>
-                      <span className="truncate">{f.target_id}</span>
-                      <span>·</span>
-                      <span>{canReview ? `${f.user_name} · #${f.user_id}` : "我"}</span>
-                      <span>·</span>
-                      <span>{fmtTime(f.created_at)}</span>
-                    </div>
-                    {f.comment ? (
-                      <p className="text-sm">{f.comment}</p>
-                    ) : (
-                      <p className="text-sm text-[var(--muted-foreground)] italic">（无评论）</p>
-                    )}
-                    {(f.replies?.length ?? 0) > 0 && (
-                      <div className="mt-3 space-y-2">
-                        {(f.replies ?? []).map((reply) => (
-                          <div key={reply.id} className="rounded-xl border border-[#C7D2D8] bg-[#E7EDF3]/60 px-3 py-2.5">
-                            <div className="mb-1 flex items-center gap-1.5 text-[11px] font-bold text-[#315E83]">
-                              <ShieldCheck className="size-3.5" />
-                              <span>{reply.author_name}</span>
-                              <span className="font-normal text-[#6F787A]">管理员回复 · {fmtTime(reply.created_at)}</span>
-                            </div>
-                            <p className="text-sm leading-6 text-[#35424B]">{reply.content}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {canManage && (
-                      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
-                        <textarea
-                          value={replyDrafts[f.id] || ""}
-                          onChange={(event) => setReplyDrafts((drafts) => ({ ...drafts, [f.id]: event.target.value }))}
-                          placeholder="回复这条反馈…"
-                          maxLength={2000}
-                          rows={2}
-                          aria-label={`回复反馈 ${f.id}`}
-                          className="min-h-16 flex-1 resize-y rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-2 text-sm outline-none focus:border-[#315E83] focus:ring-2 focus:ring-[#315E83]/10"
-                        />
-                        <Button size="sm" onClick={() => void sendReply(f.id)} disabled={replyingId === f.id || !(replyDrafts[f.id] || "").trim()} className="bg-[#315E83] text-white hover:bg-[#244C66]">
-                          {replyingId === f.id ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
-                          回复
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                  {(canManage || !canReview) && <button
-                    type="button"
-                    onClick={() => setDeleteTarget(f)}
-                    className="rounded-lg px-2 py-1 text-xs text-[#8A918F] opacity-100 transition-all hover:bg-[#F4E8E2] hover:text-[#9A4E35] focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-                    aria-label={`删除反馈 ${f.id}`}
-                  >
-                    删除
-                  </button>}
-                </motion.li>
-              ))}
-            </ul>
+          <section className="feedback-center-primary-grid" aria-label="提交反馈并查看最新状态">
+            <ComposeArea
+              draftType={draftType}
+              draftTarget={draftTarget}
+              draftRating={draftRating}
+              draftComment={draftComment}
+              submitting={submitting}
+              justSubmitted={justSubmittedId != null}
+              error={composeError}
+              notice={notice}
+              setDraftType={(value) => { resetSubmittedState(); setDraftType(value) }}
+              setDraftTarget={(value) => { resetSubmittedState(); setDraftTarget(value) }}
+              setDraftRating={(value) => { resetSubmittedState(); setDraftRating(value) }}
+              setDraftComment={(value) => { resetSubmittedState(); setDraftComment(value) }}
+              onPrimaryAction={() => justSubmittedId == null
+                ? void submitFeedback()
+                : latestCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
+            />
+            <LatestFeedbackCard ref={latestCardRef} item={featuredFeedback} loading={loading} canReview={canReview} />
+          </section>
+
+          {canReview && (
+            <section className="feedback-center-evidence" aria-labelledby="feedback-evidence-title">
+              <SectionHeading
+                icon={BarChart3}
+                eyebrow="真实数据"
+                title="用户反馈与近 24 小时使用情况"
+                description="以下数据直接来自现有反馈与行为统计接口。"
+                id="feedback-evidence-title"
+              />
+              {evidenceError && <InlineAlert message={evidenceError} onClose={() => setEvidenceError(null)} />}
+              <div className="feedback-center-metrics">
+                <Stat icon={MessageSquare} label="反馈总数" value={feedbackStats ? feedbackStats.total.toLocaleString("zh-CN") : "—"} detail="全部真实反馈" />
+                <Stat icon={ThumbsUp} label="正向率" value={satisfaction == null ? "暂无" : `${satisfaction}%`} detail={feedbackStats ? `${feedbackStats.up} 条正向 · ${feedbackStats.down} 条改进` : "暂无反馈数据"} />
+                <Stat icon={FileText} label="具体说明" value={commentRate == null ? "暂无" : `${commentRate}%`} detail={feedbackStats ? `${feedbackStats.with_comment} 条含文字说明` : "暂无反馈数据"} />
+                <Stat icon={Users} label="近 24 小时活跃" value={eventStats ? eventStats.unique_users.toLocaleString("zh-CN") : "—"} detail={eventStats ? `${eventStats.window_total.toLocaleString("zh-CN")} 次行为` : "暂无行为数据"} />
+              </div>
+              <div className="feedback-center-chart-card">
+                <div>
+                  <span><BarChart3 className="size-4" />高频行为</span>
+                  <small>{eventStats ? `近 ${eventStats.window_hours} 小时` : "等待数据"}</small>
+                </div>
+                {loading && !eventStats
+                  ? <ChartLoading />
+                  : <Suspense fallback={<ChartLoading />}><FeedbackActivityChart data={chartData} /></Suspense>}
+              </div>
+            </section>
           )}
-        </div>
-          </div>
-        </section>
+
+          <section className="feedback-center-history" aria-labelledby="feedback-history-title">
+            <div className="feedback-center-history-head">
+              <SectionHeading
+                icon={canManage ? ShieldCheck : Inbox}
+                eyebrow={canManage ? "管理员处理" : canReview ? "只读反馈记录" : "处理进度"}
+                title={canManage ? "反馈处理与结果回传" : canReview ? "真实反馈记录" : "我的反馈与回复"}
+                description={canManage ? "回复会作为正式处理结果展示给提交者。" : canReview ? "评委可查看真实反馈与管理员回复，不提供处理操作。" : "状态仅表示当前记录是否收到管理员回复。"}
+                id="feedback-history-title"
+              />
+              <Button ref={refreshButtonRef} variant="outline" onClick={() => void load()} disabled={loading}>
+                {loading ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+                刷新
+              </Button>
+            </div>
+            {loadError && <InlineAlert message={loadError} onClose={() => setLoadError(null)} />}
+            <div className="feedback-center-status-summary" aria-label="当前已加载反馈状态">
+              <span><small>当前已加载</small><strong>{feedback.length}</strong></span>
+              <span><small>待回复</small><strong>{pendingCount}</strong></span>
+              <span><small>已回复</small><strong>{repliedCount}</strong></span>
+            </div>
+            {loading && !feedback.length
+              ? <FeedbackListLoading />
+              : !feedback.length
+                ? <div className="feedback-center-empty"><MessageSquare className="size-6" /><b>还没有反馈记录</b><p>完成上方表单后，处理状态会显示在这里。</p></div>
+                : <ul className="feedback-center-list">{feedback.map((item) => (
+                  <FeedbackRow
+                    key={item.id}
+                    item={item}
+                    canReview={canReview}
+                    canManage={canManage}
+                    reply={replyDrafts[item.id] || ""}
+                    replyError={replyErrors[item.id] || ""}
+                    replying={replyingId === item.id}
+                    onReplyChange={(value) => setReplyDrafts((drafts) => ({ ...drafts, [item.id]: value }))}
+                    onReply={() => void sendReply(item.id)}
+                    onDelete={(trigger) => openDeleteDialog(item, trigger)}
+                  />
+                ))}</ul>}
+          </section>
+        </main>
       </div>
 
       <AnimatePresence>
-        {deleteTarget ? (
-          <motion.div className="fixed inset-0 z-50 grid place-items-center bg-[#18232D]/35 p-4 backdrop-blur-[2px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={() => !deleting && setDeleteTarget(null)}>
-            <motion.section role="dialog" aria-modal="true" aria-labelledby="feedback-delete-title" initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 6, scale: 0.98 }} onMouseDown={(event) => event.stopPropagation()} className="w-full max-w-md overflow-hidden rounded-[24px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_24px_70px_rgba(24,35,45,.2)]">
-              <div className="flex items-start gap-3 border-b border-[#E2DDD3] bg-[#FCF7F4] px-5 py-4">
-                <span className="grid size-10 shrink-0 place-items-center rounded-2xl border border-[#DFC8BE] bg-[#F4E8E2] text-[#9A4E35]"><Trash2 className="size-4" /></span>
-                <div className="min-w-0 flex-1"><h2 id="feedback-delete-title" className="text-sm font-bold text-[#18232D]">删除这条反馈？</h2><p className="mt-1 text-[11px] leading-5 text-[#66717B]">评价、评论及已有回复将一并移除，此操作无法撤销。</p></div>
-                <button type="button" disabled={deleting} onClick={() => setDeleteTarget(null)} aria-label="关闭删除确认" className="grid size-8 shrink-0 place-items-center rounded-xl text-[#7A817F] hover:bg-[#F1EDE4] disabled:opacity-40"><X className="size-4" /></button>
+        {deleteTarget && (
+          <motion.div className="feedback-center-modal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={closeDeleteDialog}>
+            <motion.section
+              ref={deleteDialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="feedback-delete-title"
+              aria-describedby="feedback-delete-description"
+              onMouseDown={(event) => event.stopPropagation()}
+              initial={{ y: 12, scale: 0.98 }}
+              animate={{ y: 0, scale: 1 }}
+            >
+              <div className="feedback-center-modal-title">
+                <Trash2 className="size-5" />
+                <span><b id="feedback-delete-title">删除这条反馈？</b><small id="feedback-delete-description">评价、评论与回复将一并移除，此操作无法撤销。</small></span>
               </div>
-              <div className="px-5 py-4"><div className="rounded-xl border border-[#D7D1C4] bg-[#FBF8F0] px-3 py-2.5"><span className="block text-[10px] font-bold text-[#9A4E35]">反馈 #{deleteTarget.id}</span><p className="mt-1 line-clamp-3 text-xs leading-5 text-[#4E5B63]">{deleteTarget.comment || "（无文字评论）"}</p></div></div>
-              <div className="flex justify-end gap-2 border-t border-[#E2DDD3] bg-[#F8F6F0] px-5 py-3.5"><Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting} className="border-[#D7D1C4] bg-[#FFFEFA]">保留反馈</Button><Button onClick={() => void removeOne(deleteTarget.id)} disabled={deleting} className="bg-[#9A4E35] text-white hover:bg-[#7F3F2D]">{deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}{deleting ? "删除中" : "确认删除"}</Button></div>
+              <p>{deleteTarget.comment || "（无文字评论）"}</p>
+              {deleteError && <div role="alert" className="feedback-center-modal-error"><AlertTriangle className="size-4" />{deleteError}</div>}
+              <footer>
+                <Button ref={deleteCancelRef} variant="outline" onClick={closeDeleteDialog}>保留反馈</Button>
+                <Button onClick={() => void removeOne(deleteTarget.id)} disabled={deleting}>
+                  {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                  确认删除
+                </Button>
+              </footer>
             </motion.section>
           </motion.div>
-        ) : null}
+        )}
       </AnimatePresence>
     </div>
   )
 }
 
+function ComposeArea({
+  draftType,
+  draftTarget,
+  draftRating,
+  draftComment,
+  submitting,
+  justSubmitted,
+  error,
+  notice,
+  setDraftType,
+  setDraftTarget,
+  setDraftRating,
+  setDraftComment,
+  onPrimaryAction,
+}: {
+  draftType: string
+  draftTarget: string
+  draftRating: 1 | -1
+  draftComment: string
+  submitting: boolean
+  justSubmitted: boolean
+  error: string | null
+  notice: string
+  setDraftType: (value: string) => void
+  setDraftTarget: (value: string) => void
+  setDraftRating: (value: 1 | -1) => void
+  setDraftComment: (value: string) => void
+  onPrimaryAction: () => void
+}) {
+  const ready = Boolean(draftTarget.trim() && draftComment.trim())
+  const buttonLabel = submitting
+    ? "正在提交"
+    : justSubmitted
+      ? "查看处理进度"
+      : ready
+        ? "提交并跟踪"
+        : "填写意见后提交"
+
+  return (
+    <div className="feedback-center-compose">
+      <div className="feedback-center-card-head">
+        <span><MessageSquare className="size-4" />提交反馈</span>
+        <small>具体描述有助于更快处理</small>
+      </div>
+      <div className="feedback-center-types" aria-label="反馈类型">
+        {FEEDBACK_TYPES.map(({ value, label, hint, icon: Icon }) => (
+          <button type="button" key={value} className={draftType === value ? "is-active" : ""} onClick={() => setDraftType(value)} aria-pressed={draftType === value}>
+            <Icon className="size-4" />
+            <span><b>{label}</b><small>{hint}</small></span>
+          </button>
+        ))}
+      </div>
+      <div className="feedback-center-fields">
+        <label>
+          <span>具体对象 <small>{draftTarget.length}/64</small></span>
+          <input value={draftTarget} maxLength={64} onChange={(event) => setDraftTarget(event.target.value)} placeholder="例如：岗位训练中心" />
+        </label>
+        <label>
+          <span>你的意见 <small>{draftComment.length}/300</small></span>
+          <textarea value={draftComment} maxLength={300} rows={3} onChange={(event) => setDraftComment(event.target.value)} placeholder="遇到了什么？你期待怎样改进？也欢迎告诉我们值得保留的地方。" />
+        </label>
+      </div>
+      <div className="feedback-center-compose-footer">
+        <div className="feedback-center-sentiment" aria-label="反馈倾向">
+          <button type="button" className={draftRating === 1 ? "is-active" : ""} onClick={() => setDraftRating(1)} aria-pressed={draftRating === 1}>
+            <ThumbsUp className="size-4" />值得保留
+          </button>
+          <button type="button" className={draftRating === -1 ? "is-negative" : ""} onClick={() => setDraftRating(-1)} aria-pressed={draftRating === -1}>
+            <ThumbsDown className="size-4" />需要改进
+          </button>
+        </div>
+        <Button className="feedback-center-submit" onClick={onPrimaryAction} disabled={submitting || (!justSubmitted && !ready)}>
+          {submitting ? <Loader2 className="size-4 animate-spin" /> : justSubmitted ? <CheckCircle2 className="size-4" /> : <Send className="size-4" />}
+          {buttonLabel}
+          {!submitting && <ArrowRight className="size-4" />}
+        </Button>
+      </div>
+      <AnimatePresence initial={false}>
+        {error && <motion.div role="alert" className="feedback-center-compose-message is-error" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}><AlertTriangle className="size-4" />{error}</motion.div>}
+        {!error && notice && <motion.div role="status" className="feedback-center-compose-message is-success" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}><CheckCircle2 className="size-4" />{notice}</motion.div>}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+const LatestFeedbackCard = forwardRef<HTMLElement, { item?: FeedbackItem; loading: boolean; canReview: boolean }>(
+  function LatestFeedbackCard({ item, loading, canReview }, ref) {
+    const latestReply = item?.replies?.[(item.replies?.length ?? 0) - 1]
+    const replied = item ? hasReply(item) : false
+    return (
+      <aside ref={ref} className="feedback-center-latest" aria-labelledby="feedback-latest-title">
+        <div className="feedback-center-card-head">
+          <span><Inbox className="size-4" /><b id="feedback-latest-title">{canReview ? "最新反馈" : "最新处理状态"}</b></span>
+          {item && <em className={replied ? "is-replied" : ""}>{replied ? "已回复" : "待回复"}</em>}
+        </div>
+        {loading && !item
+          ? <div className="feedback-center-latest-loading"><span /><span /><span /></div>
+          : !item
+            ? <div className="feedback-center-latest-empty"><MessageSquare className="size-6" /><b>还没有反馈记录</b><p>提交后，这里会显示是否收到回复。</p></div>
+            : <div className="feedback-center-latest-content">
+              <div className="feedback-center-latest-meta">
+                <span>{TARGET_LABEL[item.target_type] || "反馈对象"}</span>
+                <small>{canReview ? `${item.user_name} · ` : ""}{formatTime(item.created_at)}</small>
+              </div>
+              <h2>{item.target_id}</h2>
+              <p>{item.comment || "（无文字评论）"}</p>
+              {latestReply
+                ? <div className="feedback-center-latest-reply"><ShieldCheck className="size-4" /><span><b>{latestReply.author_name}的回复</b><p>{latestReply.content}</p></span></div>
+                : <div className="feedback-center-waiting"><RefreshCw className="size-4" /><span><b>等待管理员回复</b><small>你可以稍后刷新查看最新状态。</small></span></div>}
+            </div>}
+      </aside>
+    )
+  },
+)
+
+function SectionHeading({ icon: Icon, eyebrow, title, description, id }: { icon: LucideIcon; eyebrow: string; title: string; description: string; id: string }) {
+  return <div className="feedback-center-section-heading"><span><Icon className="size-5" /></span><div><small>{eyebrow}</small><h2 id={id}>{title}</h2><p>{description}</p></div></div>
+}
+
+function Stat({ icon: Icon, label, value, detail }: { icon: LucideIcon; label: string; value: string; detail: string }) {
+  return <div className="feedback-center-stat"><Icon className="size-4" /><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>
+}
+
+function InlineAlert({ message, onClose }: { message: string; onClose: () => void }) {
+  return <div role="alert" className="feedback-center-alert"><AlertTriangle className="size-4" /><span>{message}</span><button type="button" onClick={onClose} aria-label="关闭错误提示"><X className="size-4" /></button></div>
+}
+
+function FeedbackRow({
+  item,
+  canReview,
+  canManage,
+  reply,
+  replyError,
+  replying,
+  onReplyChange,
+  onReply,
+  onDelete,
+}: {
+  item: FeedbackItem
+  canReview: boolean
+  canManage: boolean
+  reply: string
+  replyError: string
+  replying: boolean
+  onReplyChange: (value: string) => void
+  onReply: () => void
+  onDelete: (trigger: HTMLButtonElement) => void
+}) {
+  const replied = hasReply(item)
+  return (
+    <motion.li initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}>
+      <div className={`feedback-center-rating ${item.rating < 1 ? "is-negative" : ""}`}>
+        {item.rating >= 1 ? <ThumbsUp className="size-4" /> : <ThumbsDown className="size-4" />}
+      </div>
+      <div className="feedback-center-item-body">
+        <div className="feedback-center-item-meta">
+          <span>{TARGET_LABEL[item.target_type] || "反馈对象"}</span>
+          <b>{item.target_id}</b>
+          <small>{canReview ? `${item.user_name} · #${item.user_id}` : "我"} · {formatTime(item.created_at)}</small>
+          <em className={replied ? "is-replied" : ""}>{replied ? "已回复" : "待回复"}</em>
+        </div>
+        <p>{item.comment || "（无文字评论）"}</p>
+        {item.replies?.map((replyItem) => (
+          <div className="feedback-center-reply" key={replyItem.id}>
+            <ShieldCheck className="size-4" />
+            <span><b>{replyItem.author_name} · 正式回复</b><p>{replyItem.content}</p><small>{formatTime(replyItem.created_at)}</small></span>
+          </div>
+        ))}
+        {canManage && item.id > 0 && (
+          <div className="feedback-center-reply-area">
+            <div className="feedback-center-reply-box">
+              <textarea value={reply} onChange={(event) => onReplyChange(event.target.value)} rows={2} maxLength={2000} placeholder="填写正式处理结果…" aria-label={`回复反馈 ${item.id}`} />
+              <Button variant="outline" onClick={onReply} disabled={replying || !reply.trim()}>
+                {replying ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                回传结果
+              </Button>
+            </div>
+            {replyError && <div role="alert" className="feedback-center-row-error"><AlertTriangle className="size-4" />{replyError}</div>}
+          </div>
+        )}
+      </div>
+      {item.id > 0 && (canManage || !canReview) && (
+        <button type="button" className="feedback-center-delete" onClick={(event) => onDelete(event.currentTarget)} aria-label={`删除反馈 ${item.id}`}>
+          <Trash2 className="size-4" />
+        </button>
+      )}
+    </motion.li>
+  )
+}
+
 function ChartLoading() {
-  return <div role="status" aria-live="polite" className="grid h-72 place-items-center rounded-2xl bg-[#FBF8F0]"><div className="text-center"><BarChart3 className="mx-auto size-5 animate-pulse text-[#315E83]" /><strong className="mt-2 block text-xs text-[#243746]">正在绘制行为分布</strong><p className="mt-1 text-[10px] text-[#7A817F]">统计图表仅在管理视图中加载</p></div></div>
+  return <div className="feedback-center-chart-loading"><BarChart3 className="size-5" />正在读取行为数据</div>
 }
 
 function FeedbackListLoading() {
-  return <div role="status" aria-label="正在加载反馈" className="space-y-3 p-4">{[0, 1, 2].map((item) => <div key={item} className="flex animate-pulse gap-3"><span className="size-8 shrink-0 rounded-full bg-[#EEE9DF]" /><div className="flex-1"><div className="h-3 w-1/3 rounded-full bg-[#E8E3D9]" /><div className="mt-2 h-3 w-4/5 rounded-full bg-[#F1EDE4]" /></div></div>)}</div>
-}
-
-const TONE: Record<string, { bg: string; text: string; iconBg: string }> = {
-  indigo: { bg: "bg-[#E7EDF3] border-[#C7D2D8]", text: "text-[#315E83]", iconBg: "bg-[#FFFEFA] text-[#315E83]" },
-  emerald: { bg: "bg-[#E9EEE6] border-[#C9D1CB]", text: "text-[#557052]", iconBg: "bg-[#FFFEFA] text-[#557052]" },
-  amber: { bg: "bg-[#F4ECD8] border-[#DDD4BF]", text: "text-[#8E6925]", iconBg: "bg-[#FFFEFA] text-[#8E6925]" },
-  rose: { bg: "bg-[#F4E8E2] border-[#DFC8BE]", text: "text-[#9A4E35]", iconBg: "bg-[#FFFEFA] text-[#9A4E35]" },
-}
-
-function StatCard({
-  icon: Icon, label, value, sub, tone, onClick,
-}: {
-  icon: typeof Activity
-  label: string
-  value: number | string
-  sub?: string
-  tone: keyof typeof TONE
-  onClick?: () => void
-}) {
-  const t = TONE[tone]
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      onClick={onClick}
-      onKeyDown={(event) => {
-        if (onClick && (event.key === "Enter" || event.key === " ")) {
-          event.preventDefault()
-          onClick()
-        }
-      }}
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      className={`paper-lift rounded-[18px] border p-4 ${t.bg} ${onClick ? "cursor-pointer transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#315E83]" : ""}`}
-    >
-      <div className="flex items-center gap-2 mb-1">
-        <span className={`inline-flex items-center justify-center size-7 rounded-lg ${t.iconBg}`}>
-          <Icon className="size-4" />
-        </span>
-        <span className={`text-xs ${t.text}`}>{label}</span>
-      </div>
-      <div className="text-2xl font-bold mt-1">{value}</div>
-      {sub && <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5">{sub}</div>}
-    </motion.div>
-  )
-}
-
-function RatingBadge({ rating }: { rating: number }) {
-  if (rating >= 1) {
-    return (
-      <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[#E9EEE6] text-[#557052]">
-        <ThumbsUp className="size-4" />
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[#F4E8E2] text-[#9A4E35]">
-      <ThumbsDown className="size-4" />
-    </span>
-  )
+  return <div className="feedback-center-list-loading">{[0, 1, 2].map((index) => <span key={index}><i /><b /></span>)}</div>
 }

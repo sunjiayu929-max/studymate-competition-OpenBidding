@@ -76,8 +76,8 @@
     },
     {
       "id": "fde-practice-scenario",
-      "content": "【StudyMate 训练场景，非外部事实】某制造企业希望减少人工巡检记录整理时间。作为 FDE 候选人，应先访谈巡检员和班组长，列出表单来源、异常处理和验收口径；再做一个只覆盖单条产线的最小流程，验证记录是否可汇总、异常是否可追踪、用户是否能独立使用；最后写出风险、反馈和下一轮改进项。",
-      "source": "StudyMate FDE 岗位训练切片 v1",
+      "content": "【因材智训训练场景，非外部事实】某制造企业希望减少人工巡检记录整理时间。作为 FDE 候选人，应先访谈巡检员和班组长，列出表单来源、异常处理和验收口径；再做一个只覆盖单条产线的最小流程，验证记录是否可汇总、异常是否可追踪、用户是否能独立使用；最后写出风险、反馈和下一轮改进项。",
+      "source": "因材智训 FDE 岗位训练切片 v1",
       "url": "https://github.com/studymate-team/studymate-SoftwareCopyright",
       "meta": {"role": "FDE", "topic": "最小交付闭环", "source_type": "studymate_training_scenario", "difficulty": 2}
     }

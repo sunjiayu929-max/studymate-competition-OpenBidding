@@ -784,7 +784,7 @@ CHUNKS = [
         "meta": {"topic": "CoT", "difficulty": 3},
     },
     {
-        "content": "RAG（Retrieval-Augmented Generation）：检索相关文档作为上下文 + 大模型生成。比纯 LLM 减少幻觉、可追溯引用、知识可热更新。StudyMate 的工作台就是 RAG + 多 Agent。",
+        "content": "RAG（Retrieval-Augmented Generation）：检索相关文档作为上下文 + 大模型生成。比纯 LLM 减少幻觉、可追溯引用、知识可热更新。因材智训的工作台就是 RAG + 多 Agent。",
         "source": "论文·RAG", "page": None, "url": "https://arxiv.org/abs/2005.11401",
         "meta": {"topic": "RAG", "difficulty": 3},
     },
@@ -983,7 +983,7 @@ CHUNKS = [
         "meta": {"topic": "AI 标识合规", "difficulty": 2},
     },
     {
-        "content": "教育 AI 评估闭环：学习者学 → 答题 → 评估正确率 / 行为 → 更新画像 → 调整下次推荐难度和资源。StudyMate 的 EvalAgent + ProfileSnapshot + apply-delta 实现的就是这个闭环。",
+        "content": "教育 AI 评估闭环：学习者学 → 答题 → 评估正确率 / 行为 → 更新画像 → 调整下次推荐难度和资源。因材智训的 EvalAgent + ProfileSnapshot + apply-delta 实现的就是这个闭环。",
         "source": "教材·教育智能", "page": 28, "url": "doc://edu#loop",
         "meta": {"topic": "评估闭环", "difficulty": 3},
     },

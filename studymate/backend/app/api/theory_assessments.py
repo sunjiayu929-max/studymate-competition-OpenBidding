@@ -22,6 +22,28 @@ from app.schemas.profile import ProfileDims
 
 router = APIRouter(prefix="/theory-assessments", tags=["theory-assessments"])
 
+_ASSESSMENT_OPTIONAL_PROFILE_FIELDS = {
+    "认知风格",
+    "资源偏好",
+    "就业技能与实践经历",
+}
+
+
+def _assessment_missing_fields(dims: ProfileDims, target_role: str | None = None) -> list[str]:
+    """展示偏好和就业证据不应阻塞理论知识诊断。"""
+    return [
+        field
+        for field in profile_missing_fields(dims, target_role)
+        if field not in _ASSESSMENT_OPTIONAL_PROFILE_FIELDS
+    ]
+
+
+def _assessment_is_current(assessment: TheoryAssessment, dims: ProfileDims) -> bool:
+    if assessment.status != "submitted":
+        return True
+    evidence = dims.theory_assessments.get(assessment.role_id)
+    return bool(evidence and evidence.assessment_id == assessment.id)
+
 
 def _strip_source_leadin(question: str) -> str:
     """移除题干开头的书名/章节出处，同时保留正常的场景条件。"""
@@ -170,8 +192,8 @@ async def _build_assessment_items(req: CreateTheoryAssessmentRequest) -> list[di
                 course_name=course_cfg.name,
                 persona=course_cfg.persona,
                 difficulty=2,
-                mcq_count=8,
-                fill_count=0,
+                mcq_count=6,
+                fill_count=2,
                 code_count=0,
                 target_role=req.role_name,
                 competencies=req.competencies,
@@ -181,8 +203,8 @@ async def _build_assessment_items(req: CreateTheoryAssessmentRequest) -> list[di
         )
     except TimeoutError:
         raw_items = _grounded_mock_fill(
-            8,
-            0,
+            6,
+            2,
             0,
             reference_materials=materials,
             competencies=req.competencies,
@@ -193,17 +215,26 @@ async def _build_assessment_items(req: CreateTheoryAssessmentRequest) -> list[di
 
     items: list[dict[str, Any]] = []
     for index, item in enumerate(raw_items[:8]):
+        item_type = str(item.get("type") or "")
+        if item_type not in {"mcq", "fill"}:
+            continue
         options = list(item.get("options") or [])
-        try:
-            answer = int(item.get("answer"))
-        except (TypeError, ValueError):
-            continue
-        if len(options) != 4 or answer < 0 or answer >= len(options):
-            continue
+        if item_type == "mcq":
+            try:
+                answer: int | str = int(item.get("answer"))
+            except (TypeError, ValueError):
+                continue
+            if len(options) != 4 or answer < 0 or answer >= len(options):
+                continue
+        else:
+            answer = str(item.get("answer") or "").strip()
+            options = []
+            if not answer:
+                continue
         items.append({
             "id": f"theory_{index + 1}",
             "index": index + 1,
-            "type": "mcq",
+            "type": item_type,
             "question": _strip_source_leadin(str(item.get("question") or "")),
             "options": options,
             "answer": answer,
@@ -279,9 +310,11 @@ async def assessment_status(
     profile = await db.scalar(select(Profile).where(Profile.user_id == user.id))
     dims = ProfileDims.model_validate(profile.dims if profile else {})
     profile_score = _profile_score(dims, profile.version if profile else 1)
-    missing_fields = profile_missing_fields(dims)
+    missing_fields = _assessment_missing_fields(dims, user.target_role)
     profile_ready = bool(profile) and not missing_fields
     assessment = await _latest_assessment(db, user_id=user.id, role_id=role_id)
+    if assessment and not _assessment_is_current(assessment, dims):
+        assessment = None
     return {
         "role_id": role_id,
         "profile_ready": profile_ready,
@@ -308,12 +341,11 @@ async def create_assessment(
     user: User = Depends(require_user),
 ) -> dict:
     existing = await _latest_assessment(db, user_id=user.id, role_id=req.role_id)
-    if existing and existing.status in {"generating", "ready", "submitted"}:
-        return _public_assessment(existing)
-
     profile = await db.scalar(select(Profile).where(Profile.user_id == user.id))
     dims = ProfileDims.model_validate(profile.dims if profile else {})
-    if not profile or profile_missing_fields(dims):
+    if existing and existing.status in {"generating", "ready", "submitted"} and _assessment_is_current(existing, dims):
+        return _public_assessment(existing)
+    if not profile or _assessment_missing_fields(dims, user.target_role or req.role_name):
         raise HTTPException(409, "请先完成岗位能力画像，再进行理论基线测评")
 
     try:
@@ -335,7 +367,23 @@ async def create_assessment(
     return _public_assessment(assessment)
 
 
-def _answer_is_correct(user_answer: str | int | None, correct_answer: Any) -> bool:
+def _answer_is_correct(
+    user_answer: str | int | None,
+    correct_answer: Any,
+    item_type: str = "mcq",
+) -> bool:
+    if item_type == "fill":
+        if user_answer is None:
+            return False
+        normalized = " ".join(str(user_answer).strip().lower().split())
+        if not normalized:
+            return False
+        accepted = [
+            " ".join(part.strip().lower().split())
+            for part in str(correct_answer or "").split("/")
+            if part.strip()
+        ]
+        return normalized in accepted
     try:
         return int(user_answer) == int(correct_answer)
     except (TypeError, ValueError):
@@ -367,7 +415,11 @@ async def submit_assessment(
         item_id = str(item.get("id") or "")
         competency = str(item.get("competency") or "岗位领域知识")
         user_answer = submitted.get(item_id)
-        is_correct = _answer_is_correct(user_answer, item.get("answer"))
+        is_correct = _answer_is_correct(
+            user_answer,
+            item.get("answer"),
+            str(item.get("type") or "mcq"),
+        )
         competency_totals.setdefault(competency, []).append(is_correct)
         graded_items.append({
             "id": item_id,

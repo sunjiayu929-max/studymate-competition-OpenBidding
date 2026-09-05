@@ -37,19 +37,34 @@ services:
     environment:
       # 在线代码运行沙箱（同一 docker 网络内访问，不出公网）
       PISTON_URL: "http://piston-api:2000"
-      # 数据库落到挂载的 volume（/app/data），重部署不丢用户数据。
-      # docker_entrypoint.py 首启时从镜像中的压缩种子库解压到这里。
-      DATABASE_URL: "sqlite:///./data/studymate.db"
+      # Compose 的根 .env/.deploy.env 控制数据库；不要在这里写死 SQLite，
+      # 否则会覆盖 backend/.env，导致切换 PostgreSQL 或其他兼容驱动失效。
+      DATABASE_URL: "${DATABASE_URL:-sqlite:///./data/studymate.db}"
+    networks:
+      - default
+      - studymate_edge
     volumes:
       # backend_data 命名 volume 持久化数据库 + 上传文件，跨 `--build`/容器重建保留。
       # 普通重建不会覆盖数据。删除卷会永久清除用户数据，只能在明确备份后的重置场景执行。
       - backend_data:/app/data
+    # Keep an application spike from exhausting the small production VM.
+    mem_limit: "768m"
+    memswap_limit: "1536m"
+    cpus: 1.5
+    pids_limit: 512
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/ping"]
       interval: 10s
       timeout: 3s
       retries: 5
-      start_period: 20s
+      # 首次启动会重建岗位知识索引，可能超过两分钟；给应用足够的
+      # 启动宽限期，避免 Compose 在服务即将就绪时误判为失败。
+      start_period: 180s
+    logging:
+      driver: local
+      options:
+        max-size: "100m"
+        max-file: "5"
 
   # 在线代码沙箱（Piston）：C / C++17 / Python 一键运行
   # ============================================================
@@ -79,6 +94,11 @@ services:
       - "127.0.0.1:2000:2000"   # 仅本机访问，公网不可达
     volumes:
       - piston_data:/piston
+    logging:
+      driver: local
+      options:
+        max-size: "100m"
+        max-file: "5"
 
   frontend:
     build:
@@ -96,6 +116,15 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    mem_limit: "256m"
+    memswap_limit: "512m"
+    cpus: 0.5
+    pids_limit: 128
+    logging:
+      driver: local
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   # 公网入口：自动 HTTP -> HTTPS、申请并续期 Let's Encrypt 证书。
   # SITE_ADDRESS 默认 http://localhost；服务器上在 .deploy.env 写正式域名。
@@ -106,6 +135,9 @@ services:
     restart: unless-stopped
     environment:
       SITE_ADDRESS: "${SITE_ADDRESS:-http://localhost}"
+    networks:
+      - default
+      - studymate_edge
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
@@ -116,6 +148,21 @@ services:
     depends_on:
       frontend:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2019/config/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    mem_limit: "256m"
+    memswap_limit: "512m"
+    cpus: 0.5
+    pids_limit: 256
+    logging:
+      driver: local
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   # ===== 以下服务为顶奖版可选栈，默认不启动 =====
   # 启动方式：docker compose --profile extras up -d
@@ -165,6 +212,9 @@ networks:
       config:
         - subnet: 192.168.242.0/24
           gateway: 192.168.242.1
+  studymate_edge:
+    name: studymate_edge
+    driver: bridge
 
 volumes:
   backend_data:

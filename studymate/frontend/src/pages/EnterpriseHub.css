@@ -1,0 +1,103 @@
+/* Page-level blue background matching the main StudyMate workbench. */
+.paper-theme.enterprise-hub-page {
+  background:
+    radial-gradient(circle at 82% 0%, rgba(131, 211, 232, .18), transparent 30rem),
+    linear-gradient(180deg, #f7fcfe 0%, #edf7fa 48%, #e4f1f6 100%) !important;
+}
+
+/* 从业者企业任务中心：沿用 StudyMate 的冷静蓝色工作台语言，减少装饰性动效。 */
+.enterprise-hub-page.is-learner {
+  --enterprise-blue-900: #214c68;
+  --enterprise-blue-700: #2c6d91;
+  --enterprise-blue-600: #327da5;
+  --enterprise-blue-200: #c8e1ee;
+  --enterprise-blue-100: #e3f1f7;
+  --enterprise-blue-050: #f3f9fc;
+}
+
+.enterprise-hub-page.is-learner [class~="bg-[#F4F9F2]"] {
+  border-color: #cfe3ed !important;
+  background: linear-gradient(135deg, #f1f9fc 0%, #e7f3f8 100%) !important;
+  box-shadow: 0 14px 38px rgba(46, 112, 145, .08) !important;
+}
+
+.enterprise-hub-page.is-learner [class~="text-[#5B7658]"],
+.enterprise-hub-page.is-learner [class~="text-[#52704D]"],
+.enterprise-hub-page.is-learner [class~="text-[#6F976B]"],
+.enterprise-hub-page.is-learner [class~="text-[#63735F]"],
+.enterprise-hub-page.is-learner [class~="text-[#668064]"],
+.enterprise-hub-page.is-learner [class~="text-[#657661]"],
+.enterprise-hub-page.is-learner [class~="text-[#687667]"],
+.enterprise-hub-page.is-learner [class~="text-[#7A8677]"],
+.enterprise-hub-page.is-learner [class~="text-[#738071]"],
+.enterprise-hub-page.is-learner [class~="text-[#778477]"],
+.enterprise-hub-page.is-learner [class~="text-[#7C8879]"] {
+  color: #607f91 !important;
+}
+
+.enterprise-hub-page.is-learner [class~="text-[#243827]"],
+.enterprise-hub-page.is-learner [class~="text-[#293D2A]"] {
+  color: var(--enterprise-blue-900) !important;
+}
+
+.enterprise-hub-page.is-learner [class~="border-[#D6E2D4]"],
+.enterprise-hub-page.is-learner [class~="border-[#DCE5D9]"],
+.enterprise-hub-page.is-learner [class~="border-[#E3EBDD]"],
+.enterprise-hub-page.is-learner [class~="border-[#D7E1D4]"],
+.enterprise-hub-page.is-learner [class~="border-[#D8E4D5]"],
+.enterprise-hub-page.is-learner [class~="border-[#D9E6D6]"],
+.enterprise-hub-page.is-learner [class~="border-[#E6ECE3]"],
+.enterprise-hub-page.is-learner [class~="border-[#AFC4A9]"] {
+  border-color: var(--enterprise-blue-200) !important;
+}
+
+.enterprise-hub-page.is-learner [class~="bg-[#FBFDFB]"],
+.enterprise-hub-page.is-learner [class~="bg-[#F7FBF5]"],
+.enterprise-hub-page.is-learner [class~="bg-[#F5F7F4]"],
+.enterprise-hub-page.is-learner [class~="bg-[#F7F9F6]"] {
+  background-color: var(--enterprise-blue-050) !important;
+}
+
+.enterprise-hub-page.is-learner [class~="bg-[#EAF4E7]"],
+.enterprise-hub-page.is-learner [class~="bg-[#E5F0E2]"],
+.enterprise-hub-page.is-learner [class~="bg-[#F0F4EE]"] {
+  background-color: var(--enterprise-blue-100) !important;
+}
+
+.enterprise-hub-page.is-learner [class~="bg-[#52704D]"],
+.enterprise-hub-page.is-learner [class~="bg-[#52704D]/"] {
+  background-color: var(--enterprise-blue-700) !important;
+}
+
+.enterprise-hub-page.is-learner [class~="hover:bg-[#F1F6EF]"]:hover,
+.enterprise-hub-page.is-learner [class~="hover:bg-[#EAF4E7]"]:hover {
+  background-color: #e3f1f7 !important;
+}
+
+.enterprise-hub-page.is-learner [class~="bg-[#52704D]"] {
+  background-color: var(--enterprise-blue-700) !important;
+}
+
+.enterprise-hub-page.is-learner [class~="border-[#52704D]"] {
+  border-color: var(--enterprise-blue-700) !important;
+}
+
+.enterprise-hub-page.is-learner [class~="focus:border-[#52704D]"]:focus {
+  border-color: var(--enterprise-blue-600) !important;
+}
+
+.enterprise-hub-page.is-learner [class*="transition"] {
+  transition-duration: 120ms !important;
+}
+
+.enterprise-hub-page.is-learner .animate-spin {
+  animation-duration: 1.1s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enterprise-hub-page.is-learner [class*="transition"],
+  .enterprise-hub-page.is-learner .animate-spin {
+    transition: none !important;
+    animation: none !important;
+  }
+}

@@ -2,6 +2,7 @@
 from __future__ import annotations
 import json
 import uuid
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -10,15 +11,19 @@ from sse_starlette.sse import EventSourceResponse
 from app.agents.arbiter_agent import ArbiterAgent
 from app.agents.diagnosis_agent import DiagnosisAgent
 from app.agents.doc_agent import DocAgent
+from app.agents.mindmap_agent import MindMapAgent
 from app.agents.practice_guide_agent import PracticeGuideAgent
 from app.agents.quiz_agent import QuizAgent, generate_quiz_batch
+from app.agents.code_agent import CodeAgent
+from app.agents.video_agent import VideoAgent
 from app.agents.orchestrator import TrainingLoopOrchestrator, serialize_event
 from app.agents.planning_agents import DomainExpertAgent, LearningStrategyAgent, PlanArbiterAgent
 from app.agents.review_agents import EvidenceReviewAgent, PracticeReviewAgent, DifficultyReviewAgent
 from app.courses import get_course_by_id
 from app.db import async_session_maker
-from app.db.models import Profile, Resource, LearningPath, TrainingRun, User
+from app.db.models import Profile, ProfileSnapshot, Resource, LearningPath, TrainingRun, User
 from app.deps import require_user
+from app.schemas.profile import ProfileDims, TrainingRoundEvidence
 from app.training import resolve_training_role
 
 router = APIRouter(prefix="/workspace", tags=["workspace"])
@@ -36,7 +41,15 @@ def _build_orchestrator() -> TrainingLoopOrchestrator:
         diagnosis_agent=DiagnosisAgent(),
         planning_agents=[DomainExpertAgent(), LearningStrategyAgent()],
         plan_arbiter=PlanArbiterAgent(),
-        generators=[DocAgent(), PracticeGuideAgent(), QuizAgent()],
+        # 学习资源在独立资源页呈现；工作台只生成六项训练产物。
+        generators=[
+            DocAgent(),
+            PracticeGuideAgent(),
+            QuizAgent(),
+            MindMapAgent(),
+            CodeAgent(),
+            VideoAgent(),
+        ],
         reviewers=[EvidenceReviewAgent(), PracticeReviewAgent(), DifficultyReviewAgent()],
         arbiter=ArbiterAgent(),
     )
@@ -47,6 +60,43 @@ async def role_context(course_id: int | None = None) -> dict:
     """返回当前知识领域对应的目标岗位与核心能力。"""
     course_cfg = await get_course_by_id(course_id)
     return resolve_training_role(course_cfg.name)
+
+
+@router.get("/history")
+async def workspace_history(user: User = Depends(require_user)) -> dict:
+    """返回数据库中的训练与资源历史，供新浏览器恢复真实学习状态。"""
+    async with async_session_maker() as db:
+        resources = list((await db.scalars(
+            select(Resource)
+            .where(Resource.user_id == user.id)
+            .order_by(Resource.created_at.desc())
+        )).all())
+        runs = list((await db.scalars(
+            select(TrainingRun)
+            .where(TrainingRun.user_id == user.id, TrainingRun.status == "completed")
+            .order_by(TrainingRun.updated_at.desc())
+            .limit(20)
+        )).all())
+    type_counts: dict[str, int] = {}
+    for resource in resources:
+        type_counts[resource.type] = type_counts.get(resource.type, 0) + 1
+    latest = runs[0] if runs else None
+    return {
+        "resource_count": len(resources),
+        "resource_types": type_counts,
+        "training_count": len(runs),
+        "latest_run": None if latest is None else {
+            "run_id": latest.id,
+            "target_role": latest.target_role,
+            "topic": latest.topic,
+            "diagnosis": latest.diagnosis or {},
+            "outputs": latest.outputs or {},
+            "reviews": latest.reviews or {},
+            "decision": latest.decision or {},
+            "feedback": latest.feedback or {},
+            "completed_at": latest.updated_at.isoformat() if latest.updated_at else None,
+        },
+    }
 
 
 @router.post("/generate")
@@ -164,6 +214,34 @@ async def generate(req: GenerateRequest, user: User = Depends(require_user)):
                                 "expected_output": out.get("expected_output", ""),
                             }, ensure_ascii=False)
                             citations = []
+                        elif out_type == "video":
+                            content_str = json.dumps({
+                                "provider": out.get("provider", "frontend"),
+                                "model": out.get("model", "scripted-lecture"),
+                                "status": out.get("status", "script_ready"),
+                                "message": out.get("message", ""),
+                                "video_url": out.get("video_url", ""),
+                                "assembled_video_url": out.get("assembled_video_url", ""),
+                                "task_id": out.get("task_id", ""),
+                                "resolution": out.get("resolution", "768P"),
+                                "duration": out.get("duration", 0),
+                                "ratio": out.get("ratio", "16:9"),
+                                "has_audio": bool(out.get("has_audio", True)),
+                                "script": out.get("script", {}),
+                                "usage": out.get("usage", {}),
+                                "complexity": out.get("complexity", "workflow"),
+                                "scope": out.get("scope", "岗位流程片段"),
+                                "duration_reason": out.get("duration_reason", "按任务内容自动选择片段时长"),
+                                "estimated_cost_rmb": out.get("estimated_cost_rmb", 0),
+                                "actual_cost_rmb": out.get("actual_cost_rmb", 0),
+                                "segments": out.get("segments", []),
+                                "segment_urls": out.get("segment_urls", []),
+                                "segment_count": out.get("segment_count", 0),
+                                "completed_segments": out.get("completed_segments", 0),
+                                "total_duration": out.get("total_duration", out.get("duration", 0)),
+                                "assembly_status": out.get("assembly_status", "not_applicable"),
+                            }, ensure_ascii=False)
+                            citations = (out.get("script") or {}).get("citations", [])
                         else:
                             content_str = out.get("content", "")
                             citations = out.get("citations", [])
@@ -236,6 +314,7 @@ async def submit_training_feedback(
             next_action = "advanced_challenge"
             message = "下一轮提升一级难度，并增加更接近真实岗位的综合任务"
 
+        difficulty_delta = -1 if accuracy is not None and accuracy < 60 else 1 if accuracy is not None and accuracy >= 85 else 0
         result = {
             "run_id": run.id,
             "accuracy": accuracy,
@@ -245,13 +324,55 @@ async def submit_training_feedback(
             "message": message,
             "profile_update": {
                 "evidence_source": "岗位分阶测试",
-                "suggested_difficulty_delta": -1 if accuracy is not None and accuracy < 60 else 1 if accuracy is not None and accuracy >= 85 else 0,
+                "suggested_difficulty_delta": difficulty_delta,
                 "confidence_delta": 0.08 if answered else 0,
             },
         }
+        had_feedback = bool(run.feedback)
         run.feedback = {**result, "time_spent_min": req.time_spent_min, "satisfaction": req.satisfaction}
         run.stage = "feedback_updated"
         run.status = "feedback_updated"
+
+        # 每轮验收后回写画像：追加训练轮次证据、按表现更新薄弱点，并记录快照与版本。
+        # 仅在有真实作答证据且首次提交时更新；重复提交同一轮不会重复累加版本。
+        if answered and not had_feedback:
+            profile = await db.scalar(select(Profile).where(Profile.user_id == user.id))
+            dims = ProfileDims.model_validate(profile.dims if profile else {})
+            old_dims = dims.model_dump()
+            dims.training_rounds.insert(0, TrainingRoundEvidence(
+                run_id=run.id,
+                domain=run.domain or "",
+                target_role=run.target_role or "",
+                topic=run.topic or "",
+                accuracy=accuracy,
+                answered_count=len(answered),
+                wrong_count=len(wrong_items),
+                next_action=next_action,
+                difficulty_delta=difficulty_delta,
+                completed_at=datetime.utcnow().isoformat(),
+            ))
+            dims.training_rounds = dims.training_rounds[:20]
+            # 达标能力从薄弱点移除；未达标能力提到最前，供下一轮诊断优先补齐。
+            plan = (run.outputs or {}).get("training_plan") or {}
+            round_topics = [str(item).strip() for item in (plan.get("priority_competencies") or []) if str(item).strip()]
+            if run.topic and str(run.topic).strip():
+                round_topics.append(str(run.topic).strip())
+            round_topics = list(dict.fromkeys(round_topics))
+            remaining = [item for item in dims.weak_points.topics if item not in round_topics]
+            dims.weak_points.topics = ((round_topics + remaining) if accuracy is not None and accuracy < 85 else remaining)[:12]
+
+            if profile is None:
+                profile = Profile(user_id=user.id, dims=dims.model_dump(), version=1)
+                db.add(profile)
+            else:
+                db.add(ProfileSnapshot(
+                    user_id=user.id,
+                    snapshot=old_dims,
+                    trigger_event=f"training_round:{run.id}"[:64],
+                ))
+                profile.dims = dims.model_dump()
+                profile.version += 1
+
         await db.commit()
         return result
 

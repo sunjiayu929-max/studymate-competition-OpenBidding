@@ -1,13 +1,68 @@
 # SITE_ADDRESS examples:
 #   Local:      http://localhost
-#   Production: studymate.example.com
+#   Production: matropic.cn
 # Caddy automatically provisions and renews HTTPS for a real public domain.
 {$SITE_ADDRESS:http://localhost} {
 	encode zstd gzip
 
-	# Low-latency mode is important for FastAPI/SSE token streaming.
-	reverse_proxy frontend:80 {
-		flush_interval -1
+	# Keep the independent interview service behind the existing StudyMate host.
+	# route preserves this ordering instead of relying on global directive sorting.
+	route {
+		# handle_path removes /interview before forwarding it to Flask.
+		redir /interview /interview/ 308
+		redir /oj /oj/ 308
+
+		# Hydro is an SSO-only projection. Keep all public account-management
+		# paths on the StudyMate identity flow, including legacy page links.
+		@oj_auth path /oj/login /oj/register /oj/register/* /oj/lostpass /oj/lostpass/* /oj/oauth/*
+		redir @oj_auth /api/oj/entry 303
+		@oj_logout path /oj/logout /oj/logout/*
+		redir @oj_logout /oj/integrations/studymate/logout 303
+
+		# Hydro is an independent OJ project. The public path is stripped before
+		# proxying; Hydro itself is configured with https://matropic.cn/oj/ as its
+		# canonical URL so generated links and WebSocket URLs retain the prefix.
+		handle_path /oj/* {
+			reverse_proxy hydro-web:8888 {
+				header_up X-Forwarded-Prefix /oj
+				flush_interval -1
+			}
+		}
+
+		# Only the StudyMate learner flow is published here. The retained legacy
+		# recruitment UI still owns root-level /api and page routes, which would
+		# collide with StudyMate if it were exposed through this same host.
+		# Reject encoded dot/slash segments before Caddy's path normalization can
+		# make them escape the /interview namespace.
+		@encoded_interview_escape path_regexp interview_encoded_escape (?i)(%2e|%2f|%5c)
+		handle @encoded_interview_escape {
+			respond "Not found" 404
+		}
+		@unpublished_interview {
+			path /interview/*
+			not path /interview/health /interview/integrations/studymate/launch /interview/practice/* /interview/api/practice/* /interview/api/speech/asr-url
+			not path /interview/static/css/practice.css /interview/static/css/practice-modern.css /interview/static/js/practice-avatar.js /interview/static/js/practice-prepare.js /interview/static/js/practice-interview.js /interview/static/js/practice-reports.js
+			not path /interview/static/media/digital-human/studymate-lecturer-idle.mp4 /interview/static/media/digital-human/studymate-lecturer-idle-poster.jpg /interview/static/media/digital-human/lecturer-talk.mp4 /interview/static/media/digital-human/lecturer-talk-poster.jpg
+			not path /interview/static/media/interview/*
+			not path /interview/static/js/role_*.glb /interview/static/dist/* /interview/static/vendor/three/*
+		}
+		handle @unpublished_interview {
+			respond "Not found" 404
+		}
+		handle_path /interview/* {
+			# Flask uses this prefix for redirects, static assets, and its own cookie path.
+			reverse_proxy ai-interview:5000 {
+				header_up X-Forwarded-Prefix /interview
+				flush_interval -1
+			}
+		}
+
+		# Low-latency mode is important for FastAPI/SSE token streaming.
+		handle {
+			reverse_proxy frontend:80 {
+				flush_interval -1
+			}
+		}
 	}
 
 	header {

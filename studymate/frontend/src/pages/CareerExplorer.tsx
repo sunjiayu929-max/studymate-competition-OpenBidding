@@ -1,22 +1,32 @@
-import { GraduationCap } from "lucide-react"
-
 import { AppTopbar } from "@/components/AppTopbar"
 import { CareerRecommendations } from "@/components/CareerRecommendations"
 import { useTrackPage } from "@/lib/useTrackPage"
 
+import "./CareerExplorer.css"
+
 export function CareerExplorer() {
   useTrackPage("career_explorer")
+
   return (
-    <main className="app-page paper-theme min-h-dvh px-4 py-5 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
-        <AppTopbar current="career" appearance="paper" />
-        <section className="mt-5 rounded-[28px] border border-[#D7D1C4] bg-[#FFFEFA] p-5 shadow-[0_18px_48px_rgba(24,35,45,.07)] sm:p-7">
-          <span className="inline-flex items-center gap-2 text-[10px] font-bold tracking-[.12em] text-[#B1842C]"><GraduationCap className="size-4" />CAREER EXPLORER</span>
-          <h1 className="mt-2 text-2xl font-bold tracking-[-.04em] text-[#18232D]">把学习证据映射到职业方向</h1>
-          <p className="mt-2 max-w-2xl text-xs leading-6 text-[#66717B]">建议基于当前画像、目标岗位和已提交测验在本地校准岗位匹配度与能力差距，不会把未经评估的经历当成已掌握能力。</p>
-          <div className="mt-6">
-            <CareerRecommendations />
-          </div>
+    <main className="app-page paper-theme career-transfer-page career-explorer-page min-h-dvh pb-8">
+      <div className="career-explorer-shell w-full px-2 py-3 sm:px-4 sm:py-4 lg:px-5">
+        <AppTopbar
+          current="career"
+          appearance="paper"
+          labelOverride="转岗培训"
+          groupOverride="画像驱动匹配"
+        />
+
+        <section className="career-explorer-content" aria-labelledby="career-explorer-title">
+          <header className="career-explorer-intro">
+            <div>
+              <span>基于当前岗位画像</span>
+              <h2 id="career-explorer-title">比较能力复用、关键差距与匹配岗位</h2>
+            </div>
+            <p>按岗位知识库中的共通能力与基础课程计算，推荐可立即进入训练的方向。</p>
+          </header>
+
+          <CareerRecommendations />
         </section>
       </div>
     </main>

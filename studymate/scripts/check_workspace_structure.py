@@ -19,6 +19,7 @@ ALLOWED_ROOT_ENTRIES = {
     "AGENTS.md",
     "README.md",
     "docs",
+    "oj",
     "studymate",
 }
 

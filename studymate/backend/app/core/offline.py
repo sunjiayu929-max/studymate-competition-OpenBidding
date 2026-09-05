@@ -24,7 +24,7 @@ _original_socket_sendto = socket.socket.sendto
 def _blocked(operation: str, target: Any = None) -> OfflineNetworkBlockedError:
     suffix = f"（目标：{target!r}）" if target is not None else ""
     return OfflineNetworkBlockedError(
-        f"StudyMate 安全离线模式已阻止出站网络操作 {operation}{suffix}"
+        f"因材智训安全离线模式已阻止出站网络操作 {operation}{suffix}"
     )
 
 

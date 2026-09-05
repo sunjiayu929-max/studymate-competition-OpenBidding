@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { CheckCircle2, XCircle, Lightbulb, ChevronDown, ChevronUp, NotebookText, Check, Maximize2 } from "lucide-react"
 import { motion } from "framer-motion"
 import { apiPost } from "@/lib/api"
@@ -33,6 +33,8 @@ export interface QuizResult {
   difficulty: number
 }
 
+export type SavedQuizAttempt = QuizResult & { topic: string }
+
 interface QuizCardProps {
   item: QuizItem
   index: number
@@ -42,24 +44,49 @@ interface QuizCardProps {
   onSubmit?: (result: QuizResult & { topic: string }) => void
   /** 同批所有题(给「全屏专注」modal 跨题切换用),不传则只能看本题 */
   allItems?: QuizItem[]
+  /** 已提交的答题记录，用于离开页面后恢复答案与判题结果。 */
+  initialAttempt?: SavedQuizAttempt
+  /** 同批题目的已提交记录，供全屏专注模式恢复。 */
+  initialAttempts?: Record<string, SavedQuizAttempt>
 }
 
-export function QuizCard({ item, index, topic, onSubmit, allItems }: QuizCardProps) {
+function restoredAnswer(item: QuizItem, attempt?: SavedQuizAttempt): string | number {
+  if (!attempt) return item.type === "mcq" ? -1 : item.type === "code" ? (item.starter ?? "") : ""
+  if (item.type !== "mcq") return attempt.user_answer
+  const answerIndex = Number(attempt.user_answer)
+  return Number.isInteger(answerIndex) && answerIndex >= 0 ? answerIndex : -1
+}
+
+export function QuizCard({ item, index, topic, onSubmit, allItems, initialAttempt, initialAttempts }: QuizCardProps) {
   const course = useCurrentCourse()
   const courseCfg = useCourseConfig()
   const user = useCurrentUser()
   // 算法课默认 C++,其他课默认 Python;用户可下拉切换
   const defaultRunLang: RunLang = courseCfg?.code_style === "algorithm" ? "cpp" : "python"
   const [focusOpen, setFocusOpen] = useState(false)
-  const initialAnswer: string | number =
-    item.type === "mcq" ? -1 : item.type === "code" ? (item.starter ?? "") : ""
-  const [userAnswer, setUserAnswer] = useState<string | number>(initialAnswer)
-  const [showResult, setShowResult] = useState(false)
-  const [showExp, setShowExp] = useState(false)
+  const [userAnswer, setUserAnswer] = useState<string | number>(() => restoredAnswer(item, initialAttempt))
+  const [showResult, setShowResult] = useState(Boolean(initialAttempt))
+  const [showExp, setShowExp] = useState(Boolean(initialAttempt && item.type === "code"))
   const [saveOpen, setSaveOpen] = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)
-  const [answerTouched, setAnswerTouched] = useState(false)
+  const [answerTouched, setAnswerTouched] = useState(Boolean(initialAttempt))
   const [answerHint, setAnswerHint] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!initialAttempt) {
+      setUserAnswer(restoredAnswer(item))
+      setShowResult(false)
+      setShowExp(false)
+      setAnswerTouched(false)
+      setAnswerHint(null)
+      return
+    }
+    setUserAnswer(restoredAnswer(item, initialAttempt))
+    setShowResult(true)
+    setShowExp(item.type === "code")
+    setAnswerTouched(true)
+    setAnswerHint(null)
+  }, [initialAttempt, item])
 
   const updateAnswer = (value: string | number) => {
     setUserAnswer(value)
@@ -343,6 +370,7 @@ export function QuizCard({ item, index, topic, onSubmit, allItems }: QuizCardPro
         defaultLanguage={defaultRunLang}
         onClose={() => setFocusOpen(false)}
         onSubmit={onSubmit}
+        initialAttempts={initialAttempts}
       />
     </motion.div>
   )

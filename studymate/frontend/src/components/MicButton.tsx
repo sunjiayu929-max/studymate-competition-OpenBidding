@@ -31,6 +31,10 @@ interface Props {
   vadEos?: number
   /** 录音开始/结束钩子（外层显示「正在听...」气泡用）*/
   onStateChange?: (recording: boolean) => void
+  /** Increment to start recording from a parent-controlled conversation mode. */
+  activationToken?: number
+  /** Increment to stop recording from a parent-controlled conversation mode. */
+  stopToken?: number
 }
 
 /** 讯飞 wpgs 合并：sn → 句子，pgs=rpl 时按 rg 范围替换 */
@@ -62,7 +66,7 @@ class TranscriptMerger {
   }
 }
 
-export function MicButton({ onTranscript, onError, size = "sm", className = "", vadEos = 3000, onStateChange }: Props) {
+export function MicButton({ onTranscript, onError, size = "sm", className = "", vadEos = 3000, onStateChange, activationToken = 0, stopToken = 0 }: Props) {
   const [state, setState] = useState<State>("idle")
 
   const wsRef = useRef<WebSocket | null>(null)
@@ -73,6 +77,10 @@ export function MicButton({ onTranscript, onError, size = "sm", className = "", 
   const sentFirstRef = useRef(false)
   const mergerRef = useRef(new TranscriptMerger())
   const stoppingRef = useRef(false)
+  const startRef = useRef<() => void>(() => {})
+  const stopExternalRef = useRef<() => void>(() => {})
+  const lastActivationRef = useRef(activationToken)
+  const lastStopRef = useRef(stopToken)
 
   const cleanup = (notify: boolean) => {
     if (procRef.current) {
@@ -240,6 +248,21 @@ export function MicButton({ onTranscript, onError, size = "sm", className = "", 
     if (state === "recording" || state === "connecting") stop()
     else start()
   }
+
+  startRef.current = () => { if (state === "idle") void start() }
+  stopExternalRef.current = () => { if (state !== "idle") stop() }
+
+  useEffect(() => {
+    if (activationToken === lastActivationRef.current) return
+    lastActivationRef.current = activationToken
+    if (activationToken > 0) startRef.current()
+  }, [activationToken])
+
+  useEffect(() => {
+    if (stopToken === lastStopRef.current) return
+    lastStopRef.current = stopToken
+    if (stopToken > 0) stopExternalRef.current()
+  }, [stopToken])
 
   const sz = size === "md" ? "w-9 h-9" : "w-8 h-8"
   const iconSz = size === "md" ? "w-4 h-4" : "w-3.5 h-3.5"

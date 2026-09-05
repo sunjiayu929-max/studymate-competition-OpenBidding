@@ -1,0 +1,83 @@
+<view class="auth-page">
+  <view class="auth-topbar">
+    <view class="brand-row">
+      <view class="brand-mark">智</view>
+      <view class="brand-copy">
+        <text class="brand-name">因材智训</text>
+        <text class="brand-subtitle">LEARNING OS</text>
+      </view>
+    </view>
+    <view class="online-status"><view class="online-dot"></view><text>8 个智能体在线</text></view>
+  </view>
+
+  <view class="auth-shell">
+    <view class="auth-hero">
+      <view class="hero-badge"><view class="hero-dot"></view><text>为每个目标组织一支 AI 学习团队</text></view>
+      <text class="hero-title">让学习路径清晰可见</text>
+      <text class="hero-title hero-title-accent">让每一步都有回应</text>
+    </view>
+
+    <view class="auth-panel register-panel">
+      <view class="panel-heading">
+        <view class="panel-kicker"><view class="panel-dot"></view><text>安全邮箱注册</text><text class="panel-symbol">✦</text></view>
+        <text class="panel-title">创建你的学习星图</text>
+        <text class="panel-detail">验证邮箱后，即可建立专属岗位能力画像</text>
+      </view>
+
+      <view class="auth-tabs">
+        <view class="auth-tab" bindtap="backToLogin">登录</view>
+        <view class="auth-tab active">注册</view>
+      </view>
+
+      <view class="auth-form">
+        <text class="form-label">昵称</text>
+        <view class="field-shell"><text class="field-symbol">N</text><input class="field-input" value="{{name}}" placeholder="如何称呼你" placeholder-class="input-placeholder" bindinput="onNameInput" /></view>
+
+        <view class="identity-box">
+          <text class="identity-label">注册身份</text>
+          <view class="choice-grid">
+            <view class="choice-button {{accountType === 'learner' ? 'selected learner' : ''}}" bindtap="selectLearner">学习者</view>
+            <view class="choice-button {{accountType === 'enterprise_admin' ? 'selected admin' : ''}}" bindtap="selectAdmin">企业管理员</view>
+          </view>
+          <block wx:if="{{accountType === 'learner'}}">
+            <view class="choice-grid choice-grid-secondary">
+              <view class="choice-button secondary {{learnerType === 'student' ? 'selected student' : ''}}" bindtap="selectStudent">学生</view>
+              <view class="choice-button secondary {{learnerType === 'worker' ? 'selected worker' : ''}}" bindtap="selectWorker">从业者</view>
+            </view>
+            <block wx:if="{{learnerType === 'student'}}">
+              <text class="form-label compact-label">学习阶段</text>
+              <picker mode="selector" range="{{studyStages}}" value="{{studyStageIndex}}" bindchange="onStudyStageChange">
+                <view class="select-shell"><text class="field-symbol">S</text><text class="select-value {{studyStage ? 'selected-value' : 'placeholder-value'}}">{{studyStage || '请选择学习阶段'}}</text><text class="select-arrow">⌄</text></view>
+              </picker>
+            </block>
+            <block wx:else>
+              <text class="form-label compact-label">所在公司</text>
+              <view class="field-shell"><text class="field-symbol">C</text><input class="field-input" value="{{company}}" placeholder="例如：星河科技" placeholder-class="input-placeholder" bindinput="onCompanyInput" /></view>
+            </block>
+            <text class="form-label compact-label">{{learnerType === 'worker' ? '当前岗位' : '目标岗位（可稍后补充）'}}</text>
+            <view class="field-shell"><text class="field-symbol">✦</text><input class="field-input" value="{{targetRole}}" placeholder="例如：前线部署工程师" placeholder-class="input-placeholder" bindinput="onTargetRoleInput" /></view>
+          </block>
+          <block wx:else>
+            <text class="form-label compact-label">企业名称</text>
+            <view class="field-shell"><text class="field-symbol">E</text><input class="field-input" value="{{company}}" placeholder="例如：企业名称" placeholder-class="input-placeholder" bindinput="onCompanyInput" /></view>
+          </block>
+        </view>
+
+        <text class="form-label">邮箱地址</text>
+        <view class="field-shell"><text class="field-symbol">@</text><input class="field-input" type="text" value="{{email}}" placeholder="例如 name@example.com" placeholder-class="input-placeholder" bindinput="onEmailInput" /></view>
+        <view class="code-row">
+          <view class="code-input-wrap"><text class="form-label">邮箱验证码</text><view class="field-shell"><text class="field-symbol">✓</text><input class="field-input" type="number" maxlength="6" value="{{code}}" placeholder="6 位验证码" placeholder-class="input-placeholder" bindinput="onCodeInput" /></view></view>
+          <button class="code-button" disabled="{{codeLoading || countdown > 0}}" bindtap="sendCode">{{countdown > 0 ? countdown + 's 后重发' : '发送验证码'}}</button>
+        </view>
+        <text class="form-label">密码</text>
+        <view class="field-shell"><text class="field-symbol">●</text><input class="field-input" type="text" password="{{!showPassword}}" value="{{password}}" placeholder="至少 8 位字符" placeholder-class="input-placeholder" bindinput="onPasswordInput" /><view class="password-toggle {{showPassword ? 'eye-visible' : 'eye-hidden'}}" catchtap="togglePassword" aria-label="{{showPassword ? '隐藏密码' : '显示密码'}}"><view class="eye-icon"></view></view></view>
+        <view class="helper-text">注册身份和岗位信息可用于后续任务匹配。</view>
+        <view wx:if="{{notice}}" class="auth-notice">{{notice}}</view>
+        <view wx:if="{{error}}" class="auth-error">{{error}}</view>
+        <button class="auth-submit" loading="{{loading}}" disabled="{{loading}}" bindtap="register">验证并创建账号 <text class="submit-arrow">→</text></button>
+      </view>
+
+      <view class="auth-security"><text class="security-symbol">✓</text><text>安全邮箱验证 · 认证信息加密保护</text></view>
+    </view>
+  </view>
+</view>

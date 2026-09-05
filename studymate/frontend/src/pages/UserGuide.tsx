@@ -29,31 +29,32 @@ import { useTrackPage } from "@/lib/useTrackPage"
 import { isPrivilegedRole, useCurrentUser } from "@/store/user"
 import { openTutorBubble } from "@/store/tutorBubble"
 
+import "./UserGuide.css"
+
 interface GuideLink {
   title: string
   detail: string
   to: string
   action: string
   icon: LucideIcon
-  tone: string
-  iconTone: string
+  tone: "blue" | "cyan" | "mint" | "violet" | "gold" | "coral"
 }
 
 const FIRST_ROUTE: GuideLink[] = [
-  { title: "选择目标岗位", detail: "确定领域、岗位知识库与训练上下文", to: "/courses", action: "选择岗位", icon: Library, tone: "border-[#D8C9A8] bg-[#FBF7ED]", iconTone: "bg-[#F4ECD8] text-[#8E6925]" },
-  { title: "让系统认识你", detail: "用对话补充目标与薄弱点", to: "/profile", action: "建立画像", icon: GraduationCap, tone: "border-[#C7D2D8] bg-[#F3F7F9]", iconTone: "bg-[#E7EDF3] text-[#315E83]" },
-  { title: "运行岗位训练闭环", detail: "11 个核心 Agent 完成诊断、协商、生成、审核、裁决与反馈", to: "/competency", action: "开始训练", icon: LayoutDashboard, tone: "border-[#CCD7C9] bg-[#F4F7F2]", iconTone: "bg-[#E8EDE5] text-[#5D7658]" },
-  { title: "做一次真实测验", detail: "用作答结果检验掌握程度", to: "/quiz", action: "进入测验", icon: BookOpenCheck, tone: "border-[#DFC9BE] bg-[#FBF5F1]", iconTone: "bg-[#F6ECE7] text-[#9A4E35]" },
-  { title: "查看学习报告", detail: "获得建议并更新下一步路线", to: "/report", action: "查看报告", icon: BarChart3, tone: "border-[#D7CDD9] bg-[#F8F5F8]", iconTone: "bg-[#EEE9EF] text-[#7E6B83]" },
+  { title: "选择目标岗位", detail: "确定领域、岗位知识库与训练上下文", to: "/courses", action: "选择岗位", icon: Library, tone: "blue" },
+  { title: "让系统认识你", detail: "用对话补充目标与薄弱点", to: "/profile", action: "建立画像", icon: GraduationCap, tone: "cyan" },
+  { title: "运行岗位训练闭环", detail: "14 个协作节点完成诊断、协商、生成、审核、裁决与反馈", to: "/competency", action: "开始训练", icon: LayoutDashboard, tone: "violet" },
+  { title: "做一次真实测验", detail: "用作答结果检验掌握程度", to: "/quiz", action: "进入测验", icon: BookOpenCheck, tone: "mint" },
+  { title: "查看学习报告", detail: "获得建议并更新下一步路线", to: "/report", action: "查看报告", icon: BarChart3, tone: "gold" },
 ]
 
 const GOAL_LINKS: GuideLink[] = [
-  { title: "我想快速攻克一个岗位能力点", detail: "让岗位助教结合当前岗位与画像连续讲解", to: "/tutor", action: "问岗位助教", icon: MessageCircleMore, tone: "border-[#DFC9BE] bg-[#FFFEFA]", iconTone: "bg-[#F6ECE7] text-[#9A4E35]" },
-  { title: "我想核对内容出处", detail: "搜索岗位知识片段，查看资料、页码和前后文", to: "/rag", action: "检索岗位知识", icon: Search, tone: "border-[#C7DAD6] bg-[#FFFEFA]", iconTone: "bg-[#E2EEEB] text-[#3E7774]" },
-  { title: "我想整理自己的学习成果", detail: "用 Markdown 笔记沉淀、总结并继续出题", to: "/notes", action: "整理智能笔记", icon: NotebookPen, tone: "border-[#CCD7C9] bg-[#FFFEFA]", iconTone: "bg-[#E8EFE8] text-[#5B7C6A]" },
-  { title: "我想看懂抽象过程", detail: "播放动画并调整参数，观察过程如何变化", to: "/concept", action: "打开可视讲解", icon: Clapperboard, tone: "border-[#D7CDD9] bg-[#FFFEFA]", iconTone: "bg-[#EEE9EF] text-[#7E6B83]" },
-  { title: "我不知道下一步学什么", detail: "回到今日学习，按系统给出的优先级继续", to: "/", action: "查看今日路线", icon: Route, tone: "border-[#C7D2D8] bg-[#FFFEFA]", iconTone: "bg-[#E7EDF3] text-[#315E83]" },
-  { title: "我遇到了问题或有建议", detail: "提交反馈并查看后续处理状态", to: "/feedback", action: "前往反馈中心", icon: MessageSquareText, tone: "border-[#DFC9BE] bg-[#FFFEFA]", iconTone: "bg-[#F6ECE7] text-[#9A4E35]" },
+  { title: "我想快速攻克一个岗位能力点", detail: "让岗位助教结合当前岗位与画像连续讲解", to: "/tutor", action: "问岗位助教", icon: MessageCircleMore, tone: "coral" },
+  { title: "我想核对内容出处", detail: "搜索岗位知识片段，查看资料、页码和前后文", to: "/rag", action: "检索岗位知识", icon: Search, tone: "cyan" },
+  { title: "我想整理自己的学习成果", detail: "用 Markdown 笔记沉淀、总结并继续出题", to: "/notes", action: "整理智能笔记", icon: NotebookPen, tone: "mint" },
+  { title: "我想看懂抽象过程", detail: "播放动画并调整参数，观察过程如何变化", to: "/concept", action: "打开可视讲解", icon: Clapperboard, tone: "violet" },
+  { title: "我不知道下一步学什么", detail: "回到今日学习，按系统给出的优先级继续", to: "/", action: "查看今日路线", icon: Route, tone: "blue" },
+  { title: "我遇到了问题或有建议", detail: "提交反馈并查看后续处理状态", to: "/feedback", action: "前往反馈中心", icon: MessageSquareText, tone: "gold" },
 ]
 
 const CAPABILITY_GROUPS = [
@@ -63,7 +64,7 @@ const CAPABILITY_GROUPS = [
     items: [
       { label: "岗位空间", to: "/courses", icon: Library },
       { label: "今日学习", to: "/", icon: Sparkles },
-      { label: "岗位能力画像", to: "/profile", icon: GraduationCap },
+      { label: "学情画像构建", to: "/profile", icon: GraduationCap },
     ],
   },
   {
@@ -102,6 +103,19 @@ const TIPS = [
   ["在哪里能随时求助？", "除助教页面外，右下角学习助手会感知当前页面、目标岗位和画像，可直接询问“这个页面怎么用”。"],
 ]
 
+const QUICK_STEPS = [
+  ["01", "先选目标岗位", "所有能力会自动共享该岗位的知识与训练上下文"],
+  ["02", "再做一件学习任务", "生成、提问、记笔记或完成一道题"],
+  ["03", "最后看结果", "在报告和画像中确认学习产生了变化"],
+]
+
+const SECTION_LINKS = [
+  ["第一次使用", "first-route"],
+  ["按目标找功能", "by-goal"],
+  ["完整功能地图", "feature-map"],
+  ["常见问题", "tips"],
+]
+
 export function UserGuide() {
   useTrackPage("guide")
   useTutorContext({
@@ -116,191 +130,175 @@ export function UserGuide() {
   const openQuickGuide = () => window.dispatchEvent(new Event("studymate:getting-started-open"))
 
   return (
-    <div className="app-page paper-theme min-h-dvh">
-      <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
+    <main className="guide-studio app-page paper-theme min-h-dvh">
+      <div className="guide-shell">
         <AppTopbar current="guide" appearance="paper" />
 
-        <main className="mt-4 overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)]">
-          <section className="relative overflow-hidden border-b border-[#D7D1C4] bg-[#F8F6F0] px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
-            <div className="pointer-events-none absolute -right-20 -top-32 size-80 rounded-full border border-[#DDD4BF]" />
-            <div className="pointer-events-none absolute -right-4 top-10 size-40 rounded-full border border-[#E5DED0]" />
-            <div className="relative grid gap-7 lg:grid-cols-[minmax(0,1.1fr)_minmax(390px,.9fr)] lg:items-center">
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#D8C9A8] bg-[#FBF7ED] px-3 py-1.5 text-[10px] font-bold tracking-[0.12em] text-[#8E6925]">
-                  <Compass className="size-3.5" /> STUDYMATE 使用手册
-                </div>
-                <h1 className="mt-4 max-w-2xl text-[32px] font-black leading-[1.12] tracking-[-0.045em] text-[#18232D] sm:text-[40px] lg:text-[46px]">
-                  不必认识所有功能，<br className="hidden sm:block" />先完成一次学习闭环
-                </h1>
-                <p className="mt-4 max-w-2xl text-[13px] leading-6 text-[#66717B] sm:text-sm">
-                  StudyMate 会把目标岗位、岗位知识、个人画像、训练资源、测验证据和报告回写连在一起。第一次使用建议跟随 3 分钟指引，之后再按当前岗位目标选择功能。
-                </p>
-                <div className="mt-6 flex flex-wrap gap-2.5">
-                  <button type="button" onClick={openQuickGuide} className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] shadow-[0_10px_24px_rgba(36,76,102,.18)] transition-all hover:-translate-y-px hover:bg-[#193B50]">
-                    <Compass className="size-4" /> 开始 3 分钟指引
-                  </button>
-                  <Link to="/courses" className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#C9C2B4] bg-[#FFFEFA] px-5 text-xs font-bold text-[#315E83] transition-colors hover:bg-[#EEE9DF]">
-                    直接选择目标岗位 <ArrowRight className="size-4" />
-                  </Link>
-                </div>
-              </div>
+        <section className="guide-hero" aria-labelledby="guide-title">
+          <div className="guide-livebar">
+            <span className="guide-livebar-beacon" />
+            <b>GETTING STARTED</b>
+            <small>新手路线已就绪</small>
+            <em>3 分钟完成首次导航</em>
+          </div>
 
-              <div className="rounded-[22px] border border-[#C7D2D8] bg-[#FFFEFA]/95 p-4 shadow-[0_16px_36px_rgba(24,35,45,.08)] sm:p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-[10px] font-bold tracking-[0.12em] text-[#315E83]">最短上手路线</div>
-                    <div className="mt-1 text-base font-bold text-[#18232D]">只记住这三个动作</div>
-                  </div>
-                  <span className="rounded-full bg-[#E9EEE6] px-2.5 py-1 text-[10px] font-bold text-[#557052]">约 3 分钟</span>
-                </div>
-                <div className="mt-4 space-y-2.5">
-                  {[
-                    ["01", "先选目标岗位", "所有能力会自动共享该岗位的知识与训练上下文"],
-                    ["02", "再做一件学习任务", "生成、提问、记笔记或完成一道题"],
-                    ["03", "最后看结果", "在报告和画像中确认学习产生了变化"],
-                  ].map(([index, title, detail]) => (
-                    <div key={index} className="flex gap-3 rounded-xl border border-[#E3DED3] bg-[#F8F6F0] px-3 py-2.5">
-                      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#244C66] text-[10px] font-black text-[#F0D6A4]">{index}</span>
-                      <div>
-                        <div className="text-[11px] font-bold text-[#18232D]">{title}</div>
-                        <div className="mt-0.5 text-[10px] leading-4 text-[#737C80]">{detail}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          <div className="guide-hero-grid">
+            <div className="guide-hero-copy">
+              <div className="guide-kicker"><Compass />因材智训使用手册</div>
+              <h1 id="guide-title">不必认识所有功能，<span>先完成一次学习闭环</span></h1>
+              <p>因材智训会把目标岗位、岗位知识、个人画像、训练资源、测验证据和报告回写连在一起。第一次使用建议跟随 3 分钟指引，之后再按当前岗位目标选择功能。</p>
+              <div className="guide-hero-actions">
+                <button type="button" onClick={openQuickGuide} className="guide-button guide-button-primary">
+                  <Compass />开始 3 分钟指引<span className="guide-button-signal" aria-hidden="true" />
+                </button>
+                <Link to="/courses" className="guide-button guide-button-secondary">
+                  直接选择目标岗位<ArrowRight />
+                </Link>
               </div>
+            </div>
+
+            <div className="guide-quick-panel">
+              <div className="guide-quick-heading">
+                <div><small>最短上手路线</small><h2>只记住这三个动作</h2></div>
+                <span>约 3 分钟</span>
+              </div>
+              <div className="guide-quick-steps">
+                <i className="guide-quick-path" aria-hidden="true" />
+                {QUICK_STEPS.map(([index, title, detail]) => (
+                  <div className="guide-quick-step" key={index}>
+                    <span>{index}</span>
+                    <div><strong>{title}</strong><small>{detail}</small></div>
+                    <CheckCircle2 />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <nav className="guide-nav" aria-label="本页目录">
+          <span>页面导航</span>
+          {SECTION_LINKS.map(([label, id], index) => (
+            <a key={id} href={`#${id}`}><i>{String(index + 1).padStart(2, "0")}</i>{label}</a>
+          ))}
+        </nav>
+
+        <div className="guide-content">
+          <section id="first-route" className="guide-section guide-first-route">
+            <GuideHeading eyebrow="01 · 第一次使用" title="建议按这条路线走一遍" detail="每一步都能直接进入实际功能，不需要返回本页等待。">
+              <button type="button" onClick={openQuickGuide} className="guide-inline-action">打开悬浮指引<Compass /></button>
+            </GuideHeading>
+            <div className="guide-route-grid">
+              <span className="guide-route-line" aria-hidden="true"><i /></span>
+              {FIRST_ROUTE.map(({ title, detail, to, action, icon: Icon, tone }, index) => (
+                <Link key={title} to={to} className="guide-route-card" data-tone={tone}>
+                  <div className="guide-card-top"><span><Icon /></span><b>{String(index + 1).padStart(2, "0")}</b></div>
+                  <h3>{title}</h3>
+                  <p>{detail}</p>
+                  <small>{action}<ChevronRight /></small>
+                </Link>
+              ))}
             </div>
           </section>
 
-          <nav className="flex gap-2 overflow-x-auto border-b border-[#E3DED3] bg-[#FFFEFA] px-5 py-3 sm:px-8 lg:px-10" aria-label="本页目录">
-            {[["第一次使用", "first-route"], ["按目标找功能", "by-goal"], ["完整功能地图", "feature-map"], ["常见问题", "tips"]].map(([label, id]) => (
-              <a key={id} href={`#${id}`} className="shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]">{label}</a>
-            ))}
-          </nav>
+          <GuideTransition from="首次路线" to="按需探索" />
 
-          <div className="px-4 py-7 sm:px-8 lg:px-10 lg:py-9">
-            <section id="first-route" className="scroll-mt-5">
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <div className="text-[10px] font-bold tracking-[0.12em] text-[#8E6925]">第一次使用</div>
-                  <h2 className="mt-1.5 text-2xl font-black tracking-[-0.035em] text-[#18232D]">建议按这条路线走一遍</h2>
-                  <p className="mt-1.5 text-xs leading-5 text-[#737C80]">每一步都能直接进入实际功能，不需要返回本页等待。</p>
-                </div>
-                <button type="button" onClick={openQuickGuide} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#C7D2D8] bg-[#E7EDF3] px-3 text-[11px] font-bold text-[#315E83] hover:bg-[#DBE6EE]">
-                  打开悬浮指引 <Compass className="size-3.5" />
-                </button>
-              </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                {FIRST_ROUTE.map(({ title, detail, to, action, icon: Icon, tone, iconTone }, index) => (
-                  <Link key={title} to={to} className={`group flex min-h-44 flex-col rounded-[20px] border p-4 transition-all hover:-translate-y-1 hover:shadow-[0_14px_30px_rgba(24,35,45,.09)] ${tone}`}>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className={`grid size-10 place-items-center rounded-xl ${iconTone}`}><Icon className="size-[18px]" /></span>
-                      <span className="text-[10px] font-black text-[#9A9488]">0{index + 1}</span>
-                    </div>
-                    <div className="mt-4 text-[13px] font-bold text-[#18232D]">{title}</div>
-                    <p className="mt-1 text-[10px] leading-4 text-[#737C80]">{detail}</p>
-                    <span className="mt-auto inline-flex items-center gap-1 pt-4 text-[10px] font-bold text-[#315E83]">{action}<ChevronRight className="size-3 transition-transform group-hover:translate-x-0.5" /></span>
-                  </Link>
-                ))}
-              </div>
-            </section>
-
-            <section id="by-goal" className="mt-10 scroll-mt-5 border-t border-[#E3DED3] pt-9">
-              <div className="text-[10px] font-bold tracking-[0.12em] text-[#5D7658]">按目标找功能</div>
-              <h2 className="mt-1.5 text-2xl font-black tracking-[-0.035em] text-[#18232D]">你现在想完成什么？</h2>
-              <p className="mt-1.5 text-xs leading-5 text-[#737C80]">不用记住产品结构，直接从你当前的问题出发。</p>
-              <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {GOAL_LINKS.map(({ title, detail, to, action, icon: Icon, tone, iconTone }) => (
-                  <Link key={title} to={to} className={`group flex items-start gap-3.5 rounded-[18px] border p-4 transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(24,35,45,.07)] ${tone}`}>
-                    <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${iconTone}`}><Icon className="size-[18px]" /></span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[12px] font-bold text-[#18232D]">{title}</span>
-                      <span className="mt-1 block text-[10px] leading-4 text-[#737C80]">{detail}</span>
-                      <span className="mt-2.5 inline-flex items-center gap-1 text-[10px] font-bold text-[#315E83]">{action}<ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" /></span>
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </section>
-
-            <section id="feature-map" className="mt-10 scroll-mt-5 border-t border-[#E3DED3] pt-9">
-              <div className="text-[10px] font-bold tracking-[0.12em] text-[#7E6B83]">完整功能地图</div>
-              <h2 className="mt-1.5 text-2xl font-black tracking-[-0.035em] text-[#18232D]">所有能力都在同一条学习链路里</h2>
-              <p className="mt-1.5 text-xs leading-5 text-[#737C80]">按学习阶段浏览；右下角全局学习助手会在大多数页面持续可用。</p>
-              <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {CAPABILITY_GROUPS.map((group, groupIndex) => (
-                  <div key={group.label} className="rounded-[20px] border border-[#D7D1C4] bg-[#F8F6F0] p-4">
-                    <div className="flex items-center gap-2">
-                      <span className="grid size-7 place-items-center rounded-lg bg-[#244C66] text-[9px] font-black text-[#F0D6A4]">{groupIndex + 1}</span>
-                      <div>
-                        <div className="text-[12px] font-bold text-[#18232D]">{group.label}</div>
-                        <div className="mt-0.5 text-[9px] text-[#7A817F]">{group.description}</div>
-                      </div>
-                    </div>
-                    <div className="mt-4 space-y-1.5">
-                      {group.items.map(({ label, to, icon: Icon, assistant }) => assistant ? (
-                        <button key={label} type="button" onClick={openAssistant} className="group flex h-10 w-full items-center gap-2.5 rounded-xl border border-[#E3DED3] bg-[#FFFEFA] px-3 text-left text-[10px] font-bold text-[#3D4850] hover:border-[#C7D2D8] hover:bg-[#E7EDF3] hover:text-[#315E83]">
-                          <Icon className="size-3.5 text-[#315E83]" /><span className="flex-1">{label}</span><ChevronRight className="size-3 text-[#9A9488] group-hover:translate-x-0.5" />
-                        </button>
-                      ) : (
-                        <Link key={label} to={to} className="group flex h-10 items-center gap-2.5 rounded-xl border border-[#E3DED3] bg-[#FFFEFA] px-3 text-[10px] font-bold text-[#3D4850] hover:border-[#C7D2D8] hover:bg-[#E7EDF3] hover:text-[#315E83]">
-                          <Icon className="size-3.5 text-[#315E83]" /><span className="flex-1">{label}</span><ChevronRight className="size-3 text-[#9A9488] group-hover:translate-x-0.5" />
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {canManage && (
-                <Link to="/tests" className="mt-3 flex items-center gap-3 rounded-[16px] border border-[#D8C9A8] bg-[#FBF7ED] px-4 py-3 text-[11px] font-bold text-[#8E6925] hover:bg-[#F4ECD8]">
-                  <ClipboardCheck className="size-4" />
-                  <span className="flex-1">管理角色还可以进入测试管理，查看关键学习链路的执行状态与验证结果。</span>
-                  <ArrowRight className="size-3.5" />
+          <section id="by-goal" className="guide-section">
+            <GuideHeading eyebrow="02 · 按目标找功能" title="你现在想完成什么？" detail="不用记住产品结构，直接从你当前的问题出发。" />
+            <div className="guide-goal-grid">
+              {GOAL_LINKS.map(({ title, detail, to, action, icon: Icon, tone }) => (
+                <Link key={title} to={to} className="guide-goal-card" data-tone={tone}>
+                  <span className="guide-goal-icon"><Icon /></span>
+                  <span className="guide-goal-copy"><strong>{title}</strong><small>{detail}</small><b>{action}<ArrowRight /></b></span>
+                  <i className="guide-card-scan" aria-hidden="true" />
                 </Link>
-              )}
-            </section>
+              ))}
+            </div>
+          </section>
 
-            <section id="tips" className="mt-10 scroll-mt-5 border-t border-[#E3DED3] pt-9">
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-                <div>
-                  <div className="text-[10px] font-bold tracking-[0.12em] text-[#9A4E35]">常见问题</div>
-                  <h2 className="mt-1.5 text-2xl font-black tracking-[-0.035em] text-[#18232D]">先知道这四件事，使用会更顺</h2>
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    {TIPS.map(([title, detail]) => (
-                      <div key={title} className="rounded-[18px] border border-[#E3DED3] bg-[#FFFEFA] p-4">
-                        <div className="flex items-center gap-2 text-[11px] font-bold text-[#18232D]"><CircleHelp className="size-3.5 text-[#9A4E35]" />{title}</div>
-                        <p className="mt-2 text-[10px] leading-[18px] text-[#66717B]">{detail}</p>
-                      </div>
+          <GuideTransition from="目标意图" to="功能导航" reverse />
+
+          <section id="feature-map" className="guide-section">
+            <GuideHeading eyebrow="03 · 完整功能地图" title="所有能力都在同一条学习链路里" detail="按学习阶段浏览；右下角全局学习助手会在大多数页面持续可用。" />
+            <div className="guide-capability-grid">
+              {CAPABILITY_GROUPS.map((group, groupIndex) => (
+                <div key={group.label} className="guide-capability-card">
+                  <div className="guide-capability-heading">
+                    <span>{String(groupIndex + 1).padStart(2, "0")}</span>
+                    <div><strong>{group.label}</strong><small>{group.description}</small></div>
+                  </div>
+                  <div className="guide-capability-links">
+                    {group.items.map(({ label, to, icon: Icon, assistant }) => assistant ? (
+                      <button key={label} type="button" onClick={openAssistant}>
+                        <Icon /><span>{label}</span><ChevronRight />
+                      </button>
+                    ) : (
+                      <Link key={label} to={to}>
+                        <Icon /><span>{label}</span><ChevronRight />
+                      </Link>
                     ))}
                   </div>
                 </div>
-                <aside className="self-start rounded-[22px] border border-[#C7D2D8] bg-[#E7EDF3] p-5">
-                  <span className="grid size-11 place-items-center rounded-2xl bg-[#244C66] text-[#F0D6A4]"><Bot className="size-5" /></span>
-                  <h3 className="mt-4 text-lg font-black tracking-[-0.025em] text-[#18232D]">还是不知道从哪开始？</h3>
-                  <p className="mt-2 text-[11px] leading-5 text-[#596A75]">直接问右下角学习助手“带我完成第一次学习”，它会结合当前岗位和画像给出下一步。</p>
-                  <button type="button" onClick={openAssistant} className="mt-5 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] hover:bg-[#193B50]">
-                    打开学习助手 <ArrowRight className="size-3.5" />
-                  </button>
-                  <Link to="/feedback" className="mt-2 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-[#AFC0CA] bg-[#FFFEFA] px-4 text-[10px] font-bold text-[#315E83] hover:bg-[#F3F7F9]">
-                    前往反馈中心
-                  </Link>
-                </aside>
-              </div>
-            </section>
-
-            <div className="mt-10 flex flex-col items-start justify-between gap-4 rounded-[22px] border border-[#CCD7C9] bg-[#F4F7F2] p-5 sm:flex-row sm:items-center sm:p-6">
-              <div className="flex items-start gap-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#E8EDE5] text-[#5D7658]"><CheckCircle2 className="size-[18px]" /></span>
-                <div>
-                  <div className="text-[13px] font-bold text-[#18232D]">准备好了，就从一个目标岗位开始</div>
-                  <p className="mt-1 text-[10px] leading-4 text-[#66717B]">不必一次配置完所有内容，StudyMate 会在真实学习过程中逐步了解你。</p>
-                </div>
-              </div>
-              <Link to="/courses" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-[#6F8A69] px-5 text-[11px] font-bold text-white hover:bg-[#5D7658]">选择目标岗位 <ArrowRight className="size-3.5" /></Link>
+              ))}
             </div>
+            {canManage && (
+              <Link to="/tests" className="guide-admin-link">
+                <ClipboardCheck />
+                <span>管理角色还可以进入测试管理，查看关键学习链路的执行状态与验证结果。</span>
+                <ArrowRight />
+              </Link>
+            )}
+          </section>
+
+          <GuideTransition from="能力地图" to="答疑支持" />
+
+          <section id="tips" className="guide-section guide-tips-section">
+            <GuideHeading eyebrow="04 · 常见问题" title="先知道这四件事，使用会更顺" />
+            <div className="guide-tips-layout">
+              <div className="guide-tip-grid">
+                {TIPS.map(([title, detail], index) => (
+                  <article key={title} className="guide-tip-card">
+                    <div><span>{String(index + 1).padStart(2, "0")}</span><CircleHelp /></div>
+                    <h3>{title}</h3>
+                    <p>{detail}</p>
+                  </article>
+                ))}
+              </div>
+              <aside className="guide-assistant-card">
+                <span className="guide-assistant-icon"><Bot /></span>
+                <small>随时可用 · 学习助手</small>
+                <h3>还是不知道从哪开始？</h3>
+                <p>直接问右下角学习助手“带我完成第一次学习”，它会结合当前岗位和画像给出下一步。</p>
+                <button type="button" onClick={openAssistant}>打开学习助手<ArrowRight /></button>
+                <Link to="/feedback">前往反馈中心</Link>
+              </aside>
+            </div>
+          </section>
+
+          <div className="guide-finish-panel">
+            <span><CheckCircle2 /></span>
+            <div><strong>准备好了，就从一个目标岗位开始</strong><p>不必一次配置完所有内容，因材智训会在真实学习过程中逐步了解你。</p></div>
+            <Link to="/courses">选择目标岗位<ArrowRight /></Link>
           </div>
-        </main>
+        </div>
       </div>
+    </main>
+  )
+}
+
+function GuideHeading({ eyebrow, title, detail, children }: { eyebrow: string; title: string; detail?: string; children?: React.ReactNode }) {
+  return (
+    <div className="guide-section-heading">
+      <div><small>{eyebrow}</small><h2>{title}</h2>{detail && <p>{detail}</p>}</div>
+      {children}
+    </div>
+  )
+}
+
+function GuideTransition({ from, to, reverse = false }: { from: string; to: string; reverse?: boolean }) {
+  return (
+    <div className={`guide-transition ${reverse ? "is-reverse" : ""}`} aria-hidden="true">
+      <span>{from}</span><div><i /><i /><i /><b /></div><strong>{to}</strong>
     </div>
   )
 }

@@ -1,6 +1,6 @@
-# StudyMate 应用
+# 因材智训应用
 
-StudyMate 是面向领域岗位的个性化训练系统。用户先选择领域与目标岗位，再围绕岗位任务和能力点使用岗位知识库、多智能体资源生成、AI 岗位助教、笔记、测验、报告与画像回写完成训练闭环。当前可完整运行的岗位是“特定软件开发 · 前线部署工程师（FDE）”；其余岗位以“知识库待建设”真实展示，不提供虚假生成入口。
+因材智训是面向领域岗位的个性化训练系统。用户先选择领域与目标岗位，再围绕岗位任务和能力点使用岗位知识库、多智能体资源生成、AI 岗位助教、笔记、测验、报告与画像回写完成训练闭环。当前可完整运行的岗位是“特定软件开发 · 前线部署工程师（FDE）”；其余岗位以“知识库待建设”真实展示，不提供虚假生成入口。
 
 ## 核心能力
 
@@ -43,7 +43,7 @@ python -m pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-首次启动会创建或补齐本地 SQLite 表，并初始化固定演示账号。真实 API Key 只写入 `backend/.env`，不要写入仓库中的示例文件。
+首次启动只创建或补齐本地 SQLite 表，不再逐账号生成演示历史。固定演示账号与历史已经写入数据库种子；需要重建时显式运行维护脚本。真实 API Key 只写入 `backend/.env`，不要写入仓库中的示例文件。
 
 ### 安全离线启动（巡检/验收）
 
@@ -107,7 +107,21 @@ docker compose --env-file .deploy.env --profile public --profile code-runner up 
 docker compose --profile extras up -d
 ```
 
+生产环境启用独立 AI 面试服务时，使用统一编排脚本。它会先启动主项目创建共享网络，再启动相邻的 `../ai-interview` Compose 项目；不会把面试 MySQL 合并到主系统：
+
+```bash
+# .deploy.env 设置 AI_INTERVIEW_ENABLED=1 后执行
+bash scripts/deploy.sh preflight
+bash scripts/deploy.sh up
+```
+
+浏览器入口固定为 `https://matropic.cn/interview/`。完整的服务器目录、环境变量、备份和验收步骤见 [`docs/AI面试部署指南.md`](docs/AI面试部署指南.md)。
+
 当前业务基线仍使用 SQLite。`extras` 中的 PostgreSQL、Redis、Chroma 是扩展服务，不代表应用已经切换到这些存储。
+
+Docker 部署时，`DATABASE_URL` 由 Compose 环境变量控制，默认使用持久化卷中的
+`sqlite:///./data/studymate.db`；需要 PostgreSQL 或其他 SQLAlchemy 驱动时，在实际的
+Compose 环境文件中显式填写完整连接串。固定演示账号和历史记录已经永久写入脱敏种子库，后端重启不会再创建、校验或修复演示账号；需要重建时应显式运行维护脚本并重新生成种子快照。
 
 ## 数据库与演示种子
 
@@ -165,6 +179,7 @@ PYTHONDONTWRITEBYTECODE=1 python scripts/check_workspace_structure.py
 - [`docs/接口说明.md`](docs/接口说明.md)：接口分组、认证方式和角色边界。
 - [`docs/开发与验收指南.md`](docs/开发与验收指南.md)：开发规范与交付前核查。
 - [`docs/Ubuntu部署指南.md`](docs/Ubuntu部署指南.md)：服务器部署、升级、备份和排障。
+- [`docs/AI面试部署指南.md`](docs/AI面试部署指南.md)：同域 AI 面试服务部署、验收与备份。
 - [`docs/密钥管理指南.md`](docs/密钥管理指南.md)：密钥配置、轮换和泄露处理。
 - [`frontend/README.md`](frontend/README.md)：前端开发和截图工具。
 - [`backend/README.md`](backend/README.md)：后端模块和运行说明。

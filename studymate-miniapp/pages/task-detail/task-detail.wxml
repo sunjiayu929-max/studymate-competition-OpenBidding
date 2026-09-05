@@ -1,0 +1,47 @@
+<view class="page detail-page">
+  <view wx:if="{{loading}}" class="loading-box">正在打开任务...</view>
+  <block wx:else>
+    <view wx:if="{{error}}" class="error-box">
+      <text>{{error}}</text>
+      <button class="secondary-button retry-button" bindtap="loadTask">重新打开</button>
+    </view>
+    <block wx:if="{{task && !error}}">
+      <view class="detail-heading">
+        <text class="type-pill {{task.task_type}}">{{task.typeLabel}}</text>
+        <text class="status-pill detail-status">{{task.statusLabel}}</text>
+        <text class="detail-title">{{task.title}}</text>
+        <text class="detail-meta">{{task.target_role || "全员任务"}} · {{task.due_label}}</text>
+      </view>
+
+      <view class="card action-card">
+        <view class="action-copy">
+          <text class="action-label">当前状态</text>
+          <text class="action-status">{{task.statusLabel}}</text>
+        </view>
+        <button wx:if="{{task.assignment_status !== 'completed'}}" class="primary-button action-button" loading="{{busy}}" disabled="{{busy}}" bindtap="advanceTask">{{task.actionLabel}}</button>
+        <view wx:else class="completed-mark">已完成</view>
+      </view>
+
+      <view class="content-section">
+        <text class="section-title">任务说明</text>
+        <text class="body-copy">{{task.description || "请按照任务要求完成本次学习。"}}</text>
+      </view>
+
+      <view class="content-section material-section">
+        <text class="section-title">{{task.material_title || "任务资料"}}</text>
+        <view wx:for="{{task.materialSections}}" wx:key="index" class="material-block">
+          <text wx:if="{{item.title}}" class="material-subtitle">{{item.title}}</text>
+          <text wx:if="{{item.body}}" class="body-copy material-copy">{{item.body}}</text>
+        </view>
+      </view>
+
+      <view wx:if="{{task.knowledge_base && task.knowledge_base.materials.length}}" class="content-section material-section">
+        <text class="section-title">岗位知识库 · {{task.knowledge_base.name}}</text>
+        <view wx:for="{{task.knowledge_base.materials}}" wx:key="index" class="knowledge-item">
+          <text class="knowledge-title">{{index + 1}}. {{item.title || "岗位知识要点"}}</text>
+          <text class="knowledge-detail">{{item.detail || "暂无详细内容"}}</text>
+        </view>
+      </view>
+    </block>
+  </block>
+</view>

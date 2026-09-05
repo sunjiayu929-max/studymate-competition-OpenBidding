@@ -19,11 +19,19 @@ class DiagnosisAgent(AgentBase):
         weak_points = profile.get("weak_points") or {}
         goals = profile.get("goals") or {}
         theory_assessments = profile.get("theory_assessments") or {}
+        interview_assessments = profile.get("interview_assessments") or {}
         competencies = list(context.get("core_competencies") or [])
         target_role = context.get("target_role", "领域应用工程师")
         course_id = context.get("course_id")
         theory_result = next((
             item for item in theory_assessments.values()
+            if isinstance(item, dict) and (
+                item.get("role_name") == target_role
+                or (course_id is not None and item.get("course_id") == course_id)
+            )
+        ), None)
+        interview_result = next((
+            item for item in interview_assessments.values()
             if isinstance(item, dict) and (
                 item.get("role_name") == target_role
                 or (course_id is not None and item.get("course_id") == course_id)
@@ -77,6 +85,15 @@ class DiagnosisAgent(AgentBase):
             theory_gaps = [str(item) for item in theory_result.get("weak_topics") or [] if str(item).strip()]
             knowledge_gaps = (theory_gaps + [item for item in knowledge_gaps if item not in theory_gaps])[:4]
 
+        if interview_result:
+            interview_score = float(interview_result.get("role_match_score") or 0)
+            interview_gaps = [
+                str(item) for item in interview_result.get("weak_competencies") or [] if str(item).strip()
+            ]
+            knowledge_gaps = (interview_gaps + [item for item in knowledge_gaps if item not in interview_gaps])[:4]
+            target_difficulty = min(target_difficulty, 1 if interview_score < 40 else 2 if interview_score < 60 else 3 if interview_score < 80 else 4)
+            evidence_confidence = min(0.98, max(evidence_confidence, 0.88))
+
         output = {
             "type": "diagnosis",
             "title": f"{target_role}学情诊断",
@@ -86,19 +103,23 @@ class DiagnosisAgent(AgentBase):
             "evidence_confidence": evidence_confidence,
             "training_cycle": int(context.get("training_cycle") or 1),
             "adaptation_reason": previous_feedback.get("message") or (
-                f"已融合先验画像、{target_role}理论测评 {float(theory_result.get('score') or 0):g} 分与岗位知识库证据"
-                if theory_result else "首轮依据学历背景等先验画像建立能力基线"
+                f"已融合 {target_role} 模拟面试岗位匹配分 {float(interview_result.get('role_match_score') or 0):g} 分"
+                if interview_result else (
+                    f"已融合先验画像、{target_role}理论测评 {float(theory_result.get('score') or 0):g} 分与岗位知识库证据"
+                    if theory_result else "首轮依据学历背景等先验画像建立能力基线"
+                )
             ),
             "theory_assessment": theory_result,
+            "interview_assessment": interview_result,
             "knowledge_gaps": knowledge_gaps,
             "training_goal": primary_goal or f"围绕“{topic}”形成可验证的岗位任务能力",
             "training_contract": {
                 "topic": topic,
                 "target_role": target_role,
-                "required_resources": ["定制讲义", "实操指南", "分阶测试"],
+                "required_resources": ["定制讲义", "实操指南", "分阶测试", "思维导图", "拓展阅读", "代码案例", "可视讲解"],
                 "core_competencies": competencies,
                 "target_difficulty": target_difficulty,
-                "release_gate": "三项审核通过并由总裁决 Agent 批准",
+            "release_gate": "七类资源通过三项交叉审核并由总裁决 Agent 批准",
             },
         }
         await emit("diagnosis", output)

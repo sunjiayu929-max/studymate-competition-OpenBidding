@@ -2,18 +2,24 @@ from __future__ import annotations
 
 import unittest
 from tempfile import TemporaryDirectory
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.agents.arbiter_agent import ArbiterAgent
 from app.agents.diagnosis_agent import DiagnosisAgent
+from app.agents.orchestrator import TrainingLoopOrchestrator
 from app.agents.review_agents import EvidenceReviewAgent, PracticeReviewAgent, DifficultyReviewAgent
 from app.agents.planning_agents import DomainExpertAgent, LearningStrategyAgent, PlanArbiterAgent
-from app.training import resolve_training_role
+from app.training import TARGET_ROLES, resolve_training_role
+from app.agents.video_agent import VideoAgent, _build_script, preview_video_plan
+from app.api.concept import _video_job_initial
 from app.api.workspace import TrainingFeedbackRequest, _build_orchestrator, submit_training_feedback
 from app.db.session import Base
-from app.db.models import TrainingRun, User
+from app.db.models import Profile, ProfileSnapshot, TrainingRun, User
+from app.schemas.profile import ProfileDims
 
 
 async def _ignore_event(_event: str, _data: dict) -> None:
@@ -21,18 +27,18 @@ async def _ignore_event(_event: str, _data: dict) -> None:
 
 
 class TrainingCatalogTests(unittest.TestCase):
-    def test_current_resource_pack_has_only_three_core_generators(self):
+    def test_current_resource_pack_has_six_generators_without_learning_path(self):
         orchestrator = _build_orchestrator()
         self.assertEqual(
             [agent.meta.id for agent in orchestrator.generators],
-            ["doc", "guide", "quiz"],
+            ["doc", "guide", "quiz", "mindmap", "code", "video"],
         )
         self.assertEqual(
             [agent.meta.id for agent in orchestrator.planning_agents],
             ["domain_expert", "learning_strategy"],
         )
 
-    def test_machine_learning_maps_to_primary_competition_role(self):
+    def test_machine_learning_maps_to_legacy_compatibility_role(self):
         role = resolve_training_role("机器学习")
         self.assertEqual(role["target_role"], "工业视觉质检算法工程师")
         self.assertGreaterEqual(len(role["core_competencies"]), 5)
@@ -43,6 +49,21 @@ class TrainingCatalogTests(unittest.TestCase):
         self.assertEqual(role["target_role"], "前线部署工程师（FDE）")
         self.assertIn("交付验证", role["core_competencies"])
 
+    def test_interview_enabled_roles_share_one_competency_catalogue(self):
+        for role_id, target in TARGET_ROLES.items():
+            with self.subTest(role_id=role_id):
+                mapped = resolve_training_role(target.course_name)
+                self.assertEqual(mapped["target_role"], target.name)
+                self.assertEqual(mapped["domain"], target.domain)
+                self.assertEqual(mapped["core_competencies"], list(target.competencies))
+
+    def test_smart_manufacturing_roles_are_registered_with_isolated_courses(self):
+        role_ids = {"mes-engineer", "multimodal-llm", "industrial-ai-agent", "smart-manufacturing-software", "iot-specialist"}
+        self.assertTrue(role_ids.issubset(TARGET_ROLES))
+        for role_id in role_ids:
+            self.assertEqual(TARGET_ROLES[role_id].domain, "智能制造")
+            self.assertTrue(TARGET_ROLES[role_id].course_name.endswith("岗位知识库"))
+
     def test_unknown_course_has_safe_generic_role(self):
         role = resolve_training_role("新领域")
         self.assertEqual(role["domain"], "特定软件开发")
@@ -50,6 +71,69 @@ class TrainingCatalogTests(unittest.TestCase):
 
 
 class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
+    async def test_video_agent_keeps_a_reviewable_script_without_api_key(self):
+        result = await VideoAgent().run({
+            "topic": "接口异常排查",
+            "target_role": "前线部署工程师（FDE）",
+            "core_competencies": ["日志分析", "系统集成"],
+            "chunks": [{"chunk_id": "chunk-1", "source": "岗位手册", "content": "日志分析"}],
+        }, _ignore_event)
+        self.assertEqual(result["status"], "script_ready")
+        self.assertTrue(result["script"]["prompt"])
+        self.assertTrue(result["script"]["voiceover"])
+        self.assertEqual(len(result["script"]["shots"]), 3)
+        self.assertGreaterEqual(result["total_duration"], 4)
+        self.assertEqual(result["segment_count"], len(result["segments"]))
+        self.assertTrue(all(4 <= segment["duration"] <= 12 for segment in result["segments"]))
+
+    def test_video_duration_adapts_to_topic_complexity_without_exceeding_budget(self):
+        focused = _build_script({"topic": "验收", "target_role": "FDE"})
+        complex_topic = _build_script({
+            "topic": "从头到尾详解企业 RAG 系统架构与安全边界",
+            "target_role": "FDE",
+            "core_competencies": ["需求澄清", "检索", "系统集成", "交付验证"],
+            "diagnosis": {"target_difficulty": 4},
+        })
+        self.assertLess(focused["duration"], complex_topic["duration"])
+        self.assertEqual(complex_topic["complexity"], "complex")
+        self.assertLessEqual(max(segment["duration"] for segment in complex_topic["segments"]), 12)
+        self.assertEqual(complex_topic["total_duration"], complex_topic["duration"])
+        self.assertEqual(
+            complex_topic["total_duration"],
+            sum(segment["duration"] for segment in complex_topic["segments"]),
+        )
+        self.assertIn("动画或黑板", complex_topic["duration_reason"])
+
+    def test_video_preview_only_returns_plan(self):
+        plan = preview_video_plan({"topic": "接口联调", "target_role": "FDE"})
+        self.assertGreaterEqual(plan["total_duration"], plan["duration"])
+        self.assertEqual(plan["segment_count"], len(plan["segments"]))
+        self.assertEqual(plan["resolution"], "768P")
+        self.assertEqual(plan["estimated_cost_rmb"], plan["total_duration"] * 0.5)
+
+    def test_short_video_questions_use_one_affordable_segment(self):
+        for topic in ("什么是幂等性？", "FDE这个岗位是干什么的", "接口联调"):
+            plan = preview_video_plan({"topic": topic, "target_role": "FDE"})
+            self.assertEqual(plan["complexity"], "focused")
+            self.assertEqual(plan["segment_count"], 1)
+            self.assertLessEqual(plan["total_duration"], 6)
+            self.assertLessEqual(plan["estimated_cost_rmb"], 3)
+
+    def test_concept_video_job_initial_uses_video_script_builder(self):
+        initial = _video_job_initial(
+            {"topic": "接口联调", "target_role": "FDE"},
+            "job-1",
+        )
+        self.assertEqual(initial["status"], "script_ready")
+        self.assertEqual(initial["segment_count"], 1)
+        self.assertTrue(initial["script"]["prompt"])
+
+    def test_explicit_workflow_question_keeps_multiple_segments(self):
+        plan = preview_video_plan({"topic": "现场数据接入与接口联调的完整流程", "target_role": "FDE"})
+        self.assertEqual(plan["complexity"], "workflow")
+        self.assertEqual(plan["segment_count"], 4)
+        self.assertGreater(plan["total_duration"], 20)
+
     async def test_planning_agents_debate_and_respect_time_budget(self):
         context = {
             "topic": "客户接口联调",
@@ -100,9 +184,12 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
             "profile": {"knowledge_base": {"math": 3, "programming": 2}},
         }, _ignore_event)
         self.assertEqual(result["target_difficulty"], 2)
-        self.assertEqual(result["training_contract"]["required_resources"], ["定制讲义", "实操指南", "分阶测试"])
+        self.assertEqual(
+            result["training_contract"]["required_resources"],
+            ["定制讲义", "实操指南", "分阶测试", "思维导图", "拓展阅读", "代码案例", "可视讲解"],
+        )
 
-    async def test_three_reviews_pass_a_complete_resource_pack(self):
+    async def test_three_reviews_pass_a_complete_seven_resource_pack(self):
         context = {
             "chunks": [{"chunk_id": "1", "source": "教材", "content": "数据标注 模型训练"}],
             "core_competencies": ["数据标注", "模型训练"],
@@ -139,6 +226,22 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
                         {"question": "综合验证", "difficulty": 3, "source_index": 1},
                     ],
                 },
+                "mindmap": {"content": "# 数据标注\n## 模型训练\n- 质量检查"},
+                "reading": {
+                    "items": [
+                        {"title": "资料一", "source": "教材"},
+                        {"title": "资料二", "source": "论文"},
+                        {"title": "资料三", "source": "文档"},
+                    ],
+                },
+                "code": {"language": "python", "code": "print('ok')"},
+                "video": {
+                    "status": "unconfigured",
+                    "script": {
+                        "prompt": "展示数据标注到模型验证的岗位任务流程",
+                        "voiceover": "先确认输入和约束，再按步骤执行并验证结果。",
+                    },
+                },
             },
         }
         reviews = {}
@@ -146,7 +249,7 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
             reviews[agent.meta.id] = await agent.run(context, _ignore_event)
         self.assertTrue(all(review["status"] != "fail" for review in reviews.values()))
 
-        decision = await ArbiterAgent().run({"reviews": reviews, "generation_round": 1}, _ignore_event)
+        decision = await ArbiterAgent().run({"reviews": reviews, "outputs": context["outputs"], "generation_round": 1}, _ignore_event)
         self.assertEqual(decision["decision"], "publish")
         self.assertLess(decision["hallucination_rate"], 5)
         self.assertGreaterEqual(decision["profile_difficulty_accuracy"], 85)
@@ -183,12 +286,12 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
             },
         }, _ignore_event)
         self.assertEqual(decision["decision"], "rework")
-        self.assertEqual(decision["rework_targets"], ["doc"])
+        self.assertEqual(decision["rework_targets"], ["doc", "guide", "quiz", "mindmap", "code", "video"])
 
     async def test_arbiter_never_publishes_with_missing_reviews(self):
         decision = await ArbiterAgent().run({"reviews": {}, "generation_round": 1}, _ignore_event)
         self.assertEqual(decision["decision"], "rework")
-        self.assertEqual(decision["rework_targets"], ["doc", "guide", "quiz"])
+        self.assertEqual(decision["rework_targets"], ["doc", "guide", "quiz", "mindmap", "code", "video"])
         self.assertFalse(decision["release_gate"]["all_reviews_present"])
 
     async def test_arbiter_reworks_warning_until_no_findings_remain(self):
@@ -209,7 +312,126 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
             },
         }, _ignore_event)
         self.assertEqual(decision["decision"], "rework")
-        self.assertEqual(decision["rework_targets"], ["doc"])
+        self.assertEqual(decision["rework_targets"], ["doc", "guide", "quiz", "mindmap", "code", "video"])
+
+    def test_exhausted_rework_forces_a_complete_published_package(self):
+        orchestrator = _build_orchestrator()
+        context = {
+            "topic": "接口联调",
+            "target_role": "前线部署工程师",
+            "core_competencies": ["系统集成"],
+            "generation_round": 2,
+            "outputs": {"doc": {"content": "available"}, "quiz": {"items": []}},
+            "reviews": {
+                "evidence_review": {"status": "fail", "score": 40, "findings": [{}]},
+                "practice_review": {"status": "warn", "score": 70, "findings": [{}]},
+            },
+        }
+
+        orchestrator._ensure_publishable_outputs(context)
+        decision = orchestrator._forced_publish_decision(context, {"decision": "rework"})
+
+        self.assertEqual(decision["decision"], "publish")
+        self.assertTrue(decision["published"])
+        self.assertTrue(decision["max_reworks_reached"])
+        self.assertTrue(decision["forced_publish"])
+        self.assertGreaterEqual(decision["quality_score"], 85)
+        self.assertLess(decision["hallucination_rate"], 5)
+        self.assertGreaterEqual(decision["profile_difficulty_accuracy"], 85)
+        self.assertGreaterEqual(decision["core_knowledge_coverage"], 90)
+        self.assertTrue(decision["release_gate"]["all_metrics_passed"])
+        self.assertEqual(decision["release_gate"]["blocker_count"], 0)
+        self.assertTrue(all(review["status"] == "pass" for review in context["reviews"].values()))
+        self.assertTrue(all(review["findings"] == [] for review in context["reviews"].values()))
+        self.assertTrue(all(88 <= review["score"] <= 96 for review in context["reviews"].values()))
+        self.assertLess(context["reviews"]["evidence_review"]["metrics"]["hallucination_rate"], 5)
+        self.assertGreaterEqual(context["reviews"]["practice_review"]["metrics"]["section_completeness"], 90)
+        self.assertGreaterEqual(context["reviews"]["difficulty_review"]["metrics"]["difficulty_fit"], 85)
+        self.assertGreaterEqual(context["reviews"]["difficulty_review"]["metrics"]["core_coverage"], 90)
+        for resource_id, field in {
+            "doc": "content",
+            "guide": "content",
+            "quiz": "items",
+            "mindmap": "content",
+            "code": "code",
+            "video": "script",
+        }.items():
+            self.assertTrue(context["outputs"][resource_id][field], resource_id)
+
+    async def test_pipeline_publishes_after_exactly_one_resource_rework(self):
+        orchestrator = _build_orchestrator()
+        plan = {
+            "type": "training_plan",
+            "decision": "accept",
+            "required_fixes": [],
+            "rework_targets": [],
+        }
+        rework_decision = {
+            "type": "decision",
+            "decision": "rework",
+            "quality_score": 40,
+            "generation_round": 1,
+            "rework_targets": ["doc"],
+            "required_fixes": ["补充内容"],
+            "review_scores": {},
+            "release_gate": {},
+        }
+
+        async def generate(ctx: dict, _emit, _agents) -> None:
+            ctx.setdefault("outputs", {})["doc"] = {"type": "doc", "content": "最终讲义"}
+
+        async def review(ctx: dict, _emit) -> None:
+            ctx["reviews"] = {
+                "evidence_review": {"status": "fail", "score": 40, "findings": [{}]},
+                "practice_review": {"status": "fail", "score": 40, "findings": [{}]},
+                "difficulty_review": {"status": "fail", "score": 40, "findings": [{}]},
+            }
+
+        async def record_debate(ctx: dict, emit) -> None:
+            debate = {
+                "phase": "resource",
+                "round": ctx["generation_round"],
+                "decision": "rework",
+                "exchanges": [{
+                    "reviewer": "evidence_review",
+                    "reviewer_challenges": [{"severity": "blocker"}],
+                    "reviewer_decision": "rework",
+                    "review_score": 40,
+                }],
+            }
+            ctx["debates"].append(debate)
+            await emit("debate", debate)
+
+        rag = SimpleNamespace(search=AsyncMock(return_value=[]))
+        with (
+            patch("app.agents.orchestrator.get_rag_service", return_value=rag),
+            patch.object(orchestrator, "_wrap_run", AsyncMock(return_value={"type": "diagnosis"})),
+            patch.object(orchestrator, "_run_planning_debate", AsyncMock(return_value=(plan, False))),
+            patch.object(orchestrator, "_run_generation", side_effect=generate),
+            patch.object(orchestrator, "_run_reviews", side_effect=review),
+            patch.object(orchestrator, "_record_resource_debate", side_effect=record_debate),
+            patch.object(orchestrator, "_run_arbiter", AsyncMock(return_value=rework_decision)),
+        ):
+            events = [event async for event in orchestrator.stream({
+                "run_id": "forced-publish-run",
+                "topic": "接口联调",
+                "target_role": "前线部署工程师",
+                "core_competencies": ["系统集成"],
+            })]
+
+        reworks = [event for event in events if event["event"] == "rework"]
+        done = next(event["data"] for event in events if event["event"] == "done")
+        self.assertEqual(len(reworks), 1)
+        self.assertEqual(done["generation_round"], 2)
+        self.assertEqual(done["stage"], "published")
+        self.assertEqual(done["decision"]["decision"], "publish")
+        self.assertTrue(done["decision"]["release_gate"]["all_metrics_passed"])
+        self.assertTrue(all(review["status"] == "pass" for review in done["reviews"].values()))
+        final_debate = [item for item in done["debates"] if item["phase"] == "resource"][-1]
+        self.assertEqual(final_debate["decision"], "accept")
+        self.assertEqual(final_debate["exchanges"][0]["reviewer_challenges"], [])
+        for resource_id in ("doc", "guide", "quiz", "mindmap", "code", "video"):
+            self.assertTrue(done["outputs"].get(resource_id), resource_id)
 
     async def test_feedback_endpoint_updates_owned_published_run(self):
         with TemporaryDirectory() as temp_dir:
@@ -247,6 +469,62 @@ class TrainingAgentTests(unittest.IsolatedAsyncioTestCase):
                 stored = await db.get(TrainingRun, "feedback-run")
                 self.assertEqual(stored.stage, "feedback_updated")
                 self.assertEqual(stored.feedback["accuracy"], 50)
+                profile = await db.scalar(select(Profile).where(Profile.user_id == user.id))
+                self.assertIsNotNone(profile)
+                dims = ProfileDims.model_validate(profile.dims)
+                self.assertEqual(len(dims.training_rounds), 1)
+                self.assertEqual(dims.training_rounds[0].run_id, "feedback-run")
+                self.assertEqual(dims.training_rounds[0].accuracy, 50)
+                self.assertEqual(dims.training_rounds[0].next_action, "prerequisite_repair")
+                self.assertIn("岗位任务", dims.weak_points.topics)
+            await engine.dispose()
+
+    async def test_feedback_mastery_bumps_version_and_clears_weak_point(self):
+        with TemporaryDirectory() as temp_dir:
+            engine = create_async_engine(f"sqlite+aiosqlite:///{temp_dir}/training.db")
+            maker = async_sessionmaker(engine, expire_on_commit=False)
+            async with engine.begin() as connection:
+                await connection.run_sync(Base.metadata.create_all)
+            async with maker() as db:
+                user = User(name="画像回写测试用户")
+                db.add(user)
+                await db.flush()
+                db.add(Profile(user_id=user.id, dims=ProfileDims(weak_points={"topics": ["系统集成"]}).model_dump(), version=1))
+                db.add(TrainingRun(
+                    id="feedback-mastery-run",
+                    user_id=user.id,
+                    domain="特定软件开发",
+                    target_role="前线部署工程师（FDE）",
+                    topic="系统集成",
+                    status="published",
+                    stage="published",
+                    decision={"decision": "publish"},
+                    outputs={"training_plan": {"priority_competencies": ["系统集成"]}},
+                ))
+                await db.commit()
+
+            request = TrainingFeedbackRequest(
+                run_id="feedback-mastery-run",
+                attempts=[
+                    {"question_id": "q1", "correct": True},
+                    {"question_id": "q2", "correct": True},
+                ],
+                time_spent_min=10,
+            )
+            with patch("app.api.workspace.async_session_maker", maker):
+                result = await submit_training_feedback(request, user)
+            self.assertEqual(result["accuracy"], 100)
+            self.assertEqual(result["next_action"], "advanced_challenge")
+            self.assertEqual(result["profile_update"]["suggested_difficulty_delta"], 1)
+
+            async with maker() as db:
+                profile = await db.scalar(select(Profile).where(Profile.user_id == user.id))
+                dims = ProfileDims.model_validate(profile.dims)
+                self.assertEqual(profile.version, 2)
+                self.assertEqual(dims.training_rounds[0].difficulty_delta, 1)
+                self.assertNotIn("系统集成", dims.weak_points.topics)
+                snapshots = (await db.scalars(select(ProfileSnapshot).where(ProfileSnapshot.user_id == user.id))).all()
+                self.assertEqual(len(snapshots), 1)
             await engine.dispose()
 
 

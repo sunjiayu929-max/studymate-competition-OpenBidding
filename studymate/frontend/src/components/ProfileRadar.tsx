@@ -1,5 +1,6 @@
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts"
 import { motion } from "framer-motion"
+import type { CSSProperties } from "react"
 import { cn } from "@/lib/utils"
 
 interface ProfileRadarProps {
@@ -26,14 +27,20 @@ interface RadarAxisTickProps {
 const labelMap: Record<string, string> = {
   math: "数学",
   programming: "编程",
-  statistics: "统计",
-  english: "英语",
+  cs_foundation: "计算机基础",
+  data_sql: "数据与SQL",
   subject_prior: "领域先验",
   ml_prior: "ML 先验",  // 向后兼容旧画像
-  visual: "视觉",
+  statistics: "统计",    // 旧维度，兼容历史快照
+  english: "英语",       // 旧维度，兼容历史快照
+  practice_first: "实践优先",
+  stepwise: "循序渐进",
+  challenge_seeking: "挑战导向",
+  reflective: "复盘总结",
+  visual: "视觉",        // 旧维度，兼容历史快照
   reading: "阅读",
-  hands_on: "实操",
-  auditory: "听觉",
+  hands_on: "实操",      // 旧维度，兼容历史快照
+  auditory: "听觉",      // 旧维度，兼容历史快照
   document: "文档",
   mindmap: "导图",
   quiz: "题目",
@@ -86,6 +93,7 @@ export function ProfileRadar({ title, data, max = 5, color = "#6366f1", height =
     value: typeof v === "number" ? Math.max(0, Math.min(max, v)) : 0,
   }))
   const values = Object.fromEntries(chartData.map((item) => [item.dim, item.value]))
+  const radarStyle = { "--profile-radar-accent": color } as CSSProperties
 
   return (
     <motion.div
@@ -93,11 +101,13 @@ export function ProfileRadar({ title, data, max = 5, color = "#6366f1", height =
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4 }}
       data-testid="profile-radar"
+      style={radarStyle}
       className={cn(
-        "rounded-[22px] border border-[#CFC8B9] bg-[#FFFEFA] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]",
+        "profile-radar-card rounded-[22px] border border-[#CFC8B9] bg-[#FFFEFA] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]",
         fill && "flex min-h-[220px] flex-1 flex-col",
       )}
     >
+      <span className="profile-radar-live-layer" aria-hidden="true"><i /><i /><b /></span>
       <div className="mb-1 flex items-center justify-between gap-3">
         <div className="text-xs font-bold text-[#18232D]">{title}</div>
         <div className="flex items-center gap-2 text-[10px] font-semibold text-[#8A8172]">
@@ -142,7 +152,8 @@ export function ProfileRadar({ title, data, max = 5, color = "#6366f1", height =
               stroke={color}
               fill={color}
               fillOpacity={0.35}
-              animationDuration={500}
+              dot={{ r: 2.6, fill: color, stroke: "#fff", strokeWidth: 1.2 }}
+              animationDuration={900}
             />
           </RadarChart>
         </ResponsiveContainer>

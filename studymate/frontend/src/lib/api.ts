@@ -54,7 +54,7 @@ async function ensureOk(r: Response, path: string): Promise<void> {
           : r.status === 422
             ? "请求参数格式不正确，请返回上一页后重试"
           : r.status >= 500
-            ? "StudyMate 服务暂时不可用，请稍后重试"
+            ? "因材智训服务暂时不可用，请稍后重试"
             : `请求失败（${r.status}）`
   }
 
@@ -72,7 +72,7 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
     return response
   } catch (error) {
     if (error instanceof ApiError) throw error
-    throw new ApiError(0, path, "暂时无法连接 StudyMate 服务，请检查网络后重试")
+    throw new ApiError(0, path, "暂时无法连接因材智训服务，请检查网络后重试")
   }
 }
 

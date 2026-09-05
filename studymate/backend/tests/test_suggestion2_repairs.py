@@ -138,7 +138,7 @@ class ProfilePatchTests(unittest.TestCase):
             ProfileDims(),
             [{"role": "assistant", "content": "请完整介绍你的学习背景和偏好？"}],
             (
-                "我是计算机专业本科生，Python 比较熟悉，数学基础一般；学习时更喜欢图示和动手实践理解，"
+                "我是计算机专业本科生，Python 比较熟悉，数学基础一般；学习时更喜欢先动手实践、循序渐进，"
                 "希望多提供文档、代码实操和小测。目前没有相关项目经历，每周可以投入 6 小时。"
             ),
             "前线部署工程师（FDE）",
@@ -156,7 +156,7 @@ class ProfilePatchTests(unittest.TestCase):
         profile.learner_background.education = "本科"
         profile.profile_coverage.knowledge_base = True
         second = next_profile_question(profile_missing_fields(profile, "FDE"))
-        self.assertIn("图示", second)
+        self.assertIn("动手", second)
         self.assertIn("文档", second)
         self.assertNotIn("项目", second)
 
@@ -164,7 +164,7 @@ class ProfilePatchTests(unittest.TestCase):
         patch, warning = sanitize_profile_patch(
             {
                 "knowledge_base": {"programming": 3},
-                "cognitive_style": {"visual": 3, "hands_on": 3},
+                "cognitive_style": {"practice_first": 3, "reflective": 3},
                 "preference": {"document": 3, "quiz": 3},
                 "profile_coverage": {
                     "knowledge_base": True,
@@ -173,7 +173,7 @@ class ProfilePatchTests(unittest.TestCase):
                 },
             },
             ProfileDims(),
-            "我的编程基础一般，各种理解方式都可以，资源形式也都可以。",
+            "我的编程基础一般，各种学习方式都可以，资源形式也都可以。",
         )
         self.assertIsNone(warning)
         self.assertTrue(patch["profile_coverage"]["knowledge_base"])

@@ -336,7 +336,7 @@ export function Tests() {
         pdf.addImage(imgData, "PNG", 10, position, imgW, imgH)
         heightLeft -= pageH - 20
       }
-      pdf.save(`StudyMate-测试报告-${new Date().toISOString().slice(0, 10)}.pdf`)
+      pdf.save(`因材智训-测试报告-${new Date().toISOString().slice(0, 10)}.pdf`)
       setNotice("测试报告 PDF 已导出")
       window.setTimeout(() => setNotice(null), 3600)
     } catch (e) {
@@ -365,7 +365,7 @@ export function Tests() {
               <Link to="/" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]"><ArrowLeft className="size-3.5" /><span className="hidden sm:inline">返回首页</span></Link>
               <span className="h-6 w-px bg-[#D7D1C4]" />
               <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#D9CFB7] bg-[#F4ECD8] text-[#8E6925]"><ClipboardCheck className="size-4" /></span>
-              <div><h1 className="text-[15px] font-bold text-[#18232D]">StudyMate 测试管理</h1><p className="mt-0.5 text-[11px] text-[#6F787A]">管理典型问答测试集，运行自动评分并导出准确性报告</p></div>
+              <div><h1 className="text-[15px] font-bold text-[#18232D]">因材智训测试管理</h1><p className="mt-0.5 text-[11px] text-[#6F787A]">管理典型问答测试集，运行自动评分并导出准确性报告</p></div>
             </div>
             <div className="nav-scroll flex w-full items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto sm:overflow-visible sm:pb-0">
               <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
@@ -554,7 +554,7 @@ export function Tests() {
 
           {cases.length > 0 && (
             <div className="text-[10px] text-[var(--muted-foreground)] text-center pt-4">
-              测试报告由 StudyMate 自动生成 · 自动评分并保留判定依据 · {new Date().toLocaleString("zh-CN")}
+              测试报告由因材智训自动生成 · 自动评分并保留判定依据 · {new Date().toLocaleString("zh-CN")}
             </div>
           )}
         </div>

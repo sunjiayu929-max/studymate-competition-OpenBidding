@@ -14,7 +14,7 @@ async def send_verification_code(email: str, code: str) -> None:
     message = EmailMessage()
     message["From"] = f"{settings.SMTP_FROM_NAME} <{sender}>"
     message["To"] = email
-    message["Subject"] = "StudyMate 邮箱验证码"
+    message["Subject"] = "因材智训邮箱验证码"
     message.set_content(
         f"你的验证码是：{code}\n\n"
         f"验证码 {settings.EMAIL_CODE_EXPIRE_MINUTES} 分钟内有效，请勿转发给他人。\n"

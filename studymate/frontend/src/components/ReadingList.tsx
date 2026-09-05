@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { motion } from "framer-motion"
-import { BookOpen, FileText, Globe, Video, FileCode, ExternalLink, GraduationCap, Loader2, ShieldCheck } from "lucide-react"
-import { apiGet, apiPost } from "@/lib/api"
+import { BookOpen, FileText, Globe, Video, FileCode, ExternalLink, Loader2, ShieldCheck } from "lucide-react"
+import { apiPost } from "@/lib/api"
 import { resolveReadingLinks } from "@/lib/readingLinks"
 import { useCurrentCourse } from "@/store/course"
 
@@ -19,7 +19,7 @@ export interface ReadingItem {
 const LANG_LABEL: Record<"zh" | "en", string> = { zh: "中文", en: "EN" }
 
 const TYPE_META: Record<ReadingItem["type"], { icon: React.ElementType; label: string; color: string }> = {
-  course: { icon: GraduationCap, label: "讯飞人才呀课程", color: "border-[#B9C9D3] bg-[#E7EDF3] text-[#315E83]" },
+  course: { icon: BookOpen, label: "课程", color: "border-[#B9C9D3] bg-[#E7EDF3] text-[#315E83]" },
   book: { icon: BookOpen, label: "书籍", color: "border-[#D8C9A8] bg-[#F7F2E7] text-[#8E6925]" },
   paper: { icon: FileText, label: "论文", color: "border-[#DFC9BE] bg-[#F6ECE7] text-[#A65339]" },
   blog: { icon: Globe, label: "博客", color: "border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83]" },
@@ -28,22 +28,7 @@ const TYPE_META: Record<ReadingItem["type"], { icon: React.ElementType; label: s
 }
 
 // 可验证直达来源优先，其余资源保留明确的搜索入口。
-const CATEGORY_ORDER: ReadingItem["type"][] = ["course", "doc", "book", "paper", "blog", "video"]
-
-interface RencaiyaCourse {
-  course_id: number
-  title: string
-  summary: string
-  difficulty: string
-  url: string
-  match_level?: "exact" | "related" | "course"
-}
-
-interface RencaiyaCoursesResponse {
-  provider: string
-  match_level: "exact" | "related" | "course" | "fallback"
-  items: RencaiyaCourse[]
-}
+const CATEGORY_ORDER: ReadingItem["type"][] = ["doc", "book", "paper", "blog", "video", "course"]
 
 interface ReadingResolvedItem {
   index: number
@@ -73,12 +58,6 @@ interface BiliVideosResponse {
 
 function readingItemKey(item: ReadingItem): string {
   return [item.type, item.title, item.source].map((value) => value.trim().toLowerCase()).join(":")
-}
-
-function courseDifficulty(value: string): ReadingItem["difficulty"] {
-  if (value === "高级") return "深入"
-  if (value === "中级") return "进阶"
-  return "入门"
 }
 
 function mergeReadingItems(preferred: ReadingItem[], generated: ReadingItem[]): ReadingItem[] {
@@ -146,53 +125,10 @@ function ItemRow({ it, topic, resolved }: { it: ReadingItem; topic: string; reso
 
 export function ReadingList({ items, topic = "" }: { items: ReadingItem[]; topic?: string }) {
   const course = useCurrentCourse()
-  const [externalItems, setExternalItems] = useState<ReadingItem[]>([])
-  const [externalLoading, setExternalLoading] = useState(false)
   const [verifiedVideoItems, setVerifiedVideoItems] = useState<ReadingItem[]>([])
   const [videoLoading, setVideoLoading] = useState(false)
   const [resolvedLinks, setResolvedLinks] = useState<Record<string, ReadingResolvedItem>>({})
   const [resolvingLinks, setResolvingLinks] = useState(false)
-
-  useEffect(() => {
-    let alive = true
-    const frame = window.requestAnimationFrame(() => {
-      const keyword = topic.trim()
-      if (!keyword) {
-        setExternalItems([])
-        setExternalLoading(false)
-        return
-      }
-
-      setExternalLoading(true)
-      const load = async () => {
-        const exactQuery = new URLSearchParams({ keyword, limit: "3" })
-        if (course?.id) exactQuery.set("course_id", String(course.id))
-        const result = await apiGet<RencaiyaCoursesResponse>(`/rencaiya/courses?${exactQuery}`)
-
-        if (!alive) return
-        const matched = result.match_level === "exact" || result.match_level === "related" || result.match_level === "course"
-          ? result.items
-          : []
-        setExternalItems(matched.slice(0, 3).map((item) => ({
-          title: item.title,
-          type: "course",
-          lang: "zh",
-          url: item.url,
-          source: `${result.provider} · ${(item.match_level || result.match_level) === "course" ? "岗位能力方向补充" : "岗位能力点匹配"}`,
-          difficulty: courseDifficulty(item.difficulty),
-          summary: item.summary || "前往人才呀查看课程介绍与学习内容。",
-        })))
-      }
-
-      void load()
-        .catch(() => { if (alive) setExternalItems([]) })
-        .finally(() => { if (alive) setExternalLoading(false) })
-    })
-    return () => {
-      alive = false
-      window.cancelAnimationFrame(frame)
-    }
-  }, [course?.id, topic])
 
   useEffect(() => {
     const keyword = topic.trim()
@@ -248,6 +184,7 @@ export function ReadingList({ items, topic = "" }: { items: ReadingItem[]; topic
 
     setResolvingLinks(true)
     void apiPost<ReadingResolveResponse>("/reading/resolve", {
+      topic,
       items: candidates.map(({ item, index }) => ({
         index,
         title: item.title,
@@ -270,7 +207,7 @@ export function ReadingList({ items, topic = "" }: { items: ReadingItem[]; topic
       .finally(() => { if (alive) setResolvingLinks(false) })
 
     return () => { alive = false }
-  }, [items])
+  }, [items, topic])
 
   const verifiedVideoLinks = useMemo(() => {
     const links: Record<string, ReadingResolvedItem> = {}
@@ -290,10 +227,10 @@ export function ReadingList({ items, topic = "" }: { items: ReadingItem[]; topic
     const generated = verifiedVideoItems.length > 0
       ? (items || []).filter((item) => item.type !== "video")
       : (items || [])
-    return mergeReadingItems([...externalItems, ...verifiedVideoItems], generated)
-  }, [externalItems, items, verifiedVideoItems])
+    return mergeReadingItems(verifiedVideoItems, generated)
+  }, [items, verifiedVideoItems])
 
-  if (!combinedItems.length && !externalLoading && !videoLoading) {
+  if (!combinedItems.length && !videoLoading) {
     return <div className="rounded-2xl border border-dashed border-[#CFC8B9] bg-[#F8F6F0] py-8 text-center text-xs text-[var(--muted-foreground)]">暂无推荐资源</div>
   }
   // 按类型分组，只展示有内容的分类，顺序固定
@@ -306,9 +243,8 @@ export function ReadingList({ items, topic = "" }: { items: ReadingItem[]; topic
     <div className="space-y-5">
       <div className="flex items-start gap-2 rounded-2xl border border-[#C9D1CB] bg-[#E9EEE6] px-3.5 py-3 text-[11px] leading-5 text-[#557052]">
         <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-        <span>已优先展示可验证的官方原文、岗位能力点或能力方向匹配的人才呀课程和真实 B站视频，并尝试匹配论文、书籍和博客的详情页；未可靠匹配的资源仍会明确标记为搜索入口。</span>
+        <span>优先展示有明确来源的课程、视频和文档；无法直达的结果会标为搜索入口。</span>
       </div>
-      {externalLoading && <div role="status" className="inline-flex items-center gap-1.5 text-[11px] text-[#66717B]"><Loader2 className="size-3.5 animate-spin" />正在匹配人才呀课程…</div>}
       {videoLoading && <div role="status" className="inline-flex items-center gap-1.5 text-[11px] text-[#66717B]"><Loader2 className="size-3.5 animate-spin" />正在匹配 B站真实视频…</div>}
       {resolvingLinks && <div role="status" className="inline-flex items-center gap-1.5 text-[11px] text-[#66717B]"><Loader2 className="size-3.5 animate-spin" />正在解析论文、书籍和博客直达地址…</div>}
       {groups.map((g, gi) => {

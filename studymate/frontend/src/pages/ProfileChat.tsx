@@ -1,21 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { ArrowLeft, ArrowRight, Send, Loader2, Bot, RotateCw, Headphones, Paperclip, X, ShieldCheck, Sparkles, Target, AlertTriangle, Clock3, ImagePlus } from "lucide-react"
+import { ArrowRight, Send, Loader2, RotateCw, Headphones, Paperclip, X, ShieldCheck, Sparkles, Target, AlertTriangle, Clock3, ImagePlus, GraduationCap, BriefcaseBusiness, Save, UserRound, ChevronDown } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { AppTopbar } from "@/components/AppTopbar"
-import { Markdown } from "@/components/Markdown"
 import { ProfileRadar } from "@/components/ProfileRadar"
-import { CareerRecommendations } from "@/components/CareerRecommendations"
+import { Markdown } from "@/components/Markdown"
 import { MicButton } from "@/components/MicButton"
 import { SpeakerButton } from "@/components/SpeakerButton"
 import { VoiceSelector } from "@/components/VoiceSelector"
 import { usePostSSE } from "@/hooks/usePostSSE"
-import { apiGet, apiPost } from "@/lib/api"
+import { apiGet, apiPatch, apiPost } from "@/lib/api"
 import { compressImage } from "@/lib/image"
 import { useTrackPage } from "@/lib/useTrackPage"
 import { useCurrentCourse } from "@/store/course"
 import { useTargetRole } from "@/store/targetRole"
-import { useCurrentUser } from "@/store/user"
+import { setCurrentUser, useCurrentUser } from "@/store/user"
+import "./ProfileChat.css"
 
 interface Msg {
   role: "user" | "assistant"
@@ -44,6 +44,15 @@ interface ProfileResp {
 
 type ProfileNotice = { tone: "success" | "info" | "warning" | "error"; message: string }
 
+type LearnerContext = {
+  name: string
+  learner_type: "student" | "worker"
+  study_stage: string
+  company: string
+  target_role: string
+  enterprise: unknown | null
+}
+
 export function ProfileChat() {
   useTrackPage("profile")
   const navigate = useNavigate()
@@ -61,6 +70,16 @@ export function ProfileChat() {
   const streamingRef = useRef("")  // 镜像 streaming，避开 StrictMode 在 setState updater 里 double-invoke 副作用
   const [lastReasoning, setLastReasoning] = useState("")
   const [profileNotice, setProfileNotice] = useState<ProfileNotice | null>(null)
+  const [identity, setIdentity] = useState<LearnerContext>({
+    name: user?.name || "",
+    learner_type: user?.learner_type || "student",
+    study_stage: user?.study_stage || "",
+    company: user?.company || "",
+    target_role: user?.target_role || "",
+    enterprise: null,
+  })
+  const [identitySaving, setIdentitySaving] = useState(false)
+  const [identityNotice, setIdentityNotice] = useState("")
   const endRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   // 用户是否「贴着底部」：只有贴底时才跟随自动滚，否则上滑看历史不被打断
@@ -168,6 +187,48 @@ export function ProfileChat() {
       active = false
     }
   }, [USER_ID, targetRole?.name])
+
+  useEffect(() => {
+    if (!USER_ID) return
+    let active = true
+    apiGet<LearnerContext>("/learner/context").then((context) => {
+      if (active) setIdentity(context)
+    }).catch(() => {
+      if (active) setIdentityNotice("身份资料暂时无法读取")
+    })
+    return () => {
+      active = false
+    }
+  }, [USER_ID])
+
+  const saveIdentity = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setIdentitySaving(true)
+    setIdentityNotice("")
+    try {
+      const next = await apiPatch<LearnerContext>("/learner/context", {
+        learner_type: identity.learner_type,
+        study_stage: identity.learner_type === "student" ? identity.study_stage.trim() : "",
+        company: identity.learner_type === "worker" ? identity.company.trim() : "",
+        target_role: identity.target_role.trim(),
+      })
+      setIdentity(next)
+      if (user) {
+        setCurrentUser({
+          ...user,
+          learner_type: next.learner_type,
+          study_stage: next.study_stage,
+          company: next.company,
+          target_role: next.target_role,
+        })
+      }
+      setIdentityNotice("身份资料已保存")
+    } catch (error) {
+      setIdentityNotice(error instanceof Error ? error.message : "身份资料保存失败，请稍后重试")
+    } finally {
+      setIdentitySaving(false)
+    }
+  }
 
   useEffect(() => {
     const scroller = scrollRef.current
@@ -282,71 +343,130 @@ export function ProfileChat() {
     await loadProfile()
   }
 
-  const primaryGoal = profile?.dims.goals.primary?.trim() || "等待对话补充"
+  const primaryGoal = profile?.dims.goals.primary?.trim() || targetRole?.name || "等待对话补充"
   const weakTopics = profile?.dims.weak_points.topics?.filter(Boolean) || []
   const targetTopics = profile?.dims.goals.target_topics?.filter(Boolean) || []
   const hoursPerWeek = profile?.dims.pace.hours_per_week || 0
-  const hasProfileContent = Boolean(profile?.intake_complete)
+  const background = profile?.dims.learner_background.major
+    || profile?.dims.learner_background.education
+    || identity.study_stage
+    || identity.company
+    || "等待补充"
+  const preferenceLabels = profile?.missing_fields.includes("资源偏好")
+    ? []
+    : Object.entries(profile?.dims.preference || {})
+      .filter(([, value]) => Number(value) > 0)
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
+      .slice(0, 3)
+      .map(([key]) => formatProfileKey(key))
+  const focusTopics = weakTopics.length ? weakTopics : targetTopics
+  // Keep the training entry available for existing and partially migrated profiles.
+  const hasProfileContent = Boolean(
+    profile?.dims.goals.primary?.trim()
+    || weakTopics.length
+    || targetTopics.length
+    || hoursPerWeek,
+  )
   const quickPrompts = targetRole ? [
     "我是计算机专业本科生，编程基础较好，数学和岗位领域知识一般。",
-    "我更容易通过图示和动手实践理解，希望多提供文档、代码实操和小测。",
-    `我目前没有相关实习，每周能投入 6 小时，希望重点训练${targetRole.skills.slice(0, 2).join("和")}。`,
+    "我更喜欢边做边学、循序渐进地学，希望多提供文档、代码实操和小测。",
+    `我每周能投入 6 小时，希望重点训练${targetRole.skills.slice(0, 2).join("和")}。`,
   ] : [
     "我还没有确定目标岗位，希望先梳理自己的专业与实践经历。",
     "我更喜欢边看案例边动手实践，每周能投入 6 小时。",
     "我做过一些项目，希望判断自己更适合哪个岗位方向。",
   ]
   const isFreshConversation = messages.length === 1 && !streaming
+  const completion = profile?.intake_complete ? 100 : Math.max(18, 100 - (profile?.missing_fields.length ?? 5) * 14)
   return (
-    <div className="app-page paper-theme">
-      <div className="mx-auto max-w-[1540px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
-        <AppTopbar current="profile" appearance="paper" />
+    <div className={`app-page paper-theme profile-page ${status === "open" ? "is-running" : ""}`}>
+      <div className="profile-page-inner">
+        <AppTopbar current="profile" appearance="paper" iconImage="/images/profile-scan-device.png" />
 
-        <main className="mt-4 grid items-stretch gap-4 xl:h-[calc(100dvh-122px)] xl:min-h-[660px] xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="flex min-h-[680px] min-w-0 flex-col overflow-hidden rounded-[28px] border border-[#CFC8B9] bg-[#FFFEFA] shadow-[0_16px_42px_rgba(24,35,45,.075)] xl:h-full xl:min-h-0">
-            <header className="flex flex-col items-stretch gap-2.5 border-b border-[#D7D1C4] bg-[#F8F6F0] px-3 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
-              <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
-                <Link to="/" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2 text-[11px] font-bold text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]">
-                  <ArrowLeft className="size-3.5" /><span className="hidden sm:inline">返回首页</span>
-                </Link>
-                <span className="h-6 w-px shrink-0 bg-[#D7D1C4]" />
-                <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83]"><Bot className="size-4" /></span>
-                <div className="min-w-0 flex-1">
-                  <h2 className="truncate text-[15px] font-bold text-[#18232D]">StudyMate 岗位画像助手</h2>
-                  <p className="mt-0.5 truncate text-[11px] leading-4 text-[#6F787A]">通过动态追问持续校准岗位能力证据</p>
+        <main className="profile-workspace">
+          <section className="profile-summary-card" aria-labelledby="profile-summary-title">
+            <div className="profile-summary-heading">
+              <div>
+                <span>实时画像 · v{profile?.version ?? "—"}</span>
+                <h2 id="profile-summary-title">系统已经认识了这些</h2>
+              </div>
+              <span className="profile-summary-live" aria-live="polite">
+                {status === "open" ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                {status === "open" ? "更新中" : "随对话更新"}
+              </span>
+            </div>
+
+            <div className="profile-completion" aria-label={`画像完成度 ${completion}%`}>
+              <div>
+                <span>{profile?.intake_complete ? "画像已完成" : "画像完成度"}</span>
+                <strong>{completion}%</strong>
+              </div>
+              <div className="profile-completion-track"><i style={{ width: `${completion}%` }} /></div>
+              <p>
+                {profile?.intake_complete
+                  ? "目标、背景、偏好和节奏已形成，可继续补充新变化。"
+                  : profile?.missing_fields?.length
+                    ? `还需补充：${profile.missing_fields.slice(0, 2).join("、")}`
+                    : "继续对话，画像会根据新信息实时补全。"}
+              </p>
+            </div>
+
+            <div className="profile-facts-grid">
+              <ProfileFact icon={Target} label="当前目标" value={primaryGoal} tone="blue" />
+              <ProfileFact icon={GraduationCap} label="背景经历" value={background} tone="blue" compact />
+              <ProfileFact icon={Sparkles} label="学习偏好" value={preferenceLabels.join("、") || "等待补充"} tone="gold" compact />
+              <ProfileFact icon={AlertTriangle} label="优先关注" value={focusTopics.slice(0, 2).join("、") || "等待补充"} tone="red" compact />
+              <ProfileFact
+                icon={Clock3}
+                label="学习节奏"
+                value={hoursPerWeek ? `每周 ${hoursPerWeek} 小时${profile?.dims.pace.intensity ? ` · ${formatPaceIntensity(profile.dims.pace.intensity)}` : ""}` : "等待补充"}
+                tone="gold"
+                compact
+              />
+            </div>
+
+            {lastReasoning && (
+              <section className="profile-update-reason">
+                <div><ShieldCheck />本轮画像更新依据</div>
+                <p>{lastReasoning}</p>
+              </section>
+            )}
+
+            {profileNotice && (
+              <section role={profileNotice.tone === "error" ? "alert" : "status"} className={`profile-notice profile-notice--${profileNotice.tone}`}>
+                <AlertTriangle />{profileNotice.message}
+              </section>
+            )}
+          </section>
+
+          <section className="profile-chat-card">
+            <header className="profile-chat-header">
+              <div className="profile-chat-title">
+                <span className="profile-assistant-avatar"><img src="/images/profile-assistant-device-v1.png" alt="" /></span>
+                <div>
+                  <h2>画像采集对话</h2>
+                  <p>{status === "open" ? "正在分析并更新画像" : "继续补充目标、经历和学习安排"}</p>
                 </div>
               </div>
-              <div className="nav-scroll flex w-full items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto sm:shrink-0 sm:overflow-visible sm:pb-0">
-                <span className="hidden w-fit items-center gap-2 rounded-full border border-[#D7D1C4] bg-[#FFFEFA] px-3 py-1.5 text-[11px] font-bold text-[#59636B] sm:inline-flex" aria-live="polite">
-                  {status === "open" ? <Loader2 className="size-3.5 animate-spin text-[#B85C3E]" /> : <span className="size-2 rounded-full bg-[#6F8A69]" />}
-                  {status === "open" ? "正在分析并更新画像" : "可以继续对话"}
-                </span>
+              <div className="profile-chat-tools">
                 <VoiceSelector compact />
-                <span className="hidden h-9 items-center gap-1.5 rounded-xl border border-[#C9D1CB] bg-[#E9EEE6] px-3 text-[11px] font-bold text-[#557052] sm:inline-flex">
-                  <ShieldCheck className="size-3.5" />画像 v{profile?.version ?? "—"}
-                </span>
-                <button type="button" onClick={handleReset} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-3 text-[11px] font-bold text-[#7A817F] transition-colors hover:bg-[#F4E8E2] hover:text-[#9A4E35]">
-                  <RotateCw className="size-3.5" /><span className="hidden sm:inline">重置画像</span>
+                <span className="profile-version"><ShieldCheck />v{profile?.version ?? "—"}</span>
+                <button type="button" onClick={handleReset} className="profile-reset-button" title="重置画像" aria-label="重置画像">
+                  <RotateCw /><span>重置</span>
                 </button>
               </div>
             </header>
 
-            <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto bg-[#FDFBF6] px-4 sm:px-6">
-              <div className={`flex w-full flex-col ${isFreshConversation ? "min-h-full justify-center py-8" : "gap-7 py-8"}`}>
+            <div ref={scrollRef} onScroll={handleScroll} className="profile-message-scroll">
+              <div className={`profile-message-stack ${isFreshConversation ? "is-fresh" : ""}`}>
                 {isFreshConversation ? (
-                  <div className="mx-auto w-full max-w-[720px] text-center">
-                    <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83] shadow-[0_8px_20px_rgba(36,76,102,.08)]">
-                      <Bot className="size-5" />
-                    </span>
-                    <h3 className="mt-4 text-xl font-bold tracking-[-0.03em] text-[#18232D]">一起建立你的岗位能力画像</h3>
-                    <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#66717B]">
-                      告诉我你的专业、实践经历和目标岗位。我会针对证据不足或相互矛盾的信息动态追问，让后续训练计划真正适合你。
-                    </p>
-                    <div className="mt-6 grid gap-2 text-left sm:grid-cols-3">
+                  <div className="profile-chat-welcome">
+                    <h3>说说你的目标和经历</h3>
+                    <p>选择一个快捷回答，或直接输入你的真实情况。</p>
+                    <div className="profile-quick-grid">
                       {quickPrompts.map((prompt, index) => (
-                        <button key={prompt} type="button" onClick={() => setInput(prompt)} className="group rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] px-3.5 py-3 text-[11px] font-semibold leading-5 text-[#59636B] transition-all hover:-translate-y-0.5 hover:border-[#AFA796] hover:bg-[#F1EDE4] hover:text-[#244C66]">
-                          <span className="mb-2 block text-[10px] font-bold tracking-[0.12em] text-[#9A8D78]">0{index + 1}</span>
-                          {prompt}
+                        <button key={prompt} type="button" onClick={() => setInput(prompt)} className="profile-quick-prompt">
+                          <span>0{index + 1}</span>{prompt}
                         </button>
                       ))}
                     </div>
@@ -361,132 +481,155 @@ export function ProfileChat() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="border-t border-[#E3DED3] bg-[#FDFBF6] px-4 pb-3 pt-3 sm:px-6">
-              <div className="w-full">
-                <div className="rounded-[20px] border border-[#CFC8B9] bg-[#FFFEFA] p-2 shadow-[0_10px_28px_rgba(24,35,45,.08)] transition-shadow focus-within:border-[#9FB1BC] focus-within:shadow-[0_12px_32px_rgba(36,76,102,.12)]">
-                  {pendingImages.length > 0 && (
-                    <div className="flex flex-wrap gap-2 px-1 pb-2">
-                      {pendingImages.map((src, index) => (
-                        <div key={index} className="relative">
-                          <img src={src} alt={`待发送图片 ${index + 1}`} className="size-14 rounded-xl border border-[#CFC8B9] object-cover" />
-                          <button type="button" onClick={() => setPendingImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-[#18232D] text-[#FFFEFA] transition-transform hover:scale-110" aria-label="移除图片"><X className="size-3" /></button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {imgHint && <div className="px-2 pb-1 text-[11px] font-semibold text-[#9B7429]">{imgHint}</div>}
-                  <label className="block">
-                    <span className="sr-only">画像对话内容</span>
-                    <textarea
-                      value={input}
-                      onChange={(event) => setInput(event.target.value)}
-                      onPaste={handlePaste}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-                          event.preventDefault()
-                          event.currentTarget.form?.requestSubmit()
-                        }
-                      }}
-                      disabled={status === "open"}
-                      rows={1}
-                      placeholder="告诉我你的目标、基础或最近遇到的困难…"
-                      className="max-h-28 min-h-10 w-full resize-none bg-transparent px-2 py-2 text-sm leading-6 text-[#18232D] outline-none placeholder:text-[#929792] disabled:opacity-60"
-                    />
-                  </label>
-                  <div className="mt-1 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <input ref={fileRef} type="file" multiple accept="image/*" className="hidden" onChange={(event) => handlePickFiles(event.target.files)} />
-                      <button type="button" onClick={() => fileRef.current?.click()} disabled={status === "open" || pendingImages.length >= MAX_IMAGES || imgBusy} title="上传图片或成绩单截图" aria-label="上传图片" className="grid size-9 shrink-0 place-items-center rounded-xl text-[#66717B] transition-colors hover:bg-[#F4ECD8] hover:text-[#8E6925] disabled:opacity-40">
-                        {imgBusy ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
-                      </button>
-                      <MicButton size="sm" onTranscript={(text) => setInput(text)} onError={(error) => console.error("ASR 失败：", error)} />
-                      <button type="button" onClick={() => navigate("/tutor/voice")} title="进入实时语音对话" aria-label="进入实时语音对话" className="grid size-9 shrink-0 place-items-center rounded-xl text-[#66717B] transition-colors hover:bg-[#E7EDF3] hover:text-[#315E83]"><Headphones className="size-4" /></button>
-                    </div>
-                    <button type="submit" disabled={status === "open" || (!input.trim() && pendingImages.length === 0)} className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#244C66] text-[#FFFEFA] shadow-[0_7px_16px_rgba(36,76,102,.18)] transition-all hover:-translate-y-0.5 hover:bg-[#193B50] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40" aria-label="发送画像对话">
-                      {status === "open" ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-                    </button>
+            <form onSubmit={handleSubmit} className="profile-chat-composer">
+              <div className="profile-composer-box">
+                {pendingImages.length > 0 && (
+                  <div className="flex flex-wrap gap-2 px-1 pb-2">
+                    {pendingImages.map((src, index) => (
+                      <div key={index} className="relative">
+                        <img src={src} alt={`待发送图片 ${index + 1}`} className="size-14 rounded-xl border border-[#bcd8e6] object-cover" />
+                        <button type="button" onClick={() => setPendingImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-[#173e59] text-white" aria-label="移除图片"><X className="size-3" /></button>
+                      </div>
+                    ))}
                   </div>
+                )}
+                {imgHint && <div className="px-2 pb-1 text-[11px] font-semibold text-[#8E6925]">{imgHint}</div>}
+                <label className="block">
+                  <span className="sr-only">画像对话内容</span>
+                  <textarea
+                    value={input}
+                    onChange={(event) => setInput(event.target.value)}
+                    onPaste={handlePaste}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                        event.preventDefault()
+                        event.currentTarget.form?.requestSubmit()
+                      }
+                    }}
+                    disabled={status === "open"}
+                    rows={1}
+                    placeholder="告诉我你的目标、基础或最近遇到的困难…"
+                  />
+                </label>
+                <div className="profile-composer-actions">
+                  <div>
+                    <input ref={fileRef} type="file" multiple accept="image/*" className="hidden" onChange={(event) => handlePickFiles(event.target.files)} />
+                    <button type="button" onClick={() => fileRef.current?.click()} disabled={status === "open" || pendingImages.length >= MAX_IMAGES || imgBusy} title="上传图片或成绩单截图" aria-label="上传图片">
+                      {imgBusy ? <Loader2 className="animate-spin" /> : <ImagePlus />}
+                    </button>
+                    <MicButton size="sm" onTranscript={(text) => setInput(text)} onError={(error) => console.error("ASR 失败：", error)} />
+                    <button type="button" onClick={() => navigate("/tutor/voice")} title="进入实时语音对话" aria-label="进入实时语音对话"><Headphones /></button>
+                  </div>
+                  <button type="submit" disabled={status === "open" || (!input.trim() && pendingImages.length === 0)} className="profile-send-button" aria-label="发送画像对话">
+                    {status === "open" ? <Loader2 className="animate-spin" /> : <Send />}
+                  </button>
                 </div>
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-[10px] text-[#7A817F]">
-                  <span className="inline-flex items-center gap-1.5"><Paperclip className="size-3" />支持粘贴或上传最多 {MAX_IMAGES} 张图片</span>
-                  <span>Enter 发送 · Shift+Enter 换行</span>
-                </div>
+              </div>
+              <div className="profile-composer-hint">
+                <span><Paperclip />最多 {MAX_IMAGES} 张图片</span>
+                <span>Enter 发送 · Shift+Enter 换行</span>
               </div>
             </form>
           </section>
 
-          <aside className="space-y-3 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:pr-1 [scrollbar-color:#CFC8B9_transparent] [scrollbar-width:thin]">
-            <section className="rounded-[22px] border border-[#CFC8B9] bg-[#F8F6F0] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div>
-                  <span className="text-[10px] font-bold tracking-[0.12em] text-[#6F8A69]">当前画像 · v{profile?.version ?? "—"}</span>
-                  <h2 className="mt-1 text-sm font-bold tracking-[-0.02em] text-[#18232D]">画像正在参与你的学习路线</h2>
-                </div>
-                <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[#DDD4BF] bg-[#F4ECD8] text-[#9B7429]" title="对话后实时更新">
-                  <Sparkles className="size-3.5" />
-                </span>
+          <aside className="profile-secondary-panel">
+            <form onSubmit={saveIdentity} className="profile-identity-card">
+              <div className="profile-secondary-heading">
+                <div><span>基础资料</span><h2>编辑已识别事实</h2></div>
+                <UserRound />
               </div>
-              <div className="space-y-2">
-                <ProfileFact icon={Target} label="当前目标" value={primaryGoal} tone="blue" />
-                <div className="grid grid-cols-2 gap-2">
-                  <ProfileFact icon={AlertTriangle} label="优先关注" value={weakTopics.length ? weakTopics.slice(0, 2).join("、") : targetTopics.slice(0, 2).join("、") || "等待补充"} tone="red" compact />
-                  <ProfileFact icon={Clock3} label="学习节奏" value={hoursPerWeek ? `每周 ${hoursPerWeek} 小时` : "等待补充"} tone="gold" compact />
-                </div>
+              <div className="profile-identity-summary">
+                <span><UserRound />{identity.name || user?.name || "学习者"}</span>
+                <span>{identity.learner_type === "student" ? <GraduationCap /> : <BriefcaseBusiness />}{identity.learner_type === "student" ? "学生" : "从业者"}</span>
               </div>
-            </section>
+              {identity.learner_type === "student" ? (
+                <label>
+                  <span>学习阶段</span>
+                  <span className="profile-field">
+                    <GraduationCap />
+                    <select value={identity.study_stage} onChange={(event) => setIdentity((current) => ({ ...current, study_stage: event.target.value }))}>
+                      <option value="">暂不填写</option>
+                      <option value="本科">本科</option>
+                      <option value="研究生">研究生</option>
+                      <option value="博士">博士</option>
+                    </select>
+                    <ChevronDown />
+                  </span>
+                </label>
+              ) : (
+                <label>
+                  <span>在职公司</span>
+                  <span className="profile-field"><BriefcaseBusiness /><input value={identity.company} onChange={(event) => setIdentity((current) => ({ ...current, company: event.target.value }))} placeholder="例如：星河科技" /></span>
+                </label>
+              )}
+              <div className="profile-identity-save">
+                <span role={identityNotice.includes("失败") || identityNotice.includes("无法") ? "alert" : "status"} className={identityNotice.includes("失败") || identityNotice.includes("无法") ? "is-error" : ""}>{identityNotice}</span>
+                <button type="submit" disabled={identitySaving}>{identitySaving ? <Loader2 className="animate-spin" /> : <Save />}保存资料</button>
+              </div>
+            </form>
+          </aside>
+
+          <section className="profile-radar-section" aria-labelledby="profile-radar-title">
+            <div className="profile-secondary-heading">
+              <div>
+                <span>能力信号</span>
+                <h2 id="profile-radar-title">学情画像雷达</h2>
+              </div>
+              <Sparkles />
+            </div>
             {profile ? (
-              <>
+              <div className="profile-radar-grid">
                 <ProfileRadar title="知识基础" data={profile.dims.knowledge_base} color="#315E83" height={124} />
                 <ProfileRadar title="认知风格" data={profile.dims.cognitive_style} color="#B85C3E" height={124} />
                 <ProfileRadar title="资源偏好" data={profile.dims.preference} color="#6F8A69" height={124} />
-                <ProfileRadar title="就业技能" data={profile.dims.employment_skills} color="#7E6B83" height={124} />
-              </>
+              </div>
             ) : (
-              <div className="rounded-[24px] border border-dashed border-[#C9C2B4] bg-[#F8F6F0] p-6 text-center text-xs text-[#66717B]">画像加载后，这里会实时显示目标、基础、偏好和节奏。</div>
+              <div className="profile-radar-empty">画像加载后，这里会实时显示知识基础、认知风格和资源偏好。</div>
             )}
+          </section>
 
-            {lastReasoning && (
-              <section className="rounded-[22px] border border-[#C9D1CB] bg-[#E9EEE6] p-4">
-                <div className="flex items-center gap-2 text-[11px] font-bold text-[#557052]"><ShieldCheck className="size-4" />本轮画像更新依据</div>
-                <p className="mt-2 text-[11px] leading-5 text-[#59636B]">{lastReasoning}</p>
-              </section>
-            )}
-
-            {profileNotice && (
-              <section
-                role={profileNotice.tone === "error" ? "alert" : "status"}
-                className={`rounded-[22px] border p-4 text-[11px] leading-5 ${
-                  profileNotice.tone === "success"
-                    ? "border-[#C9D1CB] bg-[#E9EEE6] text-[#557052]"
-                    : profileNotice.tone === "error"
-                      ? "border-[#DFC8BE] bg-[#F4E8E2] text-[#9A4E35]"
-                      : profileNotice.tone === "warning"
-                        ? "border-[#DDD4BF] bg-[#F4ECD8] text-[#8E6925]"
-                        : "border-[#C7D2D8] bg-[#E7EDF3] text-[#315E83]"
-                }`}
-              >
-                <div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 size-3.5 shrink-0" />{profileNotice.message}</div>
-              </section>
-            )}
-
-            {hasProfileContent && (
-              <section className="rounded-[22px] border border-[#C7D2D8] bg-[#E7EDF3] p-4 shadow-[0_9px_24px_rgba(24,35,45,.045)]">
-                <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.1em] text-[#315E83]"><Sparkles className="size-3.5" />画像已可参与学习</div>
-                <h3 className="mt-2 text-sm font-bold text-[#18232D]">下一步，让多 Agent 协商个性化训练方案</h3>
-                <p className="mt-1 text-[11px] leading-5 text-[#596A75]">{course ? `将结合“${targetRole?.name || course.name}”岗位知识库和画像 v${profile?.version} 组织内容。` : targetRole ? `“${targetRole.name}”已选定，画像会持续保留；专属岗位知识库接入后即可生成训练资源。` : "还需先选择目标岗位，确保知识来源与训练记录不会混淆。"}</p>
-                <Link to={course || targetRole ? "/competency" : "/courses?returnTo=%2Fprofile"} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-[#244C66] px-4 text-[11px] font-bold text-[#FFFEFA] hover:bg-[#193B50]">
-                  {course || targetRole ? "进入胜任力训练驾驶舱" : "先选择目标岗位"}<ArrowRight className="size-3.5" />
-                </Link>
-              </section>
-            )}
-          </aside>
+          {hasProfileContent && (
+            <section className="profile-next-card">
+              <div>
+                <span>下一步</span>
+                <h3>{profile?.intake_complete ? "画像已完成，可开始训练" : "已有画像基础，可先查看训练"}</h3>
+              </div>
+              <Link to={course || targetRole ? "/competency" : "/courses?returnTo=%2Fprofile"}>
+                {course || targetRole ? "进入训练中心" : "选择目标岗位"}<ArrowRight />
+              </Link>
+            </section>
+          )}
         </main>
-        <div className="mt-4">
-          <CareerRecommendations profileVersion={profile?.version || 0} />
-        </div>
       </div>
     </div>
   )
+}
+
+const profileKeyLabels: Record<string, string> = {
+  document: "文档",
+  mindmap: "思维导图",
+  quiz: "小测",
+  code: "代码实操",
+  video: "视频",
+  reading: "阅读",
+  practice_first: "实践优先",
+  theory_first: "理论优先",
+  step_by_step: "循序渐进",
+  challenge: "挑战导向",
+}
+
+function formatProfileKey(key: string) {
+  return profileKeyLabels[key] || key.replaceAll("_", " ")
+}
+
+const paceIntensityLabels: Record<string, string> = {
+  fast: "高强度",
+  medium: "适中",
+  slow: "稳步",
+}
+
+function formatPaceIntensity(value: string) {
+  return paceIntensityLabels[value] || value
 }
 
 function buildOpeningMessage(roleName?: string, missingFields?: string[]): string {
@@ -495,12 +638,11 @@ function buildOpeningMessage(roleName?: string, missingFields?: string[]): strin
     "知识基础与薄弱点",
     "认知风格",
     "资源偏好",
-    "就业技能与实践经历",
     "学习目标与时间安排",
   ])
-    .filter((field) => !(roleName && field === "目标岗位"))
+    .filter((field) => field !== "就业技能与实践经历" && !(roleName && field === "目标岗位"))
   if (!remaining.length) {
-    return `你的${roleName ? `“${roleName}”` : "岗位"}画像已完整覆盖知识、认知、资源与就业能力，可以进入岗位训练中心。`
+    return `你的${roleName ? `“${roleName}”` : "岗位"}画像已准备好，可以进入岗位训练中心。`
   }
   const roleText = roleName ? `目标岗位已确定为 **${roleName}**。` : ""
   const pending = new Set(remaining)
@@ -513,32 +655,29 @@ function buildOpeningMessage(roleName?: string, missingFields?: string[]): strin
         : "你与岗位相关的课程或技术基础怎样？请说说比较熟悉和较薄弱的内容。"
   } else if (pending.has("认知风格") || pending.has("资源偏好")) {
     question = pending.has("认知风格") && pending.has("资源偏好")
-      ? "学习新内容时，你更容易通过图示、阅读、讲解还是动手实践理解？希望训练中多提供文档、思维导图、视频、代码实操还是小测？"
+      ? "学新内容时，你更喜欢先动手实践还是先吃透理论？偏爱循序渐进还是直接挑战综合难题？希望训练中多提供文档、思维导图、视频、代码实操还是小测？"
       : pending.has("认知风格")
-        ? "学习新内容时，你更容易通过图示、阅读、讲解还是动手实践理解？"
+        ? "学新内容时，你更喜欢先动手实践还是先吃透理论？偏爱循序渐进还是直接挑战综合难题？"
         : "训练资源方面，你更希望多提供文档、思维导图、视频、代码实操还是小测？"
-  } else if (pending.has("就业技能与实践经历") || pending.has("学习目标与时间安排")) {
-    question = pending.has("就业技能与实践经历") && pending.has("学习目标与时间安排")
-      ? "最后说说相关项目或实习中用过的技术、负责内容和成果（没有也可说明），以及每周可投入的时间和期望完成时间。"
-      : pending.has("就业技能与实践经历")
-        ? "请说说相关项目或实习中用过的技术、负责内容和成果；没有也可以直接说明。"
-        : "你每周可以投入多少学习时间？如果有期望完成时间也可以一起说明。"
+  } else if (pending.has("学习目标与时间安排")) {
+    question = "你每周可以投入多少学习时间？如果有期望完成时间也可以一起说明。"
   }
-  return `${roleText}${question}画像会分成少量主题完成，不会重复询问。`
+  return `${roleText}${question}我会分几步询问，不重复。`
 }
 
-function ProfileFact({ icon: Icon, label, value, tone, compact = false }: { icon: LucideIcon; label: string; value: string; tone: "blue" | "red" | "gold"; compact?: boolean }) {
+function ProfileFact({ icon: Icon, label, value, detail, tone, compact = false }: { icon: LucideIcon; label: string; value: string; detail?: string; tone: "blue" | "red" | "gold"; compact?: boolean }) {
   const toneMap = {
     blue: "bg-[#E7EDF3] text-[#315E83]",
     red: "bg-[#F4E8E2] text-[#9A4E35]",
     gold: "bg-[#F4ECD8] text-[#8E6925]",
   }
   return (
-    <div className={`flex items-start rounded-2xl border border-[#D7D1C4] bg-[#FFFEFA] ${compact ? "gap-2 p-2.5" : "gap-3 p-3"}`}>
-      <span className={`grid shrink-0 place-items-center rounded-full ${compact ? "size-7" : "size-8"} ${toneMap[tone]}`}><Icon className={compact ? "size-3.5" : "size-4"} /></span>
+    <div className={`profile-fact-card ${compact ? "is-compact" : ""}`}>
+      <span className={toneMap[tone]}><Icon /></span>
       <div className="min-w-0">
-        <span className="text-[10px] font-bold text-[#8A8172]">{label}</span>
-        <p className={`mt-0.5 line-clamp-2 font-semibold text-[#18232D] ${compact ? "text-[10px] leading-4" : "text-[11px] leading-5"}`}>{value}</p>
+        <span className="profile-fact-label">{label}</span>
+        <p>{value}</p>
+        {detail && <span className="profile-fact-detail">{detail}</span>}
       </div>
     </div>
   )

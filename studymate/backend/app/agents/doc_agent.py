@@ -153,10 +153,11 @@ def gradient_descent(x, y, lr=0.01, n_iter=1000):
             fixes = "\n".join(f"- {item.get('suggestion', item)}" for item in revision_feedback)
             tmpl += f"\n## 8. 自动返工修订\n\n{fixes}\n"
         # 模拟流式：按字符 yield，但每 20 字符一次以加快演示
-        chunk_size = 5
+        # Preserve visible streaming feedback while avoiding long mock-mode waits.
+        chunk_size = 24
         for i in range(0, len(tmpl), chunk_size):
             await self.emit_delta(emit, tmpl[i:i + chunk_size], kind="markdown")
-            await asyncio.sleep(0.02)
+            await asyncio.sleep(0.003)
         return tmpl
 
     async def _stream_real(

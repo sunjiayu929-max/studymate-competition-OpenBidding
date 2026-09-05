@@ -7,6 +7,8 @@ import secrets
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field
 from pwdlib import PasswordHash
 from sqlalchemy import select
@@ -15,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.mailer import send_verification_code
 from app.db import get_db
-from app.db.models import EmailVerificationCode, User, UserSession
+from app.db.models import EmailVerificationCode, Enterprise, EnterpriseMembership, User, UserSession
 from app.deps import current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -23,8 +25,6 @@ password_hash = PasswordHash.recommended()
 _dummy_password_hash = password_hash.hash("StudyMate-dummy-password")
 _ephemeral_secret = secrets.token_bytes(32)
 COOKIE_NAME = "sm_session"
-
-
 class SendCodeRequest(BaseModel):
     email: EmailStr
 
@@ -34,6 +34,11 @@ class RegisterRequest(BaseModel):
     code: str = Field(pattern=r"^\d{6}$")
     password: str = Field(min_length=8, max_length=128)
     name: str = Field(min_length=1, max_length=64)
+    account_type: Literal["learner", "enterprise_admin"] = "learner"
+    learner_type: Literal["student", "worker"] = "student"
+    study_stage: str = Field(default="", max_length=32)
+    company: str = Field(default="", max_length=128)
+    target_role: str = Field(default="", max_length=128)
 
 
 class LoginRequest(BaseModel):
@@ -46,6 +51,10 @@ class UserOut(BaseModel):
     name: str
     email: str | None = None
     role: str
+    learner_type: str = "student"
+    study_stage: str = ""
+    company: str = ""
+    target_role: str = ""
     created: bool = False
 
 
@@ -71,6 +80,10 @@ def _user_out(user: User, *, created: bool = False) -> UserOut:
         name=user.name,
         email=user.email,
         role=user.role or "student",
+        learner_type=user.learner_type or "student",
+        study_stage=user.study_stage or "",
+        company=user.company or "",
+        target_role=user.target_role or "",
         created=created,
     )
 
@@ -172,11 +185,30 @@ async def register(req: RegisterRequest, response: Response, db: AsyncSession = 
         password_hash=password_hash.hash(req.password),
         email_verified_at=now,
         is_active=True,
-        role="student",
+        role="enterprise_admin" if req.account_type == "enterprise_admin" else "student",
+        learner_type=req.learner_type,
+        study_stage=req.study_stage.strip(),
+        company=req.company.strip(),
+        target_role=req.target_role.strip(),
     )
     record.consumed_at = now
     db.add(user)
     await db.flush()
+    if req.account_type == "enterprise_admin":
+        enterprise_name = req.company.strip() or "未命名企业"
+        enterprise = Enterprise(
+            name=enterprise_name,
+            invite_code=f"SM{user.id:04d}",
+            owner_id=user.id,
+        )
+        db.add(enterprise)
+        await db.flush()
+        db.add(EnterpriseMembership(
+            enterprise_id=enterprise.id,
+            user_id=user.id,
+            member_role="owner",
+            job_title="企业管理员",
+        ))
     await _create_session(db, user, response)
     return _user_out(user, created=True)
 

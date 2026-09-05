@@ -290,7 +290,7 @@ try {
 
   await page.getByPlaceholder("例如 name@example.com").fill("judge.fixture@example.test")
   await page.getByPlaceholder("输入你的密码").fill("safe-test-password")
-  await page.getByRole("button", { name: "进入 StudyMate" }).click()
+  await page.getByRole("button", { name: "进入因材智训" }).click()
   await page.waitForURL((url) => url.pathname === "/")
 
   // 该段专门验证保留的旧版指挥舱契约；默认首页现为浅色品牌首页。
@@ -300,7 +300,7 @@ try {
   await page.getByTestId("platform-capabilities").getByText("1,709", { exact: true }).waitFor()
   assert.equal(await page.getByTestId("agents-live").locator(".universe-agent-row").count(), 7, "learning universe must show all 7 Agents")
   assert.equal(await page.locator(".universe-planet").count(), 7, "learning universe must show all 7 capability planets")
-  assert.equal(await page.getByRole("button", { name: /打开 StudyMate 真人学习助手/u }).count(), 0, "global digital human must be hidden over the learning universe")
+  assert.equal(await page.getByRole("button", { name: /打开因材智训真人学习助手/u }).count(), 0, "global digital human must be hidden over the learning universe")
   assert.equal(await page.getByText("演示数据", { exact: false }).count(), 0, "formal home must not show simulated personal data")
   assert.equal(await page.getByText("模拟观测", { exact: false }).count(), 0, "formal home must not show simulated observations")
   const skipGuide = page.getByRole("button", { name: /暂时跳过/u })
@@ -359,11 +359,11 @@ try {
   await page.getByLabel("讲解播放速度").last().selectOption("1.25")
   assert.equal(await page.getByLabel("讲解播放速度").last().inputValue(), "1.25")
 
-  const avatarButton = page.getByRole("button", { name: /打开 StudyMate 真人学习助手/u })
+  const avatarButton = page.getByRole("button", { name: /打开因材智训真人学习助手/u })
   assert.equal(await avatarButton.count(), 0, "Dense concept controls should not be covered by the global avatar")
   await page.goto(`${baseUrl}/courses`)
   await avatarButton.click()
-  await page.locator('aside[aria-label="StudyMate 学习助手"]').waitFor()
+  await page.locator('aside[aria-label="因材智训学习助手"]').waitFor()
   await page.getByRole("button", { name: "关闭（Esc）" }).click()
 
   await page.goto(`${baseUrl}/tutor/voice`)
@@ -376,8 +376,8 @@ try {
     { path: "/knowledge", marker: "创建第一个私有知识库" },
     { path: "/ppt", marker: "让模型先讲好故事，再生成可编辑演示文稿" },
     { path: "/tutor", marker: "本次讲解会如何适配你" },
-    { path: "/report", marker: "StudyMate 学习报告" },
-    { path: "/tests", marker: "StudyMate 测试管理" },
+    { path: "/report", marker: "因材智训学习报告" },
+    { path: "/tests", marker: "因材智训测试管理" },
   ]
   await page.setViewportSize({ width: 1440, height: 900 })
   for (const target of competitionPages) {
@@ -401,32 +401,33 @@ try {
 
   for (const viewport of [{ width: 1366, height: 768 }, { width: 1440, height: 900 }, { width: 1920, height: 1080 }]) {
     await page.setViewportSize(viewport)
-    await page.goto(`${baseUrl}/?legacy-home=1`)
-    await page.getByRole("heading", { name: "学习宇宙 · 实时指挥舱" }).waitFor()
+    await page.goto(`${baseUrl}/`)
+    await page.getByTestId("today-learning-home").waitFor()
+    await page.getByTestId("recommendation-reason").waitFor()
     const layout = await page.evaluate(() => {
-      const universe = document.querySelector(".learning-universe")
-      const topbar = document.querySelector(".universe-command-topbar")
-      const primary = document.querySelector('[data-testid="universe-primary-cta"]')
+      const focus = document.querySelector(".home-focus-card")
+      const primary = document.querySelector('[data-testid="home-primary-cta"]')
+      const summaries = document.querySelector(".home-summary-grid")
       const rect = (element) => {
         const box = element?.getBoundingClientRect()
         return box ? { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height } : null
       }
       return {
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-        universe: rect(universe),
-        topbar: rect(topbar),
+        focus: rect(focus),
         primary: rect(primary),
-        agentCount: document.querySelectorAll(".universe-agent-row").length,
-        planetCount: document.querySelectorAll(".universe-planet").length,
+        summaries: rect(summaries),
+        removedUniverseCount: document.querySelectorAll(".learning-universe,.flight-home-shell").length,
+        embeddedFullReportCount: document.querySelectorAll("#learner-match-report,[data-testid='role-capability-profile']").length,
       }
     })
     const overflow = layout.overflow
     assert.ok(overflow <= 1, `horizontal overflow at ${viewport.width}x${viewport.height}: ${overflow}px`)
-    assert.ok(layout.universe && layout.universe.height <= viewport.height + 1, `universe exceeded first viewport at ${viewport.width}x${viewport.height}`)
-    assert.ok(layout.topbar && layout.topbar.height <= 54, `top status bar exceeded 54px at ${viewport.width}x${viewport.height}`)
+    assert.ok(layout.focus && layout.focus.top >= 0, `today's core task was not rendered at ${viewport.width}x${viewport.height}`)
     assert.ok(layout.primary && layout.primary.top >= 0 && layout.primary.bottom <= viewport.height, `primary CTA was clipped at ${viewport.width}x${viewport.height}`)
-    assert.equal(layout.agentCount, 7, `7 Agents were not all rendered at ${viewport.width}x${viewport.height}`)
-    assert.equal(layout.planetCount, 7, `7 capability planets were not all rendered at ${viewport.width}x${viewport.height}`)
+    assert.ok(layout.summaries && layout.summaries.top > layout.focus.top, `compact summaries did not follow the core task at ${viewport.width}x${viewport.height}`)
+    assert.equal(layout.removedUniverseCount, 0, `removed learning-universe content still rendered at ${viewport.width}x${viewport.height}`)
+    assert.equal(layout.embeddedFullReportCount, 0, `home still embeds a full report at ${viewport.width}x${viewport.height}`)
   }
 
   const perf = await page.evaluate(() => ({
