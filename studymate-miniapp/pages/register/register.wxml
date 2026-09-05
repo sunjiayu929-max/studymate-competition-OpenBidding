@@ -1,10 +1,10 @@
 <view class="auth-page">
   <view class="auth-topbar">
     <view class="brand-row">
-      <view class="brand-mark">智</view>
+      <view class="brand-mark">✦</view>
       <view class="brand-copy">
         <text class="brand-name">因材智训</text>
-        <text class="brand-subtitle">LEARNING OS</text>
+        <text class="brand-subtitle">INTELLIGENT LEARNING STUDIO</text>
       </view>
     </view>
     <view class="online-status"><view class="online-dot"></view><text>8 个智能体在线</text></view>

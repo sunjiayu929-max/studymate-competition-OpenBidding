@@ -195,15 +195,15 @@ class RouteErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
   render() {
     if (!this.state.failed) return this.props.children
     return (
-      <div className="app-page paper-theme grid min-h-dvh place-items-center px-5">
-        <section role="alert" className="w-full max-w-lg rounded-[28px] border border-[#DFC8BE] bg-[#FFFEFA] p-6 text-center shadow-[0_18px_48px_rgba(24,35,45,.09)] sm:p-8">
-          <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-[#DFC8BE] bg-[#F4E8E2] text-xl text-[#9A4E35]">!</span>
-          <p className="mt-4 text-[10px] font-bold tracking-[0.12em] text-[#9A4E35]">加载失败</p>
-          <h1 className="mt-1 text-xl font-bold tracking-[-0.03em] text-[#18232D]">页面暂时无法打开</h1>
-          <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#66717B]">可能是网络波动。学习记录不会丢失，请重新加载。</p>
+      <div className="app-page route-fallback-studio grid min-h-dvh place-items-center px-5">
+        <section role="alert" className="route-error-panel route-fallback-panel w-full max-w-lg rounded-[28px] border p-6 text-center sm:p-8">
+          <span className="route-error-mark mx-auto grid size-12 place-items-center rounded-2xl text-xl">!</span>
+          <p className="route-error-kicker mt-4 text-[10px] font-bold tracking-[0.12em]">加载失败</p>
+          <h1 className="mt-1 text-xl font-bold tracking-[-0.03em] text-[#172E49]">页面暂时无法打开</h1>
+          <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#52758B]">可能是网络波动。学习记录不会丢失，请重新加载。</p>
           <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
-            <button type="button" onClick={() => window.location.reload()} className="inline-flex h-10 items-center justify-center rounded-xl bg-[#244C66] px-5 text-xs font-bold text-[#FFFEFA] hover:bg-[#193B50]">重新加载当前页面</button>
-            <button type="button" onClick={() => { window.location.href = "/" }} className="inline-flex h-10 items-center justify-center rounded-xl border border-[#D7D1C4] bg-[#FFFEFA] px-5 text-xs font-bold text-[#59636B] hover:bg-[#F1EDE4]">返回学习首页</button>
+            <button type="button" onClick={() => window.location.reload()} className="route-error-primary inline-flex h-10 items-center justify-center rounded-xl px-5 text-xs font-bold">重新加载当前页面</button>
+            <button type="button" onClick={() => { window.location.href = "/" }} className="route-error-secondary inline-flex h-10 items-center justify-center rounded-xl px-5 text-xs font-bold">返回学习首页</button>
           </div>
         </section>
       </div>

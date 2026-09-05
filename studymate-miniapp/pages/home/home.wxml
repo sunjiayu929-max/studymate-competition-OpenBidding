@@ -1,6 +1,6 @@
 <view class="page home-page">
   <view class="brand-row home-topbar">
-    <view class="brand-mark">智</view>
+    <view class="brand-mark">✦</view>
     <view class="home-heading">
       <text class="eyebrow">因材智训</text>
       <text class="worker-label">从业者端</text>
